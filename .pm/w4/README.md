@@ -236,6 +236,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **235** — [Static rule fields collapse to a few characters on mobile](235.md) (55m) ← live qa-find-bugs 2026-10-10 pass a50; header fields shrink to 38px and redirect fields to 54px despite correct saved values.
+
 - [ ] **234** — [Renaming a file and replacing its old filename cannot be saved in one draft](234.md) (55m) ← live qa-find-bugs 2026-10-10 pass a49; shared patch bookkeeping rejects the freed rename source, while split saves preserve both files.
 
 - [ ] **233** — [File contents dialog grows and moves its controls when loading finishes](233.md) (45m) ← live qa-find-bugs 2026-10-10 pass a47; the shared spinner reserves 192px before a 256px editor, moving the controls on desktop and mobile.
