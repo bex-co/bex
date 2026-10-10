@@ -20,38 +20,42 @@
 
 Use a private config with normal QA device login and explicit BEX_WORKSPACE. Persist fresh create intents and verify free capacity. No credentials belong in this record.
 
-~~~sh
+```sh
 bex services create --name qa-20261009-829f64-opts --type web_service --runtime go --repo https://github.com/bex-co/bex --root-directory examples/hello-go --build-command 'go build -o app .' --start-command ./app --plan free --region frankfurt --env-var MESSAGE=qa-opts-829f64-雪 --auto-deploy=true --max-shutdown-delay 31 --build-filter-path 'examples/hello-go/**' --confirm -o json
-~~~
+```
 
 Bex exits 1 in 3.365 s, stdout empty, full stderr:
 
-~~~text
+```text
 Error: received response code 400: invalid request body at /buildFilter/ignoredPaths
-~~~
+```
 
 Fresh same-pin Render creates against Bex use the same free Go app, auto-deploy false, no env marker. Include-only qa-20261009-337383-filter exits 1 in 0.644 s with the same stderr. Ignore-only qa-20261009-775e64-filter exits 1 in 0.534 s with empty stdout and:
 
-~~~text
+```text
 Error: received response code 400: invalid request body at /buildFilter/paths
-~~~
+```
 
 The full commands are retained in cli.json. All failed intents remain absent from lists. Exact offline-captured POST payload replays fail HTTP 400 in 0.592/0.568 s; the include-only complete response is:
 
-~~~json
-{"error":"invalid request body at /buildFilter/ignoredPaths","id":"bad_request","message":"invalid request body at /buildFilter/ignoredPaths"}
-~~~
+```json
+{
+  "error": "invalid request body at /buildFilter/ignoredPaths",
+  "id": "bad_request",
+  "message": "invalid request body at /buildFilter/ignoredPaths"
+}
+```
 
 The ignore-only response substitutes /buildFilter/paths in both strings. See create-replays.json for exact bodies, trailing newline, content type and CF-Ray values. No original production packet capture was made.
 
-The both-lists create adds --build-filter-path 'examples/hello-go/**' and --build-filter-ignored-path '*.md': exit 0 in 1.156 s, ID srv-db49ak3jrdls73co04p0, name qa-20261009-689277-filter. Readback has both arrays, autoDeploy yes and maxShutdownDelaySeconds 31. The Go service eventually serves HTTP 200 with qa-filter-689277-雪.
+The both-lists create adds --build-filter-path 'examples/hello-go/\*_' and --build-filter-ignored-path '_.md': exit 0 in 1.156 s, ID srv-db49ak3jrdls73co04p0, name qa-20261009-689277-filter. Readback has both arrays, autoDeploy yes and maxShutdownDelaySeconds 31. The Go service eventually serves HTTP 200 with qa-filter-689277-雪.
 
 On that proven-owned fixture:
 
-~~~sh
+```sh
 bex services update srv-db49ak3jrdls73co04p0 --build-filter-path 'examples/hello-go/*.go' --confirm -o json
 bex services update srv-db49ak3jrdls73co04p0 --build-filter-ignored-path 'docs/**' --confirm -o json
-~~~
+```
 
 Both exit 1, stdout empty, in 2.319/1.312 s, with the corresponding unused-list pointer error above. Readback retains the original two arrays. API-only null PATCH fragments fail 400 in 0.903/1.074 s. Changing only the unused list to [] succeeds 200 in 1.364 s, with that empty list in readback. A native CLI both-lists update succeeds, exit 0 in 2.079 s. The repaired API payload diagnoses the boundary; it is not the desired CLI fix.
 
@@ -87,3 +91,77 @@ Render production was not called: its acceptance of the serializer shape is unve
 The control and recorded deploy children dep-db49ak3jrdls73co04pg and dep-db49cq3jrdls73co04tg were removed through the exact owned service ID. CLI delete passed, detail and former runtime returned 404, list contained the same six baseline IDs and quota returned services 6/25, terminating 0, Postgres 0/1, Key Value 0/1. Failed create/replay intents remain absent. No fixture survives this finding.
 
 Scheduled through /pm: seven tasks, 2h20m. No product fix, commit or push was performed by this hunt.
+
+## Additional affected journey — cloning an include-only source
+
+Sweep 27, 2026-10-09 UTC, same released Bex/pin/workspace/human QA context. HEAD 7e72b8ee677260f5661aef9ccefd579c699b3c35 contains the original filing through an external shared-workspace commit; this hunt invoked no commit/push. Relevant API/filter sources remain byte-identical to the diagnosis snapshot. Deployed revision stays unknown.
+
+[Complete actual journey and cleanup](evidence/clone-journey.json), [actual same-pin loopback clone capture](evidence/clone-offline-request.json), and [production exact-body replay](evidence/clone-replay.json). The loopback uses only a dummy API key and recorded own-source metadata; it is not the original production packet capture or an authenticated Render-production test.
+
+The owned free Go source srv-db49tnjjrdls73co05k0 was created with both lists, then set to paths=[examples/hello-go/**], ignoredPaths=[] through an API-only setup PATCH. Native CLI rename changed its display name to qa-20261009-944f02-clone-src-雪. Readback preserved the include-only filter. Its deploy dep-db49tnjjrdls73co05kg went live and served HTTP 200 with qa-clone-src-944f02.
+
+```sh
+bex services create --from qa-20261009-944f02-clone-src-雪 --name qa-20261009-198179-clone --region frankfurt --env-var MESSAGE=qa-clone-198179 --confirm -o json
+```
+
+This ordinary clone exits 1 in 2.402 s, stdout empty, stderr exactly Error: received response code 400: invalid request body at /buildFilter/ignoredPaths followed by newline. The unique clone intent remains absent. The explicit region handles the existing documented clone-region residual; the env marker avoids claiming that the metadata-only upstream clone copies env values.
+
+The unmodified same-pin Render CLI against the loopback fixture performs GET /v1/services with the encoded renamed-name filter and selected ownerId, then GET /v1/services/srv-db49tnjjrdls73co05k0, then POST /v1/services. Its captured body has buildFilter={paths:[examples/hello-go/**],ignoredPaths:null}, with the expected copied Go build/start/health/shutdown/free settings. An exact production replay returns HTTP 400 in 5.243 s, full response:
+
+```json
+{
+  "error": "invalid request body at /buildFilter/ignoredPaths",
+  "id": "bad_request",
+  "message": "invalid request body at /buildFilter/ignoredPaths"
+}
+```
+
+Fresh valid-name control qa-20261009-3a9739-clone-ok adds only a nonempty --build-filter-ignored-path '\*.md' override alongside its fresh name/marker. It exits 0 in 1.651 s, ID srv-db4a0g5lm2ps739a416g. Readback retains Go runtime, source/build/start commands, health path /, maxShutdownDelaySeconds 31, plan free, auto-deploy off and both filter arrays. Deploy dep-db4a0g5lm2ps739a4170 reaches live; runtime serves HTTP 200 with qa-clone-control-3a9739. This control verifies named lookup and copied configuration; its nonempty ignore list is a different filter configuration, not proof that the failed include-only clone works.
+
+The additional producer is pkg/service/clone.go:127–133: extractCloneSourceDefaults copies only nonempty lists. mapSourceDefaultsToServiceInput at 77–78 copies onto nil slices; applyBuildFilterDefaults at 282–290 retains that nil unused list. The same existing BuildCreateRequest/buildFilterFromInputs then emits null. There are still two upstream builders and two REST operations, now explicitly covering three CLI paths: ordinary create, create --from, and update. The same scoped create-operation correction fixes this clone path; no separate implementation bug or milestone is needed. Ignore-only cloning was still source-only at sweep 27; the live mirror comparison below covers it.
+
+After marker checks, delete the control clone first, enumerate source dependents (all this run's failed intents or already deleted clone), then delete the exact source ID. Both CLI deletes succeeded, both details and former URLs return 404, failed intents remain absent, and the final list/quota returns the six baseline services with terminating 0 and PG/KV 0/1. All recorded deploy children are removed with their owned services. No fixture survives.
+
+Future acceptance also requires cloning a valid one-sided source by its renamed name without a partner filter flag; preserve the known region override and explicit env marker, and test include-only/ignore-only variants. This extends t002/t003's caller checks, with the existing seven tasks and 2h20m estimate unchanged. Earlier overlength control names were setup errors and were excluded from product conclusions.
+
+## Live same-pin mirror comparison — ignore-only source
+
+Sweep 28, 2026-10-09 UTC. [Complete actual Render/Bex journey and cleanup](evidence/clone-mirror-journey.json), [actual same-pin loopback capture](evidence/clone-mirror-offline.json), [exact production replay](evidence/clone-mirror-replay.json). The unmodified pinned Render CLI targets Bex with the same human QA authority in a separate private config; no Render-production account or endpoint is used. Its copied config was removed immediately after the two create comparisons without logging out the shared ongoing grant.
+
+Native Bex creates owned free Go source srv-db4a6sdlm2ps739a41e0 (qa-20261009-a1756c-invsrc), then an API-only setup saves paths=[], ignoredPaths=[**/*.md]. Source deploy dep-db4a6sdlm2ps739a41eg goes live and serves HTTP 200 with qa-invsrc-a1756c. The same-pin Render command is:
+
+```sh
+render services create --from srv-db4a6sdlm2ps739a41e0 --name qa-20261009-913a90-mir-fail --region frankfurt --plan free --env-var MESSAGE=qa-mirror-913a90 --confirm -o json
+```
+
+It exits 1 in 0.947 s, stdout empty, complete stderr Error: received response code 400: invalid request body at /buildFilter/paths followed by newline. The failed intent is absent. The loopback capture of this actual pinned command with dummy auth and own-source metadata contains buildFilter={paths:null,ignoredPaths:[**/*.md]}. Its exact production replay returns HTTP 400 in 0.960 s:
+
+```json
+{
+  "error": "invalid request body at /buildFilter/paths",
+  "id": "bad_request",
+  "message": "invalid request body at /buildFilter/paths"
+}
+```
+
+Fresh Render control qa-20261009-b1e9c0-mir-ok adds --build-filter-path '**', exits 0 in 1.732 s and creates srv-db4a82bjrdls73co05tg. It reads back paths=[**], ignoredPaths=[**/*.md], copied native Go/build/start/health settings, maxShutdownDelaySeconds 23, plan free and auto-deploy off. Deploy dep-db4a82bjrdls73co05u0 becomes live and HTTP returns 200 with qa-mirror-b1e9c0. The include-all control confirms the create path and preserved configuration; Git webhook/filter execution remains untested.
+
+This closes the source-only gap for the ignore-only clone branch and compares the unmodified client live against Bex. Original production packets were not intercepted; the full recorded wire is an explicitly labeled exact replay of the loopback capture. The same clone/default/builder/schema mechanism above applies, so no separate issue or implementation task is warranted.
+
+Delete the control clone first and then the source after its only dependent is absent; both exact-ID CLI deletes succeed, details and former URLs return 404, final list/quota is the six unchanged baseline IDs with services 6/25, terminating 0 and PG/KV 0/1. Their recorded deploy children are gone. No fixture survives. HEAD during this sweep is 132ec2fe8160e410f38f14a0052dc12403c56de5, which adds the unrelated m52 store fix; relevant filter/API sources are unchanged and deployed API revision remains unknown.
+
+## Sweep 29 production recheck after the source fix
+
+Main now includes `b9c54e155436a717da79a9e93571de0e1cc679cc`, authored outside this QA hunt. The published Bex v0.3.2 one-sided update on a fresh owned free web fixture still exits 1 with the same `/buildFilter/ignoredPaths` 400. The filter remains absent after the refusal, and the fixture and deploy child were deleted with detail/list/runtime absence and quota back at baseline. See [the sanitized live recheck](evidence/live-after-source-fix.json). Production revision remains unobserved; the new implementation is not assessed as broken and t003 remains pending.
+
+## Sweep 39 independent production recheck after rollout
+
+Published Bex v0.3.2 and the unmodified same-pin Render v2.27.0 both pass fresh include-only and ignore-only Go web-service creates against Bex. For each client/filter pair, native updates switch to the opposite one-sided filter, both lists, and the original filter; readback always replaces the unused list with `[]`. An unrelated shutdown-delay update (first pair) or auto-deploy update (other pairs) preserves the filter. Invalid `[broken` globs return exit 1/HTTP 400 with the existing configuration and creation timestamp unchanged.
+
+Each source is renamed, then cloned by its new display name using an explicit free plan, Frankfurt region, fresh harmless env marker, and auto-deploy off. All four clone commands succeed without a partner filter flag. Fresh readback confirms the copied filter, runtime, build/start commands, health path, shutdown delay, plan, and region. Identity-derived public/internal addresses differ as expected. All eight source/clone services reach marker HTTP 200, and cleanup's fresh deploy enumeration records Live children before deletion. See [complete commands, readbacks, runtime observations and cleanup](evidence/production-recheck-after-rollout.json).
+
+All-empty clearing is explicitly **API-only**: `PATCH /v1/services/{id}` with `buildFilter:{paths:[],ignoredPaths:[]}` succeeds and removes the response filter; a subsequent native one-sided update restores it. An exploratory empty-flag command was refused locally by the pinned client and left state unchanged; it does not establish a native clear operation or a product defect. One clone deploy-list read had a TLS handshake timeout; a fresh read after a human-paced pause succeeded. Initial 404/503 observations converged to Live and matching runtime rather than being filed as failures.
+
+Every exact owned fixture was deleted clone-first. Detail/list/former-runtime absence and the six immutable baseline IDs were verified; final quota is services 6/25, terminating 0, Postgres/Key Value 0/1. Delayed quota reconciliation used reads, never duplicate deletes. No fixture survives. The copied Render configuration was removed without logging out the ongoing Bex grant.
+
+This fills the original live unmodified-Render and one-sided clone gaps independently of the external closeout. The actual deployed revision remains unobserved. Other service kinds, Git webhook/filter execution, GraphQL/MCP/dashboard behavior, and Render-production acceptance were not exercised in this sweep. No product code, commit, or push was performed by this hunt.
