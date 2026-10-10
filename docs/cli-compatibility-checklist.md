@@ -205,7 +205,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [x] `--maintenance-mode-uri <uri>`
     - [x] `--max-shutdown-delay <seconds>`
     - [x] `--environment-id <id>`
-    - [~] `--from <serviceID>` — clones fine, but needs an explicit `--region` (CLI re-validates the source's `local-capd`)
+    - [~] `--from <serviceID>` — clones fine, but needs an explicit `--region` (CLI re-validates the source's `local-capd`). **Cross-type clones: upstream limitation (w8/075, 2026-10-09).** The pinned merge inherits source settings the requested type refuses, such as static `publishPath` into web, or web health/start/instances/shutdown/maintenance into cron, so `--type` changes fail locally with `--<flag> is not supported for <type>`. Workaround: create the service directly. Upstream fix prepared in `.pm/w8/blocked/075-upstream.patch`.
   - [x] `services update <service>`
     - [x] workload type is intentionally not an update flag — current CLI schema matches Render's immutable-type contract; bex Blueprint and CRD admission reject the same transition
     - [x] `--name` — rename; the shared API rejects controls/line separators, more than 100 Unicode code points after trimming, and registered resource-ID lookalikes (w8/034). The pinned CLI trims before HTTP and cannot express an empty clear; direct REST/GraphQL/MCP preserve the empty-clear contract. The 100-code-point bound is Bex policy; Render's exact limit is unverified.
