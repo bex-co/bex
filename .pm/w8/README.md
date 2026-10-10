@@ -86,7 +86,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **081** — [Blueprint validation accepts port links to services with no network address](081.md) (55m) ← functional CLI QA, 2026-10-09; both clients, multipart API controls and actual parser values; shared server addressability guard.
 
-- [ ] **079** — [Noninteractive psql silently drops warnings on successful SQL](079.md) (55m) ← functional CLI QA, 2026-10-09; both clients/all output modes, direct psql and actual-helper controls; upstream diagnostic forwarding prerequisite.
+- [ ] **079** — [Noninteractive psql silently drops warnings on successful SQL](blocked/079.md) — **BLOCKED (2026-10-09: upstream patch prepared and tested — [`079-upstream.patch`](blocked/079-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
 
 - [ ] **078** — [Empty workspace flags bypass current-workspace name resolution](078.md) (55m) ← functional CLI QA, 2026-10-09; release and HEAD validation failures, exact offline captures across three commands; launcher fallback correction.
 
