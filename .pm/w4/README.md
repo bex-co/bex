@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m197** — [Restore a static rollback's retained publication](m197/README.md) (7 tasks) ← functional QA 2026-10-10 a79; exact v1 image fails under today's bad publish directory and succeeds after restoring dist; owned fixture/session cleanup verified.
+
 - [ ] **m196** — [Keep plan-picker loading geometry faithful](m196/README.md) (6 tasks) ← functional QA 2026-10-10 a77; Free/Paid loading regions omitted with 196px desktop and 244px mobile expansion; owned fixture/session cleanup verified.
 
 - [ ] **m195** — [Save opaque renames into explicitly deleted names](m195/README.md) (7 tasks) ← live qa-find-bugs 2026-10-10 pass a73; valid service/group drafts fail for variables and files, while splitting deletion and rename into two saves works.
