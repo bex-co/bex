@@ -15,7 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m55** — [Preserve literal commas in service name filters](m55/README.md) (7 tasks; 3h45m) ← functional CLI QA, 2026-10-09; both clients fail named update/clone, actual pinned query encoding and runtime controls recorded.
+- [x] **m55** — [Preserve literal commas in service name filters](done/m55/README.md) (7 tasks; 3h45m) ← functional CLI QA, 2026-10-09; both clients fail named update/clone, actual pinned query encoding and runtime controls recorded. — **DONE 2026-10-10** (server fix `1899e517d`; live two-client replay passed)
 
 - [x] **m54** — [Accept one-sided CLI build filters](done/m54/README.md) (7 tasks; 2h20m) ← live CLI QA + exact-source gate probe, 2026-10-09 UTC; upstream serializer/schema mismatch documented. — **DONE 2026-10-09**
 
@@ -88,7 +88,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **079** — [Noninteractive psql silently drops warnings on successful SQL](blocked/079.md) — **BLOCKED (2026-10-09: upstream patch prepared and tested — [`079-upstream.patch`](blocked/079-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
 
-- [ ] **078** — [Empty workspace flags bypass current-workspace name resolution](078.md) (55m) ← functional CLI QA, 2026-10-09; release and HEAD validation failures, exact offline captures across three commands; launcher fallback correction.
+- [x] **078** — [Empty workspace flags bypass current-workspace name resolution](done/078.md) (55m) ← functional CLI QA, 2026-10-09; release and HEAD validation failures, exact offline captures across three commands; launcher fallback correction. — **DONE 2026-10-10** (launcher fix `1ccd5bed6`; live control passed; ships to users in the next CLI release)
 
 - [ ] **077** — [Repeated environment flags silently convert interior CRLF to LF](blocked/077.md) — **BLOCKED (2026-10-09: upstream patch prepared and tested — [`077-upstream.patch`](blocked/077-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
 

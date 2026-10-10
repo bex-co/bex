@@ -1,6 +1,6 @@
 # w8 · m55 — Preserve literal commas in service name filters
 
-**Worker:** worker8 **Goal:** CLI updates and clones resolve an accepted display name containing a comma. **Status:** in progress — t001–t006 done 2026-10-09 (server fix + regressions); t007 live two-client replay awaits the deploy
+**Worker:** worker8 **Goal:** CLI updates and clones resolve an accepted display name containing a comma. **Status:** done 2026-10-10
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Verify Render and cross-surface name contracts — **DONE** | 25m | t003 |
 | t005 | Simplify the changed code — **DONE** | 15m | t004 |
 | t006 | Add meaningful encoding and CLI-resolution regressions — **DONE** | 40m | t004 |
-| t007 | Replay both clients, clean up and close out | 35m | t005, t006 |
+| t007 | Replay both clients, clean up and close out — **DONE** | 35m | t005, t006 |
 
 ## Definition of done
 
