@@ -234,6 +234,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **229** — [Global Search declares no matches while result lists are still loading](229.md) (55m) ← live qa-find-bugs 2026-10-10 pass a38; two fresh-tab pending false-empty reproductions with successful settled Blueprint controls.
+
 - [ ] **228** — [Datastore log text and instance filters disappear on reload](228.md) (55m) ← live qa-find-bugs 2026-10-10 pass a36; Key Value text/instance and Postgres text reset, while service text and datastore range persist.
 
 - [ ] **227** — [Cron “Last run” labels the last successful run](227.md) (30m) ← live `$qa-find-bugs w4`, 2026-10-09 pass a27; fresh English/Chinese failure repro with correct last-success API data and passing run controls.
