@@ -1,0 +1,102 @@
+diff --git a/pkg/service/update.go b/pkg/service/update.go
+index d33240e..40c400e 100644
+--- a/pkg/service/update.go
++++ b/pkg/service/update.go
+@@ -401,13 +401,19 @@ func buildImageUpdateEnvSpecificDetails(input servicetypes.ServiceUpdateInput) (
+ }
+ 
+ func buildImageUpdateEnvSpecificDetailsForCronJob(input servicetypes.ServiceUpdateInput) (*client.EnvSpecificDetailsPATCH, error) {
+-	if input.BuildCommand != nil || input.CronCommand != nil {
+-		return nil, errors.New("--build-command and --cron-command are only supported for native runtimes")
++	if input.BuildCommand != nil {
++		return nil, errors.New("--build-command is only supported for native runtimes")
+ 	}
+ 	if input.RegistryCredential != nil {
+ 		return nil, errors.New(registryCredentialUpdateIncompatibleRuntimeError)
+ 	}
+-	return nil, nil
++	if input.CronCommand == nil {
++		return nil, nil
++	}
++
++	// An image cron job runs its command as a Docker command override, the same
++	// field image cron creation sets.
++	return dockerEnvSpecificDetailsFromInput(input.CronCommand, nil)
+ }
+ 
+ func buildDockerUpdateEnvSpecificDetails(input servicetypes.ServiceUpdateInput) (*client.EnvSpecificDetailsPATCH, error) {
+diff --git a/pkg/service/update_test.go b/pkg/service/update_test.go
+index 7834303..da7f46b 100644
+--- a/pkg/service/update_test.go
++++ b/pkg/service/update_test.go
+@@ -21,6 +21,7 @@ func TestBuildUpdateRequest(t *testing.T) {
+ 	nativeBackgroundWorker := serviceBefore(t, client.BackgroundWorker, &nativeRuntime)
+ 	nativeCronJob := serviceBefore(t, client.CronJob, &nativeRuntime)
+ 	dockerCronJob := serviceBefore(t, client.CronJob, &dockerRuntime)
++	imageCronJob := serviceBefore(t, client.CronJob, &imageRuntime)
+ 	staticSite := serviceBefore(t, client.StaticSite, nil)
+ 
+ 	t.Run("maps top-level fields", func(t *testing.T) {
+@@ -223,6 +224,24 @@ func TestBuildUpdateRequest(t *testing.T) {
+ 				},
+ 				expectedErr: "--build-command is only supported for native runtimes",
+ 			},
++			{
++				name:   "build command for image cron jobs",
++				before: imageCronJob,
++				input: servicetypes.ServiceUpdateInput{
++					BuildCommand: pointers.From("npm ci"),
++					CronCommand:  pointers.From("echo nightly"),
++				},
++				expectedErr: "--build-command is only supported for native runtimes",
++			},
++			{
++				name:   "registry credential for image cron jobs",
++				before: imageCronJob,
++				input: servicetypes.ServiceUpdateInput{
++					CronCommand:        pointers.From("echo nightly"),
++					RegistryCredential: pointers.From("rc-789"),
++				},
++				expectedErr: registryCredentialUpdateIncompatibleRuntimeError,
++			},
+ 			{
+ 				name:   "native commands for image runtime services",
+ 				before: imageWebService,
+@@ -314,6 +333,37 @@ func TestBuildUpdateRequest(t *testing.T) {
+ 		assert.Equal(t, pointers.From("rc-789"), envDetails.RegistryCredentialId)
+ 	})
+ 
++	t.Run("maps image cron job command to docker command", func(t *testing.T) {
++		for _, command := range []string{"echo nightly; exit 0", ""} {
++			body, err := BuildUpdateRequest(imageCronJob, servicetypes.ServiceUpdateInput{
++				CronCommand: pointers.From(command),
++			})
++			require.NoError(t, err)
++			require.NotNil(t, body.ServiceDetails)
++
++			details, err := body.ServiceDetails.AsCronJobDetailsPATCH()
++			require.NoError(t, err)
++			require.NotNil(t, details.EnvSpecificDetails)
++			envDetails, err := details.EnvSpecificDetails.AsDockerDetailsPATCH()
++			require.NoError(t, err)
++			assert.Equal(t, pointers.From(command), envDetails.DockerCommand)
++			assert.Nil(t, envDetails.RegistryCredentialId)
++		}
++	})
++
++	t.Run("omits image cron job command when unset", func(t *testing.T) {
++		body, err := BuildUpdateRequest(imageCronJob, servicetypes.ServiceUpdateInput{
++			CronSchedule: pointers.From("0 12 * * *"),
++		})
++		require.NoError(t, err)
++		require.NotNil(t, body.ServiceDetails)
++
++		details, err := body.ServiceDetails.AsCronJobDetailsPATCH()
++		require.NoError(t, err)
++		assert.Nil(t, details.EnvSpecificDetails)
++		assert.Equal(t, pointers.From("0 12 * * *"), details.Schedule)
++	})
++
+ 	t.Run("maps static site details", func(t *testing.T) {
+ 		previews := servicetypes.PreviewsGenerationAutomatic
+ 		body, err := BuildUpdateRequest(staticSite, servicetypes.ServiceUpdateInput{
