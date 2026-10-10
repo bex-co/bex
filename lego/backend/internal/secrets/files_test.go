@@ -61,7 +61,7 @@ func TestSecretFiles_RoundTripAndProjection(t *testing.T) {
 
 	// List is names-only; single GET reveals content.
 	list, err := svc.ListSecretFiles(ctx, "web")
-	if err != nil || len(list) != 1 || list[0].Name != "ca.pem" || list[0].Content != "" {
+	if err != nil || len(list) != 1 || list[0].Name != "ca.pem" {
 		t.Fatalf("ListSecretFiles names-only: %+v err=%v", list, err)
 	}
 	one, err := svc.GetSecretFile(ctx, "web", "ca.pem")
@@ -331,9 +331,10 @@ func TestREST_SecretFiles(t *testing.T) {
 		t.Fatalf("PUT secret file shape: %+v", one)
 	}
 	// GET list => Render cursor envelope, names only.
-	var list []secretFileWithCursor
-	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/services/web/secret-files", "").Body.Bytes(), &list)
-	if len(list) != 1 || list[0].SecretFile.Name != "ca.pem" || list[0].Cursor == "" || list[0].SecretFile.Content != "" {
+	var list []secretFileWithCursor[SecretFileName]
+	listBody := serveREST(svc, "GET", "/v1/services/web/secret-files", "").Body.Bytes()
+	_ = json.Unmarshal(listBody, &list)
+	if len(list) != 1 || list[0].SecretFile.Name != "ca.pem" || list[0].Cursor == "" || strings.Contains(string(listBody), "content") {
 		t.Fatalf("list envelope names-only: %+v", list)
 	}
 	// GET one => content; unknown => 404.
@@ -349,7 +350,7 @@ func TestREST_SecretFiles(t *testing.T) {
 	seedSecretFiles(t, svc, "web", "db.pem")
 	// Requested pagination is cursor-exclusive; omitting both params remains the
 	// pre-pagination full-list behavior (the env-vars route's exact semantics).
-	var firstPage, secondPage []secretFileWithCursor
+	var firstPage, secondPage []secretFileWithCursor[SecretFileName]
 	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/services/web/secret-files?limit=1", "").Body.Bytes(), &firstPage)
 	if len(firstPage) != 1 {
 		t.Fatalf("first page = %+v, want one item", firstPage)
@@ -358,7 +359,7 @@ func TestREST_SecretFiles(t *testing.T) {
 	if len(secondPage) != 1 || secondPage[0].SecretFile.Name == firstPage[0].SecretFile.Name {
 		t.Fatalf("second page = %+v after %+v", secondPage, firstPage)
 	}
-	var unpaged []secretFileWithCursor
+	var unpaged []secretFileWithCursor[SecretFileName]
 	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/services/web/secret-files", "").Body.Bytes(), &unpaged)
 	if len(unpaged) != 2 {
 		t.Fatalf("unpaged list = %+v, want the complete two-item set", unpaged)
@@ -581,5 +582,29 @@ func TestSetSecretFilesReplacesTheWholeSet(t *testing.T) {
 		if stored := store.m[filesPath("web")]; len(stored) != 2 || stored["a.txt"] != "one" {
 			t.Errorf("%s: a refused replace changed the store: %+v", name, stored)
 		}
+	}
+}
+
+// TestREST_EmptySecretFileKeepsContent: Render's secretFile schema requires
+// content, and "" is an empty file's real content — the item GET/PUT and the
+// replace-all PUT must emit it, while the list stays names-only (w8/073).
+func TestREST_EmptySecretFileKeepsContent(t *testing.T) {
+	svc := newService(newFakeSecretStore(), sampleApp("web"))
+	for _, tc := range []struct{ method, path, body, want string }{
+		{"PUT", "/v1/services/web/secret-files/empty.txt", `{"content":""}`, `{"name":"empty.txt","content":""}`},
+		{"GET", "/v1/services/web/secret-files/empty.txt", "", `{"name":"empty.txt","content":""}`},
+		{
+			"PUT", "/v1/services/web/secret-files", `[{"name":"empty.txt","content":""},{"name":"text.txt","content":"hi\n"}]`,
+			`[{"secretFile":{"name":"empty.txt","content":""},"cursor":"empty.txt"},{"secretFile":{"name":"text.txt","content":"hi\n"},"cursor":"text.txt"}]`,
+		},
+		{"GET", "/v1/services/web/secret-files", "", `[{"secretFile":{"name":"empty.txt"},"cursor":"empty.txt"},{"secretFile":{"name":"text.txt"},"cursor":"text.txt"}]`},
+	} {
+		rec := serveREST(svc, tc.method, tc.path, tc.body)
+		if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != tc.want {
+			t.Errorf("%s %s = %d %s, want 200 %s", tc.method, tc.path, rec.Code, rec.Body, tc.want)
+		}
+	}
+	if code := serveREST(svc, "GET", "/v1/services/web/secret-files/missing.txt", "").Code; code != http.StatusNotFound {
+		t.Errorf("missing file = %d, want 404", code)
 	}
 }

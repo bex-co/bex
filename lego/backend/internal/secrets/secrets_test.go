@@ -615,12 +615,28 @@ func TestMCP_SecretFiles(t *testing.T) {
 		t.Fatalf("next list_secret_files page: first=%+v next=%+v", res, next)
 	}
 	// The list never carries content — that stays a per-name get_secret_file read.
-	if res.SecretFiles[0].Content != "" {
-		t.Fatalf("list must be names-only: %+v", res.SecretFiles[0])
+	var rawList struct{ SecretFiles []map[string]any }
+	call("list_secret_files", map[string]any{"serviceId": "web"}, &rawList)
+	if _, has := rawList.SecretFiles[0]["content"]; has {
+		t.Fatalf("list must be names-only: %+v", rawList.SecretFiles[0])
 	}
 	call("get_secret_file", map[string]any{"serviceId": "web", "name": "a.pem"}, &file)
 	if file.Content != "x" {
 		t.Fatalf("get_secret_file content: %+v", file)
+	}
+	// An empty file's item results still carry content:"" (w8/073).
+	for _, step := range []struct {
+		tool string
+		args map[string]any
+	}{
+		{"set_secret_file", map[string]any{"serviceId": "web", "name": "empty.txt", "content": ""}},
+		{"get_secret_file", map[string]any{"serviceId": "web", "name": "empty.txt"}},
+	} {
+		var raw map[string]any
+		call(step.tool, step.args, &raw)
+		if content, has := raw["content"]; !has || content != "" {
+			t.Fatalf("%s empty file = %+v, want content \"\"", step.tool, raw)
+		}
 	}
 }
 

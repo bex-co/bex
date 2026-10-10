@@ -85,7 +85,7 @@ type setSecretFileArgs struct {
 }
 
 type secretFilesResult struct {
-	SecretFiles []SecretFileView `json:"secretFiles"`
+	SecretFiles []SecretFileName `json:"secretFiles"`
 	Cursor      string           `json:"cursor,omitempty"`
 }
 
