@@ -242,6 +242,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **243** — [Deleting and re-adding an environment key creates an unsavable draft](243.md) (55m) ← functional QA 2026-10-10 a118; generated and literal replacements submit duplicate target operations, fresh mobile replay and passing controls retained, owned fixture/session cleanup verified.
+
 - [ ] **242** — [New environment-group form clips its fields and actions on mobile](242.md) (55m) ← functional QA 2026-10-10 a114; fresh 390px form has 356px client / 440px scroll width, desktop control fits, no resource mutations, session cleanup verified.
 
 - [ ] **241** — [Short custom Metrics ranges report zero bandwidth despite retained samples](241.md) (55m) ← functional QA 2026-10-10 a70; identical five-minute window is zero at 3s and positive at 30/60s, owned fixture/session cleanup verified.
