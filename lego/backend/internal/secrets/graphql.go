@@ -84,8 +84,8 @@ var secretFileListValueGQLType = graphql.NewObject(graphql.ObjectConfig{
 var secretFileWithCursorGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "SecretFileWithCursor",
 	Fields: graphql.Fields{
-		"secretFile": gqlutil.Typed(secretFileListValueGQLType, func(f secretFileWithCursor[SecretFileName]) any { return f.SecretFile }),
-		"cursor":     gqlutil.StrField(func(f secretFileWithCursor[SecretFileName]) any { return f.Cursor }),
+		"secretFile": gqlutil.Typed(secretFileListValueGQLType, func(f secretFileWithCursor) any { return f.SecretFile }),
+		"cursor":     gqlutil.StrField(func(f secretFileWithCursor) any { return f.Cursor }),
 	},
 })
 
