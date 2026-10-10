@@ -84,7 +84,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **081** — [Blueprint validation accepts port links to services with no network address](081.md) (55m) ← functional CLI QA, 2026-10-09; both clients, multipart API controls and actual parser values; shared server addressability guard.
+- [x] **081** — [Blueprint validation accepts port links to services with no network address](done/081.md) (55m) ← functional CLI QA, 2026-10-09; both clients, multipart API controls and actual parser values; shared server addressability guard. — **DONE 2026-10-10** (fix `5b91fcdab`; live two-client validation passed)
 
 - [ ] **079** — [Noninteractive psql silently drops warnings on successful SQL](blocked/079.md) — **BLOCKED (2026-10-09: upstream patch prepared and tested — [`079-upstream.patch`](blocked/079-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
 
