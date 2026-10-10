@@ -207,3 +207,75 @@ func TestEnvironmentAliasesPreserveGroupMetadataLinksAndWorkspace(t *testing.T) 
 		})
 	}
 }
+
+// w4/m187: grouping teardown detaches a group whose linked services are
+// leaving the same deleted environment, while the standalone move to workspace
+// scope still refuses. A link into another environment still refuses the
+// detach, and a group a concurrent writer already moved is left alone.
+func TestDetachEnvironmentKeepsContentAndOnlyAcceptsDepartingLinks(t *testing.T) {
+	ctx := context.Background()
+	web := sampleApp("web")
+	web.Labels = map[string]string{core.LabelEnvironment: "env-a"}
+	other := sampleApp("other")
+	other.Labels = map[string]string{core.LabelEnvironment: "env-b"}
+	svc := newService(newFakeStore(), web, other)
+	svc.EnvironmentWorkspace = environmentResolver("env-a", "env-b")
+	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
+		Name: "scoped", EnvironmentID: "env-a", ServiceIDs: []string{"web"},
+		EnvVars: []CreateEnvVarInput{{Key: "QA_PLACEMENT", Value: "saved"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, err := svc.GetEnvGroup(ctx, group.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.MoveEnvGroup(ctx, group.ID, ""); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("standalone move to workspace scope = %v, want the incompatible-services conflict", err)
+	}
+	// A different expected environment (a concurrent move already happened)
+	// is a no-op, not a clear.
+	if err := svc.DetachEnvironment(ctx, group.ID, "env-b"); err != nil {
+		t.Fatalf("detach from a stale environment: %v", err)
+	}
+	if got, _ := svc.GetEnvGroup(ctx, group.ID); got.EnvironmentID != "env-a" {
+		t.Fatalf("stale-environment detach changed scope to %q", got.EnvironmentID)
+	}
+
+	if err := svc.DetachEnvironment(ctx, group.ID, "env-a"); err != nil {
+		t.Fatalf("teardown detach with a departing linked service: %v", err)
+	}
+	after, err := svc.GetEnvGroup(ctx, group.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.EnvironmentID != "" || len(after.ServiceLinks) != 1 || after.ServiceLinks[0] != before.ServiceLinks[0] || after.Revision != before.Revision {
+		t.Fatalf("after detach = %+v, want workspace scope with links %v and revision %q kept", after, before.ServiceLinks, before.Revision)
+	}
+	if v, _ := svc.GetEnvGroupVar(ctx, group.ID, "QA_PLACEMENT"); v.Value != "saved" {
+		t.Fatalf("group value after detach = %+v", v)
+	}
+	// Retry after the detach already landed is a no-op.
+	if err := svc.DetachEnvironment(ctx, group.ID, "env-a"); err != nil {
+		t.Fatalf("retry detach: %v", err)
+	}
+
+	// A link into ANOTHER environment is not a planned departure.
+	foreign, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "foreign-link", EnvironmentID: "env-b", ServiceIDs: []string{"other"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := getApp(t, svc.Client, "other")
+	base := client.MergeFrom(app.DeepCopy())
+	app.Labels[core.LabelEnvironment] = "env-a"
+	if err := svc.Client.Patch(ctx, app, base); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.DetachEnvironment(ctx, foreign.ID, "env-b"); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("detach with a link into another environment = %v, want conflict", err)
+	}
+	if got, _ := svc.GetEnvGroup(ctx, foreign.ID); got.EnvironmentID != "env-b" || len(got.ServiceLinks) != 1 {
+		t.Fatalf("refused detach mutated the group: %+v", got)
+	}
+}

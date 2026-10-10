@@ -1,6 +1,6 @@
 # w4 · m187 — Restore environment lifecycle on project moves and deletion
 
-**Worker:** worker4 **Goal:** a project move clears incompatible environment placement, and authorized deletion detaches surviving resources even when an environment group is linked. **Status:** todo
+**Worker:** worker4 **Goal:** a project move clears incompatible environment placement, and authorized deletion detaches surviving resources even when an environment group is linked. **Status:** blocked
 
 **Size:** 270m (4h 30m), eight tasks. Two independently reproduced major bugs, with separate [move](finding-move.md) and [deletion](finding-delete.md) records. This ships the filing only.
 
@@ -8,13 +8,13 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Clear incompatible environment placement on incoming project moves | 45m | — |
-| t002 | Detach linked group scope during authorized grouping deletion | 55m | — |
-| t003 | Audit shared callers, admission and passing lifecycle controls | 30m | w4/m187/t001, w4/m187/t002 |
-| t004 | Repair provably incompatible existing App placement safely | 40m | w4/m187/t001, w4/m187/t003 |
-| t005 | Render parity | 25m | w4/m187/t002, w4/m187/t003, w4/m187/t004 |
-| t006 | Simplify | 15m | w4/m187/t005 |
-| t007 | Test coverage | 45m | w4/m187/t005, w4/m187/t006 |
+| t001 | Clear incompatible environment placement on incoming project moves — **DONE** | 45m | — |
+| t002 | Detach linked group scope during authorized grouping deletion — **DONE** | 55m | — |
+| t003 | Audit shared callers, admission and passing lifecycle controls — **DONE** | 30m | w4/m187/t001, w4/m187/t002 |
+| t004 | Repair provably incompatible existing App placement safely — **DONE** | 40m | w4/m187/t001, w4/m187/t003 |
+| t005 | Render parity — **DONE** | 25m | w4/m187/t002, w4/m187/t003, w4/m187/t004 |
+| t006 | Simplify — **DONE** | 15m | w4/m187/t005 |
+| t007 | Test coverage — **DONE** | 45m | w4/m187/t005, w4/m187/t006 |
 | t008 | Closeout | 15m | w4/m187/t007 |
 
 ## Definition of done

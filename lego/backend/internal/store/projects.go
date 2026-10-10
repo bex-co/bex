@@ -171,15 +171,16 @@ func placementDiffAround(ctx context.Context, tx pgx.Tx, pivotColumn, pivotID, t
 // (within tenantID): clears any apps currently assigned to it, then assigns
 // only the identified apps. Public srv- ids are canonical; names remain
 // accepted for backward compatibility with clients from before stable service
-// ids shipped. Also NULLs environment_id on departing rows in the
-// same transaction (w4/m32) — a service leaving its project must not keep a
-// stale apps.environment_id (and the App CR's frozen spec.environmentIPAllowList
-// that implies): ListEnvironmentServices already filters on project_id too,
-// so the row silently drops out of every future environment fan-out while
-// its k8s-projected rules stay stuck. Returns the per-service placement diff
-// (w6/m134): the service layer records move events from it and derives the
-// w4/m32 environment-layer clear list (rows whose environment this
-// transaction NULLed are exactly the changes with EnvironmentFrom set and
+// ids shipped. Also NULLs environment_id in the same transaction on departing
+// rows (w4/m32) and on named rows whose environment belongs to another project
+// (w4/m187) — a service must never keep an environment outside its project
+// (and the App CR's frozen spec.environmentIPAllowList that implies):
+// ListEnvironmentServices filters on project_id too, so such a row silently
+// drops out of every environment fan-out while its k8s-projected rules stay
+// stuck. Retained members keep a compatible environment. Returns the
+// per-service placement diff (w6/m134): the service layer records move events
+// from it and derives the environment-layer clear list (rows whose environment
+// this transaction NULLed are exactly the changes with EnvironmentFrom set and
 // EnvironmentTo nil, since nothing here ever sets environment_id). Service
 // ids/names not found in tenantID are silently skipped (the UPDATE affects 0
 // rows for them).
@@ -193,14 +194,23 @@ func (s *PGStore) SetProjectServices(ctx context.Context, projectID, tenantID st
 		changes, err = placementDiffAround(ctx, tx, "project_id", projectID, tenantID, serviceIDs, func() error {
 			if _, err := tx.Exec(ctx,
 				`UPDATE apps SET project_id = NULL, environment_id = NULL, updated_at = now()
-				 WHERE project_id = $1 AND tenant_id = $2`,
-				projectID, tenantID); err != nil {
+				 WHERE project_id = $1 AND tenant_id = $2 AND NOT (id = ANY($3) OR name = ANY($3))`,
+				projectID, tenantID, serviceIDs); err != nil {
 				return err
 			}
+			// Every named row lands in the project, keeping its environment only
+			// when that environment belongs to this project (w4/m187): an
+			// incoming A/Stage row becomes (B, NULL), never (B, Stage), and a
+			// retained member keeps its compatible environment. Rows already in
+			// the wanted state are not rewritten, so a replay is a true no-op.
 			if len(serviceIDs) > 0 {
 				if _, err := tx.Exec(ctx,
-					`UPDATE apps SET project_id = $1, updated_at = now()
-					 WHERE (id = ANY($2) OR name = ANY($2)) AND tenant_id = $3`,
+					`UPDATE apps SET project_id = $1,
+					        environment_id = CASE WHEN environment_id IN (SELECT id FROM environments WHERE project_id = $1)
+					                              THEN environment_id END,
+					        updated_at = now()
+					 WHERE (id = ANY($2) OR name = ANY($2)) AND tenant_id = $3
+					   AND (project_id IS DISTINCT FROM $1 OR environment_id NOT IN (SELECT id FROM environments WHERE project_id = $1))`,
 					projectID, serviceIDs, tenantID); err != nil {
 					return err
 				}
