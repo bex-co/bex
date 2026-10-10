@@ -76,16 +76,16 @@ var envVarWithCursorGQLType = graphql.NewObject(graphql.ObjectConfig{
 var secretFileListValueGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "SecretFileListValue",
 	Fields: graphql.Fields{
-		"id":   gqlutil.StrField(func(f SecretFileView) any { return f.Name }),
-		"name": gqlutil.StrField(func(f SecretFileView) any { return f.Name }),
+		"id":   gqlutil.StrField(func(f SecretFileName) any { return f.Name }),
+		"name": gqlutil.StrField(func(f SecretFileName) any { return f.Name }),
 	},
 })
 
 var secretFileWithCursorGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "SecretFileWithCursor",
 	Fields: graphql.Fields{
-		"secretFile": gqlutil.Typed(secretFileListValueGQLType, func(f secretFileWithCursor) any { return f.SecretFile }),
-		"cursor":     gqlutil.StrField(func(f secretFileWithCursor) any { return f.Cursor }),
+		"secretFile": gqlutil.Typed(secretFileListValueGQLType, func(f secretFileWithCursor[SecretFileName]) any { return f.SecretFile }),
+		"cursor":     gqlutil.StrField(func(f secretFileWithCursor[SecretFileName]) any { return f.Cursor }),
 	},
 })
 
