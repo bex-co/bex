@@ -261,7 +261,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **244** — [Datastore names push the status badge off the mobile page](244.md) (55m) ← functional QA 2026-10-10 a122/a123; accepted 30-character names make Key Value/Postgres 390px pages scroll 416/412px, fresh loads and desktop/bounded controls retained; both owned fixtures/sessions cleaned up; a125 verifies the unchanged long-name web header control.
 
-- [ ] **243** — [Deleting and re-adding an environment key creates an unsavable draft](243.md) (55m) ← functional QA 2026-10-10 a118; generated and literal replacements submit duplicate target operations, fresh mobile replay and passing controls retained, owned fixture/session cleanup verified.
+- [ ] **243** — [Deleting and re-adding an environment key or file creates an unsavable draft](243.md) (55m) ← functional QA 2026-10-10 a118; generated and literal replacements submit duplicate target operations, fresh mobile replay and passing controls retained, owned fixture/session cleanup verified. Extended 2026-10-11 a165: service-local same-name file replacements fail with empty/nonempty contents; in-place edits, rename/Restart/deploy and final-file removal pass, owned service/session cleaned up.
 
 - [ ] **242** — [New environment-group form clips its fields and actions on mobile](242.md) (55m) ← functional QA 2026-10-10 a114; fresh 390px form has 356px client / 440px scroll width, desktop control fits, no resource mutations, session cleanup verified.
 
