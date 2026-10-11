@@ -107,6 +107,7 @@ var envGroupPatchResultGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"revision":           gqlutil.StrField(func(r EnvironmentPatchResult) any { return r.Revision }),
 		"affectedServiceIds": gqlutil.StrsField(func(r EnvironmentPatchResult) any { return r.AffectedServiceIDs }),
 		"failedServiceIds":   gqlutil.StrsField(func(r EnvironmentPatchResult) any { return r.FailedServiceIDs }),
+		"pendingServiceIds":  gqlutil.StrsField(func(r EnvironmentPatchResult) any { return r.PendingServiceIDs }),
 		"rolledOut":          gqlutil.BoolField(func(r EnvironmentPatchResult) any { return r.RolledOut }),
 	},
 })

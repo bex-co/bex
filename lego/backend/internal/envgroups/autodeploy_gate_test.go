@@ -21,6 +21,8 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/graphql-go/graphql"
+
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -241,4 +243,40 @@ func TestExplicitSaveModeIsNotGated(t *testing.T) {
 		t.Fatalf("save-only must not report pending services, got %v", result.PendingServiceIDs)
 	}
 	_ = result
+}
+
+// w4/224: the GraphQL projection of the patch result must carry the pending
+// set, or the dashboard (its only GraphQL client for this verb) cannot tell a
+// fan-out that deliberately skipped every Auto-Deploy-off service from a real
+// deployment. A Go JSON tag does not declare a GraphQL field, so this executes
+// the actual composed schema rather than the resolver.
+func TestGraphQLPatchResultExposesPendingServiceIDs(t *testing.T) {
+	ctx := context.Background()
+	svc := newService(newFakeStore(), repoApp("on", true), repoApp("off", false))
+	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
+		Name: "shared", ServiceIDs: []string{"on", "off"},
+	})
+	if err != nil {
+		t.Fatalf("create group: %v", err)
+	}
+	res := graphql.Do(graphql.Params{
+		Schema:  *envGroupSchema(t, svc),
+		Context: ctx,
+		RequestString: `mutation { patchEnvGroupEnvironment(id: "` + group.ID + `",
+			envVars: [{key: "MESSAGE", value: "v2"}], saveMode: "deploy") {
+			affectedServiceIds failedServiceIds pendingServiceIds rolledOut } }`,
+	})
+	if len(res.Errors) > 0 {
+		t.Fatalf("mutation: %v", res.Errors)
+	}
+	got := res.Data.(map[string]any)["patchEnvGroupEnvironment"].(map[string]any)
+	if pending, _ := got["pendingServiceIds"].([]any); !slices.Equal(pending, []any{"off"}) {
+		t.Fatalf("pendingServiceIds = %#v, want [off]", got["pendingServiceIds"])
+	}
+	if affected, _ := got["affectedServiceIds"].([]any); !slices.Contains(affected, any("off")) || !slices.Contains(affected, any("on")) {
+		t.Fatalf("affectedServiceIds = %#v, want both on and off (pending stays affected)", got["affectedServiceIds"])
+	}
+	if got["rolledOut"] != true {
+		t.Fatalf("rolledOut = %#v, want true: a deliberate skip is not a rollout failure", got["rolledOut"])
+	}
 }
