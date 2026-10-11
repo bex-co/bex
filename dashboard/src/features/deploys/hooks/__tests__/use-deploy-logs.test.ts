@@ -351,6 +351,46 @@ describe("useDeployLogs", () => {
     }
   });
 
+  // w4/m192: the build finishing flips followBuild off; the tail closes but
+  // the streamed lines stay until the durable store's copy (deduped) arrives.
+  it("keeps streamed build lines when the build finishes and the tail closes", () => {
+    vi.useFakeTimers();
+    try {
+      stubByType({}, []);
+      const { result, rerender } = renderHook(
+        ({ follow }: { follow: boolean }) =>
+          useDeployLogs(
+            "web",
+            "2026-07-14T00:00:00Z",
+            undefined,
+            false,
+            follow,
+            streamFactory,
+          ),
+        { initialProps: { follow: true } },
+      );
+      act(() =>
+        stream?.onmessage?.({
+          data: JSON.stringify({
+            timestamp: "2026-07-14T00:00:01Z",
+            message: "final build step",
+            labels: [{ name: "type", value: "build" }],
+          }),
+        }),
+      );
+      act(() => vi.advanceTimersByTime(100));
+      const tail = stream;
+
+      rerender({ follow: false });
+      expect(tail?.closed).toBe(true);
+      expect(result.current.lines.map((line) => line.message)).toEqual([
+        "final build step",
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("sorts a live line that predates the tail of history (ingest-lag fallback)", () => {
     vi.useFakeTimers();
     try {
