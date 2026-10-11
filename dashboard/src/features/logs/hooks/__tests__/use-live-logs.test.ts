@@ -273,18 +273,80 @@ describe("useLiveLogs", () => {
     expect(last!.url).toContain("text=error");
   });
 
-  it("resets dedupe across a disable/enable round trip with unchanged filters", () => {
+  // w4/m192: a user pause closes the transport but keeps the rows the reader
+  // already shows.
+  it("keeps streamed lines through a pause and dedupes the resumed replay", () => {
+    const { result, rerender } = renderHook((props) => useLiveLogs(props), {
+      initialProps: baseOpts(),
+    });
+    act(() => last!.open());
+    act(() => {
+      last!.frame(renderLog("01"));
+      last!.frame(renderLog("02"));
+    });
+    flush();
+    const first = last!;
+
+    rerender(baseOpts({ enabled: false }));
+    expect(first.closed).toBe(true);
+    expect(result.current.status).toBe("idle");
+    expect(result.current.lines.map((l) => l.message)).toEqual(["01", "02"]);
+
+    rerender(baseOpts());
+    expect(last).not.toBe(first);
+    expect(result.current.status).toBe("connecting");
+    // The resumed tail replays from the window edge: known rows stay single.
+    act(() => {
+      last!.frame(renderLog("01"));
+      last!.frame(renderLog("02"));
+      last!.frame(renderLog("03"));
+    });
+    flush();
+    expect(result.current.lines.map((l) => l.message)).toEqual([
+      "01",
+      "02",
+      "03",
+    ]);
+  });
+
+  it("lands a batch still pending at the moment of a pause", () => {
+    const { result, rerender } = renderHook((props) => useLiveLogs(props), {
+      initialProps: baseOpts(),
+    });
+    act(() => last!.frame(renderLog("01")));
+    rerender(baseOpts({ enabled: false }));
+    flush();
+    expect(result.current.lines.map((l) => l.message)).toEqual(["01"]);
+  });
+
+  // A store-only filter disables the tail rather than narrowing it; its
+  // readerKey change must clear unfiltered lines instead of retaining them as
+  // if they matched the new query — including a batch still pending.
+  it("clears the buffer when the reader key changes, dropping a pending batch", () => {
+    const { result, rerender } = renderHook((props) => useLiveLogs(props), {
+      initialProps: baseOpts({ readerKey: "" }),
+    });
+    act(() => last!.frame(renderLog("01")));
+    flush();
+    act(() => last!.frame(renderLog("02")));
+
+    rerender(baseOpts({ enabled: false, readerKey: "level=error" }));
+    flush();
+    expect(result.current.lines).toHaveLength(0);
+  });
+
+  it("resets dedupe across a reader round trip back to the same filters", () => {
     const { result, rerender } = renderHook((props) => useLiveLogs(props), {
       initialProps: baseOpts(),
     });
     act(() => last!.frame(renderLog("01")));
     flush();
-    expect(result.current.lines).toHaveLength(1);
 
-    rerender(baseOpts({ enabled: false }));
+    rerender(baseOpts({ text: "boom" }));
     rerender(baseOpts());
-    // The resumed stream replays the same frame: the buffer was reset, so the
-    // dedupe set must have reset with it — the replayed line re-appends.
+    expect(result.current.lines).toHaveLength(0);
+    // The buffer was reset, so the dedupe set reset with it: the reopened
+    // stream's replay of the same frame re-appends.
     act(() => last!.frame(renderLog("01")));
     flush();
     expect(result.current.lines.map((l) => l.message)).toEqual(["01"]);

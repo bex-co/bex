@@ -129,9 +129,47 @@ export function dedupeLogLines(lines: LogLine[]): LogLine[] {
   });
 }
 
-// mergeLogLines appends live-tail lines after the historical page, dropping any
-// live line whose key already appears in history — a line straddling the last
-// historical page and the first streamed frames is drawn once, in order.
-export function mergeLogLines(history: LogLine[], live: LogLine[]): LogLine[] {
-  return dedupeLogLines([...history, ...live]);
+// Sub-millisecond digits of an RFC3339Nano stamp (the 4th–9th fractional
+// digits, right-padded), so two records inside one millisecond still order by
+// their real nanoseconds. Date.parse stops at milliseconds; comparing the raw
+// strings instead would misorder trailing-zero-trimmed stamps (".5Z" vs ".49Z")
+// and differing zone offsets.
+const FRACTION = /T\d{2}:\d{2}:\d{2}\.(\d+)/;
+function subMillis(timestamp: string): string {
+  const digits = FRACTION.exec(timestamp)?.[1] ?? "";
+  return digits.slice(3, 9).padEnd(6, "0");
+}
+
+// mergeLogLines combines the historical page with the live tail into one
+// chronological reader (w4/m192): deduped first-copy-wins (a line straddling
+// the last historical page and the first streamed frames is drawn once, as
+// its history copy), then stably ordered by timestamp — the tail legitimately
+// replays in-window pod output OLDER than the historical head (it follows from
+// the window start), and arrival order must not put that replay below newer
+// history. Equal stamps keep source order (history, then arrival). A line with
+// an empty/unparseable stamp sorts with the line before it in that sequence, so
+// it stays beside its neighbor instead of jumping to either end. Lines stamped
+// before `notBeforeMs` (the selected window's start) are dropped; a stampless
+// line is kept. Neither input array is mutated.
+export function mergeLogLines(
+  history: LogLine[],
+  live: LogLine[],
+  notBeforeMs = -Infinity,
+): LogLine[] {
+  let ms = -Infinity;
+  let sub = "";
+  const ranked: { line: LogLine; ms: number; sub: string }[] = [];
+  for (const line of dedupeLogLines([...history, ...live])) {
+    const parsed = Date.parse(line.timestamp);
+    if (!Number.isNaN(parsed)) {
+      if (parsed < notBeforeMs) continue;
+      ms = parsed;
+      sub = subMillis(line.timestamp);
+    }
+    ranked.push({ line, ms, sub });
+  }
+  ranked.sort(
+    (a, b) => a.ms - b.ms || (a.sub < b.sub ? -1 : a.sub > b.sub ? 1 : 0),
+  );
+  return ranked.map((r) => r.line);
 }
