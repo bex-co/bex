@@ -162,7 +162,7 @@ loki.source.api "%s" {
                 quiet = metrics(12345)
                 self.assertGreater(value(quiet, "alloy_resources_process_start_time_seconds"), 0)
                 self.assertEqual(value(quiet, "alloy_config_last_load_successful"), 1)
-                self.assertEqual(value(quiet, "alloy_build_info", version="v1.11.2"), 1)
+                self.assertEqual(value(quiet, "alloy_build_info", version="v1.11.2-bex-cri-first-ts"), 1)
                 self.assertEqual(value(metrics(3100), "loki_build_info", version="3.6.7"), 1)
                 self.assertGreater(value(metrics(3100), "process_start_time_seconds"), 0)
                 self.assertEqual(value(quiet, "loki_write_dropped_entries_total"), 0)
