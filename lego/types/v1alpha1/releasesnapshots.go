@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -116,8 +117,37 @@ type ReleaseRecordSpec struct {
 	SettingsFingerprint string `json:"settingsFingerprint,omitempty"`
 }
 
+// StaticPublicationRecordName is the per-release record of where a static_site
+// generation's successful publication actually lives in the object store
+// (w4/m197). The operator writes it once the publication succeeds; bex-api
+// reads it to roll back to that publication without re-extracting the target's
+// image through today's saved publish directory. Distinct from
+// ReleaseRecordName: a static release has no pod template or runtime inputs.
+func StaticPublicationRecordName(app string, generation int64) string {
+	return ReleaseSnapshotName(app+"-static", generation)
+}
+
+// StaticPublicationPrefixKey holds the recorded object-key prefix, e.g.
+// "<workspace>/<app>/rev-7/".
+const StaticPublicationPrefixKey = "prefix"
+
+// staticPublicationPrefix matches a recorded static revision prefix:
+// "[<workspace>/]<app>/rev-<generation>/".
+var staticPublicationPrefix = regexp.MustCompile(`^(?:[a-z0-9][a-z0-9-]*/)?[a-z0-9][a-z0-9-]*/rev-[1-9][0-9]*/$`)
+
+// ValidStaticPublicationPrefix reports whether prefix has the shape of a
+// recorded static revision prefix. Ownership (that it is this App's) is checked
+// by the operator against the App's own identity.
+func ValidStaticPublicationPrefix(prefix string) bool {
+	return staticPublicationPrefix.MatchString(prefix)
+}
+
 // ReleaseConfigReference selects one retained release without changing saved
 // settings. The backend binds it to the newly requested release generation.
+// A static_site rollback selects the target's retained publication
+// (StaticPrefix); its Image is empty when the target published straight from
+// its repository.
+// +kubebuilder:validation:XValidation:rule="has(self.image) || has(self.staticPrefix)",message="releaseConfig selects an image or a static publication"
 type ReleaseConfigReference struct {
 	// +kubebuilder:validation:Minimum=1
 	Generation int64 `json:"generation"`
@@ -125,10 +155,19 @@ type ReleaseConfigReference struct {
 	// A positive generation must have a release record; its loss is an error.
 	// +kubebuilder:validation:Minimum=0
 	SourceGeneration int64 `json:"sourceGeneration"`
+	// +optional
 	// +kubebuilder:validation:MinLength=1
 	// +kubebuilder:validation:MaxLength=512
 	// +kubebuilder:validation:Pattern=`^[A-Za-z0-9][A-Za-z0-9._/:@-]*$`
-	Image string `json:"image"`
+	Image string `json:"image,omitempty"`
+	// StaticPrefix is the retained object-store prefix of the target's static
+	// publication (StaticPublicationRecordName). When set, a static_site
+	// publishes this release by copying that prefix — never by extracting Image
+	// through the saved publish directory or rebuilding from saved settings.
+	// +optional
+	// +kubebuilder:validation:MaxLength=512
+	// +kubebuilder:validation:Pattern=`^(?:[a-z0-9][a-z0-9-]*/)?[a-z0-9][a-z0-9-]*/rev-[1-9][0-9]*/$`
+	StaticPrefix string `json:"staticPrefix,omitempty"`
 	// PreserveGroupValues is used by Restart. Rollback takes current values
 	// from the target's surviving group associations; Restart retains its exact
 	// running configuration, including already-snapshotted group values.
@@ -142,7 +181,7 @@ type ReleaseConfigReference struct {
 // status before consulting this helper.
 func (a *App) ActiveReleaseConfig() *ReleaseConfigReference {
 	ref := a.Spec.ReleaseConfig
-	if ref == nil || ref.Generation <= 0 || ref.Image == "" {
+	if ref == nil || ref.Generation <= 0 || (ref.Image == "" && ref.StaticPrefix == "") {
 		return nil
 	}
 	gen := a.Status.ReleaseGeneration

@@ -33,21 +33,20 @@ import (
 //
 // The artifact is the deploy's ResolvedImage, or, for a static site published
 // straight from its repository with no build image (ADR029), the commit it
-// published (rollbackRepublishes). Before w4/m141 no such static deploy was
+// published (directStaticTarget). Before w4/m141 no such static deploy was
 // ever eligible, so rollback on a no-build static site could never happen.
+// A static target is restored from its retained publication (w4/m197), which
+// the verb and the projection additionally require (Service.restorableRollbackTarget).
 func RollbackEligible(a *appv1alpha1.App, d store.Deploy) bool {
 	if d.Status != store.DeployLive && d.Status != store.DeployDeactivated {
 		return false
 	}
-	return d.ResolvedImage != "" || rollbackRepublishes(a, d)
+	return d.ResolvedImage != "" || directStaticTarget(a, d)
 }
 
-// rollbackRepublishes reports whether rolling back to d re-publishes its commit
-// rather than restoring an image: a static site with no build image. Its
-// publish is a clone of the repository at a commit, so publishing that commit
-// again restores the same files. That is how Render rolls a static site back,
-// by redeploying an earlier deploy.
-func rollbackRepublishes(a *appv1alpha1.App, d store.Deploy) bool {
+// directStaticTarget reports whether d is a static site's publish straight
+// from its repository: no build image, only the commit it published.
+func directStaticTarget(a *appv1alpha1.App, d store.Deploy) bool {
 	return d.ResolvedImage == "" && d.Commit != "" &&
 		a.Spec.Type == appv1alpha1.TypeStaticSite && a.Spec.Repo != ""
 }
@@ -76,16 +75,31 @@ func RollbackActionable(a *appv1alpha1.App, d store.Deploy) bool {
 	if d.Status != store.DeployLive {
 		return true
 	}
-	if rollbackRepublishes(a, d) {
-		return d.Commit != a.Spec.BuildCommit
-	}
 	if selected := a.ActiveReleaseConfig(); selected != nil {
 		return d.Generation != selected.Generation || d.ResolvedImage != selected.Image
+	}
+	if directStaticTarget(a, d) {
+		return d.Commit != a.Spec.BuildCommit
 	}
 	// A failed configuration-only release can leave the same image selected but
 	// different saved settings. The previous live generation is a valid recovery.
 	requested, _ := strconv.ParseInt(a.Annotations[appv1alpha1.AnnotationReleaseGeneration], 10, 64)
 	return d.ResolvedImage != a.Spec.Image || (d.Generation > 0 && requested > d.Generation)
+}
+
+// restorableRollbackTarget is RollbackActionable plus the static-site refusal the
+// verb makes before dispatch: a target whose publication was never recorded
+// has nothing retained to restore (w4/m197). Unreadable evidence is not a
+// target either; the verb surfaces that error itself.
+func (s *Service) restorableRollbackTarget(ctx context.Context, a *appv1alpha1.App, d store.Deploy) bool {
+	if !RollbackActionable(a, d) {
+		return false
+	}
+	if a.Spec.Type != appv1alpha1.TypeStaticSite {
+		return true
+	}
+	prefix, err := s.retainedStaticPublication(ctx, a, d)
+	return err == nil && prefix != ""
 }
 
 // eligibilityScanLimit bounds the projection's deploy-history scan. The verb
@@ -171,7 +185,7 @@ func (s *Service) deployPreconditions(ctx context.Context, a *appv1alpha1.App) (
 			// RollbackActionable, not RollbackEligible: the projection has to
 			// answer the question the verb will answer, and the verb also
 			// refuses the live deploy when it is the running image (w4/110).
-			if RollbackActionable(a, d) {
+			if s.restorableRollbackTarget(ctx, a, d) {
 				rollbackPre = ""
 				break
 			}

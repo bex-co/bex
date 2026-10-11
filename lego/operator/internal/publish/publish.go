@@ -30,6 +30,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"path"
+	"slices"
 	"strings"
 	"time"
 
@@ -100,13 +101,18 @@ func (s Store) Configured() bool {
 }
 
 // Options configures a single static-site publish. Exactly one source is set:
-// Image (extract the built site from an OCI image — the build path) or Repo
+// Image (extract the built site from an OCI image — the build path), Repo
 // (direct publish, w9/010 — clone the repo and publish RootDir/PublishPath
-// as-is, the way Render handles a static site with no build step).
+// as-is, the way Render handles a static site with no build step), or
+// SourcePrefix (a rollback restoring a retained publication, w4/m197 — copy an
+// earlier revision's published objects; PublishPath plays no part).
 type Options struct {
 	Image       string // OCI image the build produced (holds the built site)
-	PublishPath string // dir within the image (or repo) to serve (App.spec.publishPath)
-	// Direct-publish source (used only when Image is empty):
+	PublishPath string // dir within the image (or repo) to serve (App.spec.publishPath); unused by a retained copy
+	// SourcePrefix is a retained revision prefix of this same App
+	// ("[<workspace>/]<app>/rev-N/") to copy into Revision's prefix.
+	SourcePrefix string
+	// Direct-publish source (Repo mode):
 	Repo    string // git URL to clone
 	Ref     string // branch or commit; empty = the remote's default branch (HEAD)
 	RootDir string // subdirectory of Repo the site lives under (App.spec.rootDir)
@@ -147,9 +153,30 @@ func (o Options) Prefix() string {
 	return identity.ForApp(o.AppID, o.Workspace).StaticPrefix(o.Revision)
 }
 
+// uri is the s3:// URI of prefix in the store's bucket.
+func (s Store) uri(prefix string) string {
+	return "s3://" + s.Bucket + "/" + prefix
+}
+
+// envFrom injects the store credential Secret.
+func (s Store) envFrom() []corev1.EnvFromSource {
+	return []corev1.EnvFromSource{{
+		SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: s.Secret}},
+	}}
+}
+
 // destURI is the s3:// sync target for this publish.
 func (o Options) destURI() string {
-	return "s3://" + o.Store.Bucket + "/" + o.Prefix()
+	return o.Store.uri(o.Prefix())
+}
+
+// ownsPrefix reports whether prefix lies under this App's current or legacy
+// static root (docs/ADR074 dual-read: a migrated App's older revisions may
+// still be recorded under the pre-m75 root).
+func (o Options) ownsPrefix(prefix string) bool {
+	id := identity.ForApp(o.AppID, o.Workspace)
+	return strings.HasPrefix(prefix, id.StaticAppPrefix()+"/rev-") ||
+		strings.HasPrefix(prefix, id.LegacyStaticAppPrefix()+"/rev-")
 }
 
 // srcDir is the checkout-relative directory a direct publish copies:
@@ -298,6 +325,8 @@ func stepFailureFallback(container string) string {
 		return "the site's repository could not be staged for publishing"
 	case "extract":
 		return "the built image's publish directory could not be staged for publishing"
+	case "fetch":
+		return "the retained publication could not be staged for restoring"
 	case "upload":
 		return "the site was built but could not be uploaded to the static-site store; this is a platform fault, not a problem with your site"
 	default:
@@ -313,13 +342,28 @@ func validate(o Options) error {
 	if o.AppUID == "" {
 		return fmt.Errorf("publish: empty App UID")
 	}
-	if o.PublishPath == "" {
+	sources := 0
+	for _, set := range []bool{o.Image != "", o.Repo != "", o.SourcePrefix != ""} {
+		if set {
+			sources++
+		}
+	}
+	if sources != 1 {
+		return fmt.Errorf("publish: exactly one of Image (extract), Repo (direct publish) or SourcePrefix (retained copy) must be set")
+	}
+	if o.SourcePrefix != "" {
+		// A retained copy reads only this App's own earlier revisions: the
+		// current or the pre-ADR074 app root, never another App's objects.
+		if !appv1alpha1.ValidStaticPublicationPrefix(o.SourcePrefix) || !o.ownsPrefix(o.SourcePrefix) {
+			return fmt.Errorf("publish: retained publication %q is not one of this App's revisions", o.SourcePrefix)
+		}
+		if o.SourcePrefix == o.Prefix() {
+			return fmt.Errorf("publish: retained publication %q is the revision being published", o.SourcePrefix)
+		}
+	} else if o.PublishPath == "" {
 		return fmt.Errorf("publish: empty publishPath")
 	}
-	if (o.Image == "") == (o.Repo == "") {
-		return fmt.Errorf("publish: exactly one of Image (extract) or Repo (direct publish) must be set")
-	}
-	if o.Image == "" {
+	if o.Repo != "" {
 		// The clone container cds to /work/<rootDir>/<publishPath>; refuse a
 		// path that would escape the checkout.
 		if src := o.srcDir(); src == ".." || strings.HasPrefix(src, "../") || path.IsAbs(src) {
@@ -360,11 +404,15 @@ func PublishJob(o Options) *batchv1.Job {
 
 	// First step: stage the site's files into the shared emptyDir — from the
 	// built image (extract) or straight from a git checkout (direct publish).
-	stage := extractContainer(o)
+	var stage corev1.Container
 	var pullSecrets []corev1.LocalObjectReference
-	if o.Image == "" {
+	switch {
+	case o.SourcePrefix != "":
+		stage = fetchContainer(o, awsImage, uploadEnv)
+	case o.Image == "":
 		stage = cloneContainer(o)
-	} else {
+	default:
+		stage = extractContainer(o)
 		// The extract initContainer pulls o.Image (the just-built Zot image) —
 		// authenticate it under an auth-enabled registry (w7/m8). Clone mode
 		// pulls only public platform images, so it carries no pull secret.
@@ -401,12 +449,8 @@ func PublishJob(o Options) *batchv1.Job {
 				"--no-follow-symlinks",
 				"--delete",
 			},
-			Env: uploadEnv,
-			EnvFrom: []corev1.EnvFromSource{{
-				SecretRef: &corev1.SecretEnvSource{
-					LocalObjectReference: corev1.LocalObjectReference{Name: o.Store.Secret},
-				},
-			}},
+			Env:     uploadEnv,
+			EnvFrom: o.Store.envFrom(),
 			VolumeMounts: []corev1.VolumeMount{
 				{Name: outVolume, MountPath: outMount, ReadOnly: true},
 			},
@@ -432,6 +476,37 @@ func PublishJob(o Options) *batchv1.Job {
 				Spec: podSpec,
 			},
 		},
+	}
+}
+
+// fetchContainer stages a retained publication (w4/m197): download the
+// recorded revision prefix of this App into the shared emptyDir, which the
+// ordinary upload container then syncs to the new revision — the same upload
+// (and therefore the same object metadata derivation) the original publish
+// used. It never runs the target's image or reads today's publish directory.
+// An empty or vanished source is a failure in its own words: restoring
+// nothing must not publish an empty site as a success. Like `clone` it holds
+// credentials, so it writes only fixed messages to /dev/termination-log under
+// the default ReadFile policy and never echoes aws-cli's own output.
+func fetchContainer(o Options, awsImage string, env []corev1.EnvVar) corev1.Container {
+	script := `set -e
+fail() { printf '%s\n' "$2" > /dev/termination-log; exit "$1"; }
+aws s3 sync "$SOURCE_URI" ` + outMount + ` --endpoint-url "$ENDPOINT" --no-progress --only-show-errors || fail $? "the retained publication $SOURCE_PREFIX could not be read from the static-site store; this is a platform fault, not a problem with your site"
+[ -n "$(ls -A ` + outMount + `)" ] || fail 3 "the retained publication $SOURCE_PREFIX is empty or no longer available, so there is nothing to restore"`
+	return corev1.Container{
+		Name:    "fetch",
+		Image:   awsImage,
+		Command: []string{"sh", "-c", script},
+		Env: append(slices.Clone(env),
+			corev1.EnvVar{Name: "SOURCE_URI", Value: o.Store.uri(o.SourcePrefix)},
+			corev1.EnvVar{Name: "SOURCE_PREFIX", Value: o.SourcePrefix},
+			corev1.EnvVar{Name: "ENDPOINT", Value: o.Store.Endpoint},
+		),
+		EnvFrom: o.Store.envFrom(),
+		VolumeMounts: []corev1.VolumeMount{
+			{Name: outVolume, MountPath: outMount},
+		},
+		Resources: modestResources(),
 	}
 }
 

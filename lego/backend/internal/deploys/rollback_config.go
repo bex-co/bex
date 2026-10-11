@@ -24,6 +24,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -63,6 +64,46 @@ func (s *Service) targetReleaseConfig(ctx context.Context, a *appv1alpha1.App, t
 	}
 	selected.SourceGeneration = target.Generation
 	return selected, nil
+}
+
+// staticReleaseSelection selects a static_site target's retained publication
+// (w4/m197): the object-store prefix the operator recorded when that release
+// published (appv1alpha1.StaticPublicationRecordName). The copy restores the
+// exact published files, so the saved publish directory, root directory and
+// build command are irrelevant to it and stay as saved. Image is carried only
+// as the row's provenance; a direct (no-build) target has none.
+func (s *Service) staticReleaseSelection(ctx context.Context, a *appv1alpha1.App, target store.Deploy) (*appv1alpha1.ReleaseConfigReference, error) {
+	prefix, err := s.retainedStaticPublication(ctx, a, target)
+	if err != nil {
+		return nil, err
+	}
+	if prefix == "" {
+		return nil, fmt.Errorf("%w: deploy %q has no retained static publication to restore: it was published before bex recorded static publications, "+
+			"or is older than the retained history; deploy its commit instead", core.ErrConflict, target.ID)
+	}
+	return &appv1alpha1.ReleaseConfigReference{Image: target.ResolvedImage, StaticPrefix: prefix}, nil
+}
+
+// retainedStaticPublication returns target's recorded publication prefix, or
+// "" when none is recorded for this App. The record must be controlled by this
+// exact App, so a same-name predecessor's leftover can never be selected.
+func (s *Service) retainedStaticPublication(ctx context.Context, a *appv1alpha1.App, target store.Deploy) (string, error) {
+	if target.Generation <= 0 {
+		return "", nil
+	}
+	rec := &corev1.Secret{}
+	err := s.Client.Get(ctx, client.ObjectKey{Namespace: a.Namespace, Name: appv1alpha1.StaticPublicationRecordName(a.Name, target.Generation)}, rec)
+	if apierrors.IsNotFound(err) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	prefix := string(rec.Data[appv1alpha1.StaticPublicationPrefixKey])
+	if !metav1.IsControlledBy(rec, a) || !appv1alpha1.ValidStaticPublicationPrefix(prefix) {
+		return "", nil
+	}
+	return prefix, nil
 }
 
 // openSelectedRelease is shared by rollback and snapshot-backed Restart. The
