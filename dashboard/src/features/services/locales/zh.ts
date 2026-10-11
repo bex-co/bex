@@ -1148,7 +1148,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Toast after setDisplayName succeeds",
   },
   "services.displayNameCleared": {
-    message: "服务名称已重置为其不可变 ID。",
+    message: "自定义服务名称已清除。",
     description: "Toast after clearing displayName",
   },
   "services.displayNameError": {
