@@ -669,6 +669,63 @@ describe("useEnvGroupEnvironmentPatch", () => {
   });
 });
 
+// w4/224: the editor reads the returned affected list as "services a deploy
+// started for"; Auto-Deploy-off services the fan-out skipped (pending) and
+// failed ones must not count, while the raw failure list stays intact.
+describe("useEnvGroupEnvironmentPatch deployed-service set (w4/224)", () => {
+  async function saveWith(
+    saveMode: "deploy" | "rebuild",
+    saved: Record<string, unknown>,
+  ) {
+    const mutate = vi.fn().mockResolvedValue({
+      data: { patchEnvGroupEnvironment: { revision: "egr1_next", ...saved } },
+    });
+    mockUseMutation.mockImplementation(() => [mutate, { loading: false }]);
+    const { result } = renderHook(() =>
+      useEnvGroupEnvironmentPatch("eg1", vi.fn().mockResolvedValue(undefined)),
+    );
+    let out: Awaited<ReturnType<typeof result.current.save>> | undefined;
+    await act(async () => {
+      out = await result.current.save(
+        { envVars: [{ key: "A", value: "1" }], secretFiles: [] },
+        saveMode,
+        "egr1_base",
+      );
+    });
+    return out!;
+  }
+
+  it.each([
+    ["all skipped", ["off"], ["off"], [], true, []],
+    ["mixed", ["on", "off"], ["off"], [], true, ["on"]],
+    ["no links", [], null, null, true, []],
+    ["null lists", null, null, null, true, []],
+    ["genuine failure", ["on", "bad"], [], ["bad"], false, []],
+  ] as const)(
+    "%s",
+    async (_name, affected, pending, failed, rolledOut, deployed) => {
+      const out = await saveWith("deploy", {
+        affectedServiceIds: affected,
+        pendingServiceIds: pending,
+        failedServiceIds: failed,
+        rolledOut,
+      });
+      expect(out.affectedServiceIds).toEqual(deployed);
+      expect(out.failedServiceIds).toEqual(failed ?? []);
+    },
+  );
+
+  it("keeps the raw affected set for an explicit rebuild", async () => {
+    const out = await saveWith("rebuild", {
+      affectedServiceIds: ["off"],
+      pendingServiceIds: null,
+      failedServiceIds: [],
+      rolledOut: true,
+    });
+    expect(out.affectedServiceIds).toEqual(["off"]);
+  });
+});
+
 describe("isEnvGroupNotFound", () => {
   it("recognizes only a missing group", () => {
     expect(isEnvGroupNotFound(codedGraphQLError("NOT_FOUND"))).toBe(true);
