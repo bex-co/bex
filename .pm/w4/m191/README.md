@@ -1,17 +1,17 @@
 # w4 · m191 — Track TCP and HTTP root health changes as different releases
 
-**Worker:** worker4 **Goal:** a change between TCP health checks and HTTP `/` completes a tracked release, with a new revision and an honest Live deployment. **Status:** todo
+**Worker:** worker4 **Goal:** a change between TCP health checks and HTTP `/` completes a tracked release, with a new revision and an honest Live deployment. **Status:** in progress (t001–t006 done; t007 live replay pending)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Distinguish TCP from HTTP root in release identity | 40m | — |
-| t002 | Adopt legacy fingerprints without unsolicited rollouts | 60m | t001 |
-| t003 | Audit shared identity and retained-configuration consumers | 40m | t002 |
-| t004 | Verify health and deploy contracts across surfaces | 30m | t003 |
-| t005 | Simplify the changed code | 20m | t004 |
-| t006 | Test mode transitions, adoption and release history | 45m | t004 |
+| t001 | Distinguish TCP from HTTP root in release identity — **DONE** | 40m | — |
+| t002 | Adopt legacy fingerprints without unsolicited rollouts — **DONE** | 60m | t001 |
+| t003 | Audit shared identity and retained-configuration consumers — **DONE** | 40m | t002 |
+| t004 | Verify health and deploy contracts across surfaces — **DONE** | 30m | t003 |
+| t005 | Simplify the changed code — **DONE** | 20m | t004 |
+| t006 | Test mode transitions, adoption and release history — **DONE** | 45m | t004 |
 | t007 | Replay the live journeys, clean up and close out | 30m | t005, t006 |
 
 ## Definition of done

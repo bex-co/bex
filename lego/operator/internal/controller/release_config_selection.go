@@ -92,13 +92,7 @@ func (rec *runtimeConfigRecord) adoptLegacySpec(app *appv1alpha1.App, generation
 				rec.spec.EnvFromSecrets = append(rec.spec.EnvFromSecrets, source)
 			}
 		}
-		if c.ReadinessProbe != nil {
-			if c.ReadinessProbe.HTTPGet != nil {
-				rec.spec.HealthCheckPath = new(c.ReadinessProbe.HTTPGet.Path)
-			} else if c.ReadinessProbe.TCPSocket != nil {
-				rec.spec.HealthCheckPath = new("")
-			}
-		}
+		rec.spec.HealthCheckPath = probedHealthCheckPath(c)
 		if app.Spec.Type == appv1alpha1.TypeCronJob && len(c.Command) == 3 && c.Command[1] == "-c" {
 			rec.spec.Command = new(c.Command[2])
 		}
@@ -114,6 +108,21 @@ func (rec *runtimeConfigRecord) adoptLegacySpec(app *appv1alpha1.App, generation
 		}
 	}
 	rec.spec.Version = 1
+}
+
+// probedHealthCheckPath reads the health-check path a container was projected
+// with back from its readiness probe (healthCheckHandler's inverse): "" for the
+// TCP check, the GET path for HTTP, and nil when it carries no probe at all.
+func probedHealthCheckPath(c corev1.Container) *string {
+	switch {
+	case c.ReadinessProbe == nil:
+		return nil
+	case c.ReadinessProbe.HTTPGet != nil:
+		return new(c.ReadinessProbe.HTTPGet.Path)
+	case c.ReadinessProbe.TCPSocket != nil:
+		return new("")
+	}
+	return nil
 }
 
 // historicalSourceName also handles the pre-scoping group snapshots retained by

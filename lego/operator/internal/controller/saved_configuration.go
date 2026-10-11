@@ -171,8 +171,7 @@ func (r *AppReconciler) servingConfigurationDiffers(ctx context.Context, app *ap
 	// whether any of them differ; a cancel of an identical redeploy leaves
 	// nothing pending (w4/m165). A record without one cannot prove equality.
 	if !different && canceledOverServed(app) {
-		fp := rec.spec.SettingsFingerprint
-		different = fp == "" || fp != releaseSettingsFingerprint(app.Spec)
+		different = !recordedSettingsMatch(rec.spec, app.Spec)
 	}
 	return different, nil
 }

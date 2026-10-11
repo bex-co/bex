@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -24,7 +25,11 @@ import (
 	"strconv"
 	"strings"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -102,7 +107,33 @@ type releaseDiskIdentity struct {
 	MountPath string `json:"mountPath"`
 }
 
+// Release identity versions. release-v2 encodes HealthCheckPath verbatim, so an
+// empty path (TCP check) and "/" (HTTP GET /) are different releases, exactly as
+// the probe projection and appv1alpha1.SpecRollsRelease already treat them.
+// release-v1 folded empty into "/" (w2/m56), which made a TCP <-> HTTP-root
+// switch roll pods under the old release generation and left its deploy row
+// unadopted (w4/m191). A release-v1 status fingerprint is adopted once by
+// adoptLegacyReleaseIdentity; it is never compared against a release-v2 one.
+const (
+	releaseIdentityVersion       = "release-v2"
+	legacyReleaseIdentityVersion = "release-v1"
+)
+
 func desiredAppReleaseIdentity(spec appv1alpha1.AppSpec) appReleaseIdentity {
+	return appReleaseIdentityOf(spec, releaseIdentityVersion)
+}
+
+// legacyReleaseFingerprint is spec's release-v1 fingerprint, byte-for-byte what
+// operators before w4/m191 stored in status.releaseFingerprint and in release
+// records' SettingsFingerprint. Only legacy adoption reads it.
+func legacyReleaseFingerprint(spec appv1alpha1.AppSpec) string {
+	if spec.HealthCheckPath == "" {
+		spec.HealthCheckPath = "/"
+	}
+	return appReleaseIdentityOf(spec, legacyReleaseIdentityVersion).release
+}
+
+func appReleaseIdentityOf(spec appv1alpha1.AppSpec, version string) appReleaseIdentity {
 	builder := effectiveBuilder(spec)
 	branch := spec.Branch
 	if spec.Repo != "" && branch == "" {
@@ -150,11 +181,7 @@ func desiredAppReleaseIdentity(spec appv1alpha1.AppSpec) appReleaseIdentity {
 		serviceType = appv1alpha1.TypeWebService
 	}
 	port := spec.EffectivePort()
-	healthCheckPath := spec.HealthCheckPath
-	if healthCheckPath == "" {
-		healthCheckPath = "/"
-	}
-	release := identityFingerprint("release-v1", releaseIdentityInput{
+	release := identityFingerprint(version, releaseIdentityInput{
 		ReleaseConfig:              spec.ReleaseConfig,
 		ContainerPolicy:            spec.ContainerPolicy,
 		Artifact:                   artifact,
@@ -170,7 +197,7 @@ func desiredAppReleaseIdentity(spec appv1alpha1.AppSpec) appReleaseIdentity {
 		EnvFromSecret:              spec.EnvFromSecret,
 		EnvFromSecrets:             spec.EnvFromSecrets,
 		FilesFromSecrets:           spec.FilesFromSecrets,
-		HealthCheckPath:            healthCheckPath,
+		HealthCheckPath:            spec.HealthCheckPath,
 		MaxShutdownDelaySeconds:    spec.MaxShutdownDelaySeconds,
 		PreDeployCommand:           spec.PreDeployCommand,
 		RestartedAt:                spec.RestartedAt,
@@ -187,9 +214,27 @@ func desiredAppReleaseIdentity(spec appv1alpha1.AppSpec) appReleaseIdentity {
 // a redeploy of unchanged settings fingerprints the same as the release it
 // would have replaced.
 func releaseSettingsFingerprint(spec appv1alpha1.AppSpec) string {
+	return desiredAppReleaseIdentity(settingsIdentitySpec(spec)).release
+}
+
+func settingsIdentitySpec(spec appv1alpha1.AppSpec) appv1alpha1.AppSpec {
 	spec.RestartedAt, spec.BuildCommit, spec.ExternalRegistryPullSecret = "", "", ""
 	spec.ReleaseConfig = nil
-	return desiredAppReleaseIdentity(spec).release
+	return spec
+}
+
+// recordedSettingsMatch reports whether a release record's SettingsFingerprint
+// identifies spec's saved settings. A release-v1 fingerprint cannot tell an
+// empty health path from "/", so it matches only when the record's own path —
+// which the record carries separately — equals spec's. An older record without
+// a fingerprint cannot prove equality.
+func recordedSettingsMatch(rec appv1alpha1.ReleaseRecordSpec, spec appv1alpha1.AppSpec) bool {
+	fp := rec.SettingsFingerprint
+	if fp == releaseSettingsFingerprint(spec) {
+		return true
+	}
+	return rec.HealthCheckPath != nil && *rec.HealthCheckPath == spec.HealthCheckPath &&
+		fp == legacyReleaseFingerprint(settingsIdentitySpec(spec))
 }
 
 func releaseDisk(disk *appv1alpha1.DiskSpec) *releaseDiskIdentity {
@@ -206,6 +251,91 @@ func identityFingerprint(version string, value any) string {
 	}
 	sum := sha256.Sum256(b)
 	return version + ":" + hex.EncodeToString(sum[:])
+}
+
+// adoptLegacyReleaseIdentity rebases a release-v1 status fingerprint onto
+// release-v2 in memory, before prepareAppReleaseDecision classifies the spec,
+// whenever the release that fingerprint names is the one spec still describes.
+// That keeps an operator upgrade from rolling the fleet: adopted Apps keep
+// their pods, release generation, revision and deploy history.
+//
+// A v1 fingerprint equal to spec's legacy fingerprint proves every input
+// identical except the empty/"/" fold, so any other path adopts outright. For
+// an empty or "/" path the fold is resolved by evidence, never assumed:
+//
+//   - a backend release stamp newer than the release generation is a release
+//     the backend opened (SpecRollsRelease already told TCP from "/") that v1
+//     could not see — the owed TCP <-> HTTP-root switch. It is not adopted, so
+//     it advances to that stamped generation and closes its own row;
+//   - an active rollback selector runs its recorded path, and any later path
+//     edit restamps past it, so the saved path is the one fingerprinted;
+//   - otherwise the path the release generation actually applied — its release
+//     record, else the owned Deployment's probe at that revision — must equal
+//     spec's. A different applied mode (a direct CR edit) is a real change.
+//
+// With no applied template at all (a static site, or a release still building)
+// nothing served under that generation can differ from spec, and the backend
+// owes nothing newer, so the generation is kept. A non-v1 fingerprint, any
+// other changed input, and a canceled latest release (whose branch never reads
+// the fingerprint) are left to normal classification.
+func (r *AppReconciler) adoptLegacyReleaseIdentity(ctx context.Context, app *appv1alpha1.App) error {
+	fp := app.Status.ReleaseFingerprint
+	if !strings.HasPrefix(fp, legacyReleaseIdentityVersion+":") || canceledReleaseIsLatest(app) ||
+		fp != legacyReleaseFingerprint(app.Spec) {
+		return nil
+	}
+	if path := app.Spec.HealthCheckPath; path == "" || path == "/" {
+		if stamped, ok := stampedReleaseGeneration(app); ok && stamped > app.Status.ReleaseGeneration {
+			return nil
+		}
+		if app.ActiveReleaseConfig() == nil {
+			applied, err := r.appliedHealthCheckPath(ctx, app)
+			if err != nil {
+				return err
+			}
+			if applied != nil && *applied != path {
+				return nil
+			}
+		}
+	}
+	app.Status.ReleaseFingerprint = desiredAppReleaseIdentity(app.Spec).release
+	return nil
+}
+
+// appliedHealthCheckPath is the health path the current release generation
+// was applied with: its release record's (rewritten on every apply), else the
+// owned Deployment template's probe when that template is this revision's.
+// nil means no template was applied under this generation. Unlike
+// liveConfigurationRecord it never errors on an unowned or foreign-revision
+// workload: missing evidence must defer to classification, not stall reconcile.
+func (r *AppReconciler) appliedHealthCheckPath(ctx context.Context, app *appv1alpha1.App) (*string, error) {
+	gen := app.Status.ReleaseGeneration
+	if gen <= 0 {
+		return nil, nil
+	}
+	rec, err := r.readRuntimeConfigRecord(ctx, app, gen)
+	if err == nil {
+		return rec.spec.HealthCheckPath, nil
+	}
+	if !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+	dep := &appsv1.Deployment{}
+	if err := r.Get(ctx, client.ObjectKeyFromObject(app), dep); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if !metav1.IsControlledBy(dep, app) || dep.Spec.Template.Labels[labelRevision] != releaseRevision(app) {
+		return nil, nil
+	}
+	for _, c := range dep.Spec.Template.Spec.Containers {
+		if c.Name == appContainerName {
+			return probedHealthCheckPath(c), nil
+		}
+	}
+	return nil, nil
 }
 
 type appReleaseDecision struct {

@@ -533,8 +533,14 @@ func TestSettingsCommandEditsDemandAFreshArtifact(t *testing.T) {
 		Runtime: "node", StartCommand: "npm start", Subdomain: "qa-20260919-p13-web",
 		Tier: "free", Type: "web_service",
 	}
-	if got := desiredAppReleaseIdentity(live); got.artifact != liveArtifact || got.release != liveRelease {
-		t.Fatalf("identity of the live prod spec = %+v, want the fingerprints that App's status carried", got)
+	// The release fingerprint is release-v1 (w4/m191 moved to release-v2): the
+	// legacy encoding must keep reproducing it, or adoption could not recognize
+	// that App's unchanged release and would roll it.
+	if got := desiredAppReleaseIdentity(live); got.artifact != liveArtifact {
+		t.Fatalf("artifact identity of the live prod spec = %q, want the fingerprint that App's status carried", got.artifact)
+	}
+	if got := legacyReleaseFingerprint(live); got != liveRelease {
+		t.Fatalf("legacy release identity of the live prod spec = %q, want the fingerprint that App's status carried", got)
 	}
 
 	// The two Settings edits, each applied to the live spec on its own.
