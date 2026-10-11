@@ -33,7 +33,7 @@ func TestRunNarratesOrRefusesAsTenantError(t *testing.T) {
 	bundle := filepath.Join(dir, "render-env")
 	// The real python default base, as the preparer writes it.
 	base := "# syntax=docker/dockerfile:1.7\n" +
-		"FROM python:3.13-bookworm@sha256:227b6570d6ee07061ae6ca2eb04dedfb6d2b34045835f343065b9869e4d427ea\n" +
+		"FROM python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4\n" +
 		"RUN true\n"
 	write := func(env string) {
 		if err := os.WriteFile(dockerfile, []byte(base), 0o600); err != nil {

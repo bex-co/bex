@@ -66,7 +66,7 @@ func nativeFileSecretID(i int) string { return fmt.Sprintf("bex-file-%d", i) }
 // would exfiltrate every tenant build secret. The tag is kept readable for
 // humans; the digest is the 1.37.0 multi-arch OCI index.
 const (
-	nativePreparerImage = "busybox:1.37.0@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0"
+	nativePreparerImage = "busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e"
 	nativeNodeRuntime   = "node"
 )
 
@@ -80,35 +80,35 @@ const (
 // outside this table is ever pulled.
 var nativeToolchains = map[string]nativeToolchain{
 	"elixir": {label: "Elixir", defaultLine: "1.18", lines: []nativeLine{
-		{line: "1.17", version: "1.17.3", otp: "27", image: "elixir:1.17@sha256:a40312b97492ce708d2a1cefee144ec680503ab097f52020299645d174a13a8a"},
-		{line: "1.18", version: "1.18.4", otp: "28", image: "elixir:1.18@sha256:45cd5b9be69e9bf62920762c732a0b8a09c4efb91ec5c499e9c6e8a3b1de1475"},
-		{line: "1.19", version: "1.19.6", otp: "28", image: "elixir:1.19@sha256:7d0cc07a9814b23c354c5ecae400ef1d8422c56b101940429f31008f8bfad26b"},
+		{line: "1.17", version: "1.17.3", otp: "27", image: "elixir:1.17@sha256:0bdcc080e296103b68fd5eaf0b39aa947b5c53433894c2a1af6467f9f32245c0"},
+		{line: "1.18", version: "1.18.4", otp: "28", image: "elixir:1.18@sha256:f3cc81b7f0f897763f7c74e8f526ddaf18b68f0cdbea6dd65b58f2c5c5629fbd"},
+		{line: "1.19", version: "1.19.6", otp: "28", image: "elixir:1.19@sha256:ead2215da1c6756a4cef5526e55a967e355c345ab3c6c03722618143bc9faa6a"},
 	}},
 	// Render offers no Go version selection for native services; neither does bex.
 	"go": {label: "Go", defaultLine: "1.24", lines: []nativeLine{
 		{line: "1.24", image: "golang:1.24-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac"},
 	}},
 	nativeNodeRuntime: {label: "Node", defaultLine: "24", lines: []nativeLine{
-		{line: "22", version: "22.23.3", image: "node:22-bookworm@sha256:363e1587494626837fa7f9a23bdb453d13b0ff3c67c705c2805cfc69c2d2fad7"},
-		{line: "24", version: "24.21.0", image: "node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4"},
-		{line: "26", version: "26.10.0", image: "node:26-bookworm@sha256:2aaae6d91f99fee84cfc92da9b52c22a185752d247746052bbc3f961e44478c6"},
+		{line: "22", version: "22.23.3", image: "node:22-bookworm@sha256:0e5f906573693feaa1e21057ebdcfdb5bd5021f050b2dc7c9deceb629c7da2a8"},
+		{line: "24", version: "24.21.0", image: "node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0"},
+		{line: "26", version: "26.11.1", image: "node:26-bookworm@sha256:f1233c415b41ffcf237c717b3dea92e9d4ea006e0e4c71edcb790605d74f5404"},
 	}},
 	"python": {label: "Python", defaultLine: "3.13", lines: []nativeLine{
-		{line: "3.10", version: "3.10.22", image: "python:3.10-bookworm@sha256:e1d1d0eb753a9ff331dd8a3f19e41107e5bb452eed9da1410b03318ffe4f8bb8"},
-		{line: "3.11", version: "3.11.17", image: "python:3.11-bookworm@sha256:3fd8382c50bae84184460a6e1a8ff4eeac0e3ca6a560691cb56bd84d2b6ec9ca"},
-		{line: "3.12", version: "3.12.15", image: "python:3.12-bookworm@sha256:e91fec3d1ac69f04e4eddcd29c327e630ce34658cf31075bfa7e8b0e052bafea"},
-		{line: "3.13", version: "3.13.15", image: "python:3.13-bookworm@sha256:227b6570d6ee07061ae6ca2eb04dedfb6d2b34045835f343065b9869e4d427ea"},
-		{line: "3.14", version: "3.14.8", image: "python:3.14-bookworm@sha256:b3c121f5b6b446c964c6ea924d9a099e259b29d7b56df82729e33572a31eadcc"},
+		{line: "3.10", version: "3.10.22", image: "python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a0470b842a01b0e14314945b8"},
+		{line: "3.11", version: "3.11.17", image: "python:3.11-bookworm@sha256:5887f265d8d44d8b4734d3658b21d668edf5aaf92e4945bc0c984afbfab105d3"},
+		{line: "3.12", version: "3.12.15", image: "python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b"},
+		{line: "3.13", version: "3.13.16", image: "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4"},
+		{line: "3.14", version: "3.14.8", image: "python:3.14-bookworm@sha256:7ee7e4d4fb42c3ad45b8fdc473b64ec69c3cf6e80ae5d52f6fa55f77fac29027"},
 	}},
 	"ruby": {label: "Ruby", defaultLine: "3.4", lines: []nativeLine{
-		{line: "3.3", version: "3.3.12", image: "ruby:3.3-bookworm@sha256:dba270af6994f64e45ee3dd2b85225a2a0d01f29c04508c7a3c7c8dbf59d2a85"},
-		{line: "3.4", version: "3.4.11", image: "ruby:3.4-bookworm@sha256:246b2dc3f6e40bba3af18503c22997a34dbb27c9f97e198dde6dd727895115c5"},
-		{line: "4.0", version: "4.0.7", image: "ruby:4.0-bookworm@sha256:119a36c51c7893215202220eabfdcb561638735de4d45bacf2e8619be3de47f2"},
+		{line: "3.3", version: "3.3.12", image: "ruby:3.3-bookworm@sha256:b899e7de6ffa6e974d947202d3ce2ac921c12e46c14cff3106214079388dcff4"},
+		{line: "3.4", version: "3.4.11", image: "ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172"},
+		{line: "4.0", version: "4.0.7", image: "ruby:4.0-bookworm@sha256:7671dc16cd740b9d8d653a568d8bd2df00e24a32c53a7b7a3fc39a0a194bb9ad"},
 	}},
 	// Rust stays one stable image: rustup inside it applies Render's own
 	// RUSTUP_TOOLCHAIN / rust-toolchain signals itself.
 	"rust": {label: "Rust", defaultLine: "1", lines: []nativeLine{
-		{line: "1", image: "rust:1-bookworm@sha256:93ce27a88655056a51dbdd8f5f2d7ddc071c7b0070fb288a37b5a285fc83971e"},
+		{line: "1", image: "rust:1-bookworm@sha256:114c7a4425406451c2866b6aafe69fe29b1b298832db1277d411ac73c82d04d6"},
 	}},
 }
 
