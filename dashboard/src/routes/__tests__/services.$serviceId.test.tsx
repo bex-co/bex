@@ -23,6 +23,9 @@ const serverState: UseServerResult = {
 vi.mock("@/features/services/hooks/use-server", () => ({
   useServer: () => serverState,
 }));
+vi.mock("@/features/services/hooks/use-cached-service-type", () => ({
+  useCachedServiceType: () => null,
+}));
 
 vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
   const { mockAllowedResourceActions } =
