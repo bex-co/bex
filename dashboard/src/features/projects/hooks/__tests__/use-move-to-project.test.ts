@@ -37,6 +37,7 @@ vi.mock("@/features/projects/hooks/use-projects", () => ({
 }));
 
 import {
+  EnvironmentsDocument,
   ProjectDocument,
   ProjectsDocument,
   SetProjectServicesDocument,
@@ -70,7 +71,10 @@ beforeEach(() => {
   setServices.mockReset().mockResolvedValue({ data: {} });
   setDatabases.mockReset().mockResolvedValue({ data: {} });
   setKeyValues.mockReset().mockResolvedValue({ data: {} });
-  mockRefetchQueries.mockResolvedValue([]);
+  // Apollo's refetchQueries promise also exposes the per-query results.
+  mockRefetchQueries.mockImplementation(() =>
+    Object.assign(Promise.resolve([]), { results: [] }),
+  );
   mockQuery.mockReset().mockResolvedValue({ data: {} });
   mockInvalidate.mockReset().mockResolvedValue(undefined);
   mockUseMutation.mockImplementation((doc: unknown) => {
@@ -105,6 +109,8 @@ describe("useMoveToProject", () => {
       include: [ProjectsDocument],
     });
     expect(mockInvalidate).toHaveBeenCalledTimes(1);
+    // No source project: nothing to re-read.
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 
   it("moves a service between projects with one write to the target", async () => {
@@ -143,6 +149,15 @@ describe("useMoveToProject", () => {
     expect(mockQuery.mock.invocationCallOrder[0]).toBeLessThan(
       mockInvalidate.mock.invocationCallOrder[0],
     );
+    // ...and the source's Environment lists are re-read without joining an
+    // older in-flight poll, so a selected Environment drops the row too.
+    expect(mockQuery).toHaveBeenCalledWith({
+      query: EnvironmentsDocument,
+      variables: { projectId: "prj-a" },
+      fetchPolicy: "network-only",
+      context: { queryDeduplication: false },
+    });
+    expect(setServices).toHaveBeenCalledTimes(1);
   });
 
   it("still invalidates the source page when its re-read fails", async () => {
@@ -287,8 +302,15 @@ describe("useMoveToProject", () => {
     // removed service instead of leaving it stale until a manual reload.
     expect(mockInvalidate).toHaveBeenCalledTimes(1);
     // The remove mutation returns the source Project itself, so the cache is
-    // already fresh: no extra read (w4/m178).
-    expect(mockQuery).not.toHaveBeenCalled();
+    // already fresh: no extra Project read, only its Environments (w4/m178).
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: EnvironmentsDocument,
+        variables: { projectId: "prj-a" },
+      }),
+    );
+    expect(setServices).toHaveBeenCalledTimes(1);
   });
 
   it("reports removal success even when the refresh fails", async () => {

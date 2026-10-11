@@ -1,8 +1,10 @@
 import { useCallback, useState } from "react";
+import type { ApolloClient } from "@apollo/client";
 import { useApolloClient, useMutation } from "@apollo/client/react";
 import { useRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
+  EnvironmentsDocument,
   ProjectDocument,
   ProjectsDocument,
   SetProjectServicesDocument,
@@ -42,6 +44,40 @@ export interface UseMoveToProjectResult {
   ) => Promise<boolean>;
   /** The resource id currently being moved, or null. */
   busyId: string | null;
+}
+
+/**
+ * Re-read the source project's Environments after a move or remove (w4/m178).
+ *
+ * A selected Environment's rows and counts come from its own EnvironmentsDocument
+ * member arrays, which neither the membership mutation nor a Project read
+ * touches, so without this the moved resource lingers until the next poll.
+ * Same ordering as the rename refresh (use-rename-project): settle the source
+ * project's in-flight list reads first (a pre-write poll would otherwise land
+ * after the fresh read and restore the old membership), each on its own since
+ * the aggregate rejects early, then re-read without joining an older request.
+ * Only the source project's lists are touched.
+ */
+async function refreshSourceEnvironments(
+  client: ApolloClient,
+  projectId: string,
+) {
+  const lists = client.refetchQueries({
+    include: [EnvironmentsDocument],
+    // Only join reads already in flight; an idle watcher would just duplicate
+    // the fresh read below.
+    onQueryUpdated: (query) =>
+      query.variables.projectId === projectId &&
+      query.getCurrentResult().loading,
+  });
+  lists.catch(() => undefined); // each result is settled below
+  await Promise.allSettled(lists.results);
+  await client.query({
+    query: EnvironmentsDocument,
+    variables: { projectId },
+    fetchPolicy: "network-only",
+    context: { queryDeduplication: false },
+  });
 }
 
 /**
@@ -89,19 +125,24 @@ export function useMoveToProject(
   // Post-move refresh. Selecting a menu item unmounts this hook, so the
   // refresh goes through the client and router singletons and is
   // fire-and-forget: the mutation already succeeded, so a refresh failure must
-  // never read as a failed move. The overview reads the live `Projects`
-  // watcher; the project page renders its route loader's `Project` snapshot,
-  // which router.invalidate() re-runs cache-first for a retained match. A
-  // cross-project move's mutation returns only the target, and no `Projects`
-  // watcher is guaranteed to be mounted (the sidebar is lazy and closes on
-  // mobile), so re-read the source network-only and invalidate only after it
-  // settles (w4/m178).
-  const refreshProjects = useCallback(
-    (sourceProjectId?: string) => {
+  // never read as a failed move (the next poll re-reads; nothing re-writes).
+  // The overview reads the live `Projects` watcher; the project page renders
+  // its route loader's `Project` snapshot, which router.invalidate() re-runs
+  // cache-first for a retained match. A cross-project move's mutation returns
+  // only the target, and no `Projects` watcher is guaranteed to be mounted
+  // (the sidebar is lazy and closes on mobile), so re-read the source
+  // network-only and invalidate only after it settles. Remove's mutation
+  // returns the source itself, so it skips that read. Either way the source's
+  // Environments are re-read too (w4/m178).
+  const refreshSource = useCallback(
+    (
+      sourceProjectId: string | undefined,
+      { sourceProjectStale }: { sourceProjectStale: boolean },
+    ) => {
       const refetches: Promise<unknown>[] = [
         client.refetchQueries({ include: [ProjectsDocument] }),
       ];
-      if (sourceProjectId) {
+      if (sourceProjectId && sourceProjectStale) {
         refetches.push(
           client.query({
             query: ProjectDocument,
@@ -113,6 +154,11 @@ export function useMoveToProject(
       void Promise.allSettled(refetches).then(() =>
         router.invalidate().catch(() => undefined),
       );
+      if (sourceProjectId) {
+        refreshSourceEnvironments(client, sourceProjectId).catch(
+          () => undefined,
+        );
+      }
     },
     [client, router],
   );
@@ -137,7 +183,7 @@ export function useMoveToProject(
         // resource in NEITHER project while the toast said the move failed
         // (w6/036). One call avoids that preliminary detach; the server
         // validates the requested set before applying it. The stale source
-        // list is reconciled by refreshProjects below.
+        // list is reconciled by refreshSource below.
         await runSet(to.id, [...idsOf(kind, to), resourceId]);
       } catch (err) {
         toast.error(
@@ -153,10 +199,10 @@ export function useMoveToProject(
       toast.success(
         t("projects.moveSuccess", { name: resourceName, project: to.name }),
       );
-      refreshProjects(from?.id);
+      refreshSource(from?.id, { sourceProjectStale: true });
       return true;
     },
-    [projects, kind, runSet, refreshProjects, t],
+    [projects, kind, runSet, refreshSource, t],
   );
 
   const removeFromProject = useCallback(
@@ -181,10 +227,10 @@ export function useMoveToProject(
         setBusyId(null);
       }
       toast.success(t("projects.removeSuccess", { name: resourceName }));
-      refreshProjects();
+      refreshSource(from.id, { sourceProjectStale: false });
       return true;
     },
-    [projects, kind, runSet, refreshProjects, t],
+    [projects, kind, runSet, refreshSource, t],
   );
 
   return { projects, currentProjectId, moveTo, removeFromProject, busyId };
