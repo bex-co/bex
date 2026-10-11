@@ -485,6 +485,160 @@ var _ = Describe("reconciling a static_site App", func() {
 		Expect(app.Status.StaticPrefix).To(Equal(ws + "/" + name + "/rev-1/"))
 	})
 
+	// w4/m197 (QA a79): a built site published v1 (rev-1) and v2 (rev-3), then
+	// saved a publish directory that does not exist. Rolling back to v1 must
+	// copy v1's retained publication — not extract v1's image through today's
+	// directory, and not rebuild with today's command.
+	retainedRollback := func(name string) (types.NamespacedName, *batchv1.Job) {
+		nn := types.NamespacedName{Name: name, Namespace: ns}
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name, Namespace: ns,
+				Annotations: map[string]string{appv1alpha1.AnnotationReleaseGeneration: "4"},
+			},
+			Spec: appv1alpha1.AppSpec{
+				Type:         appv1alpha1.TypeStaticSite,
+				Repo:         "https://github.com/bex-co/bex",
+				RootDir:      "examples/static-site",
+				BuildCommand: "mkdir -p dist && printf 'qa-a79-v2' > dist/index.html",
+				PublishPath:  "qa-a79-missing-output",
+				Expose:       true,
+				ReleaseConfig: &appv1alpha1.ReleaseConfigReference{
+					Generation: 4, Image: "zot/site:gen-1@sha256:aa", StaticPrefix: name + "/rev-1/",
+				},
+			},
+		}
+		Expect(k8sClient.Create(ctx, app)).To(Succeed())
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		app.Status.ActiveRevision = "rev-3"
+		app.Status.StaticPrefix = name + "/rev-3/"
+		app.Status.ReleaseGeneration = 3
+		app.Status.Image = "zot/site:gen-3@sha256:bb"
+		app.Status.Phase = appv1alpha1.PhaseRunning
+		Expect(k8sClient.Status().Update(ctx, app)).To(Succeed())
+		credential := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "static-s3", Namespace: ns},
+			Data: map[string][]byte{
+				"AWS_ACCESS_KEY_ID":     []byte("test-access"),
+				"AWS_SECRET_ACCESS_KEY": []byte("test-secret"),
+			},
+		}
+		Expect(k8sClient.Create(ctx, credential)).To(Succeed())
+		DeferCleanup(func() { _ = k8sClient.Delete(ctx, credential) })
+
+		done := make(chan struct{})
+		go func() {
+			defer GinkgoRecover()
+			defer close(done)
+			r := staticReconciler()
+			for range 3 {
+				_, _ = r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+			}
+		}()
+		job := &batchv1.Job{}
+		jobNN := types.NamespacedName{Name: "pub-" + name + "-rev-4", Namespace: ns}
+		Eventually(func() error { return k8sClient.Get(ctx, jobNN, job) }, "30s", "250ms").Should(Succeed())
+		Eventually(done, "30s").Should(BeClosed())
+		return nn, job
+	}
+
+	It("restores a rollback from the retained publication, whatever the saved publish directory (w4/m197)", func() {
+		const name = "site-retained-rollback"
+		nn, job := retainedRollback(name)
+
+		By("dispatching a retained-copy publish: no extract of the image, no build")
+		Expect(job.Spec.Template.Spec.InitContainers).To(HaveLen(1))
+		fetch := job.Spec.Template.Spec.InitContainers[0]
+		Expect(fetch.Name).To(Equal("fetch"))
+		env := map[string]string{}
+		for _, e := range fetch.Env {
+			env[e.Name] = e.Value
+		}
+		Expect(env).To(HaveKeyWithValue("SOURCE_URI", "s3://bex-static/"+name+"/rev-1/"))
+		Expect(env).NotTo(HaveKey("PUBLISH_PATH"))
+		Expect(job.Spec.Template.Spec.ImagePullSecrets).To(BeEmpty())
+		var bld batchv1.Job
+		Expect(apierrors.IsNotFound(k8sClient.Get(ctx,
+			types.NamespacedName{Name: "bld-" + name + "-gen-4", Namespace: ns}, &bld))).To(BeTrue())
+
+		By("keeping v2 served while the copy runs")
+		app := &appv1alpha1.App{}
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		Expect(app.Status.ActiveRevision).To(Equal("rev-3"))
+		Expect(app.Status.StaticPrefix).To(Equal(name + "/rev-3/"))
+
+		By("switching to the copied revision only once the copy completes")
+		now := metav1.Now()
+		job.Status.StartTime = &now
+		job.Status.CompletionTime = &now
+		job.Status.Conditions = append(job.Status.Conditions,
+			batchv1.JobCondition{Type: batchv1.JobSuccessCriteriaMet, Status: corev1.ConditionTrue},
+			batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
+		)
+		Expect(k8sClient.Status().Update(ctx, job)).To(Succeed())
+		_, _ = staticReconciler().Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
+		Expect(app.Status.ActiveRevision).To(Equal("rev-4"))
+		Expect(app.Status.StaticPrefix).To(Equal(name + "/rev-4/"))
+		Expect(app.Status.Image).To(Equal("zot/site:gen-1@sha256:aa"))
+		Expect(app.Spec.PublishPath).To(Equal("qa-a79-missing-output"), "saved settings stay as saved")
+		Expect(app.Spec.BuildCommand).To(ContainSubstring("qa-a79-v2"))
+
+		By("recording the new revision and backfilling the outgoing served one")
+		for gen, prefix := range map[int64]string{4: name + "/rev-4/", 3: name + "/rev-3/"} {
+			var rec corev1.Secret
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: appv1alpha1.StaticPublicationRecordName(name, gen), Namespace: ns}, &rec)).To(Succeed())
+			Expect(string(rec.Data[appv1alpha1.StaticPublicationPrefixKey])).To(Equal(prefix))
+			Expect(metav1.IsControlledBy(&rec, app)).To(BeTrue())
+		}
+	})
+
+	It("keeps the prior publication serving when the retained source is unavailable (w4/m197)", func() {
+		const name = "site-retained-missing"
+		nn, job := retainedRollback(name)
+
+		pod := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: job.Name + "-abcde", Namespace: ns,
+				Labels: map[string]string{"job-name": job.Name},
+			},
+			Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "upload", Image: "x"}}},
+		}
+		Expect(k8sClient.Create(ctx, pod)).To(Succeed())
+		DeferCleanup(func() { _ = k8sClient.Delete(ctx, pod) })
+		pod.Status.InitContainerStatuses = []corev1.ContainerStatus{{
+			Name: "fetch",
+			State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{
+				ExitCode: 3,
+				Message:  "the retained publication " + name + "/rev-1/ is empty or no longer available, so there is nothing to restore\n",
+			}},
+		}}
+		Expect(k8sClient.Status().Update(ctx, pod)).To(Succeed())
+		now := metav1.Now()
+		job.Status.StartTime = &now
+		job.Status.Conditions = append(job.Status.Conditions,
+			batchv1.JobCondition{Type: batchv1.JobFailureTarget, Status: corev1.ConditionTrue, Reason: "BackoffLimitExceeded"},
+			batchv1.JobCondition{Type: batchv1.JobFailed, Status: corev1.ConditionTrue, Reason: "BackoffLimitExceeded"},
+		)
+		Expect(k8sClient.Status().Update(ctx, job)).To(Succeed())
+		_, _ = staticReconciler().Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+
+		app := &appv1alpha1.App{}
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		Expect(app.Status.ActiveRevision).To(Equal("rev-3"), "an empty restore must never become the served revision")
+		Expect(app.Status.StaticPrefix).To(Equal(name + "/rev-3/"))
+		rollout := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout)
+		Expect(rollout).NotTo(BeNil())
+		Expect(rollout.Reason).To(Equal("PublishFailed"))
+		Expect(rollout.ObservedGeneration).To(Equal(int64(4)))
+		Expect(rollout.Message).To(ContainSubstring("is empty or no longer available"))
+		var rec corev1.Secret
+		Expect(apierrors.IsNotFound(k8sClient.Get(ctx, types.NamespacedName{
+			Name: appv1alpha1.StaticPublicationRecordName(name, 4), Namespace: ns}, &rec))).To(BeTrue())
+	})
+
 	It("fails before dispatch when the publish credential Secret is missing", func() {
 		const name = "site-no-publish-credential"
 		nn := types.NamespacedName{Name: name, Namespace: ns}

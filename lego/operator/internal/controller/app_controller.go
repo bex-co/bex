@@ -806,6 +806,18 @@ func (r *AppReconciler) resolveDeployImage(ctx context.Context, app *appv1alpha1
 	if decision.sourcePending && app.Status.Image == "" {
 		return "", ctrl.Result{}, true, nil
 	}
+	// A static rollback restores the target's retained publication (w4/m197):
+	// nothing to build, and no image to extract through today's settings. The
+	// selection is static-only; any other type refuses it rather than running
+	// it as a runtime selection.
+	if ref := staticRestoreSelection(app); ref != nil {
+		if app.Spec.Type != appv1alpha1.TypeStaticSite || r.Mode != ModeKubernetes {
+			res, err := r.fail(ctx, app, "BadSpec", fmt.Errorf("a retained static publication can only be restored by a static_site on the kubernetes runtime"))
+			return "", res, true, err
+		}
+		res, err := r.reconcileKubernetes(ctx, app, ref.Image, port)
+		return "", res, true, err
+	}
 	image, artifactResolved := reusableArtifactImage(app, decision)
 	// Direct static publish (w9/010): a repo-backed static_site with no
 	// Dockerfile path, no build command, and no native runtime has nothing to
@@ -3700,7 +3712,14 @@ func (r *AppReconciler) publishStaticRevision(ctx context.Context, app *appv1alp
 		PullSecret: r.buildJobPullSecret(app),
 		Client:     r.Client,
 	}
-	if image == "" {
+	if ref := staticRestoreSelection(app); ref != nil {
+		// Rollback (w4/m197): copy the target's retained publication. Neither
+		// the target's image nor today's publish directory takes part.
+		opts = publish.Options{
+			SourcePrefix: ref.StaticPrefix, AppID: opts.AppID, AppUID: opts.AppUID, Revision: rev, Store: r.StaticStore,
+			Namespace: publishNamespace, Workspace: opts.Workspace, AppNamespace: app.Namespace, Client: r.Client,
+		}
+	} else if image == "" {
 		// Direct publish (w9/010): no build ran — the publish Job clones the
 		// repo and uploads rootDir/publishPath as-is.
 		opts.Repo = app.Spec.Repo
@@ -3806,6 +3825,9 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 		res, err := r.publishStaticRevision(ctx, app, image, rev)
 		if err != nil || res.RequeueAfter > 0 {
 			return res, err
+		}
+		if err := r.recordStaticPublications(ctx, app, rev); err != nil {
+			return ctrl.Result{}, err
 		}
 		published = true
 	}

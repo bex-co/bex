@@ -733,11 +733,22 @@ spec:
                     format: int64
                     minimum: 0
                     type: integer
+                  staticPrefix:
+                    description: |-
+                      StaticPrefix is the retained object-store prefix of the target's static
+                      publication (StaticPublicationRecordName). When set, a static_site
+                      publishes this release by copying that prefix — never by extracting Image
+                      through the saved publish directory or rebuilding from saved settings.
+                    maxLength: 512
+                    pattern: ^(?:[a-z0-9][a-z0-9-]*/)?[a-z0-9][a-z0-9-]*/rev-[1-9][0-9]*/$
+                    type: string
                 required:
                 - generation
-                - image
                 - sourceGeneration
                 type: object
+                x-kubernetes-validations:
+                - message: releaseConfig selects an image or a static publication
+                  rule: has(self.image) || has(self.staticPrefix)
               replicas:
                 default: 1
                 description: Replicas for the kubernetes runtime (pods bin-packed

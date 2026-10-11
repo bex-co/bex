@@ -463,12 +463,6 @@ type TriggerParams struct {
 	// restart marks a Restart's trigger: CommitID is the live deploy's commit,
 	// not a caller-chosen ref. Unexported, so no surface can set it.
 	restart bool
-	// rollbackOf marks Rollback re-publishing a static site's earlier commit
-	// (w4/m141): the new deploy row records it as a rollback of this deploy.
-	// Unexported, so no surface can set it.
-	rollbackOf *store.Deploy
-	// disableAutoDeploy carries the dashboard option for static republishing.
-	disableAutoDeploy bool
 }
 
 // ProtectionGuard is the apps-owned protected-environment predicate and guard.
@@ -762,14 +756,10 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		}
 		return nil
 	}
-	disablesAutoDeploy := p.disableAutoDeploy && a.Spec.AutoDeploy
 	d, err := s.openRelease(ctx, a, appID, rowWrite, func(a *appv1alpha1.App, release int64) {
 		stampReleaseGeneration(a, release)
 		stampClearCacheRelease(a, release, p.ClearCache)
 		a.Spec.ReleaseConfig = nil
-		if p.disableAutoDeploy {
-			a.Spec.AutoDeploy = false
-		}
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339Nano)
 		if a.Spec.Repo != "" {
 			a.Spec.Image = ""
@@ -801,20 +791,10 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		if p.ImageURL != "" {
 			image = p.ImageURL
 		}
-		if p.rollbackOf != nil {
-			// Provenance is the target's, whether or not the ref resolved again.
-			if commit.Hash == "" {
-				commit = store.CommitInfo{Hash: p.rollbackOf.Commit, Message: p.rollbackOf.CommitMessage}
-			}
-			return s.Store.CreateRollbackDeploy(ctx, appID, image, p.rollbackOf.ID, release, commit, triggeredBy)
-		}
 		return s.Store.CreateDeploy(ctx, appID, trigger, image, release, commit, triggeredBy)
 	})
 	if err != nil {
 		return DeployView{}, err
-	}
-	if disablesAutoDeploy {
-		s.RecordAutoDeployChanged(ctx, a, false)
 	}
 	if store.IsOpenDeployStatus(d.Status) {
 		s.notifyDeployStarted(ctx, a, service)
@@ -1043,13 +1023,16 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string, opts .
 	if err := s.requireRepointConfirmation(ctx, a); err != nil {
 		return DeployView{}, err
 	}
-	// A static site published straight from its repository has no image to
-	// restore; re-publishing the target's commit restores its files (w4/m141).
-	// It is the commit-pinned trigger path, recorded as a rollback of target.
-	if rollbackRepublishes(a, target) {
-		return s.triggerFetched(ctx, service, a, TriggerParams{CommitID: target.Commit, rollbackOf: &target, disableAutoDeploy: o.DisableAutoDeploy}, store.TriggerRollback)
+	// A static site restores the target's retained publication, built or
+	// published straight from its repository (w4/m197): today's saved publish
+	// directory and build command take no part, and a target with no recorded
+	// publication is refused here, before any rollback row exists.
+	var selected *appv1alpha1.ReleaseConfigReference
+	if a.Spec.Type == appv1alpha1.TypeStaticSite {
+		selected, err = s.staticReleaseSelection(ctx, a, target)
+	} else {
+		selected, err = s.targetReleaseConfig(ctx, a, target, false)
 	}
-	selected, err := s.targetReleaseConfig(ctx, a, target, false)
 	if err != nil {
 		return DeployView{}, err
 	}

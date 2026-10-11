@@ -137,8 +137,5 @@ func effectiveHosts(app *appv1alpha1.App, baseDomain string) []string {
 // empty falls back to the legacy "<name>/<revision>/" so already-published
 // sites keep serving without a republish (docs/ADR074 dual-read).
 func staticServePrefix(app *appv1alpha1.App) string {
-	if app.Status.StaticPrefix != "" {
-		return app.Status.StaticPrefix
-	}
-	return identity.ForApp(app.Name, "").LegacyStaticPrefix(app.Status.ActiveRevision)
+	return identity.ServedStaticPrefix(app.Status.StaticPrefix, app.Name, app.Status.ActiveRevision)
 }
