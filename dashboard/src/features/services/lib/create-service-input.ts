@@ -187,7 +187,9 @@ export function buildCreateServiceInput(
     registryCredentialId: shape.usesRegistryCredential
       ? form.registryCredentialId
       : undefined,
-    rootDir: form.rootDir || undefined,
+    // The Git draft's root survives a tab switch so returning restores it, but
+    // an image source has no repository root to scope (w4/226).
+    rootDir: shape.isGitSource ? form.rootDir || undefined : undefined,
     runtime: shape.isImageSource
       ? "image"
       : shape.isBuildableGit

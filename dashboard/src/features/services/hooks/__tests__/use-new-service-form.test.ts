@@ -40,6 +40,7 @@ vi.mock("@/features/services/hooks/use-repo-runtime-detection", () => ({
 }));
 
 import { useNewServiceForm } from "@/features/services/hooks/use-new-service-form";
+import { buildCreateServiceInput } from "@/features/services/lib/create-service-input";
 
 const REPO: RepoView = {
   id: 1,
@@ -167,5 +168,42 @@ describe("useNewServiceForm plan eligibility (w6/025 paid-only workers)", () => 
 
     act(() => result.current.setServiceType("web_service"));
     expect(result.current.form.plan).toBe("free");
+  });
+});
+
+// w4/226: Public Git URL → Existing Image kept a typed Root Directory hidden
+// in the draft and sent it with the image create, which the API refuses.
+describe("useNewServiceForm source switch keeps Git-only Root Directory local", () => {
+  it("omits the staged root from an image create and restores it on return", () => {
+    const { result } = renderHook(() => useNewServiceForm({}));
+    act(() => result.current.setTab("git"));
+    act(() =>
+      result.current.set({
+        gitUrl: "https://github.com/bex-co/bex",
+        rootDir: "examples/hello-go",
+      }),
+    );
+
+    act(() => result.current.setTab("image"));
+    act(() =>
+      result.current.set({
+        image: "docker.io/library/busybox:1.37",
+        imageCommand: "httpd -f",
+      }),
+    );
+    const image = JSON.parse(
+      JSON.stringify(buildCreateServiceInput(result.current.form)),
+    );
+    expect(image).not.toHaveProperty("rootDir");
+    expect(image).toMatchObject({
+      image: "docker.io/library/busybox:1.37",
+      startCommand: "httpd -f",
+    });
+
+    act(() => result.current.setTab("git"));
+    expect(result.current.form.rootDir).toBe("examples/hello-go");
+    expect(buildCreateServiceInput(result.current.form).rootDir).toBe(
+      "examples/hello-go",
+    );
   });
 });
