@@ -247,6 +247,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **259** — [Cron start events omit the required run ID](259.md) (55m) ← functional QA 2026-10-11 a206; fresh scheduled/manual REST/GraphQL starts omit the matching run ID while completion controls pass; owned cron deleted and session revoked.
+
 - [ ] **258** — [Raw application-metrics headlines show an older instance's value](258.md) (55m) ← functional QA 2026-10-11 a186; fresh desktop/mobile CPU says 0.1% while the replacement is near 100%; current-instance and Max controls agree with the API; owned fixture/session cleanup verified.
 
 - [ ] **257** — [Linked environment-group rows show a false legacy-scope warning while loading](257.md) (45m) ← functional QA 2026-10-11 a180; natural fresh mobile/desktop reloads warn for a valid same-environment link until the scope index settles; owned fixture/session cleanup verified.
