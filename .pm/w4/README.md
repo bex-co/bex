@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m201** — [Restart selects the revision already serving](m201/README.md) (7 tasks, 245m) ← functional QA 2026-10-11 a209; two cutover windows select an older SQL-Live configuration despite the new runtime serving, while settled Restart passes; owned fixture/session cleanup verified.
+
 - [ ] **m200** — [Preserve logical records in mixed stdout/stderr pod logs](m200/README.md) (8 tasks) ← functional QA 2026-10-11 a179; two below-cap mixed-stream batches become a joined prefix and orphan suffix in Live, with complete REST/GraphQL history; actual CRI reader replay confirms the producer boundary, owned fixture/session cleanup verified.
 - [x] **m199** — [Preserve the first timestamp of a reassembled CRI log record](done/m199/README.md) (6 tasks) — **DONE 2026-10-11** (patched Alloy v1.11.2 collector pinned; live 50,075-byte record shares its first-chunk stamp across REST/GraphQL/SSE and renders once on desktop/mobile; m96 cron/framing/cancel controls replayed) ← functional QA 2026-10-11 a177; an identical below-cap message has a 120 ms history/live timestamp difference and renders twice on fresh desktop/mobile; pinned Alloy replay confirms the final-chunk stamp, owned fixture/session cleanup verified.
 
@@ -246,6 +248,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 - [x] **m107** — [Log history past the newest 100 lines is unreachable on GraphQL and MCP](done/m107/README.md) (8 tasks) ← from live `/qa-find-bugs` 2026-09-14 pass 37; done 2026-09-16 (REST next-page cursors followable; GraphQL/MCP return the Render envelope; dashboard pages on scroll-up + truncation notice; `get_postgres_logs`/`get_key_value_logs` stay bare by design — use `list_logs`)
 
 ## Inbox
+
+- [ ] **260** — [Environment Export closes during background refresh](260.md) (55m) ← functional QA 2026-10-11 a209; fresh desktop/mobile menu loss through a transient tooltip remount, immediate Copy control passes; owned fixture/session cleanup verified.
 
 - [ ] **259** — [Cron start events omit the required run ID](259.md) (55m) ← functional QA 2026-10-11 a206; fresh scheduled/manual REST/GraphQL starts omit the matching run ID while completion controls pass; owned cron deleted and session revoked.
 
