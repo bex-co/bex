@@ -1,20 +1,22 @@
 # w4 · m201 — Restart selects the revision already serving
 
-**Worker:** worker4 **Goal:** Restart preserves the actually serving artifact and configuration when deploy history is still catching up. **Status:** todo
+**Worker:** worker4 **Goal:** Restart preserves the actually serving artifact and configuration when deploy history is still catching up. **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Audit current-release selection and shared dispatch callers | 45m | — |
-| t002 | Select the serving release within Restart dispatch and retries | 60m | t001 |
-| t003 | Replay both cutover windows and settled controls | 45m | t002 |
-| t004 | Render parity and surface verification | 25m | t003 |
-| t005 | Simplify | 15m | t004 |
-| t006 | Test coverage | 45m | t004, t005 |
-| t007 | Closeout | 10m | t006 |
+| t001 | Audit current-release selection and shared dispatch callers — **DONE** | 45m | — |
+| t002 | Select the serving release within Restart dispatch and retries — **DONE** | 60m | t001 |
+| t003 | Replay both cutover windows and settled controls — **DONE** | 45m | t002 |
+| t004 | Render parity and surface verification — **DONE** | 25m | t003 |
+| t005 | Simplify — **DONE** | 15m | t004 |
+| t006 | Test coverage — **DONE** | 45m | t004, t005 |
+| t007 | Closeout — **DONE** | 10m | t006 |
 
 ## Definition of done
+
+Met 2026-10-11 by `34e63b751`; [verification](verification.md).
 
 Repeat the captured production dashboard journey on one owned Free prebuilt Python web service, same image/working command and synthetic V1/V2 environment marker. Timestamp complete requests/responses and public JSON reads; delete the service and revoke only the owned session afterwards.
 
