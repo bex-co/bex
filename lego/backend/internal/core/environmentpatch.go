@@ -143,14 +143,22 @@ type nameUse uint8
 const (
 	nameWritten  nameUse = iota + 1 // a value, generated value, or rename landed here
 	nameDeleted                     // explicitly deleted; one opaque rename may refill it
-	nameConsumed                    // a rename moved this name's value away
+	nameConsumed                    // a rename moved this name's value away; one plain write may refill it
 )
 
-// admits reports whether an operation may follow an earlier one on its name:
-// only an opaque rename from a distinct source into an explicitly deleted
-// name, how a staged editor replaces a destination it removed (w4/m195).
-func (u nameUse) admits(key, fromKey string) bool {
-	return u == nameDeleted && fromKey != "" && fromKey != key
+// admits reports whether op may follow an earlier operation on its name: an
+// opaque rename from a distinct source into an explicitly deleted name, how a
+// staged editor replaces a destination it removed (w4/m195); or a value write
+// into a name a rename vacated, how it puts a new value at a moved one's old
+// name (w4/234).
+func (u nameUse) admits(key, fromKey string, remove bool) bool {
+	switch u {
+	case nameDeleted:
+		return fromKey != "" && fromKey != key
+	case nameConsumed:
+		return fromKey == "" && !remove
+	}
+	return false
 }
 
 func applyRenameOp(m map[string]string, used map[string]nameUse, op mapPatchOp, key, fromKey string, wording mapPatchWording) error {
@@ -196,7 +204,7 @@ func applyMapPatch(m map[string]string, ops []mapPatchOp, wording mapPatchWordin
 			return ReservedEnvKeyError(key)
 		}
 		fromKey := strings.TrimSpace(op.fromKey)
-		if use, ok := used[key]; ok && !use.admits(key, fromKey) {
+		if use, ok := used[key]; ok && !use.admits(key, fromKey, op.remove) {
 			return fmt.Errorf("%w: duplicate %s operation for %q", ErrBadRequest, wording.key.noun, key)
 		}
 		if op.remove && fromKey == "" {
