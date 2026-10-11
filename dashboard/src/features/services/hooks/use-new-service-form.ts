@@ -28,6 +28,8 @@ interface PlainFields {
   imageCommand: string;
   registryCredentialId: string;
   branch: string;
+  /** The Public Git tab's Branch, kept for the URL it was typed against. */
+  gitBranchDraft: { gitUrl: string; branch: string } | null;
   rootDir: string;
   planOverride: string | null;
   port: string;
@@ -65,6 +67,7 @@ export function useNewServiceForm(search: NewServiceSearch) {
     imageCommand: "",
     registryCredentialId: "",
     branch: "",
+    gitBranchDraft: null,
     rootDir: "",
     planOverride: null,
     // The platform's own default (appv1alpha1.DefaultPort), pre-filled so the
@@ -142,9 +145,22 @@ export function useNewServiceForm(search: NewServiceSearch) {
     plan: planOverride ?? offeredTypes[0]?.id ?? "",
   };
 
-  // Switching source tab abandons whatever the previous tab had selected.
+  // Switching source tab abandons whatever the previous tab had selected —
+  // except a Public Git Branch, which returning to the same URL restores
+  // (w4/240); it never carries over to a different repository URL.
   const setTab = useCallback(
-    (tab: SourceTab) => set({ tab, selectedRepo: null, branch: "" }),
+    (tab: SourceTab) =>
+      set((current) => {
+        const gitBranchDraft =
+          current.tab === "git"
+            ? { gitUrl: current.gitUrl, branch: current.branch }
+            : current.gitBranchDraft;
+        const branch =
+          tab === "git" && gitBranchDraft?.gitUrl === current.gitUrl
+            ? gitBranchDraft.branch
+            : "";
+        return { tab, selectedRepo: null, branch, gitBranchDraft };
+      }),
     [set],
   );
 

@@ -207,3 +207,72 @@ describe("useNewServiceForm source switch keeps Git-only Root Directory local", 
     );
   });
 });
+
+// w4/240: a GitHub/Image round trip cleared the Public Git Branch while the
+// URL, Root Directory and Publish Directory survived.
+describe("useNewServiceForm Public Git Branch draft", () => {
+  const URL = "https://github.com/bex-co/bex";
+  const BRANCH = "copilot/fix-inconsistent-outdated-docs";
+
+  function renderGitDraft(branch: string) {
+    const { result } = renderHook(() =>
+      useNewServiceForm({ type: "static_site" }),
+    );
+    act(() => result.current.setTab("git"));
+    act(() =>
+      result.current.set({
+        gitUrl: URL,
+        branch,
+        rootDir: "examples/static-site",
+        publishPath: ".",
+      }),
+    );
+    return result;
+  }
+
+  it.each(["github", "image"] as const)(
+    "restores the branch after a %s round trip with the same URL",
+    (away) => {
+      const result = renderGitDraft(BRANCH);
+      act(() => result.current.setTab(away));
+      act(() => result.current.setTab("git"));
+      expect(result.current.form).toMatchObject({
+        gitUrl: URL,
+        branch: BRANCH,
+        rootDir: "examples/static-site",
+        publishPath: ".",
+      });
+      expect(
+        JSON.parse(
+          JSON.stringify(buildCreateServiceInput(result.current.form)),
+        ),
+      ).toMatchObject({ repo: URL, branch: BRANCH });
+    },
+  );
+
+  it("keeps an intentionally blank branch blank", () => {
+    const result = renderGitDraft("");
+    act(() => result.current.setTab("github"));
+    act(() => result.current.setTab("git"));
+    expect(result.current.form.branch).toBe("");
+  });
+
+  it("never carries the Git branch into a GitHub repository selection", () => {
+    const result = renderGitDraft(BRANCH);
+    act(() => result.current.setTab("github"));
+    expect(result.current.form.branch).toBe("");
+    act(() => result.current.set({ selectedRepo: REPO, branch: "main" }));
+    expect(buildCreateServiceInput(result.current.form)).toMatchObject({
+      repo: REPO.cloneUrl,
+      branch: "main",
+    });
+  });
+
+  it("does not restore one repository's branch to a different URL", () => {
+    const result = renderGitDraft(BRANCH);
+    act(() => result.current.setTab("github"));
+    act(() => result.current.set({ gitUrl: "https://github.com/acme/other" }));
+    act(() => result.current.setTab("git"));
+    expect(result.current.form.branch).toBe("");
+  });
+});
