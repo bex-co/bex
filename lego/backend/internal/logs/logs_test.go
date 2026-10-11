@@ -2213,3 +2213,43 @@ func TestManagedPostgresPodLogsUnwrapCNPG(t *testing.T) {
 		}
 	}
 }
+
+// w4/m200: the node kubelet writes each stdout/stderr record whole, stamped with
+// its first chunk, so a stderr line that completed while a long stdout record
+// was still being written arrives first with the later stamp. The finite and
+// follow readers keep both records byte-exact and the finite read orders them
+// by their own timestamps.
+func TestPodReadersKeepInterleavedRecordsWhole(t *testing.T) {
+	mixed := `{"case":"qa-m200-mixed","value":"` + strings.Repeat("x", 48000) + `","end":"qa-m200-mixed-end"}`
+	stderr := `{"case": "qa-m200-mixed-stderr", "detail": "independent"}`
+	stream := []string{
+		"2026-10-11T15:28:14.670223625Z " + stderr,
+		"2026-10-11T15:28:14.580061542Z " + mixed,
+		"2026-10-11T15:28:14.760585958Z qa-m200-done",
+	}
+
+	svc := newService(map[string][]string{webInst: stream}, sampleApp("web"), podFor("web", webInst))
+	entries, err := svc.Logs(context.Background(), "web", 0)
+	if err != nil {
+		t.Fatalf("Logs: %v", err)
+	}
+	var got []string
+	for _, e := range entries {
+		got = append(got, e.Timestamp+" "+e.Message)
+	}
+	if want := []string{stream[1], stream[0], stream[2]}; !slices.Equal(got, want) {
+		t.Errorf("finite read = %d records %.80q, want the two records whole in time order", len(got), got)
+	}
+
+	follow := &Service{PodLogsFollow: staticLogStream(map[string][]string{webInst: stream})}
+	ch := make(chan LogEntry, len(stream)+1)
+	follow.streamContainerLogs(context.Background(), "default", "web", webInst, "app", LogTypeApp, time.Time{}, ch, nil)
+	close(ch)
+	got = got[:0]
+	for e := range ch {
+		got = append(got, e.Timestamp+" "+e.Message)
+	}
+	if !slices.Equal(got, stream) {
+		t.Errorf("follow = %.80q, want each record whole in arrival order", got)
+	}
+}

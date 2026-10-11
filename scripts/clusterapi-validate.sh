@@ -612,4 +612,24 @@ for kubelet_args_file in "$OVERLAY" "$SANDBOX_OVERLAY" "$CAPD_OVERLAY"; do
   fi
 done
 
+# w4/m200: the bake must keep installing the reviewed patched kubelet. A
+# recipe that drops the step, or a release bump that leaves the patch behind,
+# would silently restore the stock reader that joins stdout/stderr records.
+echo "==> the node bake installs the reviewed CRI-record kubelet"
+FRAMING="infra/packer/log-record-framing"
+pk_kubelet_sha="$(pk_var kubelet_amd64_sha256)"
+pk_kubelet_tag="$(pk_var kubelet_release_tag)"
+framing_version="$(sed -n 's/^ARG KUBERNETES_VERSION=v//p' "$FRAMING/Dockerfile")"
+if ! [[ "$pk_kubelet_sha" =~ ^[0-9a-f]{64}$ ]] \
+  || ! grep -qF 'echo \"$KUBELET_AMD64_SHA256  /tmp/kubelet\" | sha256sum --check -' "$PACKER" \
+  || ! grep -qF 'install -m 0755 /tmp/kubelet /usr/bin/kubelet' "$PACKER" \
+  || [ ! -s "$FRAMING/kubelet-cri-records.patch" ]; then
+  echo "FAIL: $PACKER must install the sha256-pinned patched kubelet from $FRAMING (w4/m200)" >&2
+  fail=1
+fi
+if [ "$framing_version" != "$pk_k8s" ] || [[ "$pk_kubelet_tag" != "bex-kubelet/v$pk_k8s-"* ]]; then
+  echo "FAIL: patched kubelet (Dockerfile v$framing_version, release $pk_kubelet_tag) does not match the baked Kubernetes v$pk_k8s — rebuild and re-pin it with the bump (w4/m200)" >&2
+  fail=1
+fi
+
 [ "$fail" -eq 0 ] && echo "PASS: CAPH overlay is internally consistent (reviewed snapshot ⟺ no privileged bootstrap downloads)" || { echo "FAIL: see errors above" >&2; exit 1; }
