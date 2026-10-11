@@ -1,0 +1,72 @@
+Upstream: github.com/grafana/alloy v1.11.2 (4a8f93cd1755dd8205c3a9d6c35b136c476cff92).
+w4/m199: a reassembled CRI record keeps its FIRST chunk's timestamp.
+
+diff --git a/internal/component/loki/process/stages/extensions.go b/internal/component/loki/process/stages/extensions.go
+index 3c7a426..4e1669f 100644
+--- a/internal/component/loki/process/stages/extensions.go
++++ b/internal/component/loki/process/stages/extensions.go
+@@ -137,6 +137,7 @@ func (c *cri) Run(entry chan Entry) chan Entry {
+ 				builder.WriteString(prev.Line)
+ 				builder.WriteString(e.Line)
+ 				e.Line = builder.String()
++				keepFirstChunkTime(&e, prev)
+ 			}
+ 			c.ensureTruncateIfRequired(&e)
+ 			c.partialLines[fingerprint] = e
+@@ -153,6 +154,7 @@ func (c *cri) Run(entry chan Entry) chan Entry {
+ 			builder.WriteString(prev.Line)
+ 			builder.WriteString(e.Line)
+ 			e.Line = builder.String()
++			keepFirstChunkTime(&e, prev)
+ 			c.ensureTruncateIfRequired(&e)
+ 			delete(c.partialLines, fingerprint)
+ 		}
+@@ -162,6 +164,15 @@ func (c *cri) Run(entry chan Entry) chan Entry {
+ 	return in
+ }
+ 
++// keepFirstChunkTime stamps a reassembled record with its first chunk's time,
++// as the kubelet's own log reader does, instead of the last chunk's.
++func keepFirstChunkTime(e *Entry, first Entry) {
++	e.Timestamp = first.Timestamp
++	if t, ok := first.Extracted["time"]; ok {
++		e.Extracted["time"] = t
++	}
++}
++
+ func (c *cri) ensureTruncateIfRequired(e *Entry) {
+ 	if c.cfg.MaxPartialLineSizeTruncate && len(e.Line) > int(c.cfg.MaxPartialLineSize) {
+ 		e.Line = e.Line[:c.cfg.MaxPartialLineSize]
+diff --git a/internal/component/loki/process/stages/extensions_test.go b/internal/component/loki/process/stages/extensions_test.go
+index fba4352..dadee64 100644
+--- a/internal/component/loki/process/stages/extensions_test.go
++++ b/internal/component/loki/process/stages/extensions_test.go
+@@ -222,6 +222,28 @@ func TestCRI_tags(t *testing.T) {
+ 	}
+ }
+ 
++func TestCRI_partialKeepsFirstChunkTime(t *testing.T) {
++	p, err := NewCRI(util_log.Logger, DefaultCRIConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
++	require.NoError(t, err)
++
++	var got []Entry
++	for _, line := range []string{
++		"2026-10-11T10:35:00.100000001Z stdout P first-",
++		"2026-10-11T10:35:00.150000000Z stdout P middle-",
++		"2026-10-11T10:35:01.220000002Z stdout F last",
++		"2026-10-11T10:35:01.300000003Z stdout F control",
++	} {
++		got = append(got, processEntries(p, newEntry(nil, model.LabelSet{"foo": "bar"}, line, time.Now()))...)
++	}
++
++	require.Len(t, got, 2)
++	assert.Equal(t, "first-middle-last", got[0].Line)
++	assert.Equal(t, time.Date(2026, 10, 11, 10, 35, 0, 100000001, time.UTC), got[0].Timestamp.UTC())
++	assert.Equal(t, "2026-10-11T10:35:00.100000001Z", got[0].Extracted["time"])
++	assert.Equal(t, "control", got[1].Line)
++	assert.Equal(t, time.Date(2026, 10, 11, 10, 35, 1, 300000003, time.UTC), got[1].Timestamp.UTC())
++}
++
+ func TestNewCri(t *testing.T) {
+ 	tests := map[string]struct {
+ 		entry          string
