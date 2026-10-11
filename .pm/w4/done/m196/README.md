@@ -1,17 +1,17 @@
 # w4 · m196 — Keep plan-picker loading geometry faithful
 
-**Worker:** worker4 **Goal:** the Instance Type page preserves its ready Free/Paid structure and footer position while catalog data load **Status:** todo
+**Worker:** worker4 **Goal:** the Instance Type page preserves its ready Free/Paid structure and footer position while catalog data load **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Match the known-type picker loading groups and dimensions | 40m | — |
-| t002 | Audit and verify the shared plan-loading callers and types | 30m | t001 |
-| t003 | Render parity | 15m | t002 |
-| t004 | Simplify | 10m | t003 |
-| t005 | Test coverage | 30m | t003 |
-| t006 | Closeout | 5m | t004, t005 |
+| t001 | Match the known-type picker loading groups and dimensions — **DONE** | 40m | — |
+| t002 | Audit and verify the shared plan-loading callers and types — **DONE** | 30m | t001 |
+| t003 | Render parity — **DONE** | 15m | t002 |
+| t004 | Simplify — **DONE** | 10m | t003 |
+| t005 | Test coverage — **DONE** | 30m | t003 |
+| t006 | Closeout — **DONE** | 5m | t004, t005 |
 
 ## Definition of done
 
@@ -29,3 +29,7 @@
 - **Scope/size:** about 2h10 across implementation, the shared-caller/type audit and meaningful geometry verification. This includes unresolved-type handling rather than patching one screenshot.
 - **Render parity:** included for the visible UI change; use the existing captured ready grouping, preserve deliberate price/contact omissions and API semantics. No Render loading-animation parity was observed.
 - **Cleanup:** owned fixture deleted, six baseline ID families restored, own session revoked, old whoami 401 and cookies 0. Local ledger cleanupVerified true. Evidence screenshots exist and were viewed.
+
+## Closeout
+
+Shipped in `599fb16c6` (deploy.yml run 38122951438 green); live and local evidence in [verification.md](verification.md). Closed 2026-10-11.
