@@ -15,10 +15,14 @@ describe("database detail tab search contract", () => {
     expect(validate({ tab: "metrics" })).toStrictEqual({
       tab: undefined,
       ...CLEARED_RANGE_SEARCH,
+      text: undefined,
+      instance: undefined,
     });
     expect(validate({})).toStrictEqual({
       tab: undefined,
       ...CLEARED_RANGE_SEARCH,
+      text: undefined,
+      instance: undefined,
     });
   });
 
@@ -43,7 +47,12 @@ describe("database detail tab search contract", () => {
       rangeEnd: "2026-07-01T06:00:00.000Z",
     });
     // …and malformed ranges come back undefined (default behavior preserved).
-    const logsTab = { tab: "logs", ...CLEARED_RANGE_SEARCH };
+    const logsTab = {
+      tab: "logs",
+      ...CLEARED_RANGE_SEARCH,
+      text: undefined,
+      instance: undefined,
+    };
     expect(validate({ tab: "logs", range: "6h" })).toStrictEqual(logsTab);
     expect(validate({ tab: "logs", range: "custom" })).toStrictEqual(logsTab);
     // The Logs page's `r` Render alias is deliberately not honored here.
