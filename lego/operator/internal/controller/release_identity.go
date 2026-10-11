@@ -480,7 +480,7 @@ func stampedReleaseGeneration(app *appv1alpha1.App) (int64, bool) {
 }
 
 func successfulReleaseGeneration(app *appv1alpha1.App) int64 {
-	if generation, ok := revisionGeneration(app.Status.ActiveRevision); ok {
+	if generation, ok := appv1alpha1.RevisionGeneration(app.Status.ActiveRevision); ok {
 		return generation
 	}
 	// Modern reconciliation records fingerprints before an image becomes ready.
@@ -547,7 +547,7 @@ func requestedReleaseGeneration(app *appv1alpha1.App) int64 {
 }
 
 func activeRevisionGeneration(app *appv1alpha1.App) int64 {
-	if generation, ok := revisionGeneration(app.Status.ActiveRevision); ok {
+	if generation, ok := appv1alpha1.RevisionGeneration(app.Status.ActiveRevision); ok {
 		return generation
 	}
 	if app.Status.ObservedGeneration > 0 {
@@ -565,16 +565,6 @@ func releaseGeneration(app *appv1alpha1.App) int64 {
 
 func releaseRevision(app *appv1alpha1.App) string {
 	return fmt.Sprintf("rev-%d", releaseGeneration(app))
-}
-
-// revisionGeneration parses releaseRevision's "rev-N" back to N.
-func revisionGeneration(rev string) (int64, bool) {
-	raw, ok := strings.CutPrefix(rev, "rev-")
-	if !ok {
-		return 0, false
-	}
-	generation, err := strconv.ParseInt(raw, 10, 64)
-	return generation, err == nil && generation > 0
 }
 
 func releaseBuildRevision(app *appv1alpha1.App) string {
