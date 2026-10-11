@@ -72,6 +72,28 @@ function renderServiceRootSkeleton(base: "/services" | "/static") {
   return render(<RouterProvider router={router} />);
 }
 
+function renderServicePlanParentSkeleton(serviceType: string | null) {
+  const rootRoute = createRootRoute({ component: Outlet });
+  const resourceRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/services/$serviceId",
+    component: () => (
+      <ServiceRouteContentSkeleton base="/services" serviceType={serviceType} />
+    ),
+  });
+  const planRoute = createRoute({
+    getParentRoute: () => resourceRoute,
+    path: "/plan",
+    component: () => null,
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([resourceRoute.addChildren([planRoute])]),
+    history: createMemoryHistory({ initialEntries: ["/services/srv-1/plan"] }),
+    context: {},
+  });
+  return render(<RouterProvider router={router} />);
+}
+
 describe("route-shaped skeleton geometry (w5/m79)", () => {
   it.each([
     [
@@ -371,6 +393,31 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
       } else {
         expect(card).toHaveClass("min-h-[2458px]", "sm:min-h-0");
       }
+    },
+  );
+});
+
+describe("service plan pending groups (w4/m196)", () => {
+  function groupCards(container: HTMLElement): number[] {
+    return [
+      ...container.querySelectorAll(
+        '[data-route-skeleton="service-plan"] [data-instance-type-group]',
+      ),
+    ].map((group) => group.children[1].children.length);
+  }
+
+  it.each([
+    ["web_service", [1, 6]],
+    ["cron_job", [1, 6]],
+    ["background_worker", [6]],
+    ["private_service", [6]],
+    // Undecided: never guess Free eligibility — only the shared paid ladder.
+    [null, [6]],
+  ])(
+    "parent-pending plan frame for %s reserves its ready Free/Paid groups",
+    async (serviceType, cards) => {
+      const { container } = renderServicePlanParentSkeleton(serviceType);
+      await waitFor(() => expect(groupCards(container)).toEqual(cards));
     },
   );
 });

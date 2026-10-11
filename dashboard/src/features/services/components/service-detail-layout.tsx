@@ -12,6 +12,7 @@ import {
 import { useSignInAgain } from "@/common/lib/auth/sign-in-again";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useServer } from "@/features/services/hooks/use-server";
+import { useCachedServiceType } from "@/features/services/hooks/use-cached-service-type";
 import { useLatestDeploy } from "@/features/deploys/hooks/use-latest-deploy";
 import { useServiceLifecycle } from "@/features/services/hooks/use-service-lifecycle";
 import {
@@ -151,7 +152,7 @@ export function ServiceDetailLayout({
               {service ? (
                 <Outlet />
               ) : (
-                <ServiceRouteContentSkeleton base={base} />
+                <PendingTabContent serviceId={serviceId} base={base} />
               )}
             </div>
           </div>
@@ -161,4 +162,20 @@ export function ServiceDetailLayout({
   }
 
   return <ServiceBaseProvider value={base}>{content}</ServiceBaseProvider>;
+}
+
+/** Before the server read lands, the list cache may already know the type. */
+function PendingTabContent({
+  serviceId,
+  base,
+}: {
+  serviceId: string;
+  base: ServiceBase;
+}) {
+  return (
+    <ServiceRouteContentSkeleton
+      base={base}
+      serviceType={useCachedServiceType(serviceId)}
+    />
+  );
 }

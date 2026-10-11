@@ -27,6 +27,9 @@ const serverState: UseServerResult = {
 vi.mock("@/features/services/hooks/use-server", () => ({
   useServer: () => serverState,
 }));
+vi.mock("@/features/services/hooks/use-cached-service-type", () => ({
+  useCachedServiceType: () => null,
+}));
 // The shared topbar's service switcher reads sibling services and project /
 // environment context over Apollo; stub those at the hook boundary so this
 // render needs no ApolloProvider (the pattern every other detail test uses).

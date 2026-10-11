@@ -7,7 +7,6 @@ import {
   CardContent,
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
-import { PlanPickerGridSkeleton } from "@/common/components/detail-skeletons";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
@@ -20,6 +19,12 @@ import {
   formatInstanceMemory,
   offeredInstanceTypes,
 } from "@/features/services/lib/instance-type";
+import {
+  INSTANCE_TYPE_CARD_FRAME,
+  InstanceTypeCardBody,
+  InstanceTypeGroup,
+  InstanceTypeGroupsSkeleton,
+} from "@/features/services/components/instance-type-groups";
 import { cn } from "@/common/lib/utils/utils.ts";
 
 export interface InstanceTypePickerProps {
@@ -90,7 +95,7 @@ export function InstanceTypePicker({
       </CardHeader>
       <CardContent className="space-y-6">
         {loading && instanceTypes.length === 0 ? (
-          <PlanPickerGridSkeleton />
+          <InstanceTypeGroupsSkeleton serviceType={serviceType} />
         ) : (
           <div
             role="radiogroup"
@@ -98,7 +103,7 @@ export function InstanceTypePicker({
             className="space-y-4"
           >
             {free.length > 0 && (
-              <CardGroup label={t("services.planPickerFreeGroup")}>
+              <InstanceTypeGroup label={t("services.planPickerFreeGroup")}>
                 {free.map((it) => (
                   <InstanceTypeCard
                     key={it.id}
@@ -107,10 +112,10 @@ export function InstanceTypePicker({
                     onSelect={() => setSelected(it.id)}
                   />
                 ))}
-              </CardGroup>
+              </InstanceTypeGroup>
             )}
             {paid.length > 0 && (
-              <CardGroup label={t("services.planPickerPaidGroup")}>
+              <InstanceTypeGroup label={t("services.planPickerPaidGroup")}>
                 {paid.map((it) => (
                   <InstanceTypeCard
                     key={it.id}
@@ -119,7 +124,7 @@ export function InstanceTypePicker({
                     onSelect={() => setSelected(it.id)}
                   />
                 ))}
-              </CardGroup>
+              </InstanceTypeGroup>
             )}
           </div>
         )}
@@ -164,25 +169,6 @@ export function InstanceTypePicker({
   );
 }
 
-function CardGroup({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-        {label}
-      </div>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {children}
-      </div>
-    </div>
-  );
-}
-
 function InstanceTypeCard({
   instanceType,
   selected,
@@ -199,16 +185,16 @@ function InstanceTypeCard({
       aria-checked={selected}
       onClick={onSelect}
       className={cn(
-        "rounded-lg border p-4 text-left transition-colors",
-        "hover:border-foreground/50",
+        INSTANCE_TYPE_CARD_FRAME,
+        "transition-colors hover:border-foreground/50",
         selected ? "border-primary ring-1 ring-primary" : "border-border",
       )}
     >
-      <div className="mb-2 font-semibold">{instanceType.name}</div>
-      <div className="space-y-0.5 text-sm text-muted-foreground">
-        <div>{formatInstanceMemory(instanceType.memory)} (RAM)</div>
-        <div>{formatInstanceCPU(instanceType.cpu)}</div>
-      </div>
+      <InstanceTypeCardBody
+        name={instanceType.name}
+        memory={`${formatInstanceMemory(instanceType.memory)} (RAM)`}
+        cpu={formatInstanceCPU(instanceType.cpu)}
+      />
     </button>
   );
 }

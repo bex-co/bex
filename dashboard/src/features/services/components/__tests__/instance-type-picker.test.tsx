@@ -166,6 +166,91 @@ describe("InstanceTypePicker", () => {
     expect(screen.queryByText("settings page")).not.toBeInTheDocument();
   });
 
+  // The catalog-loading state is a structural preview of the ready picker —
+  // the same group stack, headings, grid and card frame/text rows.
+  function groupShape(root: Element) {
+    return [...root.querySelectorAll("[data-instance-type-group]")].map((g) => {
+      const [label, grid] = [...g.children];
+      return {
+        group: g.className,
+        label: label.className,
+        grid: grid.className,
+        cards: [...grid.children].map((card) => ({
+          frame: ["rounded-lg", "border", "p-4"].every((c) =>
+            card.classList.contains(c),
+          ),
+          rows: [...card.children].map((row) => row.className),
+          lines: [...card.children[1].children].length,
+        })),
+      };
+    });
+  }
+
+  function cardContent(container: HTMLElement) {
+    return container.querySelector('[data-slot="card-content"]')!;
+  }
+
+  it.each([
+    ["web_service", ["Free", "Paid"]],
+    ["cron_job", ["Free", "Paid"]],
+    ["background_worker", ["Paid"]],
+    ["private_service", ["Paid"]],
+  ])(
+    "loads a %s catalog in its ready grouping with inert actions",
+    async (serviceType, readyGroups) => {
+      const catalog = [
+        FREE,
+        ...[
+          "starter",
+          "standard",
+          "pro",
+          "pro_plus",
+          "pro_max",
+          "pro_ultra",
+        ].map((id) => ({ ...STANDARD, id, name: id })),
+      ];
+      instanceTypesState.instanceTypes = [];
+      instanceTypesState.loading = true;
+      const pending = renderPicker("standard", serviceType);
+      await screen.findByText("Pick an Instance Type");
+      const pendingShape = groupShape(cardContent(pending.container));
+      expect(screen.queryAllByRole("radio")).toHaveLength(0);
+      expect(
+        screen.getByRole("button", { name: "Save Changes" }),
+      ).toBeDisabled();
+      pending.unmount();
+
+      instanceTypesState.instanceTypes = catalog;
+      instanceTypesState.loading = false;
+      const ready = renderPicker("standard", serviceType);
+      await screen.findByRole("radiogroup");
+      const readyShape = groupShape(cardContent(ready.container));
+
+      expect(readyShape).toHaveLength(readyGroups.length);
+      for (const label of readyGroups) {
+        expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+      }
+      // Same groups, heading/grid classes, card frames and text rows.
+      expect(pendingShape).toEqual(readyShape);
+      expect(screen.getByRole("radio", { name: /^standard/ })).toHaveAttribute(
+        "aria-checked",
+        "true",
+      );
+      expect(
+        screen.getByRole("button", { name: "Save Changes" }),
+      ).toBeDisabled();
+    },
+  );
+
+  it("never reserves a Free group while the service type is undecided", async () => {
+    instanceTypesState.instanceTypes = [];
+    instanceTypesState.loading = true;
+    const { container } = renderPicker(null, null);
+    await screen.findByText("Pick an Instance Type");
+
+    expect(groupShape(cardContent(container))).toHaveLength(1);
+  });
+
   it("shows an error card instead of the picker when the catalog query fails", async () => {
     instanceTypesState.error = new Error("network down");
     renderPicker("standard");
