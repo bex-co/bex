@@ -136,7 +136,24 @@ type mapPatchWording struct {
 	deleteConflicts string
 }
 
-func applyRenameOp(m map[string]string, seen map[string]struct{}, op mapPatchOp, key, fromKey string, wording mapPatchWording) error {
+// nameUse records what earlier operations in one batch did to a name, so a
+// later operation can be checked against it.
+type nameUse uint8
+
+const (
+	nameWritten  nameUse = iota + 1 // a value, generated value, or rename landed here
+	nameDeleted                     // explicitly deleted; one opaque rename may refill it
+	nameConsumed                    // a rename moved this name's value away
+)
+
+// admits reports whether an operation may follow an earlier one on its name:
+// only an opaque rename from a distinct source into an explicitly deleted
+// name, how a staged editor replaces a destination it removed (w4/m195).
+func (u nameUse) admits(key, fromKey string) bool {
+	return u == nameDeleted && fromKey != "" && fromKey != key
+}
+
+func applyRenameOp(m map[string]string, used map[string]nameUse, op mapPatchOp, key, fromKey string, wording mapPatchWording) error {
 	// Renaming a stored key away is how an inadmissible name gets fixed.
 	if _, stored := m[fromKey]; wording.key.problem(fromKey) != "" && !stored {
 		return wording.key.refuse(fromKey)
@@ -144,7 +161,7 @@ func applyRenameOp(m map[string]string, seen map[string]struct{}, op mapPatchOp,
 	if op.remove || op.hasPayload {
 		return fmt.Errorf("%w: %s rename %q cannot combine with %s", ErrBadRequest, wording.key.noun, key, wording.renameConflicts)
 	}
-	if _, duplicate := seen[fromKey]; duplicate && fromKey != key {
+	if _, duplicate := used[fromKey]; duplicate && fromKey != key {
 		return fmt.Errorf("%w: conflicting %s operation for %q", ErrBadRequest, wording.key.noun, fromKey)
 	}
 	value, ok := m[fromKey]
@@ -154,7 +171,9 @@ func applyRenameOp(m map[string]string, seen map[string]struct{}, op mapPatchOp,
 	if _, occupied := m[key]; occupied && key != fromKey {
 		return fmt.Errorf("%w: %s rename destination %q already exists", ErrBadRequest, wording.key.noun, key)
 	}
-	seen[fromKey] = struct{}{}
+	if fromKey != key {
+		used[fromKey] = nameConsumed
+	}
 	delete(m, fromKey)
 	m[key] = value
 	return nil
@@ -164,7 +183,7 @@ func applyRenameOp(m map[string]string, seen map[string]struct{}, op mapPatchOp,
 // (wording.key.reserved) is refused only on a write: a delete or a rename
 // *away from* one stays legal so an already-stored one can be removed.
 func applyMapPatch(m map[string]string, ops []mapPatchOp, wording mapPatchWording) error {
-	seen := make(map[string]struct{}, len(ops))
+	used := make(map[string]nameUse, len(ops))
 	for _, op := range ops {
 		key := strings.TrimSpace(op.key)
 		// A key already stored can always be deleted, even one a later rule
@@ -177,12 +196,16 @@ func applyMapPatch(m map[string]string, ops []mapPatchOp, wording mapPatchWordin
 			return ReservedEnvKeyError(key)
 		}
 		fromKey := strings.TrimSpace(op.fromKey)
-		if _, duplicate := seen[key]; duplicate {
+		if use, ok := used[key]; ok && !use.admits(key, fromKey) {
 			return fmt.Errorf("%w: duplicate %s operation for %q", ErrBadRequest, wording.key.noun, key)
 		}
-		seen[key] = struct{}{}
+		if op.remove && fromKey == "" {
+			used[key] = nameDeleted
+		} else {
+			used[key] = nameWritten
+		}
 		if fromKey != "" {
-			if err := applyRenameOp(m, seen, op, key, fromKey, wording); err != nil {
+			if err := applyRenameOp(m, used, op, key, fromKey, wording); err != nil {
 				return err
 			}
 			continue
