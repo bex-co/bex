@@ -15,6 +15,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m200** — [Preserve logical records in mixed stdout/stderr pod logs](m200/README.md) (8 tasks) ← functional QA 2026-10-11 a179; two below-cap mixed-stream batches become a joined prefix and orphan suffix in Live, with complete REST/GraphQL history; actual CRI reader replay confirms the producer boundary, owned fixture/session cleanup verified.
 - [ ] **m199** — [Preserve the first timestamp of a reassembled CRI log record](m199/README.md) (6 tasks) ← functional QA 2026-10-11 a177; an identical below-cap message has a 120 ms history/live timestamp difference and renders twice on fresh desktop/mobile; pinned Alloy replay confirms the final-chunk stamp, owned fixture/session cleanup verified.
 
 - [ ] **m198** — [Include continued pre-deploy output after cancellation](m198/README.md) (7 tasks, ~2h 40m) ← functional QA 2026-10-10 a147; canceled success/error steps finish later, but default logs hide their final markers; owned fixture/session cleanup verified.
