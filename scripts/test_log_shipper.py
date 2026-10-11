@@ -5,6 +5,7 @@ Requires Docker, Helm, and yq v4; no cluster or credentials.
 """
 
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 import re
@@ -32,7 +33,9 @@ def render_alloy(tmp):
                             "-n", "monitoring", "-f", str(values)))
     config = run("yq", "-r", 'select(.kind == "ConfigMap") | .data["config.alloy"]', str(rendered))
     image = run("yq", "-r", 'select(.kind == "DaemonSet") | .spec.template.spec.containers[] | select(.name == "alloy") | .image', str(rendered))
-    return config, image
+    # BEX_ALLOY_IMAGE replays a candidate collector (e.g. a local
+    # deploy/log-shipper build) before its digest is pinned.
+    return config, os.environ.get("BEX_ALLOY_IMAGE", image)
 
 
 CRI_LINE = re.compile(r"^\S+ (stdout|stderr) [PF] ")
@@ -152,6 +155,11 @@ OUT_OF_ORDER_RUN = [
 ]
 
 APP_TARGET = 'namespace = "tenant", app = "web", pod = "web-1", container = "app"'
+PG_TARGET = 'namespace = "tenant", database = "dpg-test", pod = "dpg-test-1", container = "postgres"'
+KV_TARGET = 'namespace = "tenant", keyvalue = "red-test", pod = "red-test-0", container = "valkey"'
+BUILD_TARGET = 'namespace = "tenant", app = "web", pod = "web-build-1", container = "build"'
+# stage.cri's max_partial_line_size in every tenant pipeline (CRI LINE CAP).
+CRI_LINE_CAP = 200000
 
 
 class AppLogLevelsTest(unittest.TestCase):
@@ -233,8 +241,7 @@ class TenantDatastoreLogsTest(unittest.TestCase):
         cases = TENANT_LOG_LINES["postgres"]
         want = {case["message"]: case.get("level") for case in cases if case.get("message")}
         actual, output = run_pipeline(self, "database_logs", [case["line"] for case in cases], "postgres",
-                                      'namespace = "tenant", database = "dpg-test", pod = "dpg-test-1", container = "postgres"',
-                                      cri=True)
+                                      PG_TARGET, cri=True)
         self.assertEqual(set(actual), set(want), f"unexpected Postgres lines:\n{output}")
         for line, level in want.items():
             with self.subTest(line=line):
@@ -247,8 +254,7 @@ class TenantDatastoreLogsTest(unittest.TestCase):
     def test_keyvalue_follows_the_shared_table(self):
         cases = TENANT_LOG_LINES["keyvalue"]
         actual, output = run_pipeline(self, "keyvalue_logs", [case["line"] for case in cases], "keyvalue",
-                                      'namespace = "tenant", keyvalue = "red-test", pod = "red-test-0", container = "valkey"',
-                                      cri=True)
+                                      KV_TARGET, cri=True)
         self.assertEqual(set(actual), {case["message"] for case in cases}, f"unexpected Key Value lines:\n{output}")
         # The stream labels stay those of the API source the pipeline replaced:
         # the file source's node path and CRI stream never become labels.
@@ -271,6 +277,70 @@ class TenantDatastoreLogsTest(unittest.TestCase):
             with self.subTest(pipeline=pipeline):
                 sources = [kind for kind, body in blocks if f"loki.process.{pipeline}.receiver" in body]
                 self.assertEqual(sources, ["loki.source.file"], f"{pipeline} must read container files only")
+
+
+class CriPartialTimestampTest(unittest.TestCase):
+    """w4/m199: a record the runtime wrote in CRI partial (P) chunks carries its
+    FIRST chunk's timestamp, as the kubelet's pod-log API (the live tail) does,
+    so history and live agree and the dashboard renders it once."""
+
+    PG_RECORD = json.loads(next(c["line"] for c in TENANT_LOG_LINES["postgres"] if c["name"] == "record"))
+    PIPELINES = {
+        "app_logs": ("app", APP_TARGET, "qa-m199-app"),
+        "build_logs": ("build", BUILD_TARGET, "qa-m199-build"),
+        "keyvalue_logs": ("keyvalue", KV_TARGET, "qa-m199-kv"),
+    }
+
+    def assert_first_chunk_stamps(self, pipeline, receiver, target, chunks, want):
+        actual, output = run_pipeline(self, pipeline, chunks, receiver, target, cri=True)
+        self.assertEqual({line: labels["__ts"] for line, labels in actual.items()}, want,
+                         f"{pipeline} lost, split or re-stamped a record:\n{output}")
+        return actual
+
+    def test_every_cri_pipeline_keeps_the_first_chunk_timestamp(self):
+        for pipeline, (receiver, target, marker) in self.PIPELINES.items():
+            with self.subTest(pipeline=pipeline):
+                self.assert_first_chunk_stamps(pipeline, receiver, target, [
+                    # One P then F 120 ms later, as a delayed second write produces.
+                    f"2026-10-11T10:35:00.100000001Z stdout P {marker}-first-",
+                    "2026-10-11T10:35:00.220000002Z stdout F last",
+                    # A single F keeps its own stamp.
+                    f"2026-10-11T10:35:00.300000003Z stdout F {marker}-control",
+                    # Repeated P across a second boundary, with an independent
+                    # stderr record (its own buffer key) completing in between.
+                    f"2026-10-11T10:35:00.900000004Z stdout P {marker}-multi-a-",
+                    f"2026-10-11T10:35:00.950000005Z stderr P {marker}-err-",
+                    f"2026-10-11T10:35:01.000000006Z stdout P b-",
+                    "2026-10-11T10:35:01.050000007Z stderr F done",
+                    "2026-10-11T10:35:01.400000008Z stdout F c",
+                ], {
+                    f"{marker}-first-last": "2026-10-11T10:35:00.100000001Z",
+                    f"{marker}-control": "2026-10-11T10:35:00.300000003Z",
+                    f"{marker}-multi-a-b-c": "2026-10-11T10:35:00.900000004Z",
+                    f"{marker}-err-done": "2026-10-11T10:35:00.950000005Z",
+                })
+
+    def test_postgres_record_split_across_chunks_unwraps_with_first_stamp(self):
+        line = json.dumps(self.PG_RECORD, separators=(",", ":"))
+        cut = len(line) // 2
+        actual = self.assert_first_chunk_stamps(
+            "database_logs", "postgres", PG_TARGET,
+            [f"2026-10-11T10:35:00.100000001Z stdout P {line[:cut]}",
+             f"2026-10-11T10:35:00.220000002Z stdout F {line[cut:]}"],
+            {"2026-09-27 01:00:02.123 UTC [42] LOG:  database system is ready to accept connections":
+             "2026-10-11T10:35:00.100000001Z"})
+        self.assertEqual(next(iter(actual.values())).get("level"), "info")
+
+    def test_partial_size_cap_still_truncates_with_first_stamp(self):
+        chunk = 120000
+        head = "qa-m199-cap-".ljust(chunk, "x")
+        actual = self.assert_first_chunk_stamps(
+            "app_logs", "app", APP_TARGET,
+            [f"2026-10-11T10:35:00.100000001Z stdout P {head}",
+             f"2026-10-11T10:35:00.200000002Z stdout P {'y' * chunk}",
+             "2026-10-11T10:35:00.300000003Z stdout F tail-dropped"],
+            {(head + "y" * chunk)[:CRI_LINE_CAP]: "2026-10-11T10:35:00.100000001Z"})
+        self.assertEqual(len(next(iter(actual))), CRI_LINE_CAP)
 
 
 class PlatformLogsTest(unittest.TestCase):
