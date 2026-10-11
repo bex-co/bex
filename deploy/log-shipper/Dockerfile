@@ -19,9 +19,7 @@
 #   docker buildx build --platform linux/amd64,linux/arm64 \
 #     -t ghcr.io/bex-co/bex-alloy:<tag> deploy/log-shipper
 
-ARG BUILD_IMAGE=grafana/alloy-build-image:v0.1.21@sha256:36b1e621f32f46aa1de58843b885f0885faabe7b29468462d36a60bea1245e33
-
-FROM --platform=$BUILDPLATFORM ${BUILD_IMAGE} AS source
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.21@sha256:36b1e621f32f46aa1de58843b885f0885faabe7b29468462d36a60bea1245e33 AS source
 # Pin the exact upstream commit the patch was authored against (tag v1.11.2);
 # bump the two together.
 ARG ALLOY_COMMIT=4a8f93cd1755dd8205c3a9d6c35b136c476cff92
@@ -34,12 +32,12 @@ RUN git init -q alloy \
 COPY patches/cri-first-chunk-timestamp.patch /tmp/
 RUN cd alloy && git apply --stat --apply /tmp/cri-first-chunk-timestamp.patch
 
-FROM --platform=$BUILDPLATFORM ${BUILD_IMAGE} AS ui-build
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.21@sha256:36b1e621f32f46aa1de58843b885f0885faabe7b29468462d36a60bea1245e33 AS ui-build
 COPY --from=source /src/alloy/internal/web/ui /ui
 WORKDIR /ui
 RUN yarn --frozen-lockfile --network-timeout=1200000 && yarn run build
 
-FROM --platform=$BUILDPLATFORM ${BUILD_IMAGE} AS build
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.21@sha256:36b1e621f32f46aa1de58843b885f0885faabe7b29468462d36a60bea1245e33 AS build
 COPY --from=source /src/alloy /src/alloy
 COPY --from=ui-build /ui/build /src/alloy/internal/web/ui/build
 WORKDIR /src/alloy

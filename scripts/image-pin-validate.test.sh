@@ -62,8 +62,11 @@ mkdir -p "$green/.github/workflows" "$green/svc"
 cat >"$green/Dockerfile" <<EOF
 FROM node:22-alpine@$DIGEST AS builder
 RUN true
+FROM --platform=\$BUILDPLATFORM golang:1.25@$DIGEST AS cross
+RUN true
 FROM node:22-alpine@$DIGEST
 COPY --from=builder /app /app
+COPY --from=cross /bin /bin
 EOF
 
 cat >"$green/svc/images.go" <<EOF
@@ -127,6 +130,10 @@ depin() {
 
 depin dockerfile Dockerfile "node:22-alpine@$DIGEST AS builder" "node:22-alpine AS builder"
 expect_red "Dockerfile FROM floating tag" "$tmp/red-dockerfile" "node:22-alpine"
+
+# A --platform flag names a platform of the image after it, not an image.
+depin crossdockerfile Dockerfile "golang:1.25@$DIGEST AS cross" "golang:1.25 AS cross"
+expect_red "Dockerfile --platform FROM floating tag" "$tmp/red-crossdockerfile" "golang:1.25"
 
 depin go svc/images.go "valkey/valkey:8-alpine@$DIGEST" "valkey/valkey:8-alpine"
 expect_red "Go constant floating tag" "$tmp/red-go" "valkey/valkey:8-alpine"
