@@ -162,6 +162,20 @@ func (id Identity) LegacyStaticPrefix(revision string) string {
 	return id.LegacyStaticAppPrefix() + "/" + revision + "/"
 }
 
+// ServedStaticPrefix is the object-key prefix a published static revision is
+// served from: the recorded status prefix after a post-m75 publish, else the
+// legacy "<name>/<revision>/" an already-published site still dual-reads
+// (docs/ADR074). Empty when nothing was published.
+func ServedStaticPrefix(statusPrefix, name, activeRevision string) string {
+	if statusPrefix != "" {
+		return statusPrefix
+	}
+	if activeRevision == "" {
+		return ""
+	}
+	return ForApp(name, "").LegacyStaticPrefix(activeRevision)
+}
+
 // DualRead reports whether the operator should still grant the new user
 // read on the legacy repo (labeled, not yet tombstoned, and the two repos
 // actually differ).

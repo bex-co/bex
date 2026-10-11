@@ -19,7 +19,12 @@ package deploys
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -30,6 +35,8 @@ import (
 // no deploy ever carries a ResolvedImage (ADR029).
 func staticSite() *appv1alpha1.App {
 	a := sampleApp("site", "srv-site")
+	a.UID = "site-uid"
+	a.Spec.PublishPath = "dist"
 	a.Spec.Image = ""
 	a.Spec.Type = appv1alpha1.TypeStaticSite
 	a.Spec.Repo = "https://github.com/bex-co/bex"
@@ -58,13 +65,30 @@ func liveStaticDeploys(t *testing.T, ds *fakeStore) (older, live store.Deploy) {
 	return older, live
 }
 
-// w4/m141: a no-build static site's deploys were never rollback targets (no
-// ResolvedImage), so Rollback was refused and the dashboard's dispatch recheck
-// silently dropped it. Rolling back now re-publishes the target's commit.
-func TestRollbackRepublishesANoBuildStaticSitesEarlierCommit(t *testing.T) {
+// staticRecord is the operator's record of where generation published
+// (w4/m197), controlled by app as the operator writes it.
+func staticRecord(app *appv1alpha1.App, generation int64, prefix string) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: appv1alpha1.StaticPublicationRecordName(app.Name, generation), Namespace: app.Namespace,
+			OwnerReferences: []metav1.OwnerReference{{
+				APIVersion: appv1alpha1.SchemeGroupVersion.String(), Kind: "App", Name: app.Name, UID: app.UID, Controller: new(true),
+			}},
+		},
+		Data: map[string][]byte{appv1alpha1.StaticPublicationPrefixKey: []byte(prefix)},
+	}
+}
+
+// w4/m141 made a no-build static site's deploys rollback targets; w4/m197
+// restores them from the retained publication instead of re-cloning the
+// target's commit through today's saved rootDir/publishPath. Saved settings,
+// including the build commit, stay as saved.
+func TestRollbackRestoresANoBuildStaticSitesRetainedPublication(t *testing.T) {
 	ds := newFakeStore()
 	older, _ := liveStaticDeploys(t, ds)
-	svc, cl := newService(ds, staticSite())
+	app := staticSite()
+	app.Spec.PublishPath = "missing-output"
+	svc, cl := newService(ds, app, staticRecord(app, 1, "tea-1/site/rev-1/"))
 
 	rolled, err := svc.Rollback(context.Background(), "site", older.ID)
 	if err != nil {
@@ -74,9 +98,85 @@ func TestRollbackRepublishesANoBuildStaticSitesEarlierCommit(t *testing.T) {
 		t.Fatalf("rollback deploy = %+v, want a rollback of %s at 80b423bc", rolled, older.ID)
 	}
 	got := getApp(t, cl, "site")
-	if got.Spec.BuildCommit != "80b423bc" || got.Spec.Image != "" || got.Spec.RestartedAt == "" {
-		t.Fatalf("app spec after rollback = buildCommit %q image %q restartedAt %q; want the earlier commit re-published",
-			got.Spec.BuildCommit, got.Spec.Image, got.Spec.RestartedAt)
+	row, _ := ds.GetDeploy(context.Background(), "srv-site", rolled.ID)
+	sel := got.Spec.ReleaseConfig
+	if sel == nil || sel.StaticPrefix != "tea-1/site/rev-1/" || sel.Image != "" || sel.Generation != row.Generation {
+		t.Fatalf("selection = %+v, want the retained rev-1 publication bound to the new release", sel)
+	}
+	if got.ActiveReleaseConfig() == nil {
+		t.Fatal("an image-less static selection must still be the active release selection")
+	}
+	if got.Spec.BuildCommit != "28aa2ab7" || got.Spec.PublishPath != "missing-output" || got.Spec.Image != "" || got.Spec.RestartedAt == "" {
+		t.Fatalf("saved settings after rollback = buildCommit %q publishPath %q image %q restartedAt %q; want them unchanged",
+			got.Spec.BuildCommit, got.Spec.PublishPath, got.Spec.Image, got.Spec.RestartedAt)
+	}
+}
+
+// The QA a79 journey: a built static site's v1 target restores its retained
+// publication while today's saved publish directory does not exist and the
+// saved build command writes v2.
+func TestRollbackRestoresABuiltStaticSitesRetainedPublication(t *testing.T) {
+	ctx := context.Background()
+	ds := newFakeStore()
+	v1, _ := ds.CreateDeploy(ctx, "srv-site", "create", "", 1, store.CommitInfo{Hash: "7b95b46"}, "")
+	ds.CloseDeploy(ctx, v1.ID, store.DeployLive, "zot/site:gen-1@sha256:aa")
+	v2, _ := ds.CreateDeploy(ctx, "srv-site", "config_change", "", 3, store.CommitInfo{Hash: "7b95b46"}, "")
+	ds.CloseDeploy(ctx, v2.ID, store.DeployLive, "zot/site:gen-3@sha256:bb")
+	ds.CloseDeploy(ctx, v1.ID, store.DeployDeactivated, "")
+	app := staticSite()
+	app.Spec.BuildCommit = ""
+	app.Spec.BuildCommand = "mkdir -p dist && printf 'v2' > dist/index.html"
+	app.Spec.PublishPath = "qa-a79-missing-output"
+	app.Spec.AutoDeploy = false
+	svc, cl := newService(ds, app, staticRecord(app, 1, "tea-1/site/rev-1/"), staticRecord(app, 3, "tea-1/site/rev-3/"))
+
+	rolled, err := svc.Rollback(ctx, "site", v1.ID, RollbackOptions{DisableAutoDeploy: true})
+	if err != nil {
+		t.Fatalf("Rollback: %v", err)
+	}
+	got := getApp(t, cl, "site")
+	sel := got.Spec.ReleaseConfig
+	if sel == nil || sel.StaticPrefix != "tea-1/site/rev-1/" || sel.Image != "zot/site:gen-1@sha256:aa" || sel.SourceGeneration != 0 {
+		t.Fatalf("selection = %+v, want v1's retained publication (image as provenance only)", sel)
+	}
+	if rolled.RollbackOf != v1.ID || got.Spec.PublishPath != "qa-a79-missing-output" || got.Spec.BuildCommand != app.Spec.BuildCommand || got.Spec.AutoDeploy {
+		t.Fatalf("rollback %+v / saved %+v: want the exact target and saved settings unchanged", rolled, got.Spec)
+	}
+}
+
+// A target whose publication was never recorded (published before w4/m197, or
+// GC'd past the retained window), or whose record belongs to a same-name
+// predecessor, is refused with a named reason before any row is created — and
+// the capability projection agrees.
+func TestStaticRollbackRefusesAnUnretainedPublicationBeforeDispatch(t *testing.T) {
+	foreign := staticSite()
+	foreign.UID = "a-deleted-predecessor"
+	for name, objs := range map[string][]client.Object{
+		"no record":      nil,
+		"foreign record": {staticRecord(foreign, 1, "tea-1/site/rev-1/")},
+		"bad prefix":     {staticRecord(staticSite(), 1, "../other/rev-1/")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			ds := newFakeStore()
+			older, _ := liveStaticDeploys(t, ds)
+			app := staticSite()
+			svc, cl := newService(ds, append([]client.Object{app}, objs...)...)
+			before, _ := ds.ListDeploys(ctx, "srv-site", store.DeployFilter{})
+
+			_, err := svc.Rollback(ctx, "site", older.ID)
+			if !errors.Is(err, core.ErrConflict) || !strings.Contains(err.Error(), "no retained static publication") {
+				t.Fatalf("Rollback = %v, want a named not-retained conflict", err)
+			}
+			after, _ := ds.ListDeploys(ctx, "srv-site", store.DeployFilter{})
+			if len(after) != len(before) || getApp(t, cl, "site").Spec.ReleaseConfig != nil {
+				t.Fatal("a refused rollback must not open a row or select anything")
+			}
+			_, _, pre := svc.deployPreconditions(ctx, app)
+			if pre != core.PrecondNoEligibleRollbackTarget {
+				t.Fatalf("projection = %q, want no_eligible_rollback_target like the verb", pre)
+			}
+		})
 	}
 }
 
@@ -117,7 +217,7 @@ func TestStaticRollbackHonorsDashboardAutoDeployOption(t *testing.T) {
 		older, _ := liveStaticDeploys(t, ds)
 		app := staticSite()
 		app.Spec.AutoDeploy = true
-		svc, cl := newService(ds, app)
+		svc, cl := newService(ds, app, staticRecord(app, 1, "site/rev-1/"))
 		if _, err := svc.Rollback(context.Background(), "site", older.ID, RollbackOptions{DisableAutoDeploy: dashboard}); err != nil {
 			t.Fatal(err)
 		}
