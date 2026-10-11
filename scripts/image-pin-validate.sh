@@ -176,12 +176,18 @@ record() {
 # manifest. Everything else must be pinned. ARG-substituted refs (${FOO}) are
 # NOT skipped — they are reported, because the guard cannot see what they
 # resolve to and a silent skip is exactly the drift this exists to stop.
+# FROM lines with the `--platform=` flag removed: it selects a platform of the
+# image that follows, so the image is still the second word.
+from_lines() {
+  grep -iE '^[[:space:]]*FROM[[:space:]]' "$1" | sed -E 's/[[:space:]]--platform=[^[:space:]]+//' || true
+}
+
 scan_dockerfiles() {
   local path stages ref
   while IFS= read -r path; do
     [ -n "$path" ] || continue
     skip_path "$path" && continue
-    stages=" $(grep -ioE '^[[:space:]]*FROM[[:space:]]+\S+[[:space:]]+AS[[:space:]]+\S+' "$path" |
+    stages=" $(from_lines "$path" | grep -ioE '^[[:space:]]*FROM[[:space:]]+\S+[[:space:]]+AS[[:space:]]+\S+' |
       awk '{print tolower($NF)}' | tr '\n' ' ' || true)"
     while IFS= read -r ref; do
       [ -n "$ref" ] || continue
@@ -191,7 +197,7 @@ scan_dockerfiles() {
       [[ "$stages " == *" $(printf '%s' "$ref" | tr '[:upper:]' '[:lower:]') "* ]] && continue
       record "$path" "$ref" "Dockerfile"
     done < <({
-      grep -iE '^[[:space:]]*FROM[[:space:]]' "$path" | awk '{print $2}'
+      from_lines "$path" | awk '{print $2}'
       grep -ohE '\-\-from=[^ ]+' "$path" | sed 's/--from=//'
     } || true)
   done < <(tracked '*Dockerfile*')
