@@ -113,7 +113,11 @@ func growOnlyStorage(requested, floor int32) int32 {
 // Pure so the invariant is directly unit-testable:
 //
 //   - currentGB is the high-water allocation: the status record
-//     (allocatedGB) and every substrate-observed size, whichever is largest.
+//     (allocatedGB) and every substrate size bex itself requested (CNPG spec
+//     size, claim template, PVC request), whichever is largest. Observed PVC
+//     capacity is physical and must never be passed: a provider floor
+//     (Hetzner's 10 GiB minimum volume) can exceed any request, which once
+//     reported a 1 GB Free Key Value as 10 GiB (w4/m193).
 //   - effectiveGB is what the reconcile converges toward — max(desiredGB,
 //     currentGB), so storage only ever grows.
 //   - shrink reports a NEW spec intent (observedGB != specGB, on a resource
@@ -123,9 +127,9 @@ func growOnlyStorage(requested, floor int32) int32 {
 //     the allocation has grown past it — that is what lets an automatic disk
 //     grow keep round-tripping without the user editing the spec. An unset
 //     spec (0) never shrinks.
-func growOnlyIntent(allocatedGB, observedGB, specGB, desiredGB int32, observedSizesGB ...int32) (currentGB, effectiveGB int32, shrink bool) {
+func growOnlyIntent(allocatedGB, observedGB, specGB, desiredGB int32, requestedSizesGB ...int32) (currentGB, effectiveGB int32, shrink bool) {
 	currentGB = allocatedGB
-	for _, gb := range observedSizesGB {
+	for _, gb := range requestedSizesGB {
 		currentGB = max(currentGB, gb)
 	}
 	effectiveGB = max(desiredGB, currentGB)

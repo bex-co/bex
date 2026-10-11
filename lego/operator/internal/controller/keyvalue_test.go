@@ -43,6 +43,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -512,6 +513,134 @@ func TestKeyValueStorageShrinkIsRejectedBeforePVCMutation(t *testing.T) {
 	if gotKV.Status.Phase != appv1alpha1.KVPhaseFailed || ready == nil || storage == nil ||
 		ready.Reason != appv1alpha1.ReasonStorageShrinkRejected || storage.Reason != appv1alpha1.ReasonStorageShrinkRejected {
 		t.Fatalf("shrink status = phase %q ready %+v storage %+v", gotKV.Status.Phase, ready, storage)
+	}
+}
+
+// TestKeyValueLogicalStorageIgnoresPhysicalFloor pins w4/m193: a provider
+// that rounds a 1 Gi claim up to a 10 Gi volume (Hetzner's minimum) must not
+// promote that physical capacity into the logical allocation the metrics
+// surfaces report. It drives the real producer — keyValueStorageIntent then
+// reconcileKeyValueStorage, twice — and reads the consumer projection
+// (tiers.Valkey.EffectiveStorageGB) the REST/GraphQL/MCP capacity series use.
+func TestKeyValueLogicalStorageIgnoresPhysicalFloor(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		spec          appv1alpha1.KeyValueSpec
+		status        appv1alpha1.KeyValueStatus
+		requestGi     string
+		capacityGi    string
+		wantAllocated int32
+		wantRequestGB int32
+		wantReady     bool
+		wantReason    string
+	}{
+		{
+			name:      "default Free store on a 10 Gi floor stays 1 GB",
+			spec:      appv1alpha1.KeyValueSpec{Plan: "free"},
+			requestGi: "1Gi", capacityGi: "10Gi",
+			wantAllocated: 1, wantRequestGB: 1, wantReady: true, wantReason: appv1alpha1.ReasonStorageProvisioned,
+		},
+		{
+			name:      "explicit growth below the floor grows the request, not to the floor",
+			spec:      appv1alpha1.KeyValueSpec{Plan: "free", StorageGB: 5},
+			status:    appv1alpha1.KeyValueStatus{AllocatedStorageGB: 1},
+			requestGi: "1Gi", capacityGi: "10Gi",
+			wantAllocated: 5, wantRequestGB: 5, wantReady: true, wantReason: appv1alpha1.ReasonStorageProvisioned,
+		},
+		{
+			name:      "a higher plan floor is accepted growth",
+			spec:      appv1alpha1.KeyValueSpec{Plan: "standard"},
+			status:    appv1alpha1.KeyValueStatus{AllocatedStorageGB: 1},
+			requestGi: "1Gi", capacityGi: "10Gi",
+			wantAllocated: 5, wantRequestGB: 5, wantReady: true, wantReason: appv1alpha1.ReasonStorageProvisioned,
+		},
+		{
+			name:      "a downgrade keeps accepted growth",
+			spec:      appv1alpha1.KeyValueSpec{Plan: "free"},
+			status:    appv1alpha1.KeyValueStatus{AllocatedStorageGB: 5},
+			requestGi: "5Gi", capacityGi: "10Gi",
+			wantAllocated: 5, wantRequestGB: 5, wantReady: true, wantReason: appv1alpha1.ReasonStorageProvisioned,
+		},
+		{
+			name: "an ambiguous legacy high-water is never silently decreased",
+			// Pre-m193 stores recorded the floor; bookkeeping cannot tell that
+			// apart from real growth, so it round-trips unchanged.
+			spec:      appv1alpha1.KeyValueSpec{Plan: "free"},
+			status:    appv1alpha1.KeyValueStatus{AllocatedStorageGB: 10},
+			requestGi: "10Gi", capacityGi: "10Gi",
+			wantAllocated: 10, wantRequestGB: 10, wantReady: true, wantReason: appv1alpha1.ReasonStorageProvisioned,
+		},
+		{
+			name:      "growth past physical capacity stays actionable while the resize lands",
+			spec:      appv1alpha1.KeyValueSpec{Plan: "free", StorageGB: 20},
+			status:    appv1alpha1.KeyValueStatus{AllocatedStorageGB: 1},
+			requestGi: "1Gi", capacityGi: "10Gi",
+			wantAllocated: 20, wantRequestGB: 20, wantReason: appv1alpha1.ReasonPVCResizePending,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			scheme := runtime.NewScheme()
+			_ = clientgoscheme.AddToScheme(scheme)
+			_ = appv1alpha1.AddToScheme(scheme)
+			kv := &appv1alpha1.KeyValue{
+				ObjectMeta: metav1.ObjectMeta{Name: "floor-kv", Namespace: "default", Generation: 1},
+				Spec:       tc.spec,
+				Status:     tc.status,
+			}
+			pvc := &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{Name: keyValuePVCName(kv.Name), Namespace: kv.Namespace},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					StorageClassName: new(kvStorageClass),
+					Resources: corev1.VolumeResourceRequirements{Requests: corev1.ResourceList{
+						corev1.ResourceStorage: resource.MustParse(tc.requestGi),
+					}},
+				},
+				Status: corev1.PersistentVolumeClaimStatus{
+					Phase:    corev1.ClaimBound,
+					Capacity: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tc.capacityGi)},
+				},
+			}
+			expandable := true
+			sc := &storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{Name: kvStorageClass}, AllowVolumeExpansion: &expandable}
+			cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv, pvc, sc).Build()
+			r := &KeyValueReconciler{Client: cl, Scheme: scheme}
+			ctx := context.Background()
+
+			// Two passes: the second proves the result is a fixed point, not a
+			// value that drifts toward the floor on the next reconcile.
+			for pass := 1; pass <= 2; pass++ {
+				_, desiredGB := resolveKVPlan(kv.Spec)
+				sts, storageGB, _, done, err := r.keyValueStorageIntent(ctx, kv, desiredGB)
+				if err != nil || done {
+					t.Fatalf("pass %d: storage intent done=%t err=%v", pass, done, err)
+				}
+				state, err := r.reconcileKeyValueStorage(ctx, kv, sts, storageGB)
+				if err != nil {
+					t.Fatalf("pass %d: %v", pass, err)
+				}
+				if state.ready != tc.wantReady || state.reason != tc.wantReason {
+					t.Fatalf("pass %d: state = %+v, want ready=%t reason=%s", pass, state, tc.wantReady, tc.wantReason)
+				}
+				if kv.Status.AllocatedStorageGB != tc.wantAllocated {
+					t.Fatalf("pass %d: allocated = %d GB, want %d (physical capacity leaked into the logical allocation)",
+						pass, kv.Status.AllocatedStorageGB, tc.wantAllocated)
+				}
+				if want := quantityGiCeil(resource.MustParse(tc.capacityGi)); kv.Status.StorageCapacityGB != want {
+					t.Fatalf("pass %d: storageCapacityGB = %d, want physical %d", pass, kv.Status.StorageCapacityGB, want)
+				}
+				got := &corev1.PersistentVolumeClaim{}
+				if err := cl.Get(ctx, client.ObjectKeyFromObject(pvc), got); err != nil {
+					t.Fatal(err)
+				}
+				if size := pvcRequestedStorageGB(got); size != tc.wantRequestGB {
+					t.Fatalf("pass %d: PVC request = %d GB, want %d", pass, size, tc.wantRequestGB)
+				}
+			}
+			bytes := int64(tiers.Valkey.EffectiveStorageGB(kv.Spec.Plan, kv.Spec.StorageGB, kv.Status.AllocatedStorageGB)) * bytesPerGi
+			if want := int64(tc.wantAllocated) * bytesPerGi; bytes != want {
+				t.Fatalf("reported logical capacity = %d bytes, want %d", bytes, want)
+			}
+		})
 	}
 }
 
