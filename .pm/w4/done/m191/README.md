@@ -1,6 +1,6 @@
 # w4 · m191 — Track TCP and HTTP root health changes as different releases
 
-**Worker:** worker4 **Goal:** a change between TCP health checks and HTTP `/` completes a tracked release, with a new revision and an honest Live deployment. **Status:** in progress (t001–t006 done; t007 live replay pending)
+**Worker:** worker4 **Goal:** a change between TCP health checks and HTTP `/` completes a tracked release, with a new revision and an honest Live deployment. **Status:** done
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Verify health and deploy contracts across surfaces — **DONE** | 30m | t003 |
 | t005 | Simplify the changed code — **DONE** | 20m | t004 |
 | t006 | Test mode transitions, adoption and release history — **DONE** | 45m | t004 |
-| t007 | Replay the live journeys, clean up and close out | 30m | t005, t006 |
+| t007 | Replay the live journeys, clean up and close out — **DONE** | 30m | t005, t006 |
 
 ## Definition of done
 
