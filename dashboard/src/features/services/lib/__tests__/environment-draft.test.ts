@@ -137,7 +137,7 @@ describe("environment draft", () => {
     });
   });
 
-  it("preserves secret-file rename, replacement, and draft-deletion order", () => {
+  it("orders secret-file removals, then renames, then writes", () => {
     const draft = createEnvironmentDraft([], ["opaque.pem", "replace.pem"]);
     draft.secretFiles[0].name = " moved.pem ";
     draft.secretFiles[0].content = "revealed";
@@ -149,8 +149,8 @@ describe("environment draft", () => {
     expect(environmentDraftPatch(draft)).toEqual({
       envVars: [],
       secretFiles: [
-        { name: "moved.pem", fromName: "opaque.pem" },
         { name: "replace.pem", delete: true },
+        { name: "moved.pem", fromName: "opaque.pem" },
         { name: "renamed.pem", content: "" },
         { name: "added.pem", content: "new" },
       ],
@@ -186,6 +186,37 @@ describe("environment draft", () => {
       });
     },
   );
+
+  // w4/234: moving a stored value away and uploading a new one at its old
+  // name sends the move before the write, even when the new row is listed
+  // first, so the name is vacant when the write lands.
+  it.each([
+    { order: "upload after the moved row", first: false },
+    { order: "upload before the moved row", first: true },
+  ])("moves a value away before writing its old name ($order)", ({ first }) => {
+    const draft = createEnvironmentDraft(["OLD"], ["original.txt"]);
+    draft.envVars[0].key = "MOVED";
+    draft.secretFiles[0].name = "renamed.txt";
+    addVar(draft, "OLD", "fresh");
+    addFile(draft, "original.txt", "replacement\r\n");
+    addFile(draft, "empty.txt", "");
+    if (first) {
+      draft.envVars.reverse();
+      draft.secretFiles.unshift(draft.secretFiles.splice(1, 1)[0]);
+    }
+    expect(isDraftValid(validateEnvironmentDraft(draft))).toBe(true);
+    expect(environmentDraftPatch(draft)).toEqual({
+      envVars: [
+        { key: "MOVED", fromKey: "OLD" },
+        { key: "OLD", value: "fresh" },
+      ],
+      secretFiles: [
+        { name: "renamed.txt", fromName: "original.txt" },
+        { name: "original.txt", content: "replacement\r\n" },
+        { name: "empty.txt", content: "" },
+      ],
+    });
+  });
 
   it("blocks invalid and duplicate names", () => {
     const draft = createEnvironmentDraft(["ONE", "TWO"], []);

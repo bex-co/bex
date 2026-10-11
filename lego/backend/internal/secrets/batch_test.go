@@ -281,6 +281,36 @@ func TestPatchEnvironmentRenameRefillsAnExplicitlyDeletedName(t *testing.T) {
 	}
 }
 
+// w4/234: moving a stored value away and writing a new one at its old name is
+// one service-local save-only batch for variables and files; both values land
+// under their own names and the projected files Secret agrees.
+func TestPatchEnvironmentWriteRefillsARenamedAwayName(t *testing.T) {
+	store := newFakeSecretStore()
+	store.m[envPath("web")] = map[string]string{"OLD": "opaque value\n"}
+	store.m[filesPath("web")] = map[string]string{"old.txt": "opaque file\n"}
+	svc := newService(store, sampleApp("web"))
+
+	result, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
+		SaveMode:    SaveModeOnly,
+		EnvVars:     []EnvVarPatch{{Key: "MOVED", FromKey: "OLD"}, {Key: "OLD", Value: "fresh"}},
+		SecretFiles: []SecretFilePatch{{Name: "moved.txt", FromName: "old.txt"}, {Name: "old.txt", Content: "fresh\r\n"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.RolledOut {
+		t.Fatalf("result = %#v", result)
+	}
+	if !maps.Equal(store.m[envPath("web")], map[string]string{"MOVED": "opaque value\n", "OLD": "fresh"}) ||
+		!maps.Equal(store.m[filesPath("web")], map[string]string{"moved.txt": "opaque file\n", "old.txt": "fresh\r\n"}) {
+		t.Fatalf("store = %#v", store.m)
+	}
+	files := getSecret(t, svc.Client, "web-files").Data
+	if string(files["moved.txt"]) != "opaque file\n" || string(files["old.txt"]) != "fresh\r\n" {
+		t.Fatalf("projected files = %q", files)
+	}
+}
+
 // Emptying the files map clears a mount a save-only write staged, through the
 // single-key delete and a deploying batch alike, so the next release mounts no
 // empty /etc/secrets (w5/106).

@@ -336,38 +336,42 @@ function patchRows<R extends { deleted: boolean }>(
   // a delete, not the delete half of a rename. This is the enforcement the
   // hidden controls are only the visible half of (w4/m120).
   const owned = rows.filter((row) => !lens.readOnly(row));
-  // Removed rows go first, whatever their stored order, so a name the draft
-  // deletes is free before an opaque rename moves another value into it: the
-  // API refuses a rename onto a still-occupied name (w4/m195).
-  const patch: RowPatch[] = [];
+  // Three phases, whatever the stored row order: removals free their names,
+  // then opaque renames move values (into a freed name, w4/m195), then writes
+  // land (into a name a rename vacated, w4/234). The API applies operations
+  // in order and refuses a rename onto an occupied name or a move of a name
+  // the batch already wrote.
+  const removals: RowPatch[] = [];
+  const moves: RowPatch[] = [];
+  const writes: RowPatch[] = [];
   for (const row of owned) {
     const original = lens.original(row);
-    if (row.deleted && original) patch.push({ name: original, delete: true });
-  }
-  for (const row of owned) {
-    if (row.deleted) continue;
-    const original = lens.original(row);
+    if (row.deleted) {
+      if (original) removals.push({ name: original, delete: true });
+      continue;
+    }
     const name = lens.name(row).trim();
-    const value = lens.value(row) ?? "";
     const generateValue = lens.generated(row);
 
     // Keep an existing value opaque, moving it server-side only on rename.
     if (original && !lens.changed(row) && !generateValue) {
-      if (name !== original) patch.push({ name, from: original });
+      if (name !== original) moves.push({ name, from: original });
       continue;
     }
 
     // New values, replacements, and generated values all write the same
     // shape. Replacing a renamed row must remove its old name first.
     if (original && name !== original) {
-      patch.push({ name: original, delete: true });
+      removals.push({ name: original, delete: true });
     }
-    patch.push({
+    writes.push({
       name,
-      ...(generateValue ? { generateValue: true } : { value }),
+      ...(generateValue
+        ? { generateValue: true }
+        : { value: lens.value(row) ?? "" }),
     });
   }
-  return patch;
+  return [...removals, ...moves, ...writes];
 }
 
 export function environmentDraftPatch(

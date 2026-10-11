@@ -19,6 +19,7 @@ package core
 import (
 	"encoding/json"
 	"errors"
+	"maps"
 	"os"
 	"strings"
 	"testing"
@@ -256,5 +257,98 @@ func TestDeletedNameRefillKeepsItsRefusals(t *testing.T) {
 	err := ApplySecretFilePatch(files, []SecretFilePatch{{Name: "b", Delete: true}, {Name: "b", Content: "fresh"}})
 	if !errors.Is(err, ErrBadRequest) || !strings.Contains(err.Error(), "duplicate secret file operation") {
 		t.Fatalf("file delete then recreate = %v", err)
+	}
+}
+
+// w4/234: a staged editor that moves a stored value and puts a new one at its
+// old name sends the rename and then a plain write. Both values survive under
+// their own names, byte for byte, for files and variables alike.
+func TestValueWriteRefillsARenamedAwayName(t *testing.T) {
+	original := "qa-a49 initial file\nopaque original snow 雪\n"
+	replacement := "qa-a49 uploaded replacement\r\nUnicode 雪\r\n\r\n"
+	unicode := "qa-a49 Unicode 雪, café and 🙂\nlast line without newline"
+	files := map[string]string{"qa-a49-original.txt": original, "keep.txt": "k"}
+	err := ApplySecretFilePatch(files, []SecretFilePatch{
+		{Name: "qa-a49-renamed.txt", FromName: "qa-a49-original.txt"},
+		{Name: "qa-a49-original.txt", Content: replacement},
+		{Name: "qa-a49-empty.txt", Content: ""},
+		{Name: "qa-a49-unicode.txt", Content: unicode},
+	})
+	if err != nil {
+		t.Fatalf("rename then refill the old file name = %v", err)
+	}
+	want := map[string]string{
+		"qa-a49-renamed.txt":  original,
+		"qa-a49-original.txt": replacement,
+		"qa-a49-empty.txt":    "",
+		"qa-a49-unicode.txt":  unicode,
+		"keep.txt":            "k",
+	}
+	if !maps.Equal(files, want) {
+		t.Fatalf("files = %#v, want %#v", files, want)
+	}
+
+	env := map[string]string{"OLD": "opaque", "KEEP": "k"}
+	if err := ApplyEnvVarPatch(env, []EnvVarPatch{{Key: "NEW", FromKey: "OLD"}, {Key: "OLD", Value: "", ValueSet: true}}); err != nil {
+		t.Fatalf("rename then refill the old variable = %v", err)
+	}
+	if want := map[string]string{"NEW": "opaque", "OLD": "", "KEEP": "k"}; !maps.Equal(env, want) {
+		t.Fatalf("env = %#v, want %#v", env, want)
+	}
+	generated := map[string]string{"OLD": "opaque"}
+	if err := ApplyEnvVarPatch(generated, []EnvVarPatch{{Key: "NEW", FromKey: "OLD"}, {Key: "OLD", GenerateValue: true}}); err != nil {
+		t.Fatalf("rename then generate the old variable = %v", err)
+	}
+	if generated["NEW"] != "opaque" || generated["OLD"] == "" || generated["OLD"] == "opaque" {
+		t.Fatalf("generated = %#v, want NEW opaque and a fresh OLD", generated)
+	}
+}
+
+// Only one plain write may refill a vacated name; everything else that
+// touches it again stays refused.
+func TestRenamedAwayNameRefillKeepsItsRefusals(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		writes []EnvVarPatch
+		want   error
+		reason string
+	}{
+		{
+			name:   "two writes into the vacated name",
+			writes: []EnvVarPatch{{Key: "B2", FromKey: "B"}, {Key: "B", Value: "x"}, {Key: "B", Value: "y"}},
+			want:   ErrBadRequest, reason: "duplicate",
+		},
+		{
+			name:   "delete of the vacated name",
+			writes: []EnvVarPatch{{Key: "B2", FromKey: "B"}, {Key: "B", Delete: true}},
+			want:   ErrBadRequest, reason: "duplicate",
+		},
+		{
+			name:   "rename into the vacated name",
+			writes: []EnvVarPatch{{Key: "B2", FromKey: "B"}, {Key: "B", FromKey: "A"}},
+			want:   ErrBadRequest, reason: "duplicate",
+		},
+		{
+			name:   "rename away the refilled value",
+			writes: []EnvVarPatch{{Key: "B2", FromKey: "B"}, {Key: "B", Value: "x"}, {Key: "B3", FromKey: "B"}},
+			want:   ErrBadRequest, reason: "conflicting",
+		},
+		{
+			name:   "write before the move",
+			writes: []EnvVarPatch{{Key: "B", Value: "x"}, {Key: "B2", FromKey: "B"}},
+			want:   ErrBadRequest, reason: "conflicting",
+		},
+		{
+			name:   "write into the vacated name without a value",
+			writes: []EnvVarPatch{{Key: "B2", FromKey: "B"}, {Key: "B"}},
+			want:   ErrBadRequest, reason: "exactly one of value or generateValue",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			err := ApplyEnvVarPatch(map[string]string{"A": "a", "B": "b"}, test.writes)
+			if !errors.Is(err, test.want) || !strings.Contains(err.Error(), test.reason) {
+				t.Fatalf("error = %v, want %v mentioning %q", err, test.want, test.reason)
+			}
+		})
 	}
 }
