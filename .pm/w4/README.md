@@ -244,6 +244,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **251** — [Long settings selectors push Edit and Save beyond the mobile viewport](251.md) (55m) ← functional QA 2026-10-11 a153; fresh notification/policy rows overflow360/390 while short options/desktop fit, horizontal panning recovers actions, scoped wrapping diagnoses pass; both owned fixtures deleted and session revoked.
+
 - [ ] **250** — [Escape keeps an unsaved select-field draft instead of canceling the edit](250.md) (45m) ← functional QA 2026-10-11 a152; fresh desktop/mobile notification drafts survive Escape on the closed selector, while Cancel/text Escape and saved modes work; own fixture deleted and session revoked.
 
 - [ ] **249** — [Running cron jobs keep Cancel disabled with a stale “no active run” reason](249.md) (55m) ← functional QA 2026-10-11 a145; fresh desktop/mobile active rows reuse the pre-run action state until refresh, reload permits correct cancellation; owned cron deleted and session revoked.
