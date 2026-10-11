@@ -1,18 +1,18 @@
 # w4 · m197 — Restore a static rollback's retained publication
 
-**Worker:** worker4 **Goal:** restoring an earlier static publication works after a bad saved publish-directory change **Status:** todo
+**Worker:** worker4 **Goal:** restoring an earlier static publication works after a bad saved publish-directory change **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Bind a static target to its retained published revision | 50m | — |
-| t002 | Publish a rollback from retained content | 60m | t001 |
-| t003 | Audit shared rollback callers and publication modes | 60m | t002 |
-| t004 | Render parity | 20m | t003 |
-| t005 | Simplify | 20m | t004 |
-| t006 | Test coverage | 45m | t004 |
-| t007 | Closeout | 10m | t005, t006 |
+| t001 | Bind a static target to its retained published revision — **DONE** | 50m | — |
+| t002 | Publish a rollback from retained content — **DONE** | 60m | t001 |
+| t003 | Audit shared rollback callers and publication modes — **DONE** | 60m | t002 |
+| t004 | Render parity — **DONE** | 20m | t003 |
+| t005 | Simplify — **DONE** | 20m | t004 |
+| t006 | Test coverage — **DONE** | 45m | t004 |
+| t007 | Closeout — **DONE** | 10m | t005, t006 |
 
 ## Definition of done
 
@@ -32,3 +32,7 @@
 - **Scope/size:** approximately 4h25 across retained-publication identity, publisher support, compatibility audit and meaningful verification. This does not implement a product fix during the QA filing.
 - **Render parity:** included because rollback is exposed through REST, GraphQL, MCP and the dashboard; retained-artifact semantics and saved settings must agree.
 - **Cleanup:** owned site deleted, REST 404, all six baseline ID families restored, own session revoked, old whoami 401, cookies 0 and browser about:blank. Local ledger cleanupVerified true.
+
+## Closeout
+
+Shipped `741b541d2`; live built-static replay, t003 audit and residual limits in [verification.md](verification.md) (2026-10-11).
