@@ -94,6 +94,34 @@ func readsDockerCommand(build string) bool {
 	return build == buildDockerfile || build == buildImage
 }
 
+// cronStartCommandOverrides reports whether a cron's spec.startCommand is a
+// runtime override: with spec.command empty, the operator's cronPodSpec runs
+// it for every build except native and buildpack, which bake it into the
+// image instead. A Blueprint image cron keeps its dockerCommand there.
+func cronStartCommandOverrides(spec appv1alpha1.AppSpec) bool {
+	return spec.Type == appv1alpha1.TypeCronJob && readsDockerCommand(buildStrategy(spec))
+}
+
+// cronCommand is the command a cron runs: spec.command, or the startCommand
+// fallback the operator substitutes when it is empty (w4/m194).
+func cronCommand(spec appv1alpha1.AppSpec) string {
+	if spec.Command == "" && cronStartCommandOverrides(spec) {
+		return spec.StartCommand
+	}
+	return spec.Command
+}
+
+// setCronCommand is an explicit cron command write. Clearing it also drops a
+// startCommand fallback, or the operator would revive the old command instead
+// of running the image's own (w4/m194); a native or buildpack cron keeps its
+// baked start command.
+func setCronCommand(spec *appv1alpha1.AppSpec, command string) {
+	spec.Command = strings.TrimSpace(command)
+	if spec.Command == "" && cronStartCommandOverrides(*spec) {
+		spec.StartCommand = ""
+	}
+}
+
 // blueprintReadsDockerCommand is readsDockerCommand for a Blueprint service,
 // from the runtime and x-bex.builder it declares: runtime image, or runtime
 // docker that is not the schema's spelling of a buildpack build (w5/102).
@@ -146,4 +174,14 @@ func (d dockerDetails) conflict() error {
 		return fmt.Errorf("%w: cannot set both dockerCommand and command", core.ErrBadRequest)
 	}
 	return nil
+}
+
+// setStartCommand is Render's runtime-specific start command write: a cron
+// calls it its command, every other runtime-backed type spec.startCommand.
+func setStartCommand(spec *appv1alpha1.AppSpec, command string) {
+	if spec.Type == appv1alpha1.TypeCronJob {
+		setCronCommand(spec, command)
+		return
+	}
+	spec.StartCommand = strings.TrimSpace(command)
 }

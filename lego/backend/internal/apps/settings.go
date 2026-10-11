@@ -321,7 +321,7 @@ var servicePatchTable = []servicePatchOp{
 				probe.Spec.Schedule = strings.TrimSpace(*p.Schedule)
 			}
 			if p.Command != nil {
-				probe.Spec.Command = strings.TrimSpace(*p.Command)
+				setCronCommand(&probe.Spec, *p.Command)
 			}
 			return nil
 		},
@@ -387,11 +387,7 @@ var servicePatchTable = []servicePatchOp{
 				probe.Spec.BuildCommand = strings.TrimSpace(*p.BuildCommand)
 			}
 			if p.StartCommand != nil {
-				if probe.Spec.Type == appv1alpha1.TypeCronJob {
-					probe.Spec.Command = strings.TrimSpace(*p.StartCommand)
-				} else {
-					probe.Spec.StartCommand = strings.TrimSpace(*p.StartCommand)
-				}
+				setStartCommand(&probe.Spec, *p.StartCommand)
 			}
 			return nil
 		},
