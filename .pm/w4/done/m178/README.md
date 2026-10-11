@@ -1,6 +1,6 @@
 # w4 · m178 — Refresh source project and environment membership after moves
 
-**Worker:** worker4 **Goal:** a completed project move removes the resource from the source project's and environment's row and count without a reload, while preserving authoritative target placement and existing navigation caching. **Status:** in progress (t001–t005, t007, t008 done; t006 Closeout pending live replay)
+**Worker:** worker4 **Goal:** a completed project move removes the resource from the source project's and environment's row and count without a reload, while preserving authoritative target placement and existing navigation caching. **Status:** done
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t003 | Render parity (rerun for Environment refresh) — **DONE** | 15m | w4/m178/t002, w4/m178/t008 |
 | t004 | Simplify (rerun after the added fix) — **DONE** | 10m | w4/m178/t003 |
 | t005 | Test coverage with real Router, Apollo and Environment consumer — **DONE** | 40m | w4/m178/t003, w4/m178/t004, w4/m178/t008 |
-| t006 | Closeout | 10m | w4/m178/t005 |
+| t006 | Closeout — **DONE** | 10m | w4/m178/t005 |
 
 ## Definition of done
 
@@ -59,3 +59,14 @@ The shipped singular Project refresh is retained: the fresh A/Unassigned→B con
 Why now: the Project fix leaves the selected Environment's separate Apollo membership list to its next poll. Goal and expected outcome remain truthful placement and automatic source row/count publication, now covering both consumers. Render parity is rerun for the UI change; REST/GraphQL/MCP placement and documented deletion semantics remain canonical.
 
 Pass 155 also verified project/environment creation placement, authoritative environment clearing, and linked-group project deletion retaining service/link/value. These are partial m187 controls, not its closeout. All six owned fixture APIs and the public URL returned404; six baseline ID sets exact; own session revoked (whoami401, cookies0). Cluster remnants and unrun sibling/inverse/error cases remain outstanding as the finding states. This ships the filing only.
+
+## Closeout (2026-10-11)
+
+Shipped 692fe68e1. After Move or Remove, the source project's in-flight Environments reads are settled first, then that project's Environments are re-read network-only. The live replay passed:
+
+- Selected-environment Move ×2 and Remove.
+- Unassigned A→B and the inverse B→A, plus reload of the source.
+- One membership write per action, rev-1 throughout, public 200.
+- Fixtures deleted, with 404s and no cluster remnants; session revoked.
+
+Evidence is in [done/t006.md](done/t006.md).
