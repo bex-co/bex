@@ -43,6 +43,23 @@ describe("useDisplayName", () => {
     );
   });
 
+  // w4/225: clearing the label restores the service's original name, not its
+  // srv- ID, so the toast must not claim the name became the ID.
+  it("clears the label without claiming the name became the ID", async () => {
+    const mutate = vi.fn().mockResolvedValue({});
+    mockUseMutation.mockReturnValue([mutate]);
+    const { result } = renderHook(() => useDisplayName());
+
+    await act(async () => {
+      expect(await result.current.setDisplayName("stable-id", "")).toBe(true);
+    });
+
+    expect(mutate).toHaveBeenCalledWith({
+      variables: { id: "stable-id", displayName: "" },
+    });
+    expect(toastSuccess).toHaveBeenCalledWith("Custom service name cleared.");
+  });
+
   it("reports a forbidden rename and resolves false", async () => {
     mockUseMutation.mockReturnValue([
       vi.fn().mockRejectedValue(new Error("forbidden")),
