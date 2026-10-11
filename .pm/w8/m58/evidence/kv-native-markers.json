@@ -1,0 +1,191 @@
+{
+  "id": "red-db5m9k09n5bc73aqiidg",
+  "name": "qa-20261011-c081f6-kvlog",
+  "sweep": 101,
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "command": [
+    "bex",
+    "keyvalues",
+    "create",
+    "--name",
+    "qa-20261011-c081f6-kvlog",
+    "--plan",
+    "free",
+    "--region",
+    "frankfurt",
+    "--memory-policy",
+    "queue",
+    "--persistence-mode",
+    "journal_snapshot",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "create_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "keyvalues",
+      "create",
+      "--name",
+      "qa-20261011-c081f6-kvlog",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--memory-policy",
+      "queue",
+      "--persistence-mode",
+      "journal_snapshot",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.533,
+    "stdout": "{\n  \"data\": {\n    \"id\": \"red-db5m9k09n5bc73aqiidg\",\n    \"name\": \"qa-20261011-c081f6-kvlog\",\n    \"plan\": \"free\",\n    \"region\": \"fsn1\",\n    \"status\": \"creating\",\n    \"createdAt\": \"2026-10-11T10:28:32Z\",\n    \"updatedAt\": \"2026-10-11T10:28:32.320626343Z\",\n    \"version\": \"8\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"ownerType\": \"team\",\n    \"projectId\": null,\n    \"environmentId\": null,\n    \"ipAllowList\": [],\n    \"maxmemoryPolicy\": \"noeviction\",\n    \"persistenceMode\": \"journal_snapshot\"\n  }\n}",
+    "stderr": ""
+  },
+  "create_response": {
+    "id": "red-db5m9k09n5bc73aqiidg",
+    "name": "qa-20261011-c081f6-kvlog",
+    "plan": "free",
+    "region": "fsn1",
+    "status": "creating",
+    "createdAt": "2026-10-11T10:28:32Z",
+    "updatedAt": "2026-10-11T10:28:32.320626343Z",
+    "version": "8",
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "ownerType": "team",
+    "projectId": null,
+    "environmentId": null,
+    "ipAllowList": [],
+    "maxmemoryPolicy": "noeviction",
+    "persistenceMode": "journal_snapshot"
+  },
+  "unicode_log_prefix": "QA101_c081f6",
+  "unicode_log_start": "2026-10-11T10:30:12.094327+00:00",
+  "unicode_log_end": "2026-10-11T10:30:17.061827+00:00",
+  "unicode_log_generators": [
+    {
+      "marker": "QA101_c081f6 Ι",
+      "command": [
+        "bex",
+        "kv-cli",
+        "red-db5m9k09n5bc73aqiidg",
+        "--",
+        "--raw",
+        "EVAL",
+        "redis.log(redis.LOG_NOTICE, ARGV[1]); return ARGV[1]",
+        "0",
+        "QA101_c081f6 Ι"
+      ],
+      "at": "2026-10-11T10:30:12.094347+00:00",
+      "state": "native result captured; log ingestion unverified",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "kv-cli",
+          "red-db5m9k09n5bc73aqiidg",
+          "--",
+          "--raw",
+          "EVAL",
+          "redis.log(redis.LOG_NOTICE, ARGV[1]); return ARGV[1]",
+          "0",
+          "QA101_c081f6 Ι"
+        ],
+        "pid": 80607,
+        "exit": 0,
+        "elapsed": 1.28,
+        "timeout": false,
+        "harness_error": null,
+        "interactive_query_sent": false,
+        "quit_after_expected_row": false,
+        "rollback_on_exit": false,
+        "output": "\u001b]11;?\u001b\\\ntea-daif693dqjvc73e7as3g > Login\nWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\nQA101_c081f6 Ι"
+      },
+      "exact_return_line": true
+    },
+    {
+      "marker": "QA101_c081f6 ι",
+      "command": [
+        "bex",
+        "kv-cli",
+        "red-db5m9k09n5bc73aqiidg",
+        "--",
+        "--raw",
+        "EVAL",
+        "redis.log(redis.LOG_NOTICE, ARGV[1]); return ARGV[1]",
+        "0",
+        "QA101_c081f6 ι"
+      ],
+      "at": "2026-10-11T10:30:13.498268+00:00",
+      "state": "native result captured; log ingestion unverified",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "kv-cli",
+          "red-db5m9k09n5bc73aqiidg",
+          "--",
+          "--raw",
+          "EVAL",
+          "redis.log(redis.LOG_NOTICE, ARGV[1]); return ARGV[1]",
+          "0",
+          "QA101_c081f6 ι"
+        ],
+        "pid": 80614,
+        "exit": 0,
+        "elapsed": 1.711,
+        "timeout": false,
+        "harness_error": null,
+        "interactive_query_sent": false,
+        "quit_after_expected_row": false,
+        "rollback_on_exit": false,
+        "output": "\u001b]11;?\u001b\\\ntea-daif693dqjvc73e7as3g > Login\nWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\nQA101_c081f6 ι"
+      },
+      "exact_return_line": true
+    },
+    {
+      "marker": "QA101_c081f6 λ",
+      "command": [
+        "bex",
+        "kv-cli",
+        "red-db5m9k09n5bc73aqiidg",
+        "--",
+        "--raw",
+        "EVAL",
+        "redis.log(redis.LOG_NOTICE, ARGV[1]); return ARGV[1]",
+        "0",
+        "QA101_c081f6 λ"
+      ],
+      "at": "2026-10-11T10:30:15.382859+00:00",
+      "state": "native result captured; log ingestion unverified",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "kv-cli",
+          "red-db5m9k09n5bc73aqiidg",
+          "--",
+          "--raw",
+          "EVAL",
+          "redis.log(redis.LOG_NOTICE, ARGV[1]); return ARGV[1]",
+          "0",
+          "QA101_c081f6 λ"
+        ],
+        "pid": 80619,
+        "exit": 0,
+        "elapsed": 1.512,
+        "timeout": false,
+        "harness_error": null,
+        "interactive_query_sent": false,
+        "quit_after_expected_row": false,
+        "rollback_on_exit": false,
+        "output": "\u001b]11;?\u001b\\\ntea-daif693dqjvc73e7as3g > Login\nWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\nQA101_c081f6 λ"
+      },
+      "exact_return_line": true
+    }
+  ]
+}

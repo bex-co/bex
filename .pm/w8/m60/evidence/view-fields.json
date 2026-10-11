@@ -1,0 +1,277 @@
+[
+  {
+    "file": "pkg/tui/views/deployview.go",
+    "line": 17,
+    "field": "ServiceID string `cli:\"arg:0\"`"
+  },
+  {
+    "file": "pkg/tui/views/resourceloader.go",
+    "line": 12,
+    "field": "EnvironmentIDs  []string `cli:\"environment-ids\"`"
+  },
+  {
+    "file": "pkg/tui/views/resourceloader.go",
+    "line": 13,
+    "field": "IncludePreviews bool     `cli:\"include-previews\"`"
+  },
+  {
+    "file": "pkg/tui/views/environmentlist.go",
+    "line": 17,
+    "field": "ProjectID string `cli:\"arg:0\"`"
+  },
+  {
+    "file": "pkg/tui/views/instancelist.go",
+    "line": 17,
+    "field": "ServiceID string `cli:\"arg:0\"`"
+  },
+  {
+    "file": "pkg/tui/views/restartview.go",
+    "line": 24,
+    "field": "ResourceID string `cli:\"arg:0\"`"
+  },
+  {
+    "file": "pkg/tui/views/joblist.go",
+    "line": 18,
+    "field": "ServiceID string `cli:\"arg:0\"`"
+  },
+  {
+    "file": "pkg/tui/views/deploycancel.go",
+    "line": 16,
+    "field": "ServiceID string `cli:\"arg:0\"`"
+  },
+  {
+    "file": "pkg/tui/views/deploycancel.go",
+    "line": 17,
+    "field": "DeployID  string `cli:\"arg:1\"`"
+  },
+  {
+    "file": "pkg/tui/views/psql.go",
+    "line": 27,
+    "field": "PostgresIDOrName string `cli:\"arg:0\"`"
+  },
+  {
+    "file": "pkg/tui/views/psql.go",
+    "line": 31,
+    "field": "Command          string `cli:\"command\"`"
+  },
+  {
+    "file": "pkg/tui/views/logview.go",
+    "line": 40,
+    "field": "ResourceIDs []string `cli:\"resources\"`"
+  },
+  {
+    "file": "pkg/tui/views/logview.go",
+    "line": 41,
+    "field": "Instance    []string `cli:\"instance\"`"
+  },
+  {
+    "file": "pkg/tui/views/logview.go",
+    "line": 42,
+    "field": "Text        []string `cli:\"text\"`"
+  },
+  {
+    "file": "pkg/tui/views/logview.go",
+    "line": 43,
+    "field": "Level       []string `cli:\"level\"`"
+  },
+  {
+    "file": "pkg/tui/views/logview.go",
+    "line": 44,
+    "field": "Type        []string `cli:\"type\"`"
+  },
+  {
+    "file": "pkg/tui/views/logview.go",
+    "line": 46,
+    "field": "StartTime *command.TimeOrRelative `cli:\"start\"`"
+  },
+  {
+    "file": "pkg/tui/views/logview.go",
+    "line": 47,
+    "field": "EndTime   *command.TimeOrRelative `cli:\"end\"`"
+  },
+  {
+    "file": "pkg/tui/views/logview.go",
+    "line": 49,
+    "field": "Host       []string `cli:\"host\"`"
+  },
+  {
+    "file": "pkg/tui/views/logview.go",
+    "line": 50,
+    "field": "StatusCode []string `cli:\"status-code\"`"
+  },
+  {
+    "file": "pkg/tui/views/logview.go",
+    "line": 51,
+    "field": "Method     []string `cli:\"method\"`"
+  },
+  {
+    "file": "pkg/tui/views/logview.go",
+    "line": 52,
+    "field": "Path       []string `cli:\"path\"`"
+  },
+  {
+    "file": "pkg/tui/views/logview.go",
+    "line": 54,
+    "field": "TaskID    []string `cli:\"task-id\"`"
+  },
+  {
+    "file": "pkg/tui/views/logview.go",
+    "line": 55,
+    "field": "TaskRunID []string `cli:\"task-run-id\"`"
+  },
+  {
+    "file": "pkg/tui/views/logview.go",
+    "line": 57,
+    "field": "Limit     int    `cli:\"limit\"`"
+  },
+  {
+    "file": "pkg/tui/views/logview.go",
+    "line": 58,
+    "field": "Direction string `cli:\"direction\"`"
+  },
+  {
+    "file": "pkg/tui/views/logview.go",
+    "line": 59,
+    "field": "Tail      bool   `cli:\"tail\"`"
+  },
+  {
+    "file": "pkg/tui/views/jobcreate.go",
+    "line": 21,
+    "field": "ServiceID    string  `cli:\"arg:0\"`"
+  },
+  {
+    "file": "pkg/tui/views/jobcreate.go",
+    "line": 22,
+    "field": "StartCommand *string `cli:\"start-command\"`"
+  },
+  {
+    "file": "pkg/tui/views/jobcreate.go",
+    "line": 23,
+    "field": "PlanID       *string `cli:\"plan-id\"`"
+  },
+  {
+    "file": "pkg/tui/views/rediscli.go",
+    "line": 26,
+    "field": "RedisIDOrName  string `cli:\"arg:0\"`"
+  },
+  {
+    "file": "pkg/tui/views/jobcancel.go",
+    "line": 17,
+    "field": "ServiceID string `cli:\"arg:0\"`"
+  },
+  {
+    "file": "pkg/tui/views/jobcancel.go",
+    "line": 18,
+    "field": "JobID     string `cli:\"arg:1\"`"
+  },
+  {
+    "file": "pkg/tui/views/ssh.go",
+    "line": 22,
+    "field": "ServiceIDOrName string `cli:\"arg:0\"`"
+  },
+  {
+    "file": "pkg/tui/views/ssh.go",
+    "line": 26,
+    "field": "Ephemeral       bool   `cli:\"ephemeral\"`"
+  },
+  {
+    "file": "pkg/tui/views/ssh.go",
+    "line": 27,
+    "field": "Plan            string `cli:\"plan\"`"
+  },
+  {
+    "file": "pkg/tui/views/workflows/workflowcreate.go",
+    "line": 24,
+    "field": "Name              *string `cli:\"name\" validate:\"required\"`"
+  },
+  {
+    "file": "pkg/tui/views/workflows/workflowcreate.go",
+    "line": 25,
+    "field": "Repo              *string `cli:\"repo\" validate:\"required\"`"
+  },
+  {
+    "file": "pkg/tui/views/workflows/workflowcreate.go",
+    "line": 26,
+    "field": "Branch            *string `cli:\"branch\"`"
+  },
+  {
+    "file": "pkg/tui/views/workflows/workflowcreate.go",
+    "line": 27,
+    "field": "Runtime           *string `cli:\"runtime\" validate:\"required\"`"
+  },
+  {
+    "file": "pkg/tui/views/workflows/workflowcreate.go",
+    "line": 28,
+    "field": "BuildCommand      *string `cli:\"build-command\" validate:\"required\"`"
+  },
+  {
+    "file": "pkg/tui/views/workflows/workflowcreate.go",
+    "line": 29,
+    "field": "RunCommand        *string `cli:\"run-command\" validate:\"required\"`"
+  },
+  {
+    "file": "pkg/tui/views/workflows/workflowcreate.go",
+    "line": 30,
+    "field": "Region            *string `cli:\"region\"`"
+  },
+  {
+    "file": "pkg/tui/views/workflows/workflowcreate.go",
+    "line": 31,
+    "field": "RootDir           *string `cli:\"root-directory\"`"
+  },
+  {
+    "file": "pkg/tui/views/workflows/workflowcreate.go",
+    "line": 32,
+    "field": "AutoDeployTrigger *string `cli:\"auto-deploy-trigger\"`"
+  },
+  {
+    "file": "pkg/tui/views/workflows/workflowcreate.go",
+    "line": 39,
+    "field": "EnvVars []string `cli:\"env-var\"`"
+  },
+  {
+    "file": "pkg/tui/views/workflows/types.go",
+    "line": 14,
+    "field": "WorkflowVersionID string `cli:\"arg:0\"`"
+  },
+  {
+    "file": "pkg/tui/views/workflows/types.go",
+    "line": 21,
+    "field": "TaskSlug string `cli:\"arg:0\"`"
+  },
+  {
+    "file": "pkg/tui/views/workflows/types.go",
+    "line": 22,
+    "field": "Input    string `cli:\"input\" cli-lines:\"15\" cli-ext:\"json\" validate:\"required\"`"
+  },
+  {
+    "file": "pkg/tui/views/workflows/types.go",
+    "line": 26,
+    "field": "TaskRunID string `cli:\"arg:0\"`"
+  },
+  {
+    "file": "pkg/tui/views/workflows/types.go",
+    "line": 37,
+    "field": "WorkflowID string `cli:\"arg:0\"`"
+  },
+  {
+    "file": "pkg/tui/views/workflows/types.go",
+    "line": 41,
+    "field": "TaskSlug string `cli:\"arg:0\"`"
+  },
+  {
+    "file": "pkg/tui/views/workflows/types.go",
+    "line": 46,
+    "field": "WorkflowID string  `cli:\"arg:0\"`"
+  },
+  {
+    "file": "pkg/tui/views/workflows/types.go",
+    "line": 47,
+    "field": "CommitID   *string `cli:\"commit\"`"
+  },
+  {
+    "file": "pkg/tui/views/workflows/types.go",
+    "line": 48,
+    "field": "Wait       bool    `cli:\"wait\"`"
+  }
+]

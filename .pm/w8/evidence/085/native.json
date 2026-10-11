@@ -1,0 +1,330 @@
+{
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "id": "red-db5n4789n5bc73aqij2g",
+  "name": "qa-20261011-069d45-kvexit",
+  "created_at": "2026-10-11T11:25:16.720707+00:00",
+  "create_command": [
+    "bex",
+    "keyvalues",
+    "create",
+    "--name",
+    "qa-20261011-069d45-kvexit",
+    "--plan",
+    "free",
+    "--region",
+    "frankfurt",
+    "--memory-policy",
+    "queue",
+    "--persistence-mode",
+    "journal_snapshot",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "create_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "keyvalues",
+      "create",
+      "--name",
+      "qa-20261011-069d45-kvexit",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--memory-policy",
+      "queue",
+      "--persistence-mode",
+      "journal_snapshot",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.555,
+    "stdout": "{\n  \"data\": {\n    \"id\": \"red-db5n4789n5bc73aqij2g\",\n    \"name\": \"qa-20261011-069d45-kvexit\",\n    \"plan\": \"free\",\n    \"region\": \"fsn1\",\n    \"status\": \"creating\",\n    \"createdAt\": \"2026-10-11T11:25:17Z\",\n    \"updatedAt\": \"2026-10-11T11:25:17.171315618Z\",\n    \"version\": \"8\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"ownerType\": \"team\",\n    \"projectId\": null,\n    \"environmentId\": null,\n    \"ipAllowList\": [],\n    \"maxmemoryPolicy\": \"noeviction\",\n    \"persistenceMode\": \"journal_snapshot\"\n  }\n}",
+    "stderr": ""
+  },
+  "readback": {
+    "id": "red-db5n4789n5bc73aqij2g",
+    "name": "qa-20261011-069d45-kvexit",
+    "status": "available",
+    "plan": "free",
+    "maxmemoryPolicy": "noeviction",
+    "persistenceMode": "journal_snapshot"
+  },
+  "actions": [
+    {
+      "at": "2026-10-11T11:32:00.346473+00:00",
+      "label": "set",
+      "command": [
+        "bex",
+        "kv-cli",
+        "red-db5n4789n5bc73aqij2g",
+        "--",
+        "--raw",
+        "SET",
+        "qa106:069d45",
+        "QA106_069d45_not_a_number"
+      ],
+      "state": "completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "kv-cli",
+          "red-db5n4789n5bc73aqij2g",
+          "--",
+          "--raw",
+          "SET",
+          "qa106:069d45",
+          "QA106_069d45_not_a_number"
+        ],
+        "pid": 98184,
+        "exit": 0,
+        "elapsed": 1.604,
+        "timeout": false,
+        "error_screen_seen": false,
+        "dismissed_error_screen": false,
+        "harness_error": null,
+        "interactive_query_sent": false,
+        "quit_after_expected_row": false,
+        "rollback_on_exit": false,
+        "output": "\u001b]11;?\u001b\\\ntea-daif693dqjvc73e7as3g > Login\ntea-daif693dqjvc73e7as3g > kv-cli\ntea-daif693dqjvc73e7as3g > kv-cli\ntea-daif693dqjvc73e7as3g > kv-cli\nWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\nOK"
+      },
+      "expected_output_seen": true
+    },
+    {
+      "at": "2026-10-11T11:32:02.120879+00:00",
+      "label": "get-before",
+      "command": [
+        "bex",
+        "kv-cli",
+        "red-db5n4789n5bc73aqij2g",
+        "--",
+        "--raw",
+        "GET",
+        "qa106:069d45"
+      ],
+      "state": "completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "kv-cli",
+          "red-db5n4789n5bc73aqij2g",
+          "--",
+          "--raw",
+          "GET",
+          "qa106:069d45"
+        ],
+        "pid": 98195,
+        "exit": 0,
+        "elapsed": 1.464,
+        "timeout": false,
+        "error_screen_seen": false,
+        "dismissed_error_screen": false,
+        "harness_error": null,
+        "interactive_query_sent": false,
+        "quit_after_expected_row": false,
+        "rollback_on_exit": false,
+        "output": "\u001b]11;?\u001b\\\ntea-daif693dqjvc73e7as3g > Login\ntea-daif693dqjvc73e7as3g > kv-cli\ntea-daif693dqjvc73e7as3g > kv-cli\nWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\nQA106_069d45_not_a_number"
+      },
+      "expected_output_seen": true
+    },
+    {
+      "at": "2026-10-11T11:32:03.750803+00:00",
+      "label": "failed-incr-bex",
+      "command": [
+        "bex",
+        "kv-cli",
+        "red-db5n4789n5bc73aqij2g",
+        "--",
+        "--raw",
+        "-e",
+        "INCR",
+        "qa106:069d45"
+      ],
+      "state": "completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "kv-cli",
+          "red-db5n4789n5bc73aqij2g",
+          "--",
+          "--raw",
+          "-e",
+          "INCR",
+          "qa106:069d45"
+        ],
+        "pid": 98209,
+        "exit": 0,
+        "elapsed": 1.818,
+        "timeout": false,
+        "error_screen_seen": true,
+        "dismissed_error_screen": true,
+        "harness_error": null,
+        "interactive_query_sent": false,
+        "quit_after_expected_row": false,
+        "rollback_on_exit": false,
+        "output": "\u001b]11;?\u001b\\\ntea-daif693dqjvc73e7as3g > Login\ntea-daif693dqjvc73e7as3g > kv-cli\ntea-daif693dqjvc73e7as3g > kv-cli\nWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\nERR value is not an integer or out of range\ntea-daif693dqjvc73e7as3g > kv-cli\n┌────────────────────────────────────────┐\n│                                        │\n│                                        │\n│ An error occurred while running kv-cli │\n│                                        │\n│                                        │\n│                                        │\n└────────────────────────────────────────┘"
+      },
+      "expected_output_seen": true
+    },
+    {
+      "at": "2026-10-11T11:32:05.722043+00:00",
+      "label": "get-after-bex",
+      "command": [
+        "bex",
+        "kv-cli",
+        "red-db5n4789n5bc73aqij2g",
+        "--",
+        "--raw",
+        "GET",
+        "qa106:069d45"
+      ],
+      "state": "completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "kv-cli",
+          "red-db5n4789n5bc73aqij2g",
+          "--",
+          "--raw",
+          "GET",
+          "qa106:069d45"
+        ],
+        "pid": 98231,
+        "exit": 0,
+        "elapsed": 1.287,
+        "timeout": false,
+        "error_screen_seen": false,
+        "dismissed_error_screen": false,
+        "harness_error": null,
+        "interactive_query_sent": false,
+        "quit_after_expected_row": false,
+        "rollback_on_exit": false,
+        "output": "\u001b]11;?\u001b\\\ntea-daif693dqjvc73e7as3g > Login\ntea-daif693dqjvc73e7as3g > kv-cli\ntea-daif693dqjvc73e7as3g > kv-cli\nWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\nQA106_069d45_not_a_number"
+      },
+      "expected_output_seen": true
+    },
+    {
+      "at": "2026-10-11T11:32:07.162227+00:00",
+      "label": "failed-incr-render",
+      "command": [
+        "render",
+        "kv-cli",
+        "red-db5n4789n5bc73aqij2g",
+        "--",
+        "--raw",
+        "-e",
+        "INCR",
+        "qa106:069d45"
+      ],
+      "state": "completed",
+      "result": {
+        "binary": "unmodified Render a764810a7682",
+        "command": [
+          "render",
+          "kv-cli",
+          "red-db5n4789n5bc73aqij2g",
+          "--",
+          "--raw",
+          "-e",
+          "INCR",
+          "qa106:069d45"
+        ],
+        "pid": 98236,
+        "exit": 0,
+        "elapsed": 1.314,
+        "timeout": false,
+        "error_screen_seen": true,
+        "dismissed_error_screen": true,
+        "harness_error": null,
+        "interactive_query_sent": false,
+        "quit_after_expected_row": false,
+        "rollback_on_exit": false,
+        "output": "\u001b]11;?\u001b\\\ntea-daif693dqjvc73e7as3g > Login\ntea-daif693dqjvc73e7as3g > kv-cli\ntea-daif693dqjvc73e7as3g > kv-cli\nWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\nERR value is not an integer or out of range\ntea-daif693dqjvc73e7as3g > kv-cli\n┌────────────────────────────────────────┐\n│                                        │\n│                                        │\n│ An error occurred while running kv-cli │\n│                                        │\n│                                        │\n│                                        │\n└────────────────────────────────────────┘"
+      },
+      "expected_output_seen": true
+    },
+    {
+      "at": "2026-10-11T11:32:08.632049+00:00",
+      "label": "get-after-render",
+      "command": [
+        "render",
+        "kv-cli",
+        "red-db5n4789n5bc73aqij2g",
+        "--",
+        "--raw",
+        "GET",
+        "qa106:069d45"
+      ],
+      "state": "completed",
+      "result": {
+        "binary": "unmodified Render a764810a7682",
+        "command": [
+          "render",
+          "kv-cli",
+          "red-db5n4789n5bc73aqij2g",
+          "--",
+          "--raw",
+          "GET",
+          "qa106:069d45"
+        ],
+        "pid": 98243,
+        "exit": 0,
+        "elapsed": 1.243,
+        "timeout": false,
+        "error_screen_seen": false,
+        "dismissed_error_screen": false,
+        "harness_error": null,
+        "interactive_query_sent": false,
+        "quit_after_expected_row": false,
+        "rollback_on_exit": false,
+        "output": "\u001b]11;?\u001b\\\ntea-daif693dqjvc73e7as3g > Login\ntea-daif693dqjvc73e7as3g > kv-cli\ntea-daif693dqjvc73e7as3g > kv-cli\nWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\nQA106_069d45_not_a_number"
+      },
+      "expected_output_seen": true
+    },
+    {
+      "at": "2026-10-11T11:32:10.029588+00:00",
+      "label": "ping",
+      "command": [
+        "bex",
+        "kv-cli",
+        "red-db5n4789n5bc73aqij2g",
+        "--",
+        "--raw",
+        "PING"
+      ],
+      "state": "completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "kv-cli",
+          "red-db5n4789n5bc73aqij2g",
+          "--",
+          "--raw",
+          "PING"
+        ],
+        "pid": 98254,
+        "exit": 0,
+        "elapsed": 1.303,
+        "timeout": false,
+        "error_screen_seen": false,
+        "dismissed_error_screen": false,
+        "harness_error": null,
+        "interactive_query_sent": false,
+        "quit_after_expected_row": false,
+        "rollback_on_exit": false,
+        "output": "\u001b]11;?\u001b\\\ntea-daif693dqjvc73e7as3g > Login\ntea-daif693dqjvc73e7as3g > kv-cli\ntea-daif693dqjvc73e7as3g > kv-cli\nWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\nPONG"
+      },
+      "expected_output_seen": true
+    }
+  ],
+  "qualification": "All three child standard streams use one PTY. Exit 0 after explicit Ctrl+C dismissal is not filed as a child-status propagation defect. The real Redis diagnostic appears before the generic error panel. Native HTTP requests were not intercepted."
+}

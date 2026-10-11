@@ -1,0 +1,188 @@
+{
+  "id": "red-db5mcvcf52sc73b2rsog",
+  "name": "qa-20261011-209d86-kvlive",
+  "create_command": [
+    "bex",
+    "keyvalues",
+    "create",
+    "--name",
+    "qa-20261011-209d86-kvlive",
+    "--plan",
+    "free",
+    "--region",
+    "frankfurt",
+    "--memory-policy",
+    "queue",
+    "--persistence-mode",
+    "journal_snapshot",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "create_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "keyvalues",
+      "create",
+      "--name",
+      "qa-20261011-209d86-kvlive",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--memory-policy",
+      "queue",
+      "--persistence-mode",
+      "journal_snapshot",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.493,
+    "stdout": "{\n  \"data\": {\n    \"id\": \"red-db5mcvcf52sc73b2rsog\",\n    \"name\": \"qa-20261011-209d86-kvlive\",\n    \"plan\": \"free\",\n    \"region\": \"fsn1\",\n    \"status\": \"creating\",\n    \"createdAt\": \"2026-10-11T10:35:41Z\",\n    \"updatedAt\": \"2026-10-11T10:35:41.88194338Z\",\n    \"version\": \"8\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"ownerType\": \"team\",\n    \"projectId\": null,\n    \"environmentId\": null,\n    \"ipAllowList\": [],\n    \"maxmemoryPolicy\": \"noeviction\",\n    \"persistenceMode\": \"journal_snapshot\"\n  }\n}",
+    "stderr": ""
+  },
+  "create_response": {
+    "id": "red-db5mcvcf52sc73b2rsog",
+    "name": "qa-20261011-209d86-kvlive",
+    "plan": "free",
+    "region": "fsn1",
+    "status": "creating",
+    "createdAt": "2026-10-11T10:35:41Z",
+    "updatedAt": "2026-10-11T10:35:41.88194338Z",
+    "version": "8",
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "ownerType": "team",
+    "projectId": null,
+    "environmentId": null,
+    "ipAllowList": [],
+    "maxmemoryPolicy": "noeviction",
+    "persistenceMode": "journal_snapshot"
+  },
+  "initial_direct_tails": {
+    "at": "2026-10-11T10:37:18.668116+00:00",
+    "state": "two native managed Key Value Unicode tails intent persisted",
+    "term": "QA102_209d86 ι",
+    "expected_markers": [
+      "QA102_209d86 Ι",
+      "QA102_209d86 ι"
+    ],
+    "negative_marker": "QA102_209d86 λ",
+    "streams": [
+      {
+        "client": "bex",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "red-db5mcvcf52sc73b2rsog",
+          "--text",
+          "\"QA102_209d86 ι\"",
+          "--limit",
+          "100",
+          "--tail",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "started": "2026-10-11T10:37:18.713512+00:00",
+        "state": "running",
+        "pid": 83085,
+        "native_result": {
+          "exit": 0,
+          "elapsed": 6.16,
+          "stdout": "",
+          "stderr": "",
+          "reaped": true
+        }
+      },
+      {
+        "client": "render",
+        "command": [
+          "render",
+          "logs",
+          "--resources",
+          "red-db5mcvcf52sc73b2rsog",
+          "--text",
+          "\"QA102_209d86 ι\"",
+          "--limit",
+          "100",
+          "--tail",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "started": "2026-10-11T10:37:18.798168+00:00",
+        "state": "running",
+        "pid": 83087,
+        "native_result": {
+          "exit": 0,
+          "elapsed": 6.198,
+          "stdout": "",
+          "stderr": "",
+          "reaped": true
+        }
+      }
+    ],
+    "wire": "native SSE not intercepted; exact owned Redis generator and output receipts retained",
+    "completed": "2026-10-11T10:37:24.949885+00:00",
+    "capture_cleanup": "both native processes reaped and both own config copies removed"
+  },
+  "captured_tails": [
+    {
+      "client": "bex",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "red-db5mcvcf52sc73b2rsog",
+        "--text",
+        "\"QA102_209d86 ι\"",
+        "--limit",
+        "100",
+        "--tail",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "at": "2026-10-11T10:43:21.234390+00:00",
+      "authority_forwarding": "native GET/WS requests unchanged to fixed api.bex.co; only recorded owned ID accepted; duplex body wrapper forwards all bytes unchanged; no auth capture",
+      "result": {
+        "exit": 0,
+        "elapsed": 0.848,
+        "stdout": "",
+        "stderr": ""
+      },
+      "config_removed": true
+    },
+    {
+      "client": "render",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "red-db5mcvcf52sc73b2rsog",
+        "--text",
+        "\"QA102_209d86 ι\"",
+        "--limit",
+        "100",
+        "--tail",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "at": "2026-10-11T10:43:22.167062+00:00",
+      "authority_forwarding": "native GET/WS requests unchanged to fixed api.bex.co; only recorded owned ID accepted; duplex body wrapper forwards all bytes unchanged; no auth capture",
+      "result": {
+        "exit": 0,
+        "elapsed": 0.687,
+        "stdout": "",
+        "stderr": ""
+      },
+      "config_removed": true
+    }
+  ],
+  "qualification": "Initial six-second setup observation found both processes already exited; no marker write was attempted. Precise fresh process durations are from captured_tails. Native transport is WebSocket, not SSE."
+}

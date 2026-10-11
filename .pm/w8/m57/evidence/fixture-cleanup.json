@@ -1,0 +1,233 @@
+{
+  "id": "srv-db5jv0gmmd8c73drribg",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "name": "qa-20261011-4b444e-commaform",
+  "nonce": "4b444e",
+  "type": "web_service",
+  "time": "2026-10-11T07:49:21.387600+00:00",
+  "role": "native unchanged log form preserves a literal comma-containing text filter",
+  "command": [
+    "bex",
+    "services",
+    "create",
+    "--name",
+    "qa-20261011-4b444e-commaform",
+    "--type",
+    "web_service",
+    "--runtime",
+    "node",
+    "--repo",
+    "https://github.com/bex-co/bex",
+    "--branch",
+    "main",
+    "--root-directory",
+    "examples/hello-node",
+    "--build-command",
+    "node --version",
+    "--start-command",
+    "node -e 'console.log(\"QA89_LEFT_4b444e,QA89_RIGHT_4b444e\");console.log(\"QA89_LEFT_4b444e only\");console.log(\"QA89_RIGHT_4b444e only\");const http=require(\"node:http\");http.createServer((req,res)=>{const u=new URL(req.url,\"http://fixture\");const path=decodeURIComponent(u.pathname);const ok=req.url===\"/\"||req.url===\"/healthz\"||(path===\"/qa/\u2713+ready\"&&u.searchParams.get(\"mode\")===\"blue sky\"&&u.searchParams.get(\"mark\")===\"qa89-4b444e\");const code=ok?200:404;console.log(\"QA89_REQUEST \"+JSON.stringify({raw:req.url,host:req.headers.host,ua:req.headers[\"user-agent\"],code}));res.writeHead(code,{\"Content-Type\":\"text/plain\"});res.end(\"qa89-4b444e\\n\");}).listen(Number(process.env.PORT),\"0.0.0.0\")'",
+    "--health-check-path",
+    "/healthz",
+    "--plan",
+    "free",
+    "--region",
+    "frankfurt",
+    "--auto-deploy=false",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+  "form_target_log": {
+    "id": "srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084512411Z-033fe9d0",
+    "labels": [
+      {
+        "name": "type",
+        "value": "app"
+      },
+      {
+        "name": "resource",
+        "value": "srv-db5jv0gmmd8c73drribg"
+      },
+      {
+        "name": "instance",
+        "value": "srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5"
+      },
+      {
+        "name": "container",
+        "value": "app"
+      },
+      {
+        "name": "level",
+        "value": "unknown"
+      }
+    ],
+    "message": "QA89_LEFT_4b444e,QA89_RIGHT_4b444e",
+    "timestamp": "2026-10-11T07:51:23.084512411Z"
+  },
+  "deploy_children": [
+    {
+      "commit": {
+        "id": "2916c1a57300e14c1e063fc7153a4ed2f791d34b",
+        "message": "docs(pm): qualify free web public wake guidance (w4/252)"
+      },
+      "createdAt": "2026-10-11T07:49:22.913064Z",
+      "finishedAt": "2026-10-11T07:51:41.324446Z",
+      "id": "dep-db5jv0gmmd8c73drric0",
+      "startedAt": "2026-10-11T07:50:27.934094Z",
+      "status": "live",
+      "trigger": "other",
+      "updatedAt": "2026-10-11T07:51:41.324452Z"
+    }
+  ],
+  "runtime_checks": [
+    {
+      "at": "2026-10-11T07:50:00.278440+00:00",
+      "kind": "root",
+      "path": "/",
+      "exit": 0,
+      "status": "404",
+      "body": "404 page not found\n",
+      "marker_matches": false
+    },
+    {
+      "at": "2026-10-11T07:50:00.914960+00:00",
+      "kind": "encoded",
+      "path": "/qa/%E2%9C%93%2Bready?mode=blue+sky&mark=qa89-4b444e",
+      "exit": 0,
+      "status": "404",
+      "body": "404 page not found\n",
+      "marker_matches": false
+    },
+    {
+      "at": "2026-10-11T07:51:10.379077+00:00",
+      "kind": "root",
+      "path": "/",
+      "exit": 0,
+      "status": "404",
+      "body": "404 page not found\n",
+      "marker_matches": false
+    },
+    {
+      "at": "2026-10-11T07:51:10.978497+00:00",
+      "kind": "encoded",
+      "path": "/qa/%E2%9C%93%2Bready?mode=blue+sky&mark=qa89-4b444e",
+      "exit": 0,
+      "status": "404",
+      "body": "404 page not found\n",
+      "marker_matches": false
+    },
+    {
+      "at": "2026-10-11T07:52:18.775185+00:00",
+      "kind": "root",
+      "path": "/",
+      "exit": 0,
+      "status": "200",
+      "body": "qa89-4b444e\n",
+      "marker_matches": true
+    },
+    {
+      "at": "2026-10-11T07:52:19.406367+00:00",
+      "kind": "encoded",
+      "path": "/qa/%E2%9C%93%2Bready?mode=blue+sky&mark=qa89-4b444e",
+      "exit": 0,
+      "status": "200",
+      "body": "qa89-4b444e\n",
+      "marker_matches": true
+    }
+  ],
+  "workspace_after_delete_ids": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3v694dm7c7390q930",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0"
+  ],
+  "runtime_after_delete_checks": [
+    {
+      "exit": 0,
+      "stdout": "404 page not found\n\n404",
+      "stderr": ""
+    }
+  ],
+  "quota_after_delete": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.265,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48c4b3adaeecf16-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "create_result": {
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261011-4b444e-commaform",
+      "--type",
+      "web_service",
+      "--runtime",
+      "node",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/hello-node",
+      "--build-command",
+      "node --version",
+      "--start-command",
+      "node -e 'console.log(\"QA89_LEFT_4b444e,QA89_RIGHT_4b444e\");console.log(\"QA89_LEFT_4b444e only\");console.log(\"QA89_RIGHT_4b444e only\");const http=require(\"node:http\");http.createServer((req,res)=>{const u=new URL(req.url,\"http://fixture\");const path=decodeURIComponent(u.pathname);const ok=req.url===\"/\"||req.url===\"/healthz\"||(path===\"/qa/\u2713+ready\"&&u.searchParams.get(\"mode\")===\"blue sky\"&&u.searchParams.get(\"mark\")===\"qa89-4b444e\");const code=ok?200:404;console.log(\"QA89_REQUEST \"+JSON.stringify({raw:req.url,host:req.headers.host,ua:req.headers[\"user-agent\"],code}));res.writeHead(code,{\"Content-Type\":\"text/plain\"});res.end(\"qa89-4b444e\\n\");}).listen(Number(process.env.PORT),\"0.0.0.0\")'",
+      "--health-check-path",
+      "/healthz",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.741,
+    "stderr": ""
+  },
+  "delete_result": {
+    "command": [
+      "bex",
+      "services",
+      "delete",
+      "srv-db5jv0gmmd8c73drribg",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.476,
+    "stderr": ""
+  },
+  "detail_after_delete": {
+    "method": "GET",
+    "path": "/v1/services/srv-db5jv0gmmd8c73drribg",
+    "body": null,
+    "status": "404",
+    "elapsed": 0.238,
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48c4b31f9800dac-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "qualification": "Selected nonsecret fixture and cleanup proof. Native create/delete wire not captured."
+}

@@ -1,0 +1,104 @@
+[
+  {
+    "client": "bex",
+    "term": "QA100_998562",
+    "expected_count": 3,
+    "actual_count": 3,
+    "expected_messages": [
+      "2026-10-11 10:21:39.400 UTC [153] LOG:  QA100_998562 Ι",
+      "2026-10-11 10:21:41.738 UTC [154] LOG:  QA100_998562 ι",
+      "2026-10-11 10:21:44.001 UTC [155] LOG:  QA100_998562 λ"
+    ],
+    "actual_messages": [
+      "2026-10-11 10:21:39.400 UTC [153] LOG:  QA100_998562 Ι",
+      "2026-10-11 10:21:41.738 UTC [154] LOG:  QA100_998562 ι",
+      "2026-10-11 10:21:44.001 UTC [155] LOG:  QA100_998562 λ"
+    ],
+    "native_exit": 0,
+    "elapsed": 3.12,
+    "status": 200,
+    "native_message_bytes_match_wire": true
+  },
+  {
+    "client": "bex",
+    "term": "ι",
+    "expected_count": 2,
+    "actual_count": 0,
+    "expected_messages": [
+      "2026-10-11 10:21:39.400 UTC [153] LOG:  QA100_998562 Ι",
+      "2026-10-11 10:21:41.738 UTC [154] LOG:  QA100_998562 ι"
+    ],
+    "actual_messages": [],
+    "native_exit": 0,
+    "elapsed": 2.852,
+    "status": 200,
+    "native_message_bytes_match_wire": true
+  },
+  {
+    "client": "bex",
+    "term": "λ",
+    "expected_count": 1,
+    "actual_count": 1,
+    "expected_messages": [
+      "2026-10-11 10:21:44.001 UTC [155] LOG:  QA100_998562 λ"
+    ],
+    "actual_messages": [
+      "2026-10-11 10:21:44.001 UTC [155] LOG:  QA100_998562 λ"
+    ],
+    "native_exit": 0,
+    "elapsed": 2.485,
+    "status": 200,
+    "native_message_bytes_match_wire": true
+  },
+  {
+    "client": "render",
+    "term": "QA100_998562",
+    "expected_count": 3,
+    "actual_count": 3,
+    "expected_messages": [
+      "2026-10-11 10:21:39.400 UTC [153] LOG:  QA100_998562 Ι",
+      "2026-10-11 10:21:41.738 UTC [154] LOG:  QA100_998562 ι",
+      "2026-10-11 10:21:44.001 UTC [155] LOG:  QA100_998562 λ"
+    ],
+    "actual_messages": [
+      "2026-10-11 10:21:39.400 UTC [153] LOG:  QA100_998562 Ι",
+      "2026-10-11 10:21:41.738 UTC [154] LOG:  QA100_998562 ι",
+      "2026-10-11 10:21:44.001 UTC [155] LOG:  QA100_998562 λ"
+    ],
+    "native_exit": 0,
+    "elapsed": 2.822,
+    "status": 200,
+    "native_message_bytes_match_wire": true
+  },
+  {
+    "client": "render",
+    "term": "ι",
+    "expected_count": 2,
+    "actual_count": 0,
+    "expected_messages": [
+      "2026-10-11 10:21:39.400 UTC [153] LOG:  QA100_998562 Ι",
+      "2026-10-11 10:21:41.738 UTC [154] LOG:  QA100_998562 ι"
+    ],
+    "actual_messages": [],
+    "native_exit": 0,
+    "elapsed": 2.753,
+    "status": 200,
+    "native_message_bytes_match_wire": true
+  },
+  {
+    "client": "render",
+    "term": "λ",
+    "expected_count": 1,
+    "actual_count": 1,
+    "expected_messages": [
+      "2026-10-11 10:21:44.001 UTC [155] LOG:  QA100_998562 λ"
+    ],
+    "actual_messages": [
+      "2026-10-11 10:21:44.001 UTC [155] LOG:  QA100_998562 λ"
+    ],
+    "native_exit": 0,
+    "elapsed": 3.141,
+    "status": 200,
+    "native_message_bytes_match_wire": true
+  }
+]

@@ -1,0 +1,52 @@
+{
+  "pin": "a764810a768202704e7206eb7b87a47211fcd98e",
+  "err_valued_user_facing_error_literals": 2,
+  "constructors": [
+    {
+      "path": "pkg/tui/views/rediscli.go:78-83",
+      "commands": [
+        "kv-cli"
+      ],
+      "fields": [
+        "Title",
+        "Err"
+      ]
+    },
+    {
+      "path": "pkg/tui/views/psql.go:138-145",
+      "commands": [
+        "interactive psql",
+        "pgcli"
+      ],
+      "fields": [
+        "Title",
+        "Err"
+      ]
+    }
+  ],
+  "shared_consumer": "pkg/tui/error.go:52-78",
+  "neighbors": [
+    {
+      "path": "pkg/tui/views/ssh.go:41-46",
+      "fields": [
+        "Title",
+        "Message"
+      ],
+      "underlying_error_in_explicit_message": true
+    },
+    {
+      "path": "pkg/tui/exec.go:45-51",
+      "case": "missing executable",
+      "fields": [
+        "Title",
+        "Message"
+      ]
+    },
+    {
+      "path": "pkg/tui/views/psql.go:45-95",
+      "case": "noninteractive psql",
+      "uses_error_panel": false
+    }
+  ],
+  "qualification": "Only kv-cli was reproduced natively in this sweep. Postgres session commands are source-proven callers, not additional live failures."
+}

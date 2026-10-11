@@ -1,0 +1,314 @@
+{
+  "scope": "Native released Bex and actual unmodified Render pin; GET-only local proxy forwards unchanged path/query to HTTPS api.bex.co; copied config authority only. No Authorization values captured.",
+  "attempts": [
+    {
+      "at": "2026-10-11T00:50:57.800692+00:00",
+      "client": "bex",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db5dpgel97ls73au609g",
+        "--type",
+        "app",
+        "--text",
+        "QA86_FORM_b2102d",
+        "--start",
+        "2026-10-11T00:50:00.857576125Z",
+        "--end",
+        "2026-10-11T00:50:00.857576125Z",
+        "--limit",
+        "10",
+        "--confirm",
+        "-o",
+        "interactive"
+      ],
+      "events": [
+        {
+          "at": "2026-10-11T00:51:32.854380+00:00",
+          "key": "CTRL_C",
+          "purpose": "planned end of bounded read-only observation"
+        }
+      ],
+      "exit": 0,
+      "elapsed": 36.147,
+      "harness_deadline": true,
+      "filter_submitted": false,
+      "reaped": true,
+      "pid": null,
+      "native_wire": [],
+      "attempt": "interactive_bex",
+      "qualification": "Initial environment-only override did not intercept configured-host requests; discarded as wire evidence."
+    },
+    {
+      "at": "2026-10-11T07:32:36.587009+00:00",
+      "client": "bex",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db5dpgel97ls73au609g",
+        "--type",
+        "app",
+        "--text",
+        "QA86_FORM_b2102d",
+        "--start",
+        "2026-10-11T00:50:00.857576125Z",
+        "--end",
+        "2026-10-11T00:50:00.857576125Z",
+        "--limit",
+        "10",
+        "--confirm",
+        "-o",
+        "interactive"
+      ],
+      "events": [
+        {
+          "at": "2026-10-11T07:32:37.506072+00:00",
+          "key": "/",
+          "purpose": "open filter sidebar after initial exact-window response and rendered marker"
+        },
+        {
+          "at": "2026-10-11T07:32:38.319341+00:00",
+          "key": "ENTER",
+          "purpose": "apply unchanged filter form; no time fields edited"
+        },
+        {
+          "at": "2026-10-11T07:32:39.689154+00:00",
+          "key": "CTRL_C",
+          "purpose": "planned end of bounded read-only observation"
+        }
+      ],
+      "exit": -9,
+      "elapsed": 10.223,
+      "harness_deadline": false,
+      "filter_submitted": true,
+      "reaped": true,
+      "pid": null,
+      "native_wire": [
+        {
+          "at": "2026-10-11T07:32:37.491747+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&startTime=2026-10-11T00%3A50%3A00.857576125Z&endTime=2026-10-11T00%3A50%3A00.857576125Z&direction=backward&resource=srv-db5dpgel97ls73au609g&type=app&text=QA86_FORM_b2102d&limit=10",
+            "query": {
+              "ownerId": [
+                "tea-daif693dqjvc73e7as3g"
+              ],
+              "startTime": [
+                "2026-10-11T00:50:00.857576125Z"
+              ],
+              "endTime": [
+                "2026-10-11T00:50:00.857576125Z"
+              ],
+              "direction": [
+                "backward"
+              ],
+              "resource": [
+                "srv-db5dpgel97ls73au609g"
+              ],
+              "type": [
+                "app"
+              ],
+              "text": [
+                "QA86_FORM_b2102d"
+              ],
+              "limit": [
+                "10"
+              ]
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a48c2c04ee64d81b-SJC"
+          },
+          "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T00:50:00.857576125Z\",\"nextEndTime\":\"2026-10-11T00:50:00.857576124Z\",\"logs\":[{\"id\":\"srv-db5dpgel97ls73au609g-36pd2em5vv0sffjs5bvf-2026-10-11T00:50:00.857576125Z-c456870e\",\"message\":\"QA86_FORM_b2102d\",\"timestamp\":\"2026-10-11T00:50:00.857576125Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5dpgel97ls73au609g\"},{\"name\":\"instance\",\"value\":\"srv-db5dpgel97ls73au609g-36pd2em5vv0sffjs5bvf\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+        },
+        {
+          "at": "2026-10-11T07:32:39.070648+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&startTime=2026-10-11T00%3A50%3A00Z&endTime=2026-10-11T00%3A50%3A00Z&direction=backward&resource=srv-db5dpgel97ls73au609g&type=app&text=QA86_FORM_b2102d&limit=10",
+            "query": {
+              "ownerId": [
+                "tea-daif693dqjvc73e7as3g"
+              ],
+              "startTime": [
+                "2026-10-11T00:50:00Z"
+              ],
+              "endTime": [
+                "2026-10-11T00:50:00Z"
+              ],
+              "direction": [
+                "backward"
+              ],
+              "resource": [
+                "srv-db5dpgel97ls73au609g"
+              ],
+              "type": [
+                "app"
+              ],
+              "text": [
+                "QA86_FORM_b2102d"
+              ],
+              "limit": [
+                "10"
+              ]
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a48c2c0cdc30ed3d-SJC"
+          },
+          "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T00:50:00Z\",\"nextEndTime\":\"2026-10-11T00:50:00Z\",\"logs\":[]}\n"
+        }
+      ],
+      "attempt": "interactive_bex_v2",
+      "qualification": "Captured before and after unchanged filter apply; harness terminates/reaps native process after observation. Exit is harness-caused, not product exit semantics."
+    },
+    {
+      "at": "2026-10-11T07:33:14.833683+00:00",
+      "client": "render",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db5dpgel97ls73au609g",
+        "--type",
+        "app",
+        "--text",
+        "QA86_FORM_b2102d",
+        "--start",
+        "2026-10-11T00:50:00.857576125Z",
+        "--end",
+        "2026-10-11T00:50:00.857576125Z",
+        "--limit",
+        "10",
+        "--confirm",
+        "-o",
+        "interactive"
+      ],
+      "events": [
+        {
+          "at": "2026-10-11T07:33:15.602583+00:00",
+          "key": "/",
+          "purpose": "open filter sidebar after initial exact-window response and rendered marker"
+        },
+        {
+          "at": "2026-10-11T07:33:16.446027+00:00",
+          "key": "ENTER",
+          "purpose": "apply unchanged filter form; no time fields edited"
+        },
+        {
+          "at": "2026-10-11T07:33:17.352996+00:00",
+          "key": "CTRL_C",
+          "purpose": "planned end of bounded read-only observation"
+        }
+      ],
+      "exit": -15,
+      "elapsed": 7.097,
+      "harness_deadline": false,
+      "filter_submitted": true,
+      "reaped": true,
+      "pid": null,
+      "native_wire": [
+        {
+          "at": "2026-10-11T07:33:15.597921+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&startTime=2026-10-11T00%3A50%3A00.857576125Z&endTime=2026-10-11T00%3A50%3A00.857576125Z&direction=backward&resource=srv-db5dpgel97ls73au609g&type=app&text=QA86_FORM_b2102d&limit=10",
+            "query": {
+              "ownerId": [
+                "tea-daif693dqjvc73e7as3g"
+              ],
+              "startTime": [
+                "2026-10-11T00:50:00.857576125Z"
+              ],
+              "endTime": [
+                "2026-10-11T00:50:00.857576125Z"
+              ],
+              "direction": [
+                "backward"
+              ],
+              "resource": [
+                "srv-db5dpgel97ls73au609g"
+              ],
+              "type": [
+                "app"
+              ],
+              "text": [
+                "QA86_FORM_b2102d"
+              ],
+              "limit": [
+                "10"
+              ]
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a48c2cf32f5f156b-SJC"
+          },
+          "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T00:50:00.857576125Z\",\"nextEndTime\":\"2026-10-11T00:50:00.857576124Z\",\"logs\":[{\"id\":\"srv-db5dpgel97ls73au609g-36pd2em5vv0sffjs5bvf-2026-10-11T00:50:00.857576125Z-c456870e\",\"message\":\"QA86_FORM_b2102d\",\"timestamp\":\"2026-10-11T00:50:00.857576125Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5dpgel97ls73au609g\"},{\"name\":\"instance\",\"value\":\"srv-db5dpgel97ls73au609g-36pd2em5vv0sffjs5bvf\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+        },
+        {
+          "at": "2026-10-11T07:33:16.746551+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&startTime=2026-10-11T00%3A50%3A00Z&endTime=2026-10-11T00%3A50%3A00Z&direction=backward&resource=srv-db5dpgel97ls73au609g&type=app&text=QA86_FORM_b2102d&limit=10",
+            "query": {
+              "ownerId": [
+                "tea-daif693dqjvc73e7as3g"
+              ],
+              "startTime": [
+                "2026-10-11T00:50:00Z"
+              ],
+              "endTime": [
+                "2026-10-11T00:50:00Z"
+              ],
+              "direction": [
+                "backward"
+              ],
+              "resource": [
+                "srv-db5dpgel97ls73au609g"
+              ],
+              "type": [
+                "app"
+              ],
+              "text": [
+                "QA86_FORM_b2102d"
+              ],
+              "limit": [
+                "10"
+              ]
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a48c2cfa7e2b2157-SJC"
+          },
+          "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T00:50:00Z\",\"nextEndTime\":\"2026-10-11T00:50:00Z\",\"logs\":[]}\n"
+        }
+      ],
+      "attempt": "interactive_render_v2",
+      "qualification": "Captured before and after unchanged filter apply; harness terminates/reaps native process after observation. Exit is harness-caused, not product exit semantics."
+    }
+  ]
+}

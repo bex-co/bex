@@ -1,0 +1,275 @@
+{
+  "scope": "Native released Bex and actual Render pin; fixed GET-only loopback forwarder changes configured API authority only; paths/queries/responses unchanged; no Authorization journaled.",
+  "attempts": [
+    {
+      "at": "2026-10-11T07:52:40.779597+00:00",
+      "client": "bex",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db5jv0gmmd8c73drribg",
+        "--type",
+        "app",
+        "--text",
+        "\"QA89_LEFT_4b444e,QA89_RIGHT_4b444e\"",
+        "--start",
+        "2026-10-11T07:51:22Z",
+        "--end",
+        "2026-10-11T07:51:25Z",
+        "--limit",
+        "10",
+        "--confirm",
+        "-o",
+        "interactive"
+      ],
+      "events": [
+        {
+          "at": "2026-10-11T07:52:41.512547+00:00",
+          "key": "/",
+          "purpose": "open filter sidebar after initial exact-window response and rendered marker"
+        },
+        {
+          "at": "2026-10-11T07:52:42.371922+00:00",
+          "key": "ENTER",
+          "purpose": "apply unchanged filter form; no time fields edited"
+        },
+        {
+          "at": "2026-10-11T07:52:43.277834+00:00",
+          "key": "CTRL_C",
+          "purpose": "planned end of bounded read-only observation"
+        }
+      ],
+      "exit": 0,
+      "elapsed": 2.561,
+      "harness_deadline": false,
+      "filter_submitted": true,
+      "reaped": true,
+      "pid": null,
+      "native_wire": [
+        {
+          "at": "2026-10-11T07:52:41.489230+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&startTime=2026-10-11T07%3A51%3A22Z&endTime=2026-10-11T07%3A51%3A25Z&direction=backward&resource=srv-db5jv0gmmd8c73drribg&type=app&text=QA89_LEFT_4b444e%2CQA89_RIGHT_4b444e&limit=10",
+            "query": {
+              "ownerId": [
+                "tea-daif693dqjvc73e7as3g"
+              ],
+              "startTime": [
+                "2026-10-11T07:51:22Z"
+              ],
+              "endTime": [
+                "2026-10-11T07:51:25Z"
+              ],
+              "direction": [
+                "backward"
+              ],
+              "resource": [
+                "srv-db5jv0gmmd8c73drribg"
+              ],
+              "type": [
+                "app"
+              ],
+              "text": [
+                "QA89_LEFT_4b444e,QA89_RIGHT_4b444e"
+              ],
+              "limit": [
+                "10"
+              ]
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a48c496a1856eb4b-SJC"
+          },
+          "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T07:51:22Z\",\"nextEndTime\":\"2026-10-11T07:51:23.08451241Z\",\"logs\":[{\"id\":\"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084512411Z-033fe9d0\",\"message\":\"QA89_LEFT_4b444e,QA89_RIGHT_4b444e\",\"timestamp\":\"2026-10-11T07:51:23.084512411Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5jv0gmmd8c73drribg\"},{\"name\":\"instance\",\"value\":\"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+        },
+        {
+          "at": "2026-10-11T07:52:42.656499+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&startTime=2026-10-11T07%3A51%3A22Z&endTime=2026-10-11T07%3A51%3A25Z&direction=backward&resource=srv-db5jv0gmmd8c73drribg&type=app&text=QA89_LEFT_4b444e&text=QA89_RIGHT_4b444e&limit=10",
+            "query": {
+              "ownerId": [
+                "tea-daif693dqjvc73e7as3g"
+              ],
+              "startTime": [
+                "2026-10-11T07:51:22Z"
+              ],
+              "endTime": [
+                "2026-10-11T07:51:25Z"
+              ],
+              "direction": [
+                "backward"
+              ],
+              "resource": [
+                "srv-db5jv0gmmd8c73drribg"
+              ],
+              "type": [
+                "app"
+              ],
+              "text": [
+                "QA89_LEFT_4b444e",
+                "QA89_RIGHT_4b444e"
+              ],
+              "limit": [
+                "10"
+              ]
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a48c497199edfa86-SJC"
+          },
+          "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T07:51:22Z\",\"nextEndTime\":\"2026-10-11T07:51:23.08451241Z\",\"logs\":[{\"id\":\"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084512411Z-033fe9d0\",\"message\":\"QA89_LEFT_4b444e,QA89_RIGHT_4b444e\",\"timestamp\":\"2026-10-11T07:51:23.084512411Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5jv0gmmd8c73drribg\"},{\"name\":\"instance\",\"value\":\"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084784989Z-4b42a646\",\"message\":\"QA89_LEFT_4b444e only\",\"timestamp\":\"2026-10-11T07:51:23.084784989Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5jv0gmmd8c73drribg\"},{\"name\":\"instance\",\"value\":\"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084789748Z-7074492b\",\"message\":\"QA89_RIGHT_4b444e only\",\"timestamp\":\"2026-10-11T07:51:23.084789748Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5jv0gmmd8c73drribg\"},{\"name\":\"instance\",\"value\":\"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+        }
+      ],
+      "temporary_config_removed": true
+    },
+    {
+      "at": "2026-10-11T07:53:02.623586+00:00",
+      "client": "render",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db5jv0gmmd8c73drribg",
+        "--type",
+        "app",
+        "--text",
+        "\"QA89_LEFT_4b444e,QA89_RIGHT_4b444e\"",
+        "--start",
+        "2026-10-11T07:51:22Z",
+        "--end",
+        "2026-10-11T07:51:25Z",
+        "--limit",
+        "10",
+        "--confirm",
+        "-o",
+        "interactive"
+      ],
+      "events": [
+        {
+          "at": "2026-10-11T07:53:04.465743+00:00",
+          "key": "/",
+          "purpose": "open filter sidebar after initial exact-window response and rendered marker"
+        },
+        {
+          "at": "2026-10-11T07:53:05.312513+00:00",
+          "key": "ENTER",
+          "purpose": "apply unchanged filter form; no time fields edited"
+        },
+        {
+          "at": "2026-10-11T07:53:06.335054+00:00",
+          "key": "CTRL_C",
+          "purpose": "planned end of bounded read-only observation"
+        }
+      ],
+      "exit": 0,
+      "elapsed": 4.16,
+      "harness_deadline": false,
+      "filter_submitted": true,
+      "reaped": true,
+      "pid": null,
+      "native_wire": [
+        {
+          "at": "2026-10-11T07:53:04.442454+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&startTime=2026-10-11T07%3A51%3A22Z&endTime=2026-10-11T07%3A51%3A25Z&direction=backward&resource=srv-db5jv0gmmd8c73drribg&type=app&text=QA89_LEFT_4b444e%2CQA89_RIGHT_4b444e&limit=10",
+            "query": {
+              "ownerId": [
+                "tea-daif693dqjvc73e7as3g"
+              ],
+              "startTime": [
+                "2026-10-11T07:51:22Z"
+              ],
+              "endTime": [
+                "2026-10-11T07:51:25Z"
+              ],
+              "direction": [
+                "backward"
+              ],
+              "resource": [
+                "srv-db5jv0gmmd8c73drribg"
+              ],
+              "type": [
+                "app"
+              ],
+              "text": [
+                "QA89_LEFT_4b444e,QA89_RIGHT_4b444e"
+              ],
+              "limit": [
+                "10"
+              ]
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a48c49f97884cfac-SJC"
+          },
+          "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T07:51:22Z\",\"nextEndTime\":\"2026-10-11T07:51:23.08451241Z\",\"logs\":[{\"id\":\"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084512411Z-033fe9d0\",\"message\":\"QA89_LEFT_4b444e,QA89_RIGHT_4b444e\",\"timestamp\":\"2026-10-11T07:51:23.084512411Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5jv0gmmd8c73drribg\"},{\"name\":\"instance\",\"value\":\"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+        },
+        {
+          "at": "2026-10-11T07:53:05.713726+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&startTime=2026-10-11T07%3A51%3A22Z&endTime=2026-10-11T07%3A51%3A25Z&direction=backward&resource=srv-db5jv0gmmd8c73drribg&type=app&text=QA89_LEFT_4b444e&text=QA89_RIGHT_4b444e&limit=10",
+            "query": {
+              "ownerId": [
+                "tea-daif693dqjvc73e7as3g"
+              ],
+              "startTime": [
+                "2026-10-11T07:51:22Z"
+              ],
+              "endTime": [
+                "2026-10-11T07:51:25Z"
+              ],
+              "direction": [
+                "backward"
+              ],
+              "resource": [
+                "srv-db5jv0gmmd8c73drribg"
+              ],
+              "type": [
+                "app"
+              ],
+              "text": [
+                "QA89_LEFT_4b444e",
+                "QA89_RIGHT_4b444e"
+              ],
+              "limit": [
+                "10"
+              ]
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a48c4a00fa94e34e-SJC"
+          },
+          "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T07:51:22Z\",\"nextEndTime\":\"2026-10-11T07:51:23.08451241Z\",\"logs\":[{\"id\":\"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084512411Z-033fe9d0\",\"message\":\"QA89_LEFT_4b444e,QA89_RIGHT_4b444e\",\"timestamp\":\"2026-10-11T07:51:23.084512411Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5jv0gmmd8c73drribg\"},{\"name\":\"instance\",\"value\":\"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084784989Z-4b42a646\",\"message\":\"QA89_LEFT_4b444e only\",\"timestamp\":\"2026-10-11T07:51:23.084784989Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5jv0gmmd8c73drribg\"},{\"name\":\"instance\",\"value\":\"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084789748Z-7074492b\",\"message\":\"QA89_RIGHT_4b444e only\",\"timestamp\":\"2026-10-11T07:51:23.084789748Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5jv0gmmd8c73drribg\"},{\"name\":\"instance\",\"value\":\"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+        }
+      ],
+      "temporary_config_removed": true
+    }
+  ]
+}

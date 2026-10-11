@@ -1,0 +1,156 @@
+{
+  "kind": "local actual backend source diagnostic through resolveSourcePatch/applySourceChange/view/toRenderService; not live sibling coverage",
+  "source_head": "8e53816c0ba56da5fa91cd639cdc118ed0ac4d3b",
+  "command": "GOWORK=off go test -overlay <private-overlay.json> -run ^TestQASweep117SourceProjection$ -count=1 -v ./internal/apps",
+  "cases": [
+    {
+      "configuredImage": "",
+      "configuredRepo": "https://github.com/traefik/whoami",
+      "expectedRuntime": "docker",
+      "mismatch": true,
+      "persistedRuntime": "image",
+      "type": "web_service",
+      "viewRuntime": "image",
+      "wire": {
+        "id": "qa-source",
+        "name": "qa-source",
+        "immutableName": "qa-source",
+        "slug": "qa-source",
+        "displayName": "",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "serviceDetails": {
+          "env": "image",
+          "internalAddress": "qa-source:3000",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 2,
+          "port": 3000,
+          "renderSubdomainPolicy": "enabled",
+          "runtime": "image",
+          "url": "https://qa-source.onbex.co"
+        },
+        "suspenders": [],
+        "phase": "Running",
+        "replicas": 2,
+        "idleTTLSeconds": 0,
+        "repo": "https://github.com/traefik/whoami",
+        "branch": "main",
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      }
+    },
+    {
+      "configuredImage": "",
+      "configuredRepo": "https://github.com/traefik/whoami",
+      "expectedRuntime": "docker",
+      "mismatch": true,
+      "persistedRuntime": "image",
+      "type": "private_service",
+      "viewRuntime": "image",
+      "wire": {
+        "id": "qa-source",
+        "name": "qa-source",
+        "immutableName": "qa-source",
+        "slug": "qa-source",
+        "displayName": "",
+        "type": "private_service",
+        "suspended": "not_suspended",
+        "serviceDetails": {
+          "env": "image",
+          "internalAddress": "qa-source:3000",
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 2,
+          "port": 3000,
+          "runtime": "image"
+        },
+        "suspenders": [],
+        "phase": "Running",
+        "replicas": 2,
+        "idleTTLSeconds": 0,
+        "repo": "https://github.com/traefik/whoami",
+        "branch": "main",
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      }
+    },
+    {
+      "configuredImage": "",
+      "configuredRepo": "https://github.com/traefik/whoami",
+      "expectedRuntime": "docker",
+      "mismatch": true,
+      "persistedRuntime": "image",
+      "type": "background_worker",
+      "viewRuntime": "image",
+      "wire": {
+        "id": "qa-source",
+        "name": "qa-source",
+        "immutableName": "qa-source",
+        "slug": "qa-source",
+        "displayName": "",
+        "type": "background_worker",
+        "suspended": "not_suspended",
+        "serviceDetails": {
+          "env": "image",
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 2,
+          "runtime": "image",
+          "url": "https://qa-source.onbex.co"
+        },
+        "suspenders": [],
+        "phase": "Running",
+        "replicas": 2,
+        "idleTTLSeconds": 0,
+        "repo": "https://github.com/traefik/whoami",
+        "branch": "main",
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      }
+    },
+    {
+      "configuredImage": "",
+      "configuredRepo": "https://github.com/traefik/whoami",
+      "expectedRuntime": "docker",
+      "mismatch": true,
+      "persistedRuntime": "image",
+      "type": "cron_job",
+      "viewRuntime": "image",
+      "wire": {
+        "id": "qa-source",
+        "name": "qa-source",
+        "immutableName": "qa-source",
+        "slug": "qa-source",
+        "displayName": "",
+        "type": "cron_job",
+        "suspended": "not_suspended",
+        "serviceDetails": {
+          "env": "image",
+          "numInstances": 2,
+          "runtime": "image",
+          "url": "https://qa-source.onbex.co"
+        },
+        "suspenders": [],
+        "phase": "Running",
+        "replicas": 2,
+        "idleTTLSeconds": 0,
+        "repo": "https://github.com/traefik/whoami",
+        "branch": "main",
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      }
+    }
+  ],
+  "controls": "auto repo derives docker; explicit native repo preserves go; explicit prebuilt image remains image",
+  "initial_bad_overlay": "Excluded: incorrectly rooted overlay produced no tests to run; corrected absolute target executes named test; initial private transcript retained."
+}

@@ -1,0 +1,63 @@
+{
+  "delete_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "delete",
+      "srv-db5nnubnt75c73b8g5o0",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.312,
+    "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-11T12:07:21Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db5nnubnt75c73b8g5o0\",\n    \"id\": \"srv-db5nnubnt75c73b8g5o0\",\n    \"name\": \"qa-20261011-18c2df-mixedlog\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-go\",\n    \"serviceDetails\": {\n      \"env\": \"python\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"python3 --version\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"python3 -u -c 'import json,sys,time,os\\nfrom http.server import BaseHTTPRequestHandler,ThreadingHTTPServer\\ndef messages(batch):\\n def line(case,payload): return json.dumps({'\\\"'\\\"'case'\\\"'\\\"':'\\\"'\\\"'QA111_18c2df-'\\\"'\\\"'+batch+'\\\"'\\\"'-'\\\"'\\\"'+case,'\\\"'\\\"'payload'\\\"'\\\"':payload,'\\\"'\\\"'end'\\\"'\\\"':'\\\"'\\\"'tail-'\\\"'\\\"'+case},separators=('\\\"'\\\"','\\\"'\\\"','\\\"'\\\"':'\\\"'\\\"'))\\n return [line('\\\"'\\\"'short-out'\\\"'\\\"','\\\"'\\\"'ready'\\\"'\\\"'),line('\\\"'\\\"'short-err'\\\"'\\\"','\\\"'\\\"'ready'\\\"'\\\"'),line('\\\"'\\\"'long-out'\\\"'\\\"','\\\"'\\\"'ordinary-detail|'\\\"'\\\"'*3000),line('\\\"'\\\"'mixed-out'\\\"'\\\"','\\\"'\\\"'ordinary-detail|'\\\"'\\\"'*3000),line('\\\"'\\\"'mixed-err'\\\"'\\\"','\\\"'\\\"'ordinary-error-control'\\\"'\\\"')]\\nclass H(BaseHTTPRequestHandler):\\n seen=set()\\n def log_message(self,*args): pass\\n def do_GET(self):\\n  parts=self.path.split('\\\"'\\\"'/'\\\"'\\\"')\\n  if len(parts)==3 and parts[1] in ('\\\"'\\\"'emit'\\\"'\\\"','\\\"'\\\"'expected'\\\"'\\\"') and parts[2] in ('\\\"'\\\"'b1'\\\"'\\\"','\\\"'\\\"'b2'\\\"'\\\"'):\\n   batch=parts[2]; rows=messages(batch)\\n   if parts[1]=='\\\"'\\\"'emit'\\\"'\\\"':\\n    if batch in self.seen:\\n     self.send_response(409);self.end_headers();self.wfile.write(b'\\\"'\\\"'already emitted'\\\"'\\\"');return\\n    self.seen.add(batch)\\n    sys.stdout.write(rows[0]+'\\\"'\\\"'\\\\n'\\\"'\\\"');sys.stdout.flush()\\n    sys.stderr.write(rows[1]+'\\\"'\\\"'\\\\n'\\\"'\\\"');sys.stderr.flush()\\n    sys.stdout.write(rows[2][:38000]);sys.stdout.flush();time.sleep(.18)\\n    sys.stdout.write(rows[2][38000:]+'\\\"'\\\"'\\\\n'\\\"'\\\"');sys.stdout.flush();time.sleep(.18)\\n    sys.stdout.write(rows[3][:38000]);sys.stdout.flush();time.sleep(.18)\\n    sys.stderr.write(rows[4]+'\\\"'\\\"'\\\\n'\\\"'\\\"');sys.stderr.flush();time.sleep(.18)\\n    sys.stdout.write(rows[3][38000:]+'\\\"'\\\"'\\\\n'\\\"'\\\"');sys.stdout.flush()\\n   body=json.dumps(rows,separators=('\\\"'\\\"','\\\"'\\\"','\\\"'\\\"':'\\\"'\\\"')).encode()\\n  else: body=b'\\\"'\\\"'QA111_18c2df-ready'\\\"'\\\"'\\n  self.send_response(200);self.send_header('\\\"'\\\"'Content-Type'\\\"'\\\"','\\\"'\\\"'application/json'\\\"'\\\"');self.end_headers();self.wfile.write(body)\\nThreadingHTTPServer(('\\\"'\\\"'0.0.0.0'\\\"'\\\"',int(os.getenv('\\\"'\\\"'PORT'\\\"'\\\"','\\\"'\\\"'3000'\\\"'\\\"'))),H).serve_forever()\\n'\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261011-18c2df-mixedlog:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"python\",\n      \"url\": \"https://qa-20261011-18c2df-mixedlog.onbex.co\"\n    },\n    \"slug\": \"qa-20261011-18c2df-mixedlog\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-11T12:09:04Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+    "stderr": ""
+  },
+  "detail_after_delete": {
+    "method": "GET",
+    "path": "/v1/services/srv-db5nnubnt75c73b8g5o0",
+    "body": null,
+    "status": "404",
+    "elapsed": 0.263,
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48dc6102c46f0af-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "workspace_after_delete_ids": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3v694dm7c7390q930",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0"
+  ],
+  "runtime_after_delete_checks": [
+    {
+      "exit": 0,
+      "stdout": "404 page not found\n\n404",
+      "stderr": ""
+    }
+  ],
+  "quota_after_delete": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.285,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48dc61badb4b917-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+  "history_render_config_removed": true
+}

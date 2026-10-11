@@ -1,0 +1,15 @@
+import json,pathlib,subprocess,secrets,datetime,sys
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());sid=sys.argv[1];mode=sys.argv[2];s=next(x for x in c['resources'] if x.get('id')==sid);ws='tea-daif693dqjvc73e7as3g';base={x if isinstance(x,str) else x.get('service',x)['id'] for x in c['baseline']['services']};assert s['sweep']==117 and sid not in base and s['workspace']==ws and s['create_result']['exit']==0 and s['create_response']['id']==sid
+assert mode in ['default','control'];render=s['role']=='render'
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,indent=2)+'\n');cp.chmod(0o600)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True))
+def cli(args):return json.loads(subprocess.check_output(['python3',str(p/('run-render.py' if render else 'run.py')),*([] if render else ['--release']),*args],text=True))
+q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';v=json.loads(q['response']);assert v['services']['used']+v['services']['terminating']<v['services']['limit']
+nonce=secrets.token_hex(3);name='qa-20261011-'+nonce+'-cl-'+('ctl' if mode=='control' else 'bad');args=['services','create','--from',sid,'--name',name,'--plan','free','--region','frankfurt','--env-var','WHOAMI_PORT_NUMBER=3000','--env-var','HTTP_PORT=3000','--auto-deploy=false','--confirm','-o','json']
+if mode=='control':args.extend(['--runtime','docker'])
+x={'sweep':117,'workspace':ws,'type':'web_service','role':s['role']+'_clone_'+mode,'source_id':sid,'nonce':nonce,'name':name,'time':now(),'state':'native Free clone create intent persisted','command':['render' if render else 'bex',*args],'capacity_proof':q,'dependency_ids':[],'actions':[]};c['resources'].append(x);save();r=cli(args);x['create_result']=r;save()
+if r['exit']==0:
+ v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v);assert v['id'] not in base;x.update(id=v['id'],create_response=v,state='created: native source clone; runtime pending');save();print(json.dumps({'role':x['role'],'id':v['id'],'name':name,'exit':r['exit'],'elapsed':r['elapsed'],'runtime':v.get('serviceDetails',{}).get('runtime'),'repo':v.get('repo')}),flush=True)
+else:
+ rlist=cli(['services','--confirm','-o','json']);assert rlist['exit']==0;ls=json.loads(rlist['stdout']) or [];assert all(z.get('service',z)['name']!=name for z in ls);assert base<={z.get('service',z)['id'] for z in ls};x['absent_name_evidence']=rlist;x['state']='rejected: nonzero native clone; exact attempted name absent from native workspace list';save();print(json.dumps({'role':x['role'],'name':name,'exit':r['exit'],'elapsed':r['elapsed'],'stdout':r['stdout'],'stderr':r['stderr'],'absent':True}),flush=True)

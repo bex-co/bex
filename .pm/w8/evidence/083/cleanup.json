@@ -1,0 +1,100 @@
+{
+  "id": "red-db5mcvcf52sc73b2rsog",
+  "name": "qa-20261011-209d86-kvlive",
+  "state": "deleted: CLIack/detail404/listempty/baseline present/former Redis endpoint refused/quota0 termination0",
+  "cached_connection_before_delete": {
+    "at": "2026-10-11T10:45:33.558641+00:00",
+    "exit": 0,
+    "pong": true,
+    "stderr_present": false,
+    "connection_refused": false
+  },
+  "delete_intent": {
+    "at": "2026-10-11T10:45:33.597606+00:00",
+    "id": "red-db5mcvcf52sc73b2rsog",
+    "workspace": "tea-daif693dqjvc73e7as3g"
+  },
+  "delete_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "keyvalues",
+      "delete",
+      "red-db5mcvcf52sc73b2rsog",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.608,
+    "stdout": "{\n  \"data\": {\n    \"id\": \"red-db5mcvcf52sc73b2rsog\",\n    \"name\": \"qa-20261011-209d86-kvlive\",\n    \"plan\": \"free\",\n    \"region\": \"fsn1\",\n    \"status\": \"available\",\n    \"createdAt\": \"2026-10-11T10:35:41Z\",\n    \"updatedAt\": \"2026-10-11T10:37:07Z\",\n    \"version\": \"8\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"ownerType\": \"team\",\n    \"projectId\": null,\n    \"environmentId\": null,\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"162.224.81.143/32\",\n        \"description\": \"own-cli-qa\"\n      }\n    ],\n    \"maxmemoryPolicy\": \"noeviction\",\n    \"persistenceMode\": \"journal_snapshot\"\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+    "stderr": ""
+  },
+  "detail_after_delete": {
+    "method": "GET",
+    "path": "/v1/key-value/red-db5mcvcf52sc73b2rsog",
+    "body": null,
+    "status": "404",
+    "elapsed": 0.314,
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48d46aa48ebcf0e-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "list_after_delete": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "keyvalues",
+      "list",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.472,
+    "stdout": "{\n  \"data\": []\n}",
+    "stderr": ""
+  },
+  "baseline_service_ids_after_delete": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3v694dm7c7390q930",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0"
+  ],
+  "cached_connection_after_delete": [
+    {
+      "at": "2026-10-11T10:45:36.523521+00:00",
+      "exit": 1,
+      "pong": false,
+      "stderr_present": true,
+      "connection_refused": false
+    },
+    {
+      "at": "2026-10-11T10:45:52.555642+00:00",
+      "exit": 1,
+      "pong": false,
+      "stderr_present": true,
+      "connection_refused": false
+    }
+  ],
+  "quota_after_delete": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.284,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48d471c8c08152b-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  }
+}

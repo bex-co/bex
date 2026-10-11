@@ -1,0 +1,11 @@
+{
+  "checked_at": "2026-10-11T11:08:37.712458+00:00",
+  "main_sha": "c4d106cfdaf8eec6d23475155e43f4baeeed2013",
+  "github_issue_search": "repo:render-oss/cli postgres restart",
+  "issue_search_items": [],
+  "primary_source_urls": [
+    "https://raw.githubusercontent.com/render-oss/cli/c4d106cfdaf8eec6d23475155e43f4baeeed2013/pkg/postgres/repo.go",
+    "https://raw.githubusercontent.com/render-oss/cli/c4d106cfdaf8eec6d23475155e43f4baeeed2013/pkg/client/client.go"
+  ],
+  "observation": "At this later upstream SHA, restart still uses the raw call and the error helper still requires HTTPResponse. Source only; later-main binary not executed. Current pinned suspend/resume use WithResponse, whereas the later source also has raw suspend/resume calls; re-audit before any separately authorized pin adoption. No new live finding is claimed for that later source. Indexed searches and one issue query are not exhaustive upstream dedupe."
+}

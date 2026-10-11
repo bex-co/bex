@@ -1,0 +1,133 @@
+{
+  "sweep": 94,
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "id": "srv-db5kklsaqkos73b0skfg",
+  "name": "qa-20261011-b66611-textbytes",
+  "nonce": "b66611",
+  "type": "web_service",
+  "time": "2026-10-11T08:35:33.782075+00:00",
+  "role": "native log literal whitespace, Unicode, quotes and ordinary long-line byte preservation",
+  "command": [
+    "bex",
+    "services",
+    "create",
+    "--name",
+    "qa-20261011-b66611-textbytes",
+    "--type",
+    "web_service",
+    "--runtime",
+    "node",
+    "--repo",
+    "https://github.com/bex-co/bex",
+    "--branch",
+    "main",
+    "--root-directory",
+    "examples/hello-node",
+    "--build-command",
+    "node --version",
+    "--start-command",
+    "node -e 'for(const line of [\"QA94_b66611 space core \",\"QA94_b66611 space core\",\"QA94_b66611\\ttab\\tend\\t\",\"QA94_b66611 say \\\"quoted\\\"\",\"QA94_b66611 CAFÉ Ελληνικά\",\"QA94_b66611 café ελληνικά\",\"QA94_b66611 literal * . | \\\\ tail\",\"QA94_b66611 comma,left,right\",\"QA94_b66611 long \"+\"Abé✓\".repeat(2048)+\" END\"]){console.log(line);}require(\"node:http\").createServer((req,res)=>{res.writeHead(200,{\"Content-Type\":\"text/plain\"});res.end(\"QA94_b66611\\n\");}).listen(Number(process.env.PORT),\"0.0.0.0\");'",
+    "--health-check-path",
+    "/",
+    "--plan",
+    "free",
+    "--region",
+    "frankfurt",
+    "--auto-deploy=false",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+  "dependency_ids": [],
+  "deploy_children": [
+    {
+      "commit": {
+        "id": "ac96995b3bd8b823b9ece55d0870d2b4ee8df774",
+        "message": "docs(pm): preserve dirty database parameter drafts (w4/253)"
+      },
+      "createdAt": "2026-10-11T08:35:35.158216Z",
+      "finishedAt": "2026-10-11T08:38:32.705013Z",
+      "id": "dep-db5kklsaqkos73b0skg0",
+      "startedAt": "2026-10-11T08:36:49.05145Z",
+      "status": "live",
+      "trigger": "other",
+      "updatedAt": "2026-10-11T08:38:32.705014Z"
+    }
+  ],
+  "children_enumeration_evidence": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "deploys",
+      "list",
+      "srv-db5kklsaqkos73b0skfg",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.41,
+    "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"ac96995b3bd8b823b9ece55d0870d2b4ee8df774\",\n      \"message\": \"docs(pm): preserve dirty database parameter drafts (w4/253)\"\n    },\n    \"createdAt\": \"2026-10-11T08:35:35.158216Z\",\n    \"finishedAt\": \"2026-10-11T08:38:32.705013Z\",\n    \"id\": \"dep-db5kklsaqkos73b0skg0\",\n    \"startedAt\": \"2026-10-11T08:36:49.05145Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-11T08:38:32.705014Z\"\n  }\n]",
+    "stderr": ""
+  },
+  "delete_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "delete",
+      "srv-db5kklsaqkos73b0skfg",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.389,
+    "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-11T08:35:35Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db5kklsaqkos73b0skfg\",\n    \"id\": \"srv-db5kklsaqkos73b0skfg\",\n    \"name\": \"qa-20261011-b66611-textbytes\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-node\",\n    \"serviceDetails\": {\n      \"env\": \"node\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"node --version\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"node -e 'for(const line of [\\\"QA94_b66611 space core \\\",\\\"QA94_b66611 space core\\\",\\\"QA94_b66611\\\\ttab\\\\tend\\\\t\\\",\\\"QA94_b66611 say \\\\\\\"quoted\\\\\\\"\\\",\\\"QA94_b66611 CAFÉ Ελληνικά\\\",\\\"QA94_b66611 café ελληνικά\\\",\\\"QA94_b66611 literal * . | \\\\\\\\ tail\\\",\\\"QA94_b66611 comma,left,right\\\",\\\"QA94_b66611 long \\\"+\\\"Abé✓\\\".repeat(2048)+\\\" END\\\"]){console.log(line);}require(\\\"node:http\\\").createServer((req,res)=\\u003e{res.writeHead(200,{\\\"Content-Type\\\":\\\"text/plain\\\"});res.end(\\\"QA94_b66611\\\\n\\\");}).listen(Number(process.env.PORT),\\\"0.0.0.0\\\");'\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261011-b66611-textbytes:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"node\",\n      \"url\": \"https://qa-20261011-b66611-textbytes.onbex.co\"\n    },\n    \"slug\": \"qa-20261011-b66611-textbytes\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-11T08:38:23Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+    "stderr": ""
+  },
+  "detail_after_delete": {
+    "method": "GET",
+    "path": "/v1/services/srv-db5kklsaqkos73b0skfg",
+    "body": null,
+    "status": "404",
+    "elapsed": 0.25,
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48c9f859e7b6c4d-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "workspace_after_delete_ids": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3v694dm7c7390q930",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0"
+  ],
+  "runtime_after_delete_checks": [
+    {
+      "exit": 0,
+      "stdout": "404 page not found\n\n404",
+      "stderr": ""
+    }
+  ],
+  "quota_after_delete": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.26,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48c9f8f8ca8f017-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  }
+}

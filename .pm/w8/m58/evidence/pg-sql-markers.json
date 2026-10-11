@@ -1,0 +1,229 @@
+{
+  "id": "dpg-db5m5m09n5bc73aqiib0",
+  "name": "qa-20261011-998562-pglocal",
+  "sweep": 100,
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "command": [
+    "bex",
+    "postgres",
+    "create",
+    "--name",
+    "qa-20261011-998562-pglocal",
+    "--plan",
+    "free",
+    "--region",
+    "frankfurt",
+    "--version",
+    "18",
+    "--connection-pool",
+    "none",
+    "--database-name",
+    "qa_exit_998562",
+    "--database-user",
+    "qa_user_998562",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "create_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "postgres",
+      "create",
+      "--name",
+      "qa-20261011-998562-pglocal",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--version",
+      "18",
+      "--connection-pool",
+      "none",
+      "--database-name",
+      "qa_exit_998562",
+      "--database-user",
+      "qa_user_998562",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.53,
+    "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-11T10:20:08Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db5m5m09n5bc73aqiib0\",\n    \"databaseName\": \"qa_exit_998562\",\n    \"databaseUser\": \"qa_user_998562\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db5m5m09n5bc73aqiib0\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-20261011-998562-pglocal\",\n    \"owner\": {\n      \"email\": \"puncsky@gmail.com\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"creating\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-11T10:20:08.96405399Z\",\n    \"version\": \"18\",\n    \"projectId\": null\n  }\n}",
+    "stderr": ""
+  },
+  "create_response": {
+    "connectionPool": "none",
+    "createdAt": "2026-10-11T10:20:08Z",
+    "dashboardUrl": "https://dashboard.bex.co/d/dpg-db5m5m09n5bc73aqiib0",
+    "databaseName": "qa_exit_998562",
+    "databaseUser": "qa_user_998562",
+    "diskAutoscalingEnabled": false,
+    "diskSizeGB": 1,
+    "highAvailabilityEnabled": false,
+    "id": "dpg-db5m5m09n5bc73aqiib0",
+    "ipAllowList": [
+      {
+        "cidrBlock": "0.0.0.0/0",
+        "description": ""
+      },
+      {
+        "cidrBlock": "::/0",
+        "description": ""
+      }
+    ],
+    "name": "qa-20261011-998562-pglocal",
+    "owner": {
+      "email": "puncsky@gmail.com",
+      "id": "tea-daif693dqjvc73e7as3g",
+      "name": "bex-canary",
+      "type": "team"
+    },
+    "plan": "free",
+    "readReplicas": [],
+    "region": "fsn1",
+    "role": "",
+    "status": "creating",
+    "suspended": "not_suspended",
+    "suspenders": null,
+    "updatedAt": "2026-10-11T10:20:08.96405399Z",
+    "version": "18",
+    "projectId": null
+  },
+  "unicode_log_prefix": "QA100_998562",
+  "unicode_log_start": "2026-10-11T10:21:36.845794+00:00",
+  "unicode_log_end": "2026-10-11T10:21:44.078772+00:00",
+  "unicode_log_generators": [
+    {
+      "marker": "QA100_998562 Ι",
+      "sql": "DO $qa100$ BEGIN RAISE LOG '%', 'QA100_998562 Ι'; END $qa100$;",
+      "command": [
+        "bex",
+        "psql",
+        "dpg-db5m5m09n5bc73aqiib0",
+        "--command",
+        "DO $qa100$ BEGIN RAISE LOG '%', 'QA100_998562 Ι'; END $qa100$;",
+        "--confirm",
+        "-o",
+        "json",
+        "--",
+        "-X",
+        "-At",
+        "--set",
+        "ON_ERROR_STOP=1"
+      ],
+      "at": "2026-10-11T10:21:36.845991+00:00",
+      "state": "result captured; log ingestion unverified",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db5m5m09n5bc73aqiib0",
+          "--command",
+          "DO $qa100$ BEGIN RAISE LOG '%', 'QA100_998562 Ι'; END $qa100$;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-At",
+          "--set",
+          "ON_ERROR_STOP=1"
+        ],
+        "exit": 0,
+        "elapsed": 2.527,
+        "stdout": "{\n  \"output\": \"DO\\n\"\n}",
+        "stderr": ""
+      }
+    },
+    {
+      "marker": "QA100_998562 ι",
+      "sql": "DO $qa100$ BEGIN RAISE LOG '%', 'QA100_998562 ι'; END $qa100$;",
+      "command": [
+        "bex",
+        "psql",
+        "dpg-db5m5m09n5bc73aqiib0",
+        "--command",
+        "DO $qa100$ BEGIN RAISE LOG '%', 'QA100_998562 ι'; END $qa100$;",
+        "--confirm",
+        "-o",
+        "json",
+        "--",
+        "-X",
+        "-At",
+        "--set",
+        "ON_ERROR_STOP=1"
+      ],
+      "at": "2026-10-11T10:21:39.485839+00:00",
+      "state": "result captured; log ingestion unverified",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db5m5m09n5bc73aqiib0",
+          "--command",
+          "DO $qa100$ BEGIN RAISE LOG '%', 'QA100_998562 ι'; END $qa100$;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-At",
+          "--set",
+          "ON_ERROR_STOP=1"
+        ],
+        "exit": 0,
+        "elapsed": 2.192,
+        "stdout": "{\n  \"output\": \"DO\\n\"\n}",
+        "stderr": ""
+      }
+    },
+    {
+      "marker": "QA100_998562 λ",
+      "sql": "DO $qa100$ BEGIN RAISE LOG '%', 'QA100_998562 λ'; END $qa100$;",
+      "command": [
+        "bex",
+        "psql",
+        "dpg-db5m5m09n5bc73aqiib0",
+        "--command",
+        "DO $qa100$ BEGIN RAISE LOG '%', 'QA100_998562 λ'; END $qa100$;",
+        "--confirm",
+        "-o",
+        "json",
+        "--",
+        "-X",
+        "-At",
+        "--set",
+        "ON_ERROR_STOP=1"
+      ],
+      "at": "2026-10-11T10:21:41.810441+00:00",
+      "state": "result captured; log ingestion unverified",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db5m5m09n5bc73aqiib0",
+          "--command",
+          "DO $qa100$ BEGIN RAISE LOG '%', 'QA100_998562 λ'; END $qa100$;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-At",
+          "--set",
+          "ON_ERROR_STOP=1"
+        ],
+        "exit": 0,
+        "elapsed": 2.158,
+        "stdout": "{\n  \"output\": \"DO\\n\"\n}",
+        "stderr": ""
+      }
+    }
+  ]
+}

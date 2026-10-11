@@ -15,6 +15,13 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m60** — [Preserve accepted arguments when copying CLI commands](m60/README.md) (7 tasks; 2h50m) ← functional CLI QA sweep135: both native clients change phrase/literal-comma searches and reject copied relative times; original controls pass; own fixture fully cleaned.
+
+- [ ] **m58** — [Preserve Unicode matches in log history](m58/README.md) (6 tasks) ← CLI sweep 94: both native clients lose stored Unicode matches, including ASCII searches; local Loki causes and safe candidate prefilter isolated; all fixtures cleaned.
+- [ ] **m59** — [Return static sites to direct publication after clearing their build command](m59/README.md) (6 tasks, 2h15) ← CLI QA sweep 99: Bex and actual pinned Render accept the clear command, but create-time native Builder prevents no-build publication; passing direct-created control, four owned fixtures cleaned.
+
+- [ ] **m57** — [Preserve literal string lists in interactive CLI forms](m57/README.md) (7 tasks; 2h35m) ← functional CLI QA, 2026-10-11; both native clients broaden one comma-containing log term into two after unchanged Apply; upstream shared form correction.
+
 - [x] **m56** — [Publish complete service settings before rolling a release](done/m56/README.md) (7 tasks; 4h15m) ← functional CLI QA, 2026-10-10; both clients execute a cleared pre-deploy command during a successful compound save.
 
 - [x] **m55** — [Preserve literal commas in service name filters](done/m55/README.md) (7 tasks; 3h45m) ← functional CLI QA, 2026-10-09; both clients fail named update/clone, actual pinned query encoding and runtime controls recorded. — **DONE 2026-10-10** (server fix `1899e517d`; live two-client replay passed)
@@ -84,7 +91,29 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [x] **m34** — Disk event wire vocabulary: rename to Render's `disk_created`/`disk_deleted` (8 tasks) ← from `/pm-brainstorm for w8` 2026-09-07 #2, approved same day, ratifying `w6/068` option 1 (note retired to `w6/done/068.md`; two of bex's four emitted disk event types are unselectable through the Render-shaped `?type=` filter) — done 2026-09-08
 - [x] **m35** — Datastore deleting-read parity: fold Postgres/Key Value onto consistent-absence (8 tasks) ← from `/pm-brainstorm for w8` 2026-09-07 #3, approved same day, promoting `w3/034` option 1 (note retired to `w3/done/034.md`; the same list-drops-but-by-id-shows-deleting incoherence w3/m81 fixed for services, standing on the two datastore families)
 
+## QA evidence for existing work
+
+- [w4/m199 native CLI timestamp replay](evidence/m199-native-cli/README.md) — sweeps128/132: both clients preserve quiet web and scheduled-cron records, timestamps and IDs in history/Live; cron tails remain open through idle metadata and changing instances. Both fixtures cleaned; existing milestones retain full verification scope.
+
+- [w4/m200 native CLI corroboration](evidence/m200-native-cli/README.md) — sweep111: both clients corrupt the mixed stdout/stderr pair in Live while all five historical messages remain exact; complete native evidence and cleanup retained. Implementation stays with w4/m200.
+
 ## Inbox
+
+- [ ] **090** — [Fresh CLI configs open dashboard resources as filesystem paths](090.md) (minor; 55m) ← functional CLI sweep127: both native clients emit relative opener paths; explicit-origin controls pass; launcher default researched, read-only metadata.
+
+- [ ] **089** — [CLI dashboard actions open the OAuth host and return 404](089.md) (minor; 55m) ← functional CLI sweep126: both native clients open the wrong origin; copied-config controls and shared link/routing probes; read-only metadata, no hosting fixture.
+
+- [ ] **088** — [Git source changes retain image runtime metadata and break CLI cloning](088.md) (major; 55m) ← CLI sweep117: both native clients fail same-type clones after image-to-Git saves; explicit Docker controls reach Live/HTTP200; four local sibling mismatches; all four services cleaned.
+
+- [ ] **087** — [Clearing a datastore project filter leaves its active scope in place](087.md) (minor; 55m) ← CLI sweep115: six native clear failures across psql/pgcli/kv-cli and two clients; six fresh controls; all owned fixtures cleaned.
+
+- [ ] **086** — [Empty project filters show every workspace resource](086.md) (minor; 55m) ← CLI sweep109: both native clients display all six workspace rows under an empty project; empty-environment control and imported loader proof; sweep112 also proves saved defaults override explicit empty selection in both services/logs pickers, with four passing empty-environment controls; metadata fixtures cleaned.
+
+- [ ] **085** — [Interactive datastore errors omit their underlying detail](085.md) (minor; 50m) ← CLI sweep 106: both native clients show a heading with blank detail; actual imported view and passing value controls; owned Free fixture cleaned.
+
+- [ ] **084** — [Postgres restart reports success when the API refuses it](084.md) (55m) ← CLI sweep 103: native Bex and Render receive 404 but exit0; service failure and real SQL restart/data controls pass; upstream response-wrapper correction.
+- **[083](083.md)** — Refuse unsupported managed-data live tails before WebSocket upgrade (55m) ← CLI sweep 102: both native clients receive 101 then empty EOF/exit0; owned history control and cleanup pass.
+- [ ] **082** — [Applying the CLI log filter silently removes fractional timestamp bounds](082.md) (55m) ← functional CLI QA, 2026-10-11; native Bex and Render wire captures, four direct controls; upstream form serialization defect.
 
 - [x] **081** — [Blueprint validation accepts port links to services with no network address](done/081.md) (55m) ← functional CLI QA, 2026-10-09; both clients, multipart API controls and actual parser values; shared server addressability guard. — **DONE 2026-10-10** (fix `5b91fcdab`; live two-client validation passed)
 

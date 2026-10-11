@@ -1,0 +1,209 @@
+{
+  "context": {
+    "date": "2026-10-11 UTC",
+    "bex": "0.3.2",
+    "render": "2.27.0",
+    "pin": "a764810a768202704e7206eb7b87a47211fcd98e",
+    "source_head": "4abcd7d8ff23fc06ec917b7b8a70c004d3ca56c8",
+    "api_origin": "https://api.bex.co/v1/",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "authentication": "isolated human OAuth",
+    "deployed_revision": "unobserved"
+  },
+  "cases": [
+    {
+      "client": "bex",
+      "family": "postgres",
+      "synthetic_id": "dpg-00000000000000000000",
+      "command": [
+        "bex",
+        "restart",
+        "dpg-00000000000000000000",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "at": "2026-10-11T11:10:56.830216+00:00",
+      "authority_forwarding": "exact native POST path/query/body to fixed api.bex.co; only these two nonexistent synthetic IDs accepted; no credential header journal",
+      "result": {
+        "exit": 0,
+        "elapsed": 0.518,
+        "stdout": "\"dpg-00000000000000000000 restarted successfully\"",
+        "stderr": ""
+      },
+      "config_removed": true
+    },
+    {
+      "client": "bex",
+      "family": "service",
+      "synthetic_id": "srv-00000000000000000000",
+      "command": [
+        "bex",
+        "restart",
+        "srv-00000000000000000000",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "at": "2026-10-11T11:10:57.439538+00:00",
+      "authority_forwarding": "exact native POST path/query/body to fixed api.bex.co; only these two nonexistent synthetic IDs accepted; no credential header journal",
+      "result": {
+        "exit": 1,
+        "elapsed": 0.518,
+        "stdout": "",
+        "stderr": "Error: failed to restart resource: received response code 404 (NOT_FOUND): not found\n"
+      },
+      "config_removed": true
+    },
+    {
+      "client": "render",
+      "family": "postgres",
+      "synthetic_id": "dpg-00000000000000000000",
+      "command": [
+        "render",
+        "restart",
+        "dpg-00000000000000000000",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "at": "2026-10-11T11:10:58.034820+00:00",
+      "authority_forwarding": "exact native POST path/query/body to fixed api.bex.co; only these two nonexistent synthetic IDs accepted; no credential header journal",
+      "result": {
+        "exit": 0,
+        "elapsed": 0.347,
+        "stdout": "\"dpg-00000000000000000000 restarted successfully\"",
+        "stderr": ""
+      },
+      "config_removed": true
+    },
+    {
+      "client": "render",
+      "family": "service",
+      "synthetic_id": "srv-00000000000000000000",
+      "command": [
+        "render",
+        "restart",
+        "srv-00000000000000000000",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "at": "2026-10-11T11:10:58.461064+00:00",
+      "authority_forwarding": "exact native POST path/query/body to fixed api.bex.co; only these two nonexistent synthetic IDs accepted; no credential header journal",
+      "result": {
+        "exit": 1,
+        "elapsed": 0.442,
+        "stdout": "",
+        "stderr": "Error: failed to restart resource: received response code 404 (NOT_FOUND): not found\n"
+      },
+      "config_removed": true
+    }
+  ],
+  "wire": [
+    {
+      "at": "2026-10-11T11:10:57.387566Z",
+      "request": {
+        "headers": {
+          "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "X-Bex-Cli-Version": "0.3.2"
+        },
+        "method": "POST",
+        "path": "/v1/postgres/dpg-00000000000000000000/restart"
+      },
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+      "response_encoding": "gzip decoded for journal only; original bytes forwarded unchanged",
+      "response_headers": {
+        "CF-Ray": "a48d6bd70da9cf0e-SJC",
+        "Content-Encoding": "gzip",
+        "Content-Length": "95",
+        "Content-Type": "application/json"
+      },
+      "status": 404,
+      "wire_body_base64": "H4sIAAAAAAAA/6pWSs5PSVWyUvLzD4l38w/1c1HSUUotKsovUrJSyssvUUjLL81LUdJRykyBCMTDBHJTi4sT01PRlBUkFiXmFitZ5ZXm5NRyAQIAAP//yIvOmF4AAAA="
+    },
+    {
+      "at": "2026-10-11T11:10:57.989169Z",
+      "request": {
+        "headers": {
+          "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "X-Bex-Cli-Version": "0.3.2",
+          "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g"
+        },
+        "method": "POST",
+        "path": "/v1/services/srv-00000000000000000000/restart"
+      },
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+      "response_encoding": "gzip decoded for journal only; original bytes forwarded unchanged",
+      "response_headers": {
+        "CF-Ray": "a48d6bd9cb1fcf0e-SJC",
+        "Content-Encoding": "gzip",
+        "Content-Length": "95",
+        "Content-Type": "application/json"
+      },
+      "status": 404,
+      "wire_body_base64": "H4sIAAAAAAAA/6pWSs5PSVWyUvLzD4l38w/1c1HSUUotKsovUrJSyssvUUjLL81LUdJRykyBCMTDBHJTi4sT01PRlBUkFiXmFitZ5ZXm5NRyAQIAAP//yIvOmF4AAAA="
+    },
+    {
+      "at": "2026-10-11T11:10:58.41461Z",
+      "request": {
+        "headers": {
+          "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+        },
+        "method": "POST",
+        "path": "/v1/postgres/dpg-00000000000000000000/restart"
+      },
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+      "response_encoding": "gzip decoded for journal only; original bytes forwarded unchanged",
+      "response_headers": {
+        "CF-Ray": "a48d6bddfb87cf0e-SJC",
+        "Content-Encoding": "gzip",
+        "Content-Length": "95",
+        "Content-Type": "application/json"
+      },
+      "status": 404,
+      "wire_body_base64": "H4sIAAAAAAAA/6pWSs5PSVWyUvLzD4l38w/1c1HSUUotKsovUrJSyssvUUjLL81LUdJRykyBCMTDBHJTi4sT01PRlBUkFiXmFitZ5ZXm5NRyAQIAAP//yIvOmF4AAAA="
+    },
+    {
+      "at": "2026-10-11T11:10:58.9358Z",
+      "request": {
+        "headers": {
+          "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+        },
+        "method": "POST",
+        "path": "/v1/services/srv-00000000000000000000/restart"
+      },
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+      "response_encoding": "gzip decoded for journal only; original bytes forwarded unchanged",
+      "response_headers": {
+        "CF-Ray": "a48d6be02fc1cf0e-SJC",
+        "Content-Encoding": "gzip",
+        "Content-Length": "95",
+        "Content-Type": "application/json"
+      },
+      "status": 404,
+      "wire_body_base64": "H4sIAAAAAAAA/6pWSs5PSVWyUvLzD4l38w/1c1HSUUotKsovUrJSyssvUUjLL81LUdJRykyBCMTDBHJTi4sT01PRlBUkFiXmFitZ5ZXm5NRyAQIAAP//yIvOmF4AAAA="
+    }
+  ],
+  "cleanup": "four native children reaped/configs removed; exact proxy process group stopped",
+  "direct_native_postgres_negative": {
+    "at": "2026-10-11T11:01:08.216489+00:00",
+    "result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "restart",
+        "dpg-00000000000000000000",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.385,
+      "stdout": "\"dpg-00000000000000000000 restarted successfully\"",
+      "stderr": ""
+    }
+  },
+  "qualification": "The forwarding harness changed authority only, restricted POST to the two nonexistent synthetic IDs, and preserved native requests/responses. No Authorization or cookie headers journaled. First proxy compile attempt had an unused variable; it never listened or executed a native request; corrected before these four captures.",
+  "initial_capture_qualification": "Initial captures proved 404 and native exits but journaled gzip bytes through a UTF-8 string, which was not lossless. They were excluded from these full-body artifacts and repeated in fresh native processes. These captures preserve raw response bytes as base64 and decode gzip only for the readable journal; forwarded bytes/headers remain unchanged."
+}

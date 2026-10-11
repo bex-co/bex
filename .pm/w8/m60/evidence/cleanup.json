@@ -1,0 +1,121 @@
+{
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+  "id": "srv-db5r0gc9vsac73cmeu3g",
+  "deploy_children": [
+    {
+      "commit": {
+        "createdAt": "2026-10-11T15:16:00Z",
+        "id": "7911ab99f9977f837fe87ee29ee901fc6afc5fc4",
+        "message": "docs(pm): close w4/m199 after live first-chunk timestamp replay"
+      },
+      "createdAt": "2026-10-11T15:56:19.554297Z",
+      "finishedAt": "2026-10-11T15:58:14.026868Z",
+      "id": "dep-db5r38s9vsac73cmeu70",
+      "startedAt": "2026-10-11T15:57:14.017092Z",
+      "status": "live",
+      "trigger": "api",
+      "updatedAt": "2026-10-11T15:58:14.026869Z"
+    },
+    {
+      "commit": {
+        "id": "7911ab99f9977f837fe87ee29ee901fc6afc5fc4",
+        "message": "docs(pm): close w4/m199 after live first-chunk timestamp replay"
+      },
+      "createdAt": "2026-10-11T15:56:18.062644Z",
+      "finishedAt": "2026-10-11T15:56:19.560935Z",
+      "id": "dep-db5r38khj6ks739l0ma0",
+      "status": "canceled",
+      "trigger": "service_updated",
+      "updatedAt": "2026-10-11T15:56:19.560936Z"
+    },
+    {
+      "commit": {
+        "id": "7911ab99f9977f837fe87ee29ee901fc6afc5fc4",
+        "message": "docs(pm): close w4/m199 after live first-chunk timestamp replay"
+      },
+      "createdAt": "2026-10-11T15:50:25.800661Z",
+      "finishedAt": "2026-10-11T15:56:28.785173Z",
+      "id": "dep-db5r0gc9vsac73cmeu40",
+      "startedAt": "2026-10-11T15:51:28.91387Z",
+      "status": "canceled",
+      "trigger": "other",
+      "updatedAt": "2026-10-11T15:56:28.785174Z"
+    }
+  ],
+  "children_enumeration_evidence": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "deploys",
+      "list",
+      "srv-db5r0gc9vsac73cmeu3g",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.417,
+    "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-11T15:16:00Z\",\n      \"id\": \"7911ab99f9977f837fe87ee29ee901fc6afc5fc4\",\n      \"message\": \"docs(pm): close w4/m199 after live first-chunk timestamp replay\"\n    },\n    \"createdAt\": \"2026-10-11T15:56:19.554297Z\",\n    \"finishedAt\": \"2026-10-11T15:58:14.026868Z\",\n    \"id\": \"dep-db5r38s9vsac73cmeu70\",\n    \"startedAt\": \"2026-10-11T15:57:14.017092Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-11T15:58:14.026869Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"7911ab99f9977f837fe87ee29ee901fc6afc5fc4\",\n      \"message\": \"docs(pm): close w4/m199 after live first-chunk timestamp replay\"\n    },\n    \"createdAt\": \"2026-10-11T15:56:18.062644Z\",\n    \"finishedAt\": \"2026-10-11T15:56:19.560935Z\",\n    \"id\": \"dep-db5r38khj6ks739l0ma0\",\n    \"status\": \"canceled\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-11T15:56:19.560936Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"7911ab99f9977f837fe87ee29ee901fc6afc5fc4\",\n      \"message\": \"docs(pm): close w4/m199 after live first-chunk timestamp replay\"\n    },\n    \"createdAt\": \"2026-10-11T15:50:25.800661Z\",\n    \"finishedAt\": \"2026-10-11T15:56:28.785173Z\",\n    \"id\": \"dep-db5r0gc9vsac73cmeu40\",\n    \"startedAt\": \"2026-10-11T15:51:28.91387Z\",\n    \"status\": \"canceled\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-11T15:56:28.785174Z\"\n  }\n]",
+    "stderr": ""
+  },
+  "delete_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "delete",
+      "srv-db5r0gc9vsac73cmeu3g",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.153,
+    "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-11T15:50:25Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db5r0gc9vsac73cmeu3g\",\n    \"id\": \"srv-db5r0gc9vsac73cmeu3g\",\n    \"name\": \"qa-20261011-8b460d-logcopy\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-go\",\n    \"serviceDetails\": {\n      \"env\": \"python\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"python3 --version\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"python3 -u -c 'import http.server,sys,json,os\\nTAG='\\\"'\\\"'QA135_8b460d'\\\"'\\\"'\\nLINES=[TAG+'\\\"'\\\"' LEFT RIGHT'\\\"'\\\"',TAG+'\\\"'\\\"' LEFT only'\\\"'\\\"',TAG+'\\\"'\\\"' RIGHT only'\\\"'\\\"',TAG+'\\\"'\\\"' LEFT,RIGHT'\\\"'\\\"',TAG+'\\\"'\\\"' plain'\\\"'\\\"',TAG+'\\\"'\\\"' unrelated'\\\"'\\\"']\\nclass Handler(http.server.BaseHTTPRequestHandler):\\n def log_message(self,*args):pass\\n def do_GET(self):\\n  if self.path=='\\\"'\\\"'/emit'\\\"'\\\"':\\n   for line in LINES:print(line,flush=True)\\n   body=json.dumps(LINES).encode()\\n  else:body=(TAG+'\\\"'\\\"'-ready'\\\"'\\\"').encode()\\n  self.send_response(200);self.end_headers();self.wfile.write(body)\\nhttp.server.HTTPServer(('\\\"'\\\"'0.0.0.0'\\\"'\\\"',int(os.getenv('\\\"'\\\"'PORT'\\\"'\\\"','\\\"'\\\"'3000'\\\"'\\\"'))),Handler).serve_forever()\\n'\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261011-8b460d-logcopy:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"python\",\n      \"url\": \"https://qa-20261011-8b460d-logcopy.onbex.co\"\n    },\n    \"slug\": \"qa-20261011-8b460d-logcopy\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-11T15:58:12Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+    "stderr": ""
+  },
+  "detail_after_delete": {
+    "method": "GET",
+    "path": "/v1/services/srv-db5r0gc9vsac73cmeu3g",
+    "body": null,
+    "status": "404",
+    "elapsed": 0.26,
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48f1592cf29ac07-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "workspace_after_delete_ids": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3v694dm7c7390q930",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0"
+  ],
+  "runtime_after_delete_checks": [
+    {
+      "exit": 0,
+      "stdout": "404 page not found\n\n404",
+      "stderr": ""
+    }
+  ],
+  "quota_after_delete": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.261,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48f159eac497aec-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  }
+}

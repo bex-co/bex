@@ -1,0 +1,386 @@
+{
+  "sweep": 132,
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "name": "qa-20261011-e1b3ba-crontail",
+  "nonce": "e1b3ba",
+  "marker": "QA132_e1b3ba",
+  "id": "srv-db5qcnshj6ks739l0ljg",
+  "type": "cron_job",
+  "command": [
+    "bex",
+    "services",
+    "create",
+    "--name",
+    "qa-20261011-e1b3ba-crontail",
+    "--type",
+    "cron_job",
+    "--runtime",
+    "python",
+    "--repo",
+    "https://github.com/bex-co/bex",
+    "--branch",
+    "main",
+    "--root-directory",
+    "examples/hello-go",
+    "--build-command",
+    "python3 --version",
+    "--cron-command",
+    "python3 -u -c 'import os,time,json\nTAG=\"QA132_e1b3ba\";batch=str(int(time.time()//60))\nmessages=[TAG+\"-\"+batch+\"-short \u96ea END\",json.dumps({\"marker\":TAG+\"-\"+batch+\"-small\",\"Case\":\"KeepMixedCASE\",\"payload\":\"\u96ea\ud83d\ude80\u03b2|\"*800,\"end\":\"SMALL-END\"},ensure_ascii=False,separators=(\",\",\":\")),json.dumps({\"marker\":TAG+\"-\"+batch+\"-partial\",\"Case\":\"KeepMixedCASE\",\"payload\":\"\u96ea\ud83d\ude80\u03b2|\"*5000,\"end\":\"PARTIAL-END\"},ensure_ascii=False,separators=(\",\",\":\"))]\nfor i,m in enumerate(messages):\n b=m.encode()\n if i:\n  mid=len(b)//2;os.write(1,b[:mid]);time.sleep(.12);os.write(1,b[mid:]+b\"\\n\")\n else:os.write(1,b+b\"\\n\")\n'",
+    "--cron-schedule",
+    "* * * * *",
+    "--plan",
+    "free",
+    "--region",
+    "frankfurt",
+    "--auto-deploy=false",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "create_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261011-e1b3ba-crontail",
+      "--type",
+      "cron_job",
+      "--runtime",
+      "python",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/hello-go",
+      "--build-command",
+      "python3 --version",
+      "--cron-command",
+      "python3 -u -c 'import os,time,json\nTAG=\"QA132_e1b3ba\";batch=str(int(time.time()//60))\nmessages=[TAG+\"-\"+batch+\"-short \u96ea END\",json.dumps({\"marker\":TAG+\"-\"+batch+\"-small\",\"Case\":\"KeepMixedCASE\",\"payload\":\"\u96ea\ud83d\ude80\u03b2|\"*800,\"end\":\"SMALL-END\"},ensure_ascii=False,separators=(\",\",\":\")),json.dumps({\"marker\":TAG+\"-\"+batch+\"-partial\",\"Case\":\"KeepMixedCASE\",\"payload\":\"\u96ea\ud83d\ude80\u03b2|\"*5000,\"end\":\"PARTIAL-END\"},ensure_ascii=False,separators=(\",\",\":\"))]\nfor i,m in enumerate(messages):\n b=m.encode()\n if i:\n  mid=len(b)//2;os.write(1,b[:mid]);time.sleep(.12);os.write(1,b[mid:]+b\"\\n\")\n else:os.write(1,b+b\"\\n\")\n'",
+      "--cron-schedule",
+      "* * * * *",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.527,
+    "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-11T15:08:15Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-db5qcnshj6ks739l0ljg\",\n  \"id\": \"srv-db5qcnshj6ks739l0ljg\",\n  \"name\": \"qa-20261011-e1b3ba-crontail\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-go\",\n  \"serviceDetails\": {\n    \"command\": \"python3 -u -c 'import os,time,json\\nTAG=\\\"QA132_e1b3ba\\\";batch=str(int(time.time()//60))\\nmessages=[TAG+\\\"-\\\"+batch+\\\"-short \u96ea END\\\",json.dumps({\\\"marker\\\":TAG+\\\"-\\\"+batch+\\\"-small\\\",\\\"Case\\\":\\\"KeepMixedCASE\\\",\\\"payload\\\":\\\"\u96ea\ud83d\ude80\u03b2|\\\"*800,\\\"end\\\":\\\"SMALL-END\\\"},ensure_ascii=False,separators=(\\\",\\\",\\\":\\\")),json.dumps({\\\"marker\\\":TAG+\\\"-\\\"+batch+\\\"-partial\\\",\\\"Case\\\":\\\"KeepMixedCASE\\\",\\\"payload\\\":\\\"\u96ea\ud83d\ude80\u03b2|\\\"*5000,\\\"end\\\":\\\"PARTIAL-END\\\"},ensure_ascii=False,separators=(\\\",\\\",\\\":\\\"))]\\nfor i,m in enumerate(messages):\\n b=m.encode()\\n if i:\\n  mid=len(b)//2;os.write(1,b[:mid]);time.sleep(.12);os.write(1,b[mid:]+b\\\"\\\\n\\\")\\n else:os.write(1,b+b\\\"\\\\n\\\")\\n'\",\n    \"env\": \"python\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"python3 --version\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"python3 -u -c 'import os,time,json\\nTAG=\\\"QA132_e1b3ba\\\";batch=str(int(time.time()//60))\\nmessages=[TAG+\\\"-\\\"+batch+\\\"-short \u96ea END\\\",json.dumps({\\\"marker\\\":TAG+\\\"-\\\"+batch+\\\"-small\\\",\\\"Case\\\":\\\"KeepMixedCASE\\\",\\\"payload\\\":\\\"\u96ea\ud83d\ude80\u03b2|\\\"*800,\\\"end\\\":\\\"SMALL-END\\\"},ensure_ascii=False,separators=(\\\",\\\",\\\":\\\")),json.dumps({\\\"marker\\\":TAG+\\\"-\\\"+batch+\\\"-partial\\\",\\\"Case\\\":\\\"KeepMixedCASE\\\",\\\"payload\\\":\\\"\u96ea\ud83d\ude80\u03b2|\\\"*5000,\\\"end\\\":\\\"PARTIAL-END\\\"},ensure_ascii=False,separators=(\\\",\\\",\\\":\\\"))]\\nfor i,m in enumerate(messages):\\n b=m.encode()\\n if i:\\n  mid=len(b)//2;os.write(1,b[:mid]);time.sleep(.12);os.write(1,b[mid:]+b\\\"\\\\n\\\")\\n else:os.write(1,b+b\\\"\\\\n\\\")\\n'\"\n    },\n    \"nextRunAt\": \"2026-10-11T15:09:00Z\",\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"region\": \"fsn1\",\n    \"runtime\": \"python\",\n    \"schedule\": \"* * * * *\"\n  },\n  \"slug\": \"qa-20261011-e1b3ba-crontail\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"cron_job\",\n  \"updatedAt\": \"2026-10-11T15:08:15.559418569Z\"\n}",
+    "stderr": ""
+  },
+  "create_response": {
+    "autoDeploy": "no",
+    "autoDeployTrigger": "off",
+    "branch": "main",
+    "createdAt": "2026-10-11T15:08:15Z",
+    "dashboardUrl": "https://dashboard.bex.co/cron/srv-db5qcnshj6ks739l0ljg",
+    "id": "srv-db5qcnshj6ks739l0ljg",
+    "name": "qa-20261011-e1b3ba-crontail",
+    "notifyOnFail": "default",
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "repo": "https://github.com/bex-co/bex",
+    "rootDir": "examples/hello-go",
+    "serviceDetails": {
+      "command": "python3 -u -c 'import os,time,json\nTAG=\"QA132_e1b3ba\";batch=str(int(time.time()//60))\nmessages=[TAG+\"-\"+batch+\"-short \u96ea END\",json.dumps({\"marker\":TAG+\"-\"+batch+\"-small\",\"Case\":\"KeepMixedCASE\",\"payload\":\"\u96ea\ud83d\ude80\u03b2|\"*800,\"end\":\"SMALL-END\"},ensure_ascii=False,separators=(\",\",\":\")),json.dumps({\"marker\":TAG+\"-\"+batch+\"-partial\",\"Case\":\"KeepMixedCASE\",\"payload\":\"\u96ea\ud83d\ude80\u03b2|\"*5000,\"end\":\"PARTIAL-END\"},ensure_ascii=False,separators=(\",\",\":\"))]\nfor i,m in enumerate(messages):\n b=m.encode()\n if i:\n  mid=len(b)//2;os.write(1,b[:mid]);time.sleep(.12);os.write(1,b[mid:]+b\"\\n\")\n else:os.write(1,b+b\"\\n\")\n'",
+      "env": "python",
+      "envSpecificDetails": {
+        "buildCommand": "python3 --version",
+        "preDeployCommand": "",
+        "startCommand": "python3 -u -c 'import os,time,json\nTAG=\"QA132_e1b3ba\";batch=str(int(time.time()//60))\nmessages=[TAG+\"-\"+batch+\"-short \u96ea END\",json.dumps({\"marker\":TAG+\"-\"+batch+\"-small\",\"Case\":\"KeepMixedCASE\",\"payload\":\"\u96ea\ud83d\ude80\u03b2|\"*800,\"end\":\"SMALL-END\"},ensure_ascii=False,separators=(\",\",\":\")),json.dumps({\"marker\":TAG+\"-\"+batch+\"-partial\",\"Case\":\"KeepMixedCASE\",\"payload\":\"\u96ea\ud83d\ude80\u03b2|\"*5000,\"end\":\"PARTIAL-END\"},ensure_ascii=False,separators=(\",\",\":\"))]\nfor i,m in enumerate(messages):\n b=m.encode()\n if i:\n  mid=len(b)//2;os.write(1,b[:mid]);time.sleep(.12);os.write(1,b[mid:]+b\"\\n\")\n else:os.write(1,b+b\"\\n\")\n'"
+      },
+      "nextRunAt": "2026-10-11T15:09:00Z",
+      "numInstances": 1,
+      "plan": "free",
+      "region": "fsn1",
+      "runtime": "python",
+      "schedule": "* * * * *"
+    },
+    "slug": "qa-20261011-e1b3ba-crontail",
+    "suspended": "not_suspended",
+    "suspenders": [],
+    "type": "cron_job",
+    "updatedAt": "2026-10-11T15:08:15.559418569Z"
+  },
+  "deploy_children": [
+    {
+      "commit": {
+        "id": "7308b037080e55be0b0bc3569611b5248623ef40",
+        "message": "chore(deploy): pin platform images to d6ebd8d5ae39 [skip ci]"
+      },
+      "createdAt": "2026-10-11T15:08:15.537352Z",
+      "finishedAt": "2026-10-11T15:10:28.878414Z",
+      "id": "dep-db5qcnshj6ks739l0lk0",
+      "startedAt": "2026-10-11T15:09:28.879617Z",
+      "status": "live",
+      "trigger": "other",
+      "updatedAt": "2026-10-11T15:10:28.878414Z"
+    }
+  ],
+  "children_enumeration_evidence": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "deploys",
+      "list",
+      "srv-db5qcnshj6ks739l0ljg",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.41,
+    "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"7308b037080e55be0b0bc3569611b5248623ef40\",\n      \"message\": \"chore(deploy): pin platform images to d6ebd8d5ae39 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-11T15:08:15.537352Z\",\n    \"finishedAt\": \"2026-10-11T15:10:28.878414Z\",\n    \"id\": \"dep-db5qcnshj6ks739l0lk0\",\n    \"startedAt\": \"2026-10-11T15:09:28.879617Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-11T15:10:28.878414Z\"\n  }\n]",
+    "stderr": ""
+  },
+  "scheduled_observations": [
+    {
+      "at": "2026-10-11T15:08:33.179465+00:00",
+      "runs_api": {
+        "method": "GET",
+        "path": "/v1/cron-jobs/srv-db5qcnshj6ks739l0ljg/runs",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.649,
+        "response": "[]\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48ec7dfac79945e-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-11T15:09:53.270303+00:00",
+      "runs_api": {
+        "method": "GET",
+        "path": "/v1/cron-jobs/srv-db5qcnshj6ks739l0ljg/runs",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.299,
+        "response": "[]\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48ec9d678102599-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-11T15:11:07.489381+00:00",
+      "runs_api": {
+        "method": "GET",
+        "path": "/v1/cron-jobs/srv-db5qcnshj6ks739l0ljg/runs",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.262,
+        "response": "[{\"cronJobRun\":{\"id\":\"crr-o4adi0vv5c8o7qic2thk\",\"status\":\"pending\",\"startedAt\":\"2026-10-11T15:11:00Z\"},\"cursor\":\"crr-o4adi0vv5c8o7qic2thk\"}]\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48ecba69b9467f4-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-11T15:11:40.791938+00:00",
+      "runs_api": {
+        "method": "GET",
+        "path": "/v1/cron-jobs/srv-db5qcnshj6ks739l0ljg/runs",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.605,
+        "response": "[{\"cronJobRun\":{\"id\":\"crr-o4adi0vv5c8o7qic2thk\",\"status\":\"successful\",\"startedAt\":\"2026-10-11T15:11:00Z\",\"finishedAt\":\"2026-10-11T15:11:18Z\"},\"cursor\":\"crr-o4adi0vv5c8o7qic2thk\"}]\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48ecc748c23ebf3-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "native_processes_alive": [
+        true,
+        true
+      ],
+      "statuses": [
+        "successful"
+      ]
+    },
+    {
+      "at": "2026-10-11T15:12:01.758474+00:00",
+      "runs_api": {
+        "method": "GET",
+        "path": "/v1/cron-jobs/srv-db5qcnshj6ks739l0ljg/runs",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.272,
+        "response": "[{\"cronJobRun\":{\"id\":\"crr-lf6cmb5a0o7ievah1aae\",\"status\":\"pending\",\"startedAt\":\"2026-10-11T15:12:00Z\"},\"cursor\":\"crr-lf6cmb5a0o7ievah1aae\"},{\"cronJobRun\":{\"id\":\"crr-o4adi0vv5c8o7qic2thk\",\"status\":\"successful\",\"startedAt\":\"2026-10-11T15:11:00Z\",\"finishedAt\":\"2026-10-11T15:11:18Z\"},\"cursor\":\"crr-o4adi0vv5c8o7qic2thk\"}]\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48eccf9bfe42a0c-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "native_processes_alive": [
+        true,
+        true
+      ],
+      "statuses": [
+        "pending",
+        "successful"
+      ]
+    },
+    {
+      "at": "2026-10-11T15:12:22.756979+00:00",
+      "runs_api": {
+        "method": "GET",
+        "path": "/v1/cron-jobs/srv-db5qcnshj6ks739l0ljg/runs",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.328,
+        "response": "[{\"cronJobRun\":{\"id\":\"crr-lf6cmb5a0o7ievah1aae\",\"status\":\"successful\",\"startedAt\":\"2026-10-11T15:12:00Z\",\"finishedAt\":\"2026-10-11T15:12:19Z\"},\"cursor\":\"crr-lf6cmb5a0o7ievah1aae\"},{\"cronJobRun\":{\"id\":\"crr-o4adi0vv5c8o7qic2thk\",\"status\":\"successful\",\"startedAt\":\"2026-10-11T15:11:00Z\",\"finishedAt\":\"2026-10-11T15:11:18Z\"},\"cursor\":\"crr-o4adi0vv5c8o7qic2thk\"}]\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48ecd7c9dedc501-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "native_processes_alive": [
+        true,
+        true
+      ],
+      "statuses": [
+        "successful",
+        "successful"
+      ]
+    },
+    {
+      "at": "2026-10-11T15:12:43.676641+00:00",
+      "runs_api": {
+        "method": "GET",
+        "path": "/v1/cron-jobs/srv-db5qcnshj6ks739l0ljg/runs",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.276,
+        "response": "[{\"cronJobRun\":{\"id\":\"crr-lf6cmb5a0o7ievah1aae\",\"status\":\"successful\",\"startedAt\":\"2026-10-11T15:12:00Z\",\"finishedAt\":\"2026-10-11T15:12:19Z\"},\"cursor\":\"crr-lf6cmb5a0o7ievah1aae\"},{\"cronJobRun\":{\"id\":\"crr-o4adi0vv5c8o7qic2thk\",\"status\":\"successful\",\"startedAt\":\"2026-10-11T15:11:00Z\",\"finishedAt\":\"2026-10-11T15:11:18Z\"},\"cursor\":\"crr-o4adi0vv5c8o7qic2thk\"}]\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48ecdffad1c3824-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "native_processes_alive": [
+        true,
+        true
+      ],
+      "statuses": [
+        "successful",
+        "successful"
+      ]
+    },
+    {
+      "at": "2026-10-11T15:13:04.571526+00:00",
+      "runs_api": {
+        "method": "GET",
+        "path": "/v1/cron-jobs/srv-db5qcnshj6ks739l0ljg/runs",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.276,
+        "response": "[{\"cronJobRun\":{\"id\":\"crr-8g4bm8uh8kn3out6lbn9\",\"status\":\"pending\",\"startedAt\":\"2026-10-11T15:13:00Z\"},\"cursor\":\"crr-8g4bm8uh8kn3out6lbn9\"},{\"cronJobRun\":{\"id\":\"crr-lf6cmb5a0o7ievah1aae\",\"status\":\"successful\",\"startedAt\":\"2026-10-11T15:12:00Z\",\"finishedAt\":\"2026-10-11T15:12:19Z\"},\"cursor\":\"crr-lf6cmb5a0o7ievah1aae\"},{\"cronJobRun\":{\"id\":\"crr-o4adi0vv5c8o7qic2thk\",\"status\":\"successful\",\"startedAt\":\"2026-10-11T15:11:00Z\",\"finishedAt\":\"2026-10-11T15:11:18Z\"},\"cursor\":\"crr-o4adi0vv5c8o7qic2thk\"}]\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48ece824f7ab8b6-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "native_processes_alive": [
+        true,
+        true
+      ],
+      "statuses": [
+        "pending",
+        "successful",
+        "successful"
+      ]
+    },
+    {
+      "at": "2026-10-11T15:13:25.595557+00:00",
+      "runs_api": {
+        "method": "GET",
+        "path": "/v1/cron-jobs/srv-db5qcnshj6ks739l0ljg/runs",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.314,
+        "response": "[{\"cronJobRun\":{\"id\":\"crr-8g4bm8uh8kn3out6lbn9\",\"status\":\"successful\",\"startedAt\":\"2026-10-11T15:13:00Z\",\"finishedAt\":\"2026-10-11T15:13:09Z\"},\"cursor\":\"crr-8g4bm8uh8kn3out6lbn9\"},{\"cronJobRun\":{\"id\":\"crr-lf6cmb5a0o7ievah1aae\",\"status\":\"successful\",\"startedAt\":\"2026-10-11T15:12:00Z\",\"finishedAt\":\"2026-10-11T15:12:19Z\"},\"cursor\":\"crr-lf6cmb5a0o7ievah1aae\"},{\"cronJobRun\":{\"id\":\"crr-o4adi0vv5c8o7qic2thk\",\"status\":\"successful\",\"startedAt\":\"2026-10-11T15:11:00Z\",\"finishedAt\":\"2026-10-11T15:11:18Z\"},\"cursor\":\"crr-o4adi0vv5c8o7qic2thk\"}]\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48ecf056b02ce58-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "native_processes_alive": [
+        true,
+        true
+      ],
+      "statuses": [
+        "successful",
+        "successful",
+        "successful"
+      ]
+    },
+    {
+      "at": "2026-10-11T15:13:46.455201+00:00",
+      "runs_api": {
+        "method": "GET",
+        "path": "/v1/cron-jobs/srv-db5qcnshj6ks739l0ljg/runs",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.275,
+        "response": "[{\"cronJobRun\":{\"id\":\"crr-8g4bm8uh8kn3out6lbn9\",\"status\":\"successful\",\"startedAt\":\"2026-10-11T15:13:00Z\",\"finishedAt\":\"2026-10-11T15:13:09Z\"},\"cursor\":\"crr-8g4bm8uh8kn3out6lbn9\"},{\"cronJobRun\":{\"id\":\"crr-lf6cmb5a0o7ievah1aae\",\"status\":\"successful\",\"startedAt\":\"2026-10-11T15:12:00Z\",\"finishedAt\":\"2026-10-11T15:12:19Z\"},\"cursor\":\"crr-lf6cmb5a0o7ievah1aae\"},{\"cronJobRun\":{\"id\":\"crr-o4adi0vv5c8o7qic2thk\",\"status\":\"successful\",\"startedAt\":\"2026-10-11T15:11:00Z\",\"finishedAt\":\"2026-10-11T15:11:18Z\"},\"cursor\":\"crr-o4adi0vv5c8o7qic2thk\"}]\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48ecf88199fcf1e-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "native_processes_alive": [
+        true,
+        true
+      ],
+      "statuses": [
+        "successful",
+        "successful",
+        "successful"
+      ]
+    }
+  ],
+  "capacity_proof": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.353,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48ec76a2ab18775-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  }
+}

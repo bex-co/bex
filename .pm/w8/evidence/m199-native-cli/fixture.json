@@ -1,0 +1,200 @@
+{
+  "sweep": 128,
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "name": "qa-20261011-66ac1b-logtime",
+  "nonce": "66ac1b",
+  "marker": "QA128_66ac1b",
+  "id": "srv-db5q2pt13j8s73csrf2g",
+  "type": "web_service",
+  "command": [
+    "bex",
+    "services",
+    "create",
+    "--name",
+    "qa-20261011-66ac1b-logtime",
+    "--type",
+    "web_service",
+    "--runtime",
+    "python",
+    "--repo",
+    "https://github.com/bex-co/bex",
+    "--branch",
+    "main",
+    "--root-directory",
+    "examples/hello-go",
+    "--build-command",
+    "python3 --version",
+    "--start-command",
+    "python3 -u -c 'import os,json,time,http.server\nTAG=\"QA128_66ac1b\"\ndef messages(batch):\n return [TAG+\"-\"+batch+\"-short \u96ea\ud83d\ude80\u03b2 END\",json.dumps({\"marker\":TAG+\"-\"+batch+\"-small\",\"Case\":\"KeepMixedCASE\",\"payload\":\"\u96ea\ud83d\ude80\u03b2|\"*800,\"end\":\"SMALL-END\"},ensure_ascii=False,separators=(\",\",\":\")),json.dumps({\"marker\":TAG+\"-\"+batch+\"-partial\",\"Case\":\"KeepMixedCASE\",\"payload\":\"\u96ea\ud83d\ude80\u03b2|\"*5000,\"end\":\"PARTIAL-END\"},ensure_ascii=False,separators=(\",\",\":\"))]\nclass H(http.server.BaseHTTPRequestHandler):\n def log_message(self,*a): pass\n def do_GET(self):\n  parts=self.path.split(\"/\");batch=parts[-1];items=messages(batch)\n  if self.path.startswith(\"/emit/\"):\n   for i,m in enumerate(items):\n    b=m.encode()\n    if i:\n     mid=len(b)//2;os.write(1,b[:mid]);time.sleep(.12);os.write(1,b[mid:]+b\"\\n\")\n    else:os.write(1,b+b\"\\n\")\n  data=json.dumps(items,ensure_ascii=False).encode() if self.path.startswith((\"/emit/\",\"/expected/\")) else (TAG+\"-ready\").encode()\n  self.send_response(200);self.send_header(\"Content-Length\",str(len(data)));self.end_headers();self.wfile.write(data)\nhttp.server.ThreadingHTTPServer((\"0.0.0.0\",int(os.getenv(\"PORT\",\"3000\"))),H).serve_forever()\n'",
+    "--health-check-path",
+    "/",
+    "--plan",
+    "free",
+    "--region",
+    "frankfurt",
+    "--auto-deploy=false",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "create_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261011-66ac1b-logtime",
+      "--type",
+      "web_service",
+      "--runtime",
+      "python",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/hello-go",
+      "--build-command",
+      "python3 --version",
+      "--start-command",
+      "python3 -u -c 'import os,json,time,http.server\nTAG=\"QA128_66ac1b\"\ndef messages(batch):\n return [TAG+\"-\"+batch+\"-short \u96ea\ud83d\ude80\u03b2 END\",json.dumps({\"marker\":TAG+\"-\"+batch+\"-small\",\"Case\":\"KeepMixedCASE\",\"payload\":\"\u96ea\ud83d\ude80\u03b2|\"*800,\"end\":\"SMALL-END\"},ensure_ascii=False,separators=(\",\",\":\")),json.dumps({\"marker\":TAG+\"-\"+batch+\"-partial\",\"Case\":\"KeepMixedCASE\",\"payload\":\"\u96ea\ud83d\ude80\u03b2|\"*5000,\"end\":\"PARTIAL-END\"},ensure_ascii=False,separators=(\",\",\":\"))]\nclass H(http.server.BaseHTTPRequestHandler):\n def log_message(self,*a): pass\n def do_GET(self):\n  parts=self.path.split(\"/\");batch=parts[-1];items=messages(batch)\n  if self.path.startswith(\"/emit/\"):\n   for i,m in enumerate(items):\n    b=m.encode()\n    if i:\n     mid=len(b)//2;os.write(1,b[:mid]);time.sleep(.12);os.write(1,b[mid:]+b\"\\n\")\n    else:os.write(1,b+b\"\\n\")\n  data=json.dumps(items,ensure_ascii=False).encode() if self.path.startswith((\"/emit/\",\"/expected/\")) else (TAG+\"-ready\").encode()\n  self.send_response(200);self.send_header(\"Content-Length\",str(len(data)));self.end_headers();self.wfile.write(data)\nhttp.server.ThreadingHTTPServer((\"0.0.0.0\",int(os.getenv(\"PORT\",\"3000\"))),H).serve_forever()\n'",
+      "--health-check-path",
+      "/",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.148,
+    "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-11T14:47:03Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db5q2pt13j8s73csrf2g\",\n  \"id\": \"srv-db5q2pt13j8s73csrf2g\",\n  \"name\": \"qa-20261011-66ac1b-logtime\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-go\",\n  \"serviceDetails\": {\n    \"env\": \"python\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"python3 --version\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"python3 -u -c 'import os,json,time,http.server\\nTAG=\\\"QA128_66ac1b\\\"\\ndef messages(batch):\\n return [TAG+\\\"-\\\"+batch+\\\"-short \u96ea\ud83d\ude80\u03b2 END\\\",json.dumps({\\\"marker\\\":TAG+\\\"-\\\"+batch+\\\"-small\\\",\\\"Case\\\":\\\"KeepMixedCASE\\\",\\\"payload\\\":\\\"\u96ea\ud83d\ude80\u03b2|\\\"*800,\\\"end\\\":\\\"SMALL-END\\\"},ensure_ascii=False,separators=(\\\",\\\",\\\":\\\")),json.dumps({\\\"marker\\\":TAG+\\\"-\\\"+batch+\\\"-partial\\\",\\\"Case\\\":\\\"KeepMixedCASE\\\",\\\"payload\\\":\\\"\u96ea\ud83d\ude80\u03b2|\\\"*5000,\\\"end\\\":\\\"PARTIAL-END\\\"},ensure_ascii=False,separators=(\\\",\\\",\\\":\\\"))]\\nclass H(http.server.BaseHTTPRequestHandler):\\n def log_message(self,*a): pass\\n def do_GET(self):\\n  parts=self.path.split(\\\"/\\\");batch=parts[-1];items=messages(batch)\\n  if self.path.startswith(\\\"/emit/\\\"):\\n   for i,m in enumerate(items):\\n    b=m.encode()\\n    if i:\\n     mid=len(b)//2;os.write(1,b[:mid]);time.sleep(.12);os.write(1,b[mid:]+b\\\"\\\\n\\\")\\n    else:os.write(1,b+b\\\"\\\\n\\\")\\n  data=json.dumps(items,ensure_ascii=False).encode() if self.path.startswith((\\\"/emit/\\\",\\\"/expected/\\\")) else (TAG+\\\"-ready\\\").encode()\\n  self.send_response(200);self.send_header(\\\"Content-Length\\\",str(len(data)));self.end_headers();self.wfile.write(data)\\nhttp.server.ThreadingHTTPServer((\\\"0.0.0.0\\\",int(os.getenv(\\\"PORT\\\",\\\"3000\\\"))),H).serve_forever()\\n'\"\n    },\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261011-66ac1b-logtime:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"python\",\n    \"url\": \"https://qa-20261011-66ac1b-logtime.onbex.co\"\n  },\n  \"slug\": \"qa-20261011-66ac1b-logtime\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-11T14:47:03.912680164Z\"\n}",
+    "stderr": ""
+  },
+  "create_response": {
+    "autoDeploy": "no",
+    "autoDeployTrigger": "off",
+    "branch": "main",
+    "createdAt": "2026-10-11T14:47:03Z",
+    "dashboardUrl": "https://dashboard.bex.co/web/srv-db5q2pt13j8s73csrf2g",
+    "id": "srv-db5q2pt13j8s73csrf2g",
+    "name": "qa-20261011-66ac1b-logtime",
+    "notifyOnFail": "default",
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "repo": "https://github.com/bex-co/bex",
+    "rootDir": "examples/hello-go",
+    "serviceDetails": {
+      "env": "python",
+      "envSpecificDetails": {
+        "buildCommand": "python3 --version",
+        "preDeployCommand": "",
+        "startCommand": "python3 -u -c 'import os,json,time,http.server\nTAG=\"QA128_66ac1b\"\ndef messages(batch):\n return [TAG+\"-\"+batch+\"-short \u96ea\ud83d\ude80\u03b2 END\",json.dumps({\"marker\":TAG+\"-\"+batch+\"-small\",\"Case\":\"KeepMixedCASE\",\"payload\":\"\u96ea\ud83d\ude80\u03b2|\"*800,\"end\":\"SMALL-END\"},ensure_ascii=False,separators=(\",\",\":\")),json.dumps({\"marker\":TAG+\"-\"+batch+\"-partial\",\"Case\":\"KeepMixedCASE\",\"payload\":\"\u96ea\ud83d\ude80\u03b2|\"*5000,\"end\":\"PARTIAL-END\"},ensure_ascii=False,separators=(\",\",\":\"))]\nclass H(http.server.BaseHTTPRequestHandler):\n def log_message(self,*a): pass\n def do_GET(self):\n  parts=self.path.split(\"/\");batch=parts[-1];items=messages(batch)\n  if self.path.startswith(\"/emit/\"):\n   for i,m in enumerate(items):\n    b=m.encode()\n    if i:\n     mid=len(b)//2;os.write(1,b[:mid]);time.sleep(.12);os.write(1,b[mid:]+b\"\\n\")\n    else:os.write(1,b+b\"\\n\")\n  data=json.dumps(items,ensure_ascii=False).encode() if self.path.startswith((\"/emit/\",\"/expected/\")) else (TAG+\"-ready\").encode()\n  self.send_response(200);self.send_header(\"Content-Length\",str(len(data)));self.end_headers();self.wfile.write(data)\nhttp.server.ThreadingHTTPServer((\"0.0.0.0\",int(os.getenv(\"PORT\",\"3000\"))),H).serve_forever()\n'"
+      },
+      "healthCheckPath": "/",
+      "internalAddress": "qa-20261011-66ac1b-logtime:3000",
+      "maintenanceMode": {
+        "enabled": false,
+        "uri": ""
+      },
+      "maxShutdownDelaySeconds": 30,
+      "numInstances": 1,
+      "plan": "free",
+      "port": 3000,
+      "region": "fsn1",
+      "renderSubdomainPolicy": "enabled",
+      "runtime": "python",
+      "url": "https://qa-20261011-66ac1b-logtime.onbex.co"
+    },
+    "slug": "qa-20261011-66ac1b-logtime",
+    "suspended": "not_suspended",
+    "suspenders": [],
+    "type": "web_service",
+    "updatedAt": "2026-10-11T14:47:03.912680164Z"
+  },
+  "deploy_children": [
+    {
+      "commit": {
+        "id": "d6ebd8d5ae3908da9064f9b61c2b55671e5ab59b",
+        "message": "fix(logs): pin the first-chunk-timestamp collector for CRI records (w4/m199)\n\nA record the runtime wrote as CRI partial chunks reached history with its\nlast chunk's time while the pod-log live tail used the first chunk's, so the\ndashboard rendered one 50 KB record twice. Pin the log-shipper to the\npublished ghcr.io/bex-co/bex-alloy digest (Alloy v1.11.2 + carried patch).\n\nThe harness now replays all four CRI pipelines (app, build, Postgres with\nCNPG unwrapping, Key Value) in the pinned image: P\u2192F, repeated P across a\nsecond boundary, interleaved stderr, single-F control and the unchanged\n200000-byte cap. These fail on stock v1.11.2 and pass on the pin;\nBEX_ALLOY_IMAGE replays a candidate before pinning. ADR010/ADR018 record\nthe rule and the Render comparison's limits."
+      },
+      "createdAt": "2026-10-11T14:47:03.862447Z",
+      "finishedAt": "2026-10-11T14:49:35.810968Z",
+      "id": "dep-db5q2pt13j8s73csrf30",
+      "startedAt": "2026-10-11T14:48:05.818087Z",
+      "status": "live",
+      "trigger": "other",
+      "updatedAt": "2026-10-11T14:49:35.810969Z"
+    }
+  ],
+  "children_enumeration_evidence": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "deploys",
+      "list",
+      "srv-db5q2pt13j8s73csrf2g",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.762,
+    "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"d6ebd8d5ae3908da9064f9b61c2b55671e5ab59b\",\n      \"message\": \"fix(logs): pin the first-chunk-timestamp collector for CRI records (w4/m199)\\n\\nA record the runtime wrote as CRI partial chunks reached history with its\\nlast chunk's time while the pod-log live tail used the first chunk's, so the\\ndashboard rendered one 50 KB record twice. Pin the log-shipper to the\\npublished ghcr.io/bex-co/bex-alloy digest (Alloy v1.11.2 + carried patch).\\n\\nThe harness now replays all four CRI pipelines (app, build, Postgres with\\nCNPG unwrapping, Key Value) in the pinned image: P\u2192F, repeated P across a\\nsecond boundary, interleaved stderr, single-F control and the unchanged\\n200000-byte cap. These fail on stock v1.11.2 and pass on the pin;\\nBEX_ALLOY_IMAGE replays a candidate before pinning. ADR010/ADR018 record\\nthe rule and the Render comparison's limits.\"\n    },\n    \"createdAt\": \"2026-10-11T14:47:03.862447Z\",\n    \"finishedAt\": \"2026-10-11T14:49:35.810968Z\",\n    \"id\": \"dep-db5q2pt13j8s73csrf30\",\n    \"startedAt\": \"2026-10-11T14:48:05.818087Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-11T14:49:35.810969Z\"\n  }\n]",
+    "stderr": ""
+  },
+  "runtime_observations": [
+    {
+      "at": "2026-10-11T14:47:17.298816+00:00",
+      "exit": 0,
+      "status": "404",
+      "marker_exact": false,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-11T14:47:46.730224+00:00",
+      "exit": 0,
+      "status": "404",
+      "marker_exact": false,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-11T14:48:28.100779+00:00",
+      "exit": 0,
+      "status": "404",
+      "marker_exact": false,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-11T14:49:21.994307+00:00",
+      "exit": 0,
+      "status": "503",
+      "marker_exact": false,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-11T14:50:16.041130+00:00",
+      "exit": 0,
+      "status": "200",
+      "marker_exact": true,
+      "stderr": ""
+    }
+  ],
+  "capacity_proof": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.68,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48ea85efaa6da5a-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  }
+}

@@ -1,0 +1,31 @@
+import pathlib,json,subprocess,datetime,hashlib,time,shutil
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());x=next(v for v in c['resources'] if v.get('sweep')==128);sid=x['id'];assert x['dual_live']['completed'];expected=x['messages']
+def rows(raw):
+ decoder=json.JSONDecoder();out=[]
+ while raw.strip():
+  raw=raw.lstrip();obj,n=decoder.raw_decode(raw);raw=raw[n:]
+  if isinstance(obj,list):out.extend(obj)
+  else:out.append(obj)
+ return out
+def labels(row):return {v['name']:v['value'] for v in row.get('labels',[]) if v['name'] in ['resource','instance','container','type']}
+records=[]
+shutil.copyfile(p/'config/cli.yaml',p/'render-config/cli.yaml');(p/'render-config/cli.yaml').chmod(0o600);c['copied_render_config']=True;cp.write_text(json.dumps(c,indent=2));cp.chmod(0o600)
+try:
+ for role in ['bex','render']:
+  a=['logs','--resources',sid,'--type','app','--limit','100','--confirm','-o','json'];cmd=['python3',str(p/('run.py' if role=='bex' else 'run-render.py'))]
+  if role=='bex':cmd+=['--release']
+  calls=[]
+  for attempt in range(3):
+   r=json.loads(subprocess.check_output([*cmd,*a],text=True));calls.append(r);assert r['exit']==0
+   history=rows(r['stdout']);matched=[v for v in history if v.get('message') in expected]
+   if all(sum(v['message']==m for v in matched)==1 for m in expected):break
+   if attempt<2:time.sleep(8)
+  live=rows(next(v for v in x['dual_live']['streams'] if v['client']==role)['native_result']['stdout'])
+  pairs=[]
+  for m in expected:
+   hs=[v for v in history if v.get('message')==m];ls=[v for v in live if v.get('message')==m]
+   pairs.append({'bytes':len(m.encode()),'sha256':hashlib.sha256(m.encode()).hexdigest(),'history_count':len(hs),'live_count':len(ls),'history_timestamp':hs[0]['timestamp'] if len(hs)==1 else None,'live_timestamp':ls[0]['timestamp'] if len(ls)==1 else None,'timestamp_equal':len(hs)==len(ls)==1 and hs[0]['timestamp']==ls[0]['timestamp'],'identity_equal':len(hs)==len(ls)==1 and hs[0]['id']==ls[0]['id'],'attribution_equal':len(hs)==len(ls)==1 and labels(hs[0])==labels(ls[0])})
+  records.append({'client':role,'command':[role,*a],'native_calls':calls,'history_rows':history,'live_rows':live,'pairs':pairs});print(role,[(v['bytes'],v['history_count'],v['live_count'],v['timestamp_equal'],v['identity_equal']) for v in pairs],flush=True)
+ x['timestamp_replay']={'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'results':records,'all_pairs_match':all(v['timestamp_equal'] and v['identity_equal'] and v['attribution_equal'] for r in records for v in r['pairs']),'qualification':'Actual native history and WebSocket-tail output; exact HTTP trigger and quiet stdout fixture. Deployed collector revision unobserved; no dashboard/GraphQL/local-collector replay in this sweep.'};cp.write_text(json.dumps(c,indent=2));cp.chmod(0o600);(p/'sweep128-history-comparison.json').write_text(json.dumps(x['timestamp_replay'],indent=2));print('all pairs match',x['timestamp_replay']['all_pairs_match'],flush=True)
+finally:
+ (p/'render-config/cli.yaml').unlink(missing_ok=True);latest=json.loads(cp.read_text());latest['copied_render_config']=False;cp.write_text(json.dumps(latest,indent=2));cp.chmod(0o600)

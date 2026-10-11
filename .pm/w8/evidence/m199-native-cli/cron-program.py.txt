@@ -1,0 +1,8 @@
+import os,time,json
+TAG="QA132_e1b3ba";batch=str(int(time.time()//60))
+messages=[TAG+"-"+batch+"-short 雪 END",json.dumps({"marker":TAG+"-"+batch+"-small","Case":"KeepMixedCASE","payload":"雪🚀β|"*800,"end":"SMALL-END"},ensure_ascii=False,separators=(",",":")),json.dumps({"marker":TAG+"-"+batch+"-partial","Case":"KeepMixedCASE","payload":"雪🚀β|"*5000,"end":"PARTIAL-END"},ensure_ascii=False,separators=(",",":"))]
+for i,m in enumerate(messages):
+ b=m.encode()
+ if i:
+  mid=len(b)//2;os.write(1,b[:mid]);time.sleep(.12);os.write(1,b[mid:]+b"\n")
+ else:os.write(1,b+b"\n")

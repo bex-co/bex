@@ -1,0 +1,24 @@
+{
+  "native_versions": {
+    "bex": "released v0.3.2",
+    "render": "unmodified v2.27.0",
+    "pin": "a764810a768202704e7206eb7b87a47211fcd98e"
+  },
+  "source_head": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+  "deploy_source_commits": [
+    "741b541d2d32af54cb36ed09f237969c1bef78ae",
+    "ee15052ae34433ac46f8f3b5e4bccba7a3adb150"
+  ],
+  "platform_revision": "unobserved; deploy source commit is application source, not operator/API revision",
+  "harness_qualifications": [
+    "First Render clear PATCH was accepted200, but its post-PATCH project hydration read was rejected by the forwarder; native exit1 is harness-only. Mutation was not replayed; fresh equivalent with corrected forwarder exited0.",
+    "First direct-control oracle lacked newly shipped application source in local Git; read-only fetch allowed exact source-at-deploy comparison. No create/update was repeated.",
+    "Final cleanup checker initially expected a status key in stored curl receipt; corrected to recorded exit0 and stdout HTTP404. No deletion was repeated."
+  ],
+  "unverified": [
+    "Render production was not contacted",
+    "Dashboard save, MCP update and GraphQL mutation were not exercised",
+    "Explicit builder/runtime/Dockerfile neighbors require fix acceptance coverage",
+    "w4/m197 deployment workflow status alone is not deployed revision evidence"
+  ]
+}

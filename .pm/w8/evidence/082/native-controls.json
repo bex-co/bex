@@ -1,0 +1,174 @@
+[
+  {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5dpgel97ls73au609g",
+      "--type",
+      "app",
+      "--text",
+      "QA86_FORM_b2102d",
+      "--start",
+      "2026-10-11T00:50:00.857576125Z",
+      "--end",
+      "2026-10-11T00:50:00.857576125Z",
+      "--limit",
+      "10",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.47,
+    "stdout": "{\n  \"id\": \"srv-db5dpgel97ls73au609g-36pd2em5vv0sffjs5bvf-2026-10-11T00:50:00.857576125Z-c456870e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5dpgel97ls73au609g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5dpgel97ls73au609g-36pd2em5vv0sffjs5bvf\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA86_FORM_b2102d\",\n  \"timestamp\": \"2026-10-11T00:50:00.857576125Z\"\n}",
+    "stderr": "",
+    "client": "bex",
+    "case": "fractional-point",
+    "parsed_rows": [
+      {
+        "id": "srv-db5dpgel97ls73au609g-36pd2em5vv0sffjs5bvf-2026-10-11T00:50:00.857576125Z-c456870e",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5dpgel97ls73au609g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5dpgel97ls73au609g-36pd2em5vv0sffjs5bvf"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA86_FORM_b2102d",
+        "timestamp": "2026-10-11T00:50:00.857576125Z"
+      }
+    ]
+  },
+  {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5dpgel97ls73au609g",
+      "--type",
+      "app",
+      "--text",
+      "QA86_FORM_b2102d",
+      "--start",
+      "2026-10-11T00:50:00Z",
+      "--end",
+      "2026-10-11T00:50:00Z",
+      "--limit",
+      "10",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.297,
+    "stdout": "",
+    "stderr": "",
+    "client": "bex",
+    "case": "whole-second-point",
+    "parsed_rows": []
+  },
+  {
+    "binary": "unmodified Render pin a764810a7682",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5dpgel97ls73au609g",
+      "--type",
+      "app",
+      "--text",
+      "QA86_FORM_b2102d",
+      "--start",
+      "2026-10-11T00:50:00.857576125Z",
+      "--end",
+      "2026-10-11T00:50:00.857576125Z",
+      "--limit",
+      "10",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.432,
+    "stdout": "{\n  \"id\": \"srv-db5dpgel97ls73au609g-36pd2em5vv0sffjs5bvf-2026-10-11T00:50:00.857576125Z-c456870e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5dpgel97ls73au609g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5dpgel97ls73au609g-36pd2em5vv0sffjs5bvf\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA86_FORM_b2102d\",\n  \"timestamp\": \"2026-10-11T00:50:00.857576125Z\"\n}",
+    "stderr": "",
+    "client": "render",
+    "case": "fractional-point",
+    "parsed_rows": [
+      {
+        "id": "srv-db5dpgel97ls73au609g-36pd2em5vv0sffjs5bvf-2026-10-11T00:50:00.857576125Z-c456870e",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5dpgel97ls73au609g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5dpgel97ls73au609g-36pd2em5vv0sffjs5bvf"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA86_FORM_b2102d",
+        "timestamp": "2026-10-11T00:50:00.857576125Z"
+      }
+    ]
+  },
+  {
+    "binary": "unmodified Render pin a764810a7682",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5dpgel97ls73au609g",
+      "--type",
+      "app",
+      "--text",
+      "QA86_FORM_b2102d",
+      "--start",
+      "2026-10-11T00:50:00Z",
+      "--end",
+      "2026-10-11T00:50:00Z",
+      "--limit",
+      "10",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.339,
+    "stdout": "",
+    "stderr": "",
+    "client": "render",
+    "case": "whole-second-point",
+    "parsed_rows": []
+  }
+]

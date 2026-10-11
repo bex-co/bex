@@ -1,0 +1,578 @@
+[
+  {
+    "id": "srv-db5lnhaek99c73ahuqjg",
+    "name": "qa-20261011-f5ca3d-static",
+    "state": "deleted: CLIack/detail404/listabsent/runtime404/all four fixtures absent/baseline6/quota6/termination0",
+    "deploy_children": [
+      {
+        "commit": {
+          "createdAt": "2026-10-11T09:40:37Z",
+          "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+          "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+        },
+        "createdAt": "2026-10-11T09:56:20.846162Z",
+        "finishedAt": "2026-10-11T09:56:38.666392Z",
+        "id": "dep-db5lqh5m4o4s73bmn97g",
+        "status": "build_failed",
+        "trigger": "service_updated",
+        "updatedAt": "2026-10-11T09:56:38.666393Z"
+      },
+      {
+        "commit": {
+          "createdAt": "2026-10-11T09:40:37Z",
+          "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+          "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+        },
+        "createdAt": "2026-10-11T09:54:24.418486Z",
+        "finishedAt": "2026-10-11T09:55:38.65345Z",
+        "id": "dep-db5lpk5m4o4s73bmn960",
+        "startedAt": "2026-10-11T09:54:38.6386Z",
+        "status": "live",
+        "trigger": "api",
+        "updatedAt": "2026-10-11T09:55:38.653451Z"
+      },
+      {
+        "commit": {
+          "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+          "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+        },
+        "createdAt": "2026-10-11T09:52:42.146887Z",
+        "finishedAt": "2026-10-11T09:53:51.017439Z",
+        "id": "dep-db5loqlm4o4s73bmn950",
+        "startedAt": "2026-10-11T09:52:51.847893Z",
+        "status": "deactivated",
+        "trigger": "service_updated",
+        "updatedAt": "2026-10-11T09:55:38.658919Z"
+      },
+      {
+        "commit": {
+          "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+          "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+        },
+        "createdAt": "2026-10-11T09:49:57.237171Z",
+        "finishedAt": "2026-10-11T09:52:08.831606Z",
+        "id": "dep-db5lnhaek99c73ahuqk0",
+        "startedAt": "2026-10-11T09:51:08.753562Z",
+        "status": "deactivated",
+        "trigger": "other",
+        "updatedAt": "2026-10-11T09:53:51.024737Z"
+      }
+    ],
+    "children_enumeration_evidence": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "list",
+        "srv-db5lnhaek99c73ahuqjg",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.437,
+      "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-11T09:40:37Z\",\n      \"id\": \"741b541d2d32af54cb36ed09f237969c1bef78ae\",\n      \"message\": \"fix(static): restore rollback from retained publication (w4/m197)\\n\\nA static_site rollback extracted the target's image through today's saved\\npublish directory, so a bad saved directory made every rollback fail.\\n\\n- operator records each successful publish's object-store prefix per\\n  generation (\\u003capp\\u003e-static-r\\u003cgen\\u003e), backfilling the outgoing served one\\n- releaseConfig.staticPrefix selects a retained publication; image is now\\n  optional (CEL: image or staticPrefix)\\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\\n  fails named on empty/unreadable source, upload copies to the new revision\\n- bex-api Rollback selects the record for static sites (built and direct),\\n  refuses unrecorded targets with a named 409 before dispatch; the\\n  capability projection makes the same check\\n- saved build/publish settings and BuildCommit stay unchanged\"\n    },\n    \"createdAt\": \"2026-10-11T09:56:20.846162Z\",\n    \"finishedAt\": \"2026-10-11T09:56:38.666392Z\",\n    \"id\": \"dep-db5lqh5m4o4s73bmn97g\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-11T09:56:38.666393Z\"\n  },\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-11T09:40:37Z\",\n      \"id\": \"741b541d2d32af54cb36ed09f237969c1bef78ae\",\n      \"message\": \"fix(static): restore rollback from retained publication (w4/m197)\\n\\nA static_site rollback extracted the target's image through today's saved\\npublish directory, so a bad saved directory made every rollback fail.\\n\\n- operator records each successful publish's object-store prefix per\\n  generation (\\u003capp\\u003e-static-r\\u003cgen\\u003e), backfilling the outgoing served one\\n- releaseConfig.staticPrefix selects a retained publication; image is now\\n  optional (CEL: image or staticPrefix)\\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\\n  fails named on empty/unreadable source, upload copies to the new revision\\n- bex-api Rollback selects the record for static sites (built and direct),\\n  refuses unrecorded targets with a named 409 before dispatch; the\\n  capability projection makes the same check\\n- saved build/publish settings and BuildCommit stay unchanged\"\n    },\n    \"createdAt\": \"2026-10-11T09:54:24.418486Z\",\n    \"finishedAt\": \"2026-10-11T09:55:38.65345Z\",\n    \"id\": \"dep-db5lpk5m4o4s73bmn960\",\n    \"startedAt\": \"2026-10-11T09:54:38.6386Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-11T09:55:38.653451Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"741b541d2d32af54cb36ed09f237969c1bef78ae\",\n      \"message\": \"fix(static): restore rollback from retained publication (w4/m197)\\n\\nA static_site rollback extracted the target's image through today's saved\\npublish directory, so a bad saved directory made every rollback fail.\\n\\n- operator records each successful publish's object-store prefix per\\n  generation (\\u003capp\\u003e-static-r\\u003cgen\\u003e), backfilling the outgoing served one\\n- releaseConfig.staticPrefix selects a retained publication; image is now\\n  optional (CEL: image or staticPrefix)\\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\\n  fails named on empty/unreadable source, upload copies to the new revision\\n- bex-api Rollback selects the record for static sites (built and direct),\\n  refuses unrecorded targets with a named 409 before dispatch; the\\n  capability projection makes the same check\\n- saved build/publish settings and BuildCommit stay unchanged\"\n    },\n    \"createdAt\": \"2026-10-11T09:52:42.146887Z\",\n    \"finishedAt\": \"2026-10-11T09:53:51.017439Z\",\n    \"id\": \"dep-db5loqlm4o4s73bmn950\",\n    \"startedAt\": \"2026-10-11T09:52:51.847893Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-11T09:55:38.658919Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"741b541d2d32af54cb36ed09f237969c1bef78ae\",\n      \"message\": \"fix(static): restore rollback from retained publication (w4/m197)\\n\\nA static_site rollback extracted the target's image through today's saved\\npublish directory, so a bad saved directory made every rollback fail.\\n\\n- operator records each successful publish's object-store prefix per\\n  generation (\\u003capp\\u003e-static-r\\u003cgen\\u003e), backfilling the outgoing served one\\n- releaseConfig.staticPrefix selects a retained publication; image is now\\n  optional (CEL: image or staticPrefix)\\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\\n  fails named on empty/unreadable source, upload copies to the new revision\\n- bex-api Rollback selects the record for static sites (built and direct),\\n  refuses unrecorded targets with a named 409 before dispatch; the\\n  capability projection makes the same check\\n- saved build/publish settings and BuildCommit stay unchanged\"\n    },\n    \"createdAt\": \"2026-10-11T09:49:57.237171Z\",\n    \"finishedAt\": \"2026-10-11T09:52:08.831606Z\",\n    \"id\": \"dep-db5lnhaek99c73ahuqk0\",\n    \"startedAt\": \"2026-10-11T09:51:08.753562Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-11T09:53:51.024737Z\"\n  }\n]",
+      "stderr": ""
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db5lnhaek99c73ahuqjg",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.214,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-11T09:49:57Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db5lnhaek99c73ahuqjg\",\n    \"id\": \"srv-db5lnhaek99c73ahuqjg\",\n    \"name\": \"qa-20261011-f5ca3d-static\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/static-site\",\n    \"serviceDetails\": {\n      \"buildCommand\": \"\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"publishPath\": \".\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"url\": \"https://qa-20261011-f5ca3d-static.onbex.co\"\n    },\n    \"slug\": \"qa-20261011-f5ca3d-static\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"static_site\",\n    \"updatedAt\": \"2026-10-11T09:56:20.752659826Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "method": "GET",
+      "path": "/v1/services/srv-db5lnhaek99c73ahuqjg",
+      "body": null,
+      "status": "404",
+      "elapsed": 0.244,
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48d12365f738dfa-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "workspace_after_delete_ids": [
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3v694dm7c7390q930",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db09vbgehcmc739j12i0",
+      "srv-db5lrqlm4o4s73bmn9cg",
+      "srv-db5lrv2ek99c73ahuqq0",
+      "srv-db5luiaek99c73ahur10"
+    ],
+    "runtime_after_delete_checks": [
+      {
+        "exit": 0,
+        "stdout": "404 page not found\n\n404",
+        "stderr": ""
+      }
+    ],
+    "quota_after_delete": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.302,
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48d1567fff591f0-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "all_fixture_cleanup": {
+      "at": "2026-10-11T10:11:57.452993+00:00",
+      "ids": [
+        "srv-db5lnhaek99c73ahuqjg",
+        "srv-db5lrqlm4o4s73bmn9cg",
+        "srv-db5lrv2ek99c73ahuqq0",
+        "srv-db5luiaek99c73ahur10"
+      ],
+      "workspace_list_response": {
+        "method": "GET",
+        "path": "/v1/services?ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.359,
+        "response": "[{\"service\":{\"id\":\"srv-daif6dsmg29s73d1umvg\",\"name\":\"hello-go\",\"immutableName\":\"hello-go\",\"slug\":\"hello-go\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\"createdAt\":\"2026-09-12T06:37:43Z\",\"updatedAt\":\"2026-10-11T10:00:12Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"docker\",\"envSpecificDetails\":{\"dockerCommand\":\"\",\"dockerContext\":\"examples/hello-go\",\"dockerfilePath\":\"\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"hello-go:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"docker\",\"url\":\"https://hello-go.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-2\",\"urls\":[\"https://hello-go.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"},\"cursor\":\"hello-go\"},{\"service\":{\"id\":\"srv-dap3v694dm7c7390q930\",\"name\":\"qa-20260922-cd9361-boundary\",\"immutableName\":\"qa-20260922-cd9361-boundary\",\"slug\":\"qa-20260922-cd9361-boundary\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\"createdAt\":\"2026-09-22T08:43:05Z\",\"updatedAt\":\"2026-10-11T10:11:04Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"command\":\"echo QA_BOUNDARY_CRON\",\"env\":\"image\",\"envSpecificDetails\":{\"startCommand\":\"echo QA_BOUNDARY_CRON\"},\"lastSuccessfulRunAt\":\"2026-10-11T10:11:04Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"numInstances\":1,\"plan\":\"free\",\"region\":\"fsn1\",\"runtime\":\"image\",\"schedule\":\"* * * * *\"},\"imagePath\":\"docker.io/library/busybox:1.37\",\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"schedule\":\"* * * * *\",\"command\":\"echo QA_BOUNDARY_CRON\",\"runs\":[{\"id\":\"crr-255fh68k905pakaffna0\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861891\",\"startedAt\":\"2026-10-11T10:11:00Z\",\"finishedAt\":\"2026-10-11T10:11:04Z\",\"status\":\"successful\"},{\"id\":\"crr-sq62botpnokl9p0jtllg\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861890\",\"startedAt\":\"2026-10-11T10:10:00Z\",\"finishedAt\":\"2026-10-11T10:10:06Z\",\"status\":\"successful\"},{\"id\":\"crr-dsb4m8cpv05qaene7k2m\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861889\",\"startedAt\":\"2026-10-11T10:09:00Z\",\"finishedAt\":\"2026-10-11T10:09:05Z\",\"status\":\"successful\"},{\"id\":\"crr-g90tv02jj0rv53mu3raa\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861888\",\"startedAt\":\"2026-10-11T10:08:00Z\",\"finishedAt\":\"2026-10-11T10:08:05Z\",\"status\":\"successful\"},{\"id\":\"crr-5v6g9nhnm4amfk6osbjs\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861887\",\"startedAt\":\"2026-10-11T10:07:00Z\",\"finishedAt\":\"2026-10-11T10:07:04Z\",\"status\":\"successful\"},{\"id\":\"crr-qa2v0mat1hoojlsv10d9\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861886\",\"startedAt\":\"2026-10-11T10:06:00Z\",\"finishedAt\":\"2026-10-11T10:06:04Z\",\"status\":\"successful\"},{\"id\":\"crr-7feb8nluqhlsmgr69okd\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861885\",\"startedAt\":\"2026-10-11T10:05:00Z\",\"finishedAt\":\"2026-10-11T10:05:04Z\",\"status\":\"successful\"},{\"id\":\"crr-dutviv41b7hq5f88juev\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861884\",\"startedAt\":\"2026-10-11T10:04:00Z\",\"finishedAt\":\"2026-10-11T10:04:06Z\",\"status\":\"successful\"},{\"id\":\"crr-vgoiqdf61fd7ep8136or\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861883\",\"startedAt\":\"2026-10-11T10:03:00Z\",\"finishedAt\":\"2026-10-11T10:03:06Z\",\"status\":\"successful\"},{\"id\":\"crr-2c4da92encjqcreor1c6\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861882\",\"startedAt\":\"2026-10-11T10:02:00Z\",\"finishedAt\":\"2026-10-11T10:02:06Z\",\"status\":\"successful\"}],\"lastSuccessfulRunAt\":\"2026-10-11T10:11:04Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"idleTTLSeconds\":0,\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"},\"cursor\":\"qa-20260922-cd9361-boundary\"},{\"service\":{\"id\":\"srv-dap3umrbdpcs73f5eeug\",\"name\":\"qa-20260922-cd9361-longcronxx\",\"immutableName\":\"qa-20260922-cd9361-longcronxx\",\"slug\":\"qa-20260922-cd9361-longcronxx\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\"createdAt\":\"2026-09-22T08:42:03Z\",\"updatedAt\":\"2026-10-11T10:11:05Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"command\":\"echo QA_LONG_CRON\",\"env\":\"image\",\"envSpecificDetails\":{\"startCommand\":\"echo QA_LONG_CRON\"},\"lastSuccessfulRunAt\":\"2026-10-11T10:11:05Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"numInstances\":1,\"plan\":\"free\",\"region\":\"fsn1\",\"runtime\":\"image\",\"schedule\":\"* * * * *\"},\"imagePath\":\"docker.io/library/busybox:1.37\",\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"schedule\":\"* * * * *\",\"command\":\"echo QA_LONG_CRON\",\"runs\":[{\"id\":\"crr-451gk8feg2201h9jq6lb\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861891\",\"startedAt\":\"2026-10-11T10:11:00Z\",\"finishedAt\":\"2026-10-11T10:11:05Z\",\"status\":\"successful\"},{\"id\":\"crr-drenp0jjaa2kg8snp1pn\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861890\",\"startedAt\":\"2026-10-11T10:10:00Z\",\"finishedAt\":\"2026-10-11T10:10:04Z\",\"status\":\"successful\"},{\"id\":\"crr-npk3ctamlrt8ep7ekld2\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861889\",\"startedAt\":\"2026-10-11T10:09:00Z\",\"finishedAt\":\"2026-10-11T10:09:04Z\",\"status\":\"successful\"},{\"id\":\"crr-me56k2aettdrbq0nd7jf\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861888\",\"startedAt\":\"2026-10-11T10:08:00Z\",\"finishedAt\":\"2026-10-11T10:08:05Z\",\"status\":\"successful\"},{\"id\":\"crr-9a6uaj53fhl09h4bb0ns\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29845897\",\"startedAt\":\"2026-09-30T07:37:00Z\",\"finishedAt\":\"2026-09-30T07:37:01Z\",\"status\":\"unsuccessful\"},{\"id\":\"crr-fjdamknk7ngm4fp88alg\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861887\",\"startedAt\":\"2026-10-11T10:07:00Z\",\"finishedAt\":\"2026-10-11T10:07:04Z\",\"status\":\"successful\"},{\"id\":\"crr-330nn8ncm9mhbk7tb1f4\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861886\",\"startedAt\":\"2026-10-11T10:06:00Z\",\"finishedAt\":\"2026-10-11T10:06:06Z\",\"status\":\"successful\"},{\"id\":\"crr-2c89u6mhgp83l62qj8cp\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861885\",\"startedAt\":\"2026-10-11T10:05:00Z\",\"finishedAt\":\"2026-10-11T10:05:05Z\",\"status\":\"successful\"},{\"id\":\"crr-6umb0gga3oo9t3pldqif\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861884\",\"startedAt\":\"2026-10-11T10:04:00Z\",\"finishedAt\":\"2026-10-11T10:04:07Z\",\"status\":\"successful\"},{\"id\":\"crr-955a7jlm5ou2t6glf31p\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861883\",\"startedAt\":\"2026-10-11T10:03:00Z\",\"finishedAt\":\"2026-10-11T10:03:04Z\",\"status\":\"successful\"}],\"lastSuccessfulRunAt\":\"2026-10-11T10:11:05Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"idleTTLSeconds\":0,\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"},\"cursor\":\"qa-20260922-cd9361-longcronxx\"},{\"service\":{\"id\":\"srv-dap3r714dm7c7390q91g\",\"name\":\"qa-20260922-cd9361-nativecron\",\"immutableName\":\"qa-20260922-cd9361-nativecron\",\"slug\":\"qa-20260922-cd9361-nativecron\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\"createdAt\":\"2026-09-22T08:34:36Z\",\"updatedAt\":\"2026-10-11T10:11:05Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"command\":\"echo QA_NATIVE_CRON_cd9361\",\"env\":\"go\",\"envSpecificDetails\":{\"buildCommand\":\"go build -o app .\",\"preDeployCommand\":\"\",\"startCommand\":\"echo QA_NATIVE_CRON_cd9361\"},\"lastSuccessfulRunAt\":\"2026-10-11T10:11:05Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"numInstances\":1,\"plan\":\"free\",\"region\":\"fsn1\",\"runtime\":\"go\",\"schedule\":\"* * * * *\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"schedule\":\"* * * * *\",\"command\":\"echo QA_NATIVE_CRON_cd9361\",\"runs\":[{\"id\":\"crr-19ls30nk6n7ak37curtt\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29855831\",\"startedAt\":\"2026-10-07T05:11:00Z\",\"finishedAt\":\"2026-10-07T05:11:15Z\",\"status\":\"unsuccessful\"},{\"id\":\"crr-7mb5i6aulfnbumaqlns0\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861891\",\"startedAt\":\"2026-10-11T10:11:00Z\",\"finishedAt\":\"2026-10-11T10:11:05Z\",\"status\":\"successful\"},{\"id\":\"crr-tfgar08lltuqa56uc601\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861890\",\"startedAt\":\"2026-10-11T10:10:00Z\",\"finishedAt\":\"2026-10-11T10:10:04Z\",\"status\":\"successful\"},{\"id\":\"crr-cqo5hfm6uok9qtrue152\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861889\",\"startedAt\":\"2026-10-11T10:09:00Z\",\"finishedAt\":\"2026-10-11T10:09:05Z\",\"status\":\"successful\"},{\"id\":\"crr-2vqp8t4rjq7md6eelfno\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861888\",\"startedAt\":\"2026-10-11T10:08:00Z\",\"finishedAt\":\"2026-10-11T10:08:06Z\",\"status\":\"successful\"},{\"id\":\"crr-75kl9658imjin5n1d3t6\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861887\",\"startedAt\":\"2026-10-11T10:07:00Z\",\"finishedAt\":\"2026-10-11T10:07:05Z\",\"status\":\"successful\"},{\"id\":\"crr-kflop6p735ntll4u9n99\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861886\",\"startedAt\":\"2026-10-11T10:06:00Z\",\"finishedAt\":\"2026-10-11T10:06:06Z\",\"status\":\"successful\"},{\"id\":\"crr-0tunisffkg4jk3b4pj8p\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861885\",\"startedAt\":\"2026-10-11T10:05:00Z\",\"finishedAt\":\"2026-10-11T10:05:05Z\",\"status\":\"successful\"},{\"id\":\"crr-b8nij5abq7vg3ju9i42o\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861884\",\"startedAt\":\"2026-10-11T10:04:00Z\",\"finishedAt\":\"2026-10-11T10:04:04Z\",\"status\":\"successful\"},{\"id\":\"crr-5umuuoldmttpvijk9s8k\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861883\",\"startedAt\":\"2026-10-11T10:03:00Z\",\"finishedAt\":\"2026-10-11T10:03:06Z\",\"status\":\"successful\"}],\"lastSuccessfulRunAt\":\"2026-10-11T10:11:05Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"},\"cursor\":\"qa-20260922-cd9361-nativecron\"},{\"service\":{\"id\":\"srv-db09vbgehcmc739j12i0\",\"name\":\"qa-20261003-c63833-zero-head\",\"immutableName\":\"qa-20261003-c63833-zero-head\",\"slug\":\"qa-20261003-c63833-zero-head\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\"createdAt\":\"2026-10-03T06:24:46Z\",\"updatedAt\":\"2026-10-11T02:21:08Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"image\",\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261003-c63833-zero-head:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"image\",\"url\":\"https://qa-20261003-c63833-zero-head.onbex.co\"},\"imagePath\":\"mendhak/http-https-echo:35\",\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Hibernated\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261003-c63833-zero-head.onbex.co\"],\"idleTTLSeconds\":0,\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"},\"cursor\":\"qa-20261003-c63833-zero-head\"},{\"service\":{\"id\":\"srv-db09u90ehcmc739j12cg\",\"name\":\"qa-20261003-f592c7-zero\",\"immutableName\":\"qa-20261003-f592c7-zero\",\"slug\":\"qa-20261003-f592c7-zero\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\"createdAt\":\"2026-10-03T06:22:29Z\",\"updatedAt\":\"2026-10-11T02:21:08Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"image\",\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261003-f592c7-zero:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"image\",\"url\":\"https://qa-20261003-f592c7-zero.onbex.co\"},\"imagePath\":\"mendhak/http-https-echo:35\",\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Hibernated\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261003-f592c7-zero.onbex.co\"],\"idleTTLSeconds\":0,\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"},\"cursor\":\"qa-20261003-f592c7-zero\"}]\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48d156a6a932994-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "baseline_restored": true,
+      "terminating": 0
+    }
+  },
+  {
+    "id": "srv-db5lrqlm4o4s73bmn9cg",
+    "name": "qa-20261011-86d798-direct",
+    "state": "deleted: CLIack/detail404/listabsent/runtime404/all four fixtures absent/baseline6/quota6/termination0",
+    "deploy_children": [
+      {
+        "commit": {
+          "id": "ee15052ae34433ac46f8f3b5e4bccba7a3adb150",
+          "message": "docs(pm): distinguish dotted Postgres table identities (w4/255)"
+        },
+        "createdAt": "2026-10-11T10:04:37.686117Z",
+        "finishedAt": "2026-10-11T10:04:51.151434Z",
+        "id": "dep-db5luddm4o4s73bmn9i0",
+        "startedAt": "2026-10-11T10:04:38.677725Z",
+        "status": "live",
+        "trigger": "service_updated",
+        "updatedAt": "2026-10-11T10:04:51.151435Z"
+      },
+      {
+        "commit": {
+          "id": "ee15052ae34433ac46f8f3b5e4bccba7a3adb150",
+          "message": "docs(pm): distinguish dotted Postgres table identities (w4/255)"
+        },
+        "createdAt": "2026-10-11T10:00:55.332287Z",
+        "finishedAt": "2026-10-11T10:02:08.872675Z",
+        "id": "dep-db5lslqek99c73ahuqt0",
+        "startedAt": "2026-10-11T10:01:08.857651Z",
+        "status": "deactivated",
+        "trigger": "service_updated",
+        "updatedAt": "2026-10-11T10:04:51.155342Z"
+      },
+      {
+        "commit": {
+          "id": "ee15052ae34433ac46f8f3b5e4bccba7a3adb150",
+          "message": "docs(pm): distinguish dotted Postgres table identities (w4/255)"
+        },
+        "createdAt": "2026-10-11T09:59:06.248957Z",
+        "finishedAt": "2026-10-11T09:59:20.981433Z",
+        "id": "dep-db5lrqlm4o4s73bmn9d0",
+        "startedAt": "2026-10-11T09:59:08.872635Z",
+        "status": "deactivated",
+        "trigger": "other",
+        "updatedAt": "2026-10-11T10:02:08.876045Z"
+      }
+    ],
+    "children_enumeration_evidence": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "list",
+        "srv-db5lrqlm4o4s73bmn9cg",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.409,
+      "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"ee15052ae34433ac46f8f3b5e4bccba7a3adb150\",\n      \"message\": \"docs(pm): distinguish dotted Postgres table identities (w4/255)\"\n    },\n    \"createdAt\": \"2026-10-11T10:04:37.686117Z\",\n    \"finishedAt\": \"2026-10-11T10:04:51.151434Z\",\n    \"id\": \"dep-db5luddm4o4s73bmn9i0\",\n    \"startedAt\": \"2026-10-11T10:04:38.677725Z\",\n    \"status\": \"live\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-11T10:04:51.151435Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"ee15052ae34433ac46f8f3b5e4bccba7a3adb150\",\n      \"message\": \"docs(pm): distinguish dotted Postgres table identities (w4/255)\"\n    },\n    \"createdAt\": \"2026-10-11T10:00:55.332287Z\",\n    \"finishedAt\": \"2026-10-11T10:02:08.872675Z\",\n    \"id\": \"dep-db5lslqek99c73ahuqt0\",\n    \"startedAt\": \"2026-10-11T10:01:08.857651Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-11T10:04:51.155342Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"ee15052ae34433ac46f8f3b5e4bccba7a3adb150\",\n      \"message\": \"docs(pm): distinguish dotted Postgres table identities (w4/255)\"\n    },\n    \"createdAt\": \"2026-10-11T09:59:06.248957Z\",\n    \"finishedAt\": \"2026-10-11T09:59:20.981433Z\",\n    \"id\": \"dep-db5lrqlm4o4s73bmn9d0\",\n    \"startedAt\": \"2026-10-11T09:59:08.872635Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-11T10:02:08.876045Z\"\n  }\n]",
+      "stderr": ""
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db5lrqlm4o4s73bmn9cg",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.435,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-11T09:59:06Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db5lrqlm4o4s73bmn9cg\",\n    \"id\": \"srv-db5lrqlm4o4s73bmn9cg\",\n    \"name\": \"qa-20261011-86d798-direct\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/static-site\",\n    \"serviceDetails\": {\n      \"buildCommand\": \"\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"publishPath\": \".\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"url\": \"https://qa-20261011-86d798-direct.onbex.co\"\n    },\n    \"slug\": \"qa-20261011-86d798-direct\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"static_site\",\n    \"updatedAt\": \"2026-10-11T10:04:50Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "method": "GET",
+      "path": "/v1/services/srv-db5lrqlm4o4s73bmn9cg",
+      "body": null,
+      "status": "404",
+      "elapsed": 0.282,
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48d12c33ce97ab0-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "workspace_after_delete_ids": [
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3v694dm7c7390q930",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db09vbgehcmc739j12i0",
+      "srv-db5lrv2ek99c73ahuqq0",
+      "srv-db5luiaek99c73ahur10"
+    ],
+    "runtime_after_delete_checks": [
+      {
+        "exit": 0,
+        "stdout": "404 page not found\n\n404",
+        "stderr": ""
+      }
+    ],
+    "quota_after_delete": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.302,
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48d1567fff591f0-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "all_fixture_cleanup": {
+      "at": "2026-10-11T10:11:57.453032+00:00",
+      "ids": [
+        "srv-db5lnhaek99c73ahuqjg",
+        "srv-db5lrqlm4o4s73bmn9cg",
+        "srv-db5lrv2ek99c73ahuqq0",
+        "srv-db5luiaek99c73ahur10"
+      ],
+      "workspace_list_response": {
+        "method": "GET",
+        "path": "/v1/services?ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.359,
+        "response": "[{\"service\":{\"id\":\"srv-daif6dsmg29s73d1umvg\",\"name\":\"hello-go\",\"immutableName\":\"hello-go\",\"slug\":\"hello-go\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\"createdAt\":\"2026-09-12T06:37:43Z\",\"updatedAt\":\"2026-10-11T10:00:12Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"docker\",\"envSpecificDetails\":{\"dockerCommand\":\"\",\"dockerContext\":\"examples/hello-go\",\"dockerfilePath\":\"\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"hello-go:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"docker\",\"url\":\"https://hello-go.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-2\",\"urls\":[\"https://hello-go.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"},\"cursor\":\"hello-go\"},{\"service\":{\"id\":\"srv-dap3v694dm7c7390q930\",\"name\":\"qa-20260922-cd9361-boundary\",\"immutableName\":\"qa-20260922-cd9361-boundary\",\"slug\":\"qa-20260922-cd9361-boundary\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\"createdAt\":\"2026-09-22T08:43:05Z\",\"updatedAt\":\"2026-10-11T10:11:04Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"command\":\"echo QA_BOUNDARY_CRON\",\"env\":\"image\",\"envSpecificDetails\":{\"startCommand\":\"echo QA_BOUNDARY_CRON\"},\"lastSuccessfulRunAt\":\"2026-10-11T10:11:04Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"numInstances\":1,\"plan\":\"free\",\"region\":\"fsn1\",\"runtime\":\"image\",\"schedule\":\"* * * * *\"},\"imagePath\":\"docker.io/library/busybox:1.37\",\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"schedule\":\"* * * * *\",\"command\":\"echo QA_BOUNDARY_CRON\",\"runs\":[{\"id\":\"crr-255fh68k905pakaffna0\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861891\",\"startedAt\":\"2026-10-11T10:11:00Z\",\"finishedAt\":\"2026-10-11T10:11:04Z\",\"status\":\"successful\"},{\"id\":\"crr-sq62botpnokl9p0jtllg\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861890\",\"startedAt\":\"2026-10-11T10:10:00Z\",\"finishedAt\":\"2026-10-11T10:10:06Z\",\"status\":\"successful\"},{\"id\":\"crr-dsb4m8cpv05qaene7k2m\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861889\",\"startedAt\":\"2026-10-11T10:09:00Z\",\"finishedAt\":\"2026-10-11T10:09:05Z\",\"status\":\"successful\"},{\"id\":\"crr-g90tv02jj0rv53mu3raa\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861888\",\"startedAt\":\"2026-10-11T10:08:00Z\",\"finishedAt\":\"2026-10-11T10:08:05Z\",\"status\":\"successful\"},{\"id\":\"crr-5v6g9nhnm4amfk6osbjs\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861887\",\"startedAt\":\"2026-10-11T10:07:00Z\",\"finishedAt\":\"2026-10-11T10:07:04Z\",\"status\":\"successful\"},{\"id\":\"crr-qa2v0mat1hoojlsv10d9\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861886\",\"startedAt\":\"2026-10-11T10:06:00Z\",\"finishedAt\":\"2026-10-11T10:06:04Z\",\"status\":\"successful\"},{\"id\":\"crr-7feb8nluqhlsmgr69okd\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861885\",\"startedAt\":\"2026-10-11T10:05:00Z\",\"finishedAt\":\"2026-10-11T10:05:04Z\",\"status\":\"successful\"},{\"id\":\"crr-dutviv41b7hq5f88juev\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861884\",\"startedAt\":\"2026-10-11T10:04:00Z\",\"finishedAt\":\"2026-10-11T10:04:06Z\",\"status\":\"successful\"},{\"id\":\"crr-vgoiqdf61fd7ep8136or\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861883\",\"startedAt\":\"2026-10-11T10:03:00Z\",\"finishedAt\":\"2026-10-11T10:03:06Z\",\"status\":\"successful\"},{\"id\":\"crr-2c4da92encjqcreor1c6\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861882\",\"startedAt\":\"2026-10-11T10:02:00Z\",\"finishedAt\":\"2026-10-11T10:02:06Z\",\"status\":\"successful\"}],\"lastSuccessfulRunAt\":\"2026-10-11T10:11:04Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"idleTTLSeconds\":0,\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"},\"cursor\":\"qa-20260922-cd9361-boundary\"},{\"service\":{\"id\":\"srv-dap3umrbdpcs73f5eeug\",\"name\":\"qa-20260922-cd9361-longcronxx\",\"immutableName\":\"qa-20260922-cd9361-longcronxx\",\"slug\":\"qa-20260922-cd9361-longcronxx\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\"createdAt\":\"2026-09-22T08:42:03Z\",\"updatedAt\":\"2026-10-11T10:11:05Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"command\":\"echo QA_LONG_CRON\",\"env\":\"image\",\"envSpecificDetails\":{\"startCommand\":\"echo QA_LONG_CRON\"},\"lastSuccessfulRunAt\":\"2026-10-11T10:11:05Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"numInstances\":1,\"plan\":\"free\",\"region\":\"fsn1\",\"runtime\":\"image\",\"schedule\":\"* * * * *\"},\"imagePath\":\"docker.io/library/busybox:1.37\",\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"schedule\":\"* * * * *\",\"command\":\"echo QA_LONG_CRON\",\"runs\":[{\"id\":\"crr-451gk8feg2201h9jq6lb\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861891\",\"startedAt\":\"2026-10-11T10:11:00Z\",\"finishedAt\":\"2026-10-11T10:11:05Z\",\"status\":\"successful\"},{\"id\":\"crr-drenp0jjaa2kg8snp1pn\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861890\",\"startedAt\":\"2026-10-11T10:10:00Z\",\"finishedAt\":\"2026-10-11T10:10:04Z\",\"status\":\"successful\"},{\"id\":\"crr-npk3ctamlrt8ep7ekld2\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861889\",\"startedAt\":\"2026-10-11T10:09:00Z\",\"finishedAt\":\"2026-10-11T10:09:04Z\",\"status\":\"successful\"},{\"id\":\"crr-me56k2aettdrbq0nd7jf\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861888\",\"startedAt\":\"2026-10-11T10:08:00Z\",\"finishedAt\":\"2026-10-11T10:08:05Z\",\"status\":\"successful\"},{\"id\":\"crr-9a6uaj53fhl09h4bb0ns\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29845897\",\"startedAt\":\"2026-09-30T07:37:00Z\",\"finishedAt\":\"2026-09-30T07:37:01Z\",\"status\":\"unsuccessful\"},{\"id\":\"crr-fjdamknk7ngm4fp88alg\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861887\",\"startedAt\":\"2026-10-11T10:07:00Z\",\"finishedAt\":\"2026-10-11T10:07:04Z\",\"status\":\"successful\"},{\"id\":\"crr-330nn8ncm9mhbk7tb1f4\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861886\",\"startedAt\":\"2026-10-11T10:06:00Z\",\"finishedAt\":\"2026-10-11T10:06:06Z\",\"status\":\"successful\"},{\"id\":\"crr-2c89u6mhgp83l62qj8cp\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861885\",\"startedAt\":\"2026-10-11T10:05:00Z\",\"finishedAt\":\"2026-10-11T10:05:05Z\",\"status\":\"successful\"},{\"id\":\"crr-6umb0gga3oo9t3pldqif\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861884\",\"startedAt\":\"2026-10-11T10:04:00Z\",\"finishedAt\":\"2026-10-11T10:04:07Z\",\"status\":\"successful\"},{\"id\":\"crr-955a7jlm5ou2t6glf31p\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861883\",\"startedAt\":\"2026-10-11T10:03:00Z\",\"finishedAt\":\"2026-10-11T10:03:04Z\",\"status\":\"successful\"}],\"lastSuccessfulRunAt\":\"2026-10-11T10:11:05Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"idleTTLSeconds\":0,\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"},\"cursor\":\"qa-20260922-cd9361-longcronxx\"},{\"service\":{\"id\":\"srv-dap3r714dm7c7390q91g\",\"name\":\"qa-20260922-cd9361-nativecron\",\"immutableName\":\"qa-20260922-cd9361-nativecron\",\"slug\":\"qa-20260922-cd9361-nativecron\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\"createdAt\":\"2026-09-22T08:34:36Z\",\"updatedAt\":\"2026-10-11T10:11:05Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"command\":\"echo QA_NATIVE_CRON_cd9361\",\"env\":\"go\",\"envSpecificDetails\":{\"buildCommand\":\"go build -o app .\",\"preDeployCommand\":\"\",\"startCommand\":\"echo QA_NATIVE_CRON_cd9361\"},\"lastSuccessfulRunAt\":\"2026-10-11T10:11:05Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"numInstances\":1,\"plan\":\"free\",\"region\":\"fsn1\",\"runtime\":\"go\",\"schedule\":\"* * * * *\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"schedule\":\"* * * * *\",\"command\":\"echo QA_NATIVE_CRON_cd9361\",\"runs\":[{\"id\":\"crr-19ls30nk6n7ak37curtt\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29855831\",\"startedAt\":\"2026-10-07T05:11:00Z\",\"finishedAt\":\"2026-10-07T05:11:15Z\",\"status\":\"unsuccessful\"},{\"id\":\"crr-7mb5i6aulfnbumaqlns0\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861891\",\"startedAt\":\"2026-10-11T10:11:00Z\",\"finishedAt\":\"2026-10-11T10:11:05Z\",\"status\":\"successful\"},{\"id\":\"crr-tfgar08lltuqa56uc601\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861890\",\"startedAt\":\"2026-10-11T10:10:00Z\",\"finishedAt\":\"2026-10-11T10:10:04Z\",\"status\":\"successful\"},{\"id\":\"crr-cqo5hfm6uok9qtrue152\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861889\",\"startedAt\":\"2026-10-11T10:09:00Z\",\"finishedAt\":\"2026-10-11T10:09:05Z\",\"status\":\"successful\"},{\"id\":\"crr-2vqp8t4rjq7md6eelfno\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861888\",\"startedAt\":\"2026-10-11T10:08:00Z\",\"finishedAt\":\"2026-10-11T10:08:06Z\",\"status\":\"successful\"},{\"id\":\"crr-75kl9658imjin5n1d3t6\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861887\",\"startedAt\":\"2026-10-11T10:07:00Z\",\"finishedAt\":\"2026-10-11T10:07:05Z\",\"status\":\"successful\"},{\"id\":\"crr-kflop6p735ntll4u9n99\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861886\",\"startedAt\":\"2026-10-11T10:06:00Z\",\"finishedAt\":\"2026-10-11T10:06:06Z\",\"status\":\"successful\"},{\"id\":\"crr-0tunisffkg4jk3b4pj8p\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861885\",\"startedAt\":\"2026-10-11T10:05:00Z\",\"finishedAt\":\"2026-10-11T10:05:05Z\",\"status\":\"successful\"},{\"id\":\"crr-b8nij5abq7vg3ju9i42o\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861884\",\"startedAt\":\"2026-10-11T10:04:00Z\",\"finishedAt\":\"2026-10-11T10:04:04Z\",\"status\":\"successful\"},{\"id\":\"crr-5umuuoldmttpvijk9s8k\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861883\",\"startedAt\":\"2026-10-11T10:03:00Z\",\"finishedAt\":\"2026-10-11T10:03:06Z\",\"status\":\"successful\"}],\"lastSuccessfulRunAt\":\"2026-10-11T10:11:05Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"},\"cursor\":\"qa-20260922-cd9361-nativecron\"},{\"service\":{\"id\":\"srv-db09vbgehcmc739j12i0\",\"name\":\"qa-20261003-c63833-zero-head\",\"immutableName\":\"qa-20261003-c63833-zero-head\",\"slug\":\"qa-20261003-c63833-zero-head\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\"createdAt\":\"2026-10-03T06:24:46Z\",\"updatedAt\":\"2026-10-11T02:21:08Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"image\",\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261003-c63833-zero-head:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"image\",\"url\":\"https://qa-20261003-c63833-zero-head.onbex.co\"},\"imagePath\":\"mendhak/http-https-echo:35\",\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Hibernated\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261003-c63833-zero-head.onbex.co\"],\"idleTTLSeconds\":0,\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"},\"cursor\":\"qa-20261003-c63833-zero-head\"},{\"service\":{\"id\":\"srv-db09u90ehcmc739j12cg\",\"name\":\"qa-20261003-f592c7-zero\",\"immutableName\":\"qa-20261003-f592c7-zero\",\"slug\":\"qa-20261003-f592c7-zero\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\"createdAt\":\"2026-10-03T06:22:29Z\",\"updatedAt\":\"2026-10-11T02:21:08Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"image\",\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261003-f592c7-zero:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"image\",\"url\":\"https://qa-20261003-f592c7-zero.onbex.co\"},\"imagePath\":\"mendhak/http-https-echo:35\",\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Hibernated\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261003-f592c7-zero.onbex.co\"],\"idleTTLSeconds\":0,\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"},\"cursor\":\"qa-20261003-f592c7-zero\"}]\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48d156a6a932994-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "baseline_restored": true,
+      "terminating": 0
+    }
+  },
+  {
+    "id": "srv-db5lrv2ek99c73ahuqq0",
+    "name": "qa-20261011-4054dc-built",
+    "state": "deleted: CLIack/detail404/listabsent/runtime404/all four fixtures absent/baseline6/quota6/termination0",
+    "deploy_children": [
+      {
+        "commit": {
+          "id": "ee15052ae34433ac46f8f3b5e4bccba7a3adb150",
+          "message": "docs(pm): distinguish dotted Postgres table identities (w4/255)"
+        },
+        "createdAt": "2026-10-11T10:02:18.742117Z",
+        "finishedAt": "2026-10-11T10:02:21.037905Z",
+        "id": "dep-db5ltaiek99c73ahuqvg",
+        "status": "build_failed",
+        "trigger": "service_updated",
+        "updatedAt": "2026-10-11T10:02:21.037906Z"
+      },
+      {
+        "commit": {
+          "id": "ee15052ae34433ac46f8f3b5e4bccba7a3adb150",
+          "message": "docs(pm): distinguish dotted Postgres table identities (w4/255)"
+        },
+        "createdAt": "2026-10-11T09:59:24.625237Z",
+        "finishedAt": "2026-10-11T10:01:38.99521Z",
+        "id": "dep-db5lrv2ek99c73ahuqqg",
+        "startedAt": "2026-10-11T10:00:38.714696Z",
+        "status": "live",
+        "trigger": "other",
+        "updatedAt": "2026-10-11T10:01:38.995212Z"
+      }
+    ],
+    "children_enumeration_evidence": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "list",
+        "srv-db5lrv2ek99c73ahuqq0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.405,
+      "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"ee15052ae34433ac46f8f3b5e4bccba7a3adb150\",\n      \"message\": \"docs(pm): distinguish dotted Postgres table identities (w4/255)\"\n    },\n    \"createdAt\": \"2026-10-11T10:02:18.742117Z\",\n    \"finishedAt\": \"2026-10-11T10:02:21.037905Z\",\n    \"id\": \"dep-db5ltaiek99c73ahuqvg\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-11T10:02:21.037906Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"ee15052ae34433ac46f8f3b5e4bccba7a3adb150\",\n      \"message\": \"docs(pm): distinguish dotted Postgres table identities (w4/255)\"\n    },\n    \"createdAt\": \"2026-10-11T09:59:24.625237Z\",\n    \"finishedAt\": \"2026-10-11T10:01:38.99521Z\",\n    \"id\": \"dep-db5lrv2ek99c73ahuqqg\",\n    \"startedAt\": \"2026-10-11T10:00:38.714696Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-11T10:01:38.995212Z\"\n  }\n]",
+      "stderr": ""
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db5lrv2ek99c73ahuqq0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.367,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-11T09:59:24Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db5lrv2ek99c73ahuqq0\",\n    \"id\": \"srv-db5lrv2ek99c73ahuqq0\",\n    \"name\": \"qa-20261011-4054dc-built\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/static-site\",\n    \"serviceDetails\": {\n      \"buildCommand\": \"\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"publishPath\": \".\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"url\": \"https://qa-20261011-4054dc-built.onbex.co\"\n    },\n    \"slug\": \"qa-20261011-4054dc-built\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"static_site\",\n    \"updatedAt\": \"2026-10-11T10:02:18.706635666Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "method": "GET",
+      "path": "/v1/services/srv-db5lrv2ek99c73ahuqq0",
+      "body": null,
+      "status": "404",
+      "elapsed": 0.242,
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48d13891d31c79e-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "workspace_after_delete_ids": [
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3v694dm7c7390q930",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db09vbgehcmc739j12i0",
+      "srv-db5luiaek99c73ahur10"
+    ],
+    "runtime_after_delete_checks": [
+      {
+        "exit": 0,
+        "stdout": "404 page not found\n\n404",
+        "stderr": ""
+      }
+    ],
+    "quota_after_delete": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.302,
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48d1567fff591f0-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "all_fixture_cleanup": {
+      "at": "2026-10-11T10:11:57.453040+00:00",
+      "ids": [
+        "srv-db5lnhaek99c73ahuqjg",
+        "srv-db5lrqlm4o4s73bmn9cg",
+        "srv-db5lrv2ek99c73ahuqq0",
+        "srv-db5luiaek99c73ahur10"
+      ],
+      "workspace_list_response": {
+        "method": "GET",
+        "path": "/v1/services?ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.359,
+        "response": "[{\"service\":{\"id\":\"srv-daif6dsmg29s73d1umvg\",\"name\":\"hello-go\",\"immutableName\":\"hello-go\",\"slug\":\"hello-go\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\"createdAt\":\"2026-09-12T06:37:43Z\",\"updatedAt\":\"2026-10-11T10:00:12Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"docker\",\"envSpecificDetails\":{\"dockerCommand\":\"\",\"dockerContext\":\"examples/hello-go\",\"dockerfilePath\":\"\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"hello-go:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"docker\",\"url\":\"https://hello-go.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-2\",\"urls\":[\"https://hello-go.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"},\"cursor\":\"hello-go\"},{\"service\":{\"id\":\"srv-dap3v694dm7c7390q930\",\"name\":\"qa-20260922-cd9361-boundary\",\"immutableName\":\"qa-20260922-cd9361-boundary\",\"slug\":\"qa-20260922-cd9361-boundary\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\"createdAt\":\"2026-09-22T08:43:05Z\",\"updatedAt\":\"2026-10-11T10:11:04Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"command\":\"echo QA_BOUNDARY_CRON\",\"env\":\"image\",\"envSpecificDetails\":{\"startCommand\":\"echo QA_BOUNDARY_CRON\"},\"lastSuccessfulRunAt\":\"2026-10-11T10:11:04Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"numInstances\":1,\"plan\":\"free\",\"region\":\"fsn1\",\"runtime\":\"image\",\"schedule\":\"* * * * *\"},\"imagePath\":\"docker.io/library/busybox:1.37\",\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"schedule\":\"* * * * *\",\"command\":\"echo QA_BOUNDARY_CRON\",\"runs\":[{\"id\":\"crr-255fh68k905pakaffna0\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861891\",\"startedAt\":\"2026-10-11T10:11:00Z\",\"finishedAt\":\"2026-10-11T10:11:04Z\",\"status\":\"successful\"},{\"id\":\"crr-sq62botpnokl9p0jtllg\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861890\",\"startedAt\":\"2026-10-11T10:10:00Z\",\"finishedAt\":\"2026-10-11T10:10:06Z\",\"status\":\"successful\"},{\"id\":\"crr-dsb4m8cpv05qaene7k2m\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861889\",\"startedAt\":\"2026-10-11T10:09:00Z\",\"finishedAt\":\"2026-10-11T10:09:05Z\",\"status\":\"successful\"},{\"id\":\"crr-g90tv02jj0rv53mu3raa\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861888\",\"startedAt\":\"2026-10-11T10:08:00Z\",\"finishedAt\":\"2026-10-11T10:08:05Z\",\"status\":\"successful\"},{\"id\":\"crr-5v6g9nhnm4amfk6osbjs\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861887\",\"startedAt\":\"2026-10-11T10:07:00Z\",\"finishedAt\":\"2026-10-11T10:07:04Z\",\"status\":\"successful\"},{\"id\":\"crr-qa2v0mat1hoojlsv10d9\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861886\",\"startedAt\":\"2026-10-11T10:06:00Z\",\"finishedAt\":\"2026-10-11T10:06:04Z\",\"status\":\"successful\"},{\"id\":\"crr-7feb8nluqhlsmgr69okd\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861885\",\"startedAt\":\"2026-10-11T10:05:00Z\",\"finishedAt\":\"2026-10-11T10:05:04Z\",\"status\":\"successful\"},{\"id\":\"crr-dutviv41b7hq5f88juev\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861884\",\"startedAt\":\"2026-10-11T10:04:00Z\",\"finishedAt\":\"2026-10-11T10:04:06Z\",\"status\":\"successful\"},{\"id\":\"crr-vgoiqdf61fd7ep8136or\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861883\",\"startedAt\":\"2026-10-11T10:03:00Z\",\"finishedAt\":\"2026-10-11T10:03:06Z\",\"status\":\"successful\"},{\"id\":\"crr-2c4da92encjqcreor1c6\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861882\",\"startedAt\":\"2026-10-11T10:02:00Z\",\"finishedAt\":\"2026-10-11T10:02:06Z\",\"status\":\"successful\"}],\"lastSuccessfulRunAt\":\"2026-10-11T10:11:04Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"idleTTLSeconds\":0,\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"},\"cursor\":\"qa-20260922-cd9361-boundary\"},{\"service\":{\"id\":\"srv-dap3umrbdpcs73f5eeug\",\"name\":\"qa-20260922-cd9361-longcronxx\",\"immutableName\":\"qa-20260922-cd9361-longcronxx\",\"slug\":\"qa-20260922-cd9361-longcronxx\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\"createdAt\":\"2026-09-22T08:42:03Z\",\"updatedAt\":\"2026-10-11T10:11:05Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"command\":\"echo QA_LONG_CRON\",\"env\":\"image\",\"envSpecificDetails\":{\"startCommand\":\"echo QA_LONG_CRON\"},\"lastSuccessfulRunAt\":\"2026-10-11T10:11:05Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"numInstances\":1,\"plan\":\"free\",\"region\":\"fsn1\",\"runtime\":\"image\",\"schedule\":\"* * * * *\"},\"imagePath\":\"docker.io/library/busybox:1.37\",\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"schedule\":\"* * * * *\",\"command\":\"echo QA_LONG_CRON\",\"runs\":[{\"id\":\"crr-451gk8feg2201h9jq6lb\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861891\",\"startedAt\":\"2026-10-11T10:11:00Z\",\"finishedAt\":\"2026-10-11T10:11:05Z\",\"status\":\"successful\"},{\"id\":\"crr-drenp0jjaa2kg8snp1pn\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861890\",\"startedAt\":\"2026-10-11T10:10:00Z\",\"finishedAt\":\"2026-10-11T10:10:04Z\",\"status\":\"successful\"},{\"id\":\"crr-npk3ctamlrt8ep7ekld2\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861889\",\"startedAt\":\"2026-10-11T10:09:00Z\",\"finishedAt\":\"2026-10-11T10:09:04Z\",\"status\":\"successful\"},{\"id\":\"crr-me56k2aettdrbq0nd7jf\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861888\",\"startedAt\":\"2026-10-11T10:08:00Z\",\"finishedAt\":\"2026-10-11T10:08:05Z\",\"status\":\"successful\"},{\"id\":\"crr-9a6uaj53fhl09h4bb0ns\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29845897\",\"startedAt\":\"2026-09-30T07:37:00Z\",\"finishedAt\":\"2026-09-30T07:37:01Z\",\"status\":\"unsuccessful\"},{\"id\":\"crr-fjdamknk7ngm4fp88alg\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861887\",\"startedAt\":\"2026-10-11T10:07:00Z\",\"finishedAt\":\"2026-10-11T10:07:04Z\",\"status\":\"successful\"},{\"id\":\"crr-330nn8ncm9mhbk7tb1f4\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861886\",\"startedAt\":\"2026-10-11T10:06:00Z\",\"finishedAt\":\"2026-10-11T10:06:06Z\",\"status\":\"successful\"},{\"id\":\"crr-2c89u6mhgp83l62qj8cp\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861885\",\"startedAt\":\"2026-10-11T10:05:00Z\",\"finishedAt\":\"2026-10-11T10:05:05Z\",\"status\":\"successful\"},{\"id\":\"crr-6umb0gga3oo9t3pldqif\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861884\",\"startedAt\":\"2026-10-11T10:04:00Z\",\"finishedAt\":\"2026-10-11T10:04:07Z\",\"status\":\"successful\"},{\"id\":\"crr-955a7jlm5ou2t6glf31p\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861883\",\"startedAt\":\"2026-10-11T10:03:00Z\",\"finishedAt\":\"2026-10-11T10:03:04Z\",\"status\":\"successful\"}],\"lastSuccessfulRunAt\":\"2026-10-11T10:11:05Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"idleTTLSeconds\":0,\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"},\"cursor\":\"qa-20260922-cd9361-longcronxx\"},{\"service\":{\"id\":\"srv-dap3r714dm7c7390q91g\",\"name\":\"qa-20260922-cd9361-nativecron\",\"immutableName\":\"qa-20260922-cd9361-nativecron\",\"slug\":\"qa-20260922-cd9361-nativecron\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\"createdAt\":\"2026-09-22T08:34:36Z\",\"updatedAt\":\"2026-10-11T10:11:05Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"command\":\"echo QA_NATIVE_CRON_cd9361\",\"env\":\"go\",\"envSpecificDetails\":{\"buildCommand\":\"go build -o app .\",\"preDeployCommand\":\"\",\"startCommand\":\"echo QA_NATIVE_CRON_cd9361\"},\"lastSuccessfulRunAt\":\"2026-10-11T10:11:05Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"numInstances\":1,\"plan\":\"free\",\"region\":\"fsn1\",\"runtime\":\"go\",\"schedule\":\"* * * * *\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"schedule\":\"* * * * *\",\"command\":\"echo QA_NATIVE_CRON_cd9361\",\"runs\":[{\"id\":\"crr-19ls30nk6n7ak37curtt\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29855831\",\"startedAt\":\"2026-10-07T05:11:00Z\",\"finishedAt\":\"2026-10-07T05:11:15Z\",\"status\":\"unsuccessful\"},{\"id\":\"crr-7mb5i6aulfnbumaqlns0\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861891\",\"startedAt\":\"2026-10-11T10:11:00Z\",\"finishedAt\":\"2026-10-11T10:11:05Z\",\"status\":\"successful\"},{\"id\":\"crr-tfgar08lltuqa56uc601\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861890\",\"startedAt\":\"2026-10-11T10:10:00Z\",\"finishedAt\":\"2026-10-11T10:10:04Z\",\"status\":\"successful\"},{\"id\":\"crr-cqo5hfm6uok9qtrue152\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861889\",\"startedAt\":\"2026-10-11T10:09:00Z\",\"finishedAt\":\"2026-10-11T10:09:05Z\",\"status\":\"successful\"},{\"id\":\"crr-2vqp8t4rjq7md6eelfno\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861888\",\"startedAt\":\"2026-10-11T10:08:00Z\",\"finishedAt\":\"2026-10-11T10:08:06Z\",\"status\":\"successful\"},{\"id\":\"crr-75kl9658imjin5n1d3t6\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861887\",\"startedAt\":\"2026-10-11T10:07:00Z\",\"finishedAt\":\"2026-10-11T10:07:05Z\",\"status\":\"successful\"},{\"id\":\"crr-kflop6p735ntll4u9n99\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861886\",\"startedAt\":\"2026-10-11T10:06:00Z\",\"finishedAt\":\"2026-10-11T10:06:06Z\",\"status\":\"successful\"},{\"id\":\"crr-0tunisffkg4jk3b4pj8p\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861885\",\"startedAt\":\"2026-10-11T10:05:00Z\",\"finishedAt\":\"2026-10-11T10:05:05Z\",\"status\":\"successful\"},{\"id\":\"crr-b8nij5abq7vg3ju9i42o\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861884\",\"startedAt\":\"2026-10-11T10:04:00Z\",\"finishedAt\":\"2026-10-11T10:04:04Z\",\"status\":\"successful\"},{\"id\":\"crr-5umuuoldmttpvijk9s8k\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861883\",\"startedAt\":\"2026-10-11T10:03:00Z\",\"finishedAt\":\"2026-10-11T10:03:06Z\",\"status\":\"successful\"}],\"lastSuccessfulRunAt\":\"2026-10-11T10:11:05Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"},\"cursor\":\"qa-20260922-cd9361-nativecron\"},{\"service\":{\"id\":\"srv-db09vbgehcmc739j12i0\",\"name\":\"qa-20261003-c63833-zero-head\",\"immutableName\":\"qa-20261003-c63833-zero-head\",\"slug\":\"qa-20261003-c63833-zero-head\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\"createdAt\":\"2026-10-03T06:24:46Z\",\"updatedAt\":\"2026-10-11T02:21:08Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"image\",\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261003-c63833-zero-head:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"image\",\"url\":\"https://qa-20261003-c63833-zero-head.onbex.co\"},\"imagePath\":\"mendhak/http-https-echo:35\",\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Hibernated\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261003-c63833-zero-head.onbex.co\"],\"idleTTLSeconds\":0,\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"},\"cursor\":\"qa-20261003-c63833-zero-head\"},{\"service\":{\"id\":\"srv-db09u90ehcmc739j12cg\",\"name\":\"qa-20261003-f592c7-zero\",\"immutableName\":\"qa-20261003-f592c7-zero\",\"slug\":\"qa-20261003-f592c7-zero\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\"createdAt\":\"2026-10-03T06:22:29Z\",\"updatedAt\":\"2026-10-11T02:21:08Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"image\",\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261003-f592c7-zero:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"image\",\"url\":\"https://qa-20261003-f592c7-zero.onbex.co\"},\"imagePath\":\"mendhak/http-https-echo:35\",\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Hibernated\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261003-f592c7-zero.onbex.co\"],\"idleTTLSeconds\":0,\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"},\"cursor\":\"qa-20261003-f592c7-zero\"}]\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48d156a6a932994-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "baseline_restored": true,
+      "terminating": 0
+    }
+  },
+  {
+    "id": "srv-db5luiaek99c73ahur10",
+    "name": "qa-20261011-217991-built",
+    "state": "deleted: CLIack/detail404/listabsent/runtime404/all four fixtures absent/baseline6/quota6/termination0",
+    "deploy_children": [
+      {
+        "commit": {
+          "id": "ee15052ae34433ac46f8f3b5e4bccba7a3adb150",
+          "message": "docs(pm): distinguish dotted Postgres table identities (w4/255)"
+        },
+        "createdAt": "2026-10-11T10:07:42.162528Z",
+        "finishedAt": "2026-10-11T10:07:52.94526Z",
+        "id": "dep-db5lvrlm4o4s73bmn9lg",
+        "status": "build_failed",
+        "trigger": "service_updated",
+        "updatedAt": "2026-10-11T10:07:52.945261Z"
+      },
+      {
+        "commit": {
+          "id": "ee15052ae34433ac46f8f3b5e4bccba7a3adb150",
+          "message": "docs(pm): distinguish dotted Postgres table identities (w4/255)"
+        },
+        "createdAt": "2026-10-11T10:04:57.960583Z",
+        "finishedAt": "2026-10-11T10:07:08.848587Z",
+        "id": "dep-db5luiaek99c73ahur1g",
+        "startedAt": "2026-10-11T10:06:08.855193Z",
+        "status": "live",
+        "trigger": "other",
+        "updatedAt": "2026-10-11T10:07:08.848588Z"
+      }
+    ],
+    "children_enumeration_evidence": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "list",
+        "srv-db5luiaek99c73ahur10",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.298,
+      "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"ee15052ae34433ac46f8f3b5e4bccba7a3adb150\",\n      \"message\": \"docs(pm): distinguish dotted Postgres table identities (w4/255)\"\n    },\n    \"createdAt\": \"2026-10-11T10:07:42.162528Z\",\n    \"finishedAt\": \"2026-10-11T10:07:52.94526Z\",\n    \"id\": \"dep-db5lvrlm4o4s73bmn9lg\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-11T10:07:52.945261Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"ee15052ae34433ac46f8f3b5e4bccba7a3adb150\",\n      \"message\": \"docs(pm): distinguish dotted Postgres table identities (w4/255)\"\n    },\n    \"createdAt\": \"2026-10-11T10:04:57.960583Z\",\n    \"finishedAt\": \"2026-10-11T10:07:08.848587Z\",\n    \"id\": \"dep-db5luiaek99c73ahur1g\",\n    \"startedAt\": \"2026-10-11T10:06:08.855193Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-11T10:07:08.848588Z\"\n  }\n]",
+      "stderr": ""
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db5luiaek99c73ahur10",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.372,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-11T10:04:58Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db5luiaek99c73ahur10\",\n    \"id\": \"srv-db5luiaek99c73ahur10\",\n    \"name\": \"qa-20261011-217991-built\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/static-site\",\n    \"serviceDetails\": {\n      \"buildCommand\": \"\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"publishPath\": \".\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"url\": \"https://qa-20261011-217991-built.onbex.co\"\n    },\n    \"slug\": \"qa-20261011-217991-built\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"static_site\",\n    \"updatedAt\": \"2026-10-11T10:07:42.092671087Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "method": "GET",
+      "path": "/v1/services/srv-db5luiaek99c73ahur10",
+      "body": null,
+      "status": "404",
+      "elapsed": 0.61,
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48d13cd2f131986-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "workspace_after_delete_ids": [
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3v694dm7c7390q930",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db09vbgehcmc739j12i0"
+    ],
+    "runtime_after_delete_checks": [
+      {
+        "exit": 0,
+        "stdout": "404 page not found\n\n404",
+        "stderr": ""
+      }
+    ],
+    "quota_after_delete": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.302,
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48d1567fff591f0-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "all_fixture_cleanup": {
+      "at": "2026-10-11T10:11:57.453044+00:00",
+      "ids": [
+        "srv-db5lnhaek99c73ahuqjg",
+        "srv-db5lrqlm4o4s73bmn9cg",
+        "srv-db5lrv2ek99c73ahuqq0",
+        "srv-db5luiaek99c73ahur10"
+      ],
+      "workspace_list_response": {
+        "method": "GET",
+        "path": "/v1/services?ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.359,
+        "response": "[{\"service\":{\"id\":\"srv-daif6dsmg29s73d1umvg\",\"name\":\"hello-go\",\"immutableName\":\"hello-go\",\"slug\":\"hello-go\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\"createdAt\":\"2026-09-12T06:37:43Z\",\"updatedAt\":\"2026-10-11T10:00:12Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"docker\",\"envSpecificDetails\":{\"dockerCommand\":\"\",\"dockerContext\":\"examples/hello-go\",\"dockerfilePath\":\"\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"hello-go:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"docker\",\"url\":\"https://hello-go.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-2\",\"urls\":[\"https://hello-go.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"},\"cursor\":\"hello-go\"},{\"service\":{\"id\":\"srv-dap3v694dm7c7390q930\",\"name\":\"qa-20260922-cd9361-boundary\",\"immutableName\":\"qa-20260922-cd9361-boundary\",\"slug\":\"qa-20260922-cd9361-boundary\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\"createdAt\":\"2026-09-22T08:43:05Z\",\"updatedAt\":\"2026-10-11T10:11:04Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"command\":\"echo QA_BOUNDARY_CRON\",\"env\":\"image\",\"envSpecificDetails\":{\"startCommand\":\"echo QA_BOUNDARY_CRON\"},\"lastSuccessfulRunAt\":\"2026-10-11T10:11:04Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"numInstances\":1,\"plan\":\"free\",\"region\":\"fsn1\",\"runtime\":\"image\",\"schedule\":\"* * * * *\"},\"imagePath\":\"docker.io/library/busybox:1.37\",\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"schedule\":\"* * * * *\",\"command\":\"echo QA_BOUNDARY_CRON\",\"runs\":[{\"id\":\"crr-255fh68k905pakaffna0\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861891\",\"startedAt\":\"2026-10-11T10:11:00Z\",\"finishedAt\":\"2026-10-11T10:11:04Z\",\"status\":\"successful\"},{\"id\":\"crr-sq62botpnokl9p0jtllg\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861890\",\"startedAt\":\"2026-10-11T10:10:00Z\",\"finishedAt\":\"2026-10-11T10:10:06Z\",\"status\":\"successful\"},{\"id\":\"crr-dsb4m8cpv05qaene7k2m\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861889\",\"startedAt\":\"2026-10-11T10:09:00Z\",\"finishedAt\":\"2026-10-11T10:09:05Z\",\"status\":\"successful\"},{\"id\":\"crr-g90tv02jj0rv53mu3raa\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861888\",\"startedAt\":\"2026-10-11T10:08:00Z\",\"finishedAt\":\"2026-10-11T10:08:05Z\",\"status\":\"successful\"},{\"id\":\"crr-5v6g9nhnm4amfk6osbjs\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861887\",\"startedAt\":\"2026-10-11T10:07:00Z\",\"finishedAt\":\"2026-10-11T10:07:04Z\",\"status\":\"successful\"},{\"id\":\"crr-qa2v0mat1hoojlsv10d9\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861886\",\"startedAt\":\"2026-10-11T10:06:00Z\",\"finishedAt\":\"2026-10-11T10:06:04Z\",\"status\":\"successful\"},{\"id\":\"crr-7feb8nluqhlsmgr69okd\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861885\",\"startedAt\":\"2026-10-11T10:05:00Z\",\"finishedAt\":\"2026-10-11T10:05:04Z\",\"status\":\"successful\"},{\"id\":\"crr-dutviv41b7hq5f88juev\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861884\",\"startedAt\":\"2026-10-11T10:04:00Z\",\"finishedAt\":\"2026-10-11T10:04:06Z\",\"status\":\"successful\"},{\"id\":\"crr-vgoiqdf61fd7ep8136or\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861883\",\"startedAt\":\"2026-10-11T10:03:00Z\",\"finishedAt\":\"2026-10-11T10:03:06Z\",\"status\":\"successful\"},{\"id\":\"crr-2c4da92encjqcreor1c6\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-boundary-29861882\",\"startedAt\":\"2026-10-11T10:02:00Z\",\"finishedAt\":\"2026-10-11T10:02:06Z\",\"status\":\"successful\"}],\"lastSuccessfulRunAt\":\"2026-10-11T10:11:04Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"idleTTLSeconds\":0,\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"},\"cursor\":\"qa-20260922-cd9361-boundary\"},{\"service\":{\"id\":\"srv-dap3umrbdpcs73f5eeug\",\"name\":\"qa-20260922-cd9361-longcronxx\",\"immutableName\":\"qa-20260922-cd9361-longcronxx\",\"slug\":\"qa-20260922-cd9361-longcronxx\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\"createdAt\":\"2026-09-22T08:42:03Z\",\"updatedAt\":\"2026-10-11T10:11:05Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"command\":\"echo QA_LONG_CRON\",\"env\":\"image\",\"envSpecificDetails\":{\"startCommand\":\"echo QA_LONG_CRON\"},\"lastSuccessfulRunAt\":\"2026-10-11T10:11:05Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"numInstances\":1,\"plan\":\"free\",\"region\":\"fsn1\",\"runtime\":\"image\",\"schedule\":\"* * * * *\"},\"imagePath\":\"docker.io/library/busybox:1.37\",\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"schedule\":\"* * * * *\",\"command\":\"echo QA_LONG_CRON\",\"runs\":[{\"id\":\"crr-451gk8feg2201h9jq6lb\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861891\",\"startedAt\":\"2026-10-11T10:11:00Z\",\"finishedAt\":\"2026-10-11T10:11:05Z\",\"status\":\"successful\"},{\"id\":\"crr-drenp0jjaa2kg8snp1pn\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861890\",\"startedAt\":\"2026-10-11T10:10:00Z\",\"finishedAt\":\"2026-10-11T10:10:04Z\",\"status\":\"successful\"},{\"id\":\"crr-npk3ctamlrt8ep7ekld2\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861889\",\"startedAt\":\"2026-10-11T10:09:00Z\",\"finishedAt\":\"2026-10-11T10:09:04Z\",\"status\":\"successful\"},{\"id\":\"crr-me56k2aettdrbq0nd7jf\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861888\",\"startedAt\":\"2026-10-11T10:08:00Z\",\"finishedAt\":\"2026-10-11T10:08:05Z\",\"status\":\"successful\"},{\"id\":\"crr-9a6uaj53fhl09h4bb0ns\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29845897\",\"startedAt\":\"2026-09-30T07:37:00Z\",\"finishedAt\":\"2026-09-30T07:37:01Z\",\"status\":\"unsuccessful\"},{\"id\":\"crr-fjdamknk7ngm4fp88alg\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861887\",\"startedAt\":\"2026-10-11T10:07:00Z\",\"finishedAt\":\"2026-10-11T10:07:04Z\",\"status\":\"successful\"},{\"id\":\"crr-330nn8ncm9mhbk7tb1f4\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861886\",\"startedAt\":\"2026-10-11T10:06:00Z\",\"finishedAt\":\"2026-10-11T10:06:06Z\",\"status\":\"successful\"},{\"id\":\"crr-2c89u6mhgp83l62qj8cp\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861885\",\"startedAt\":\"2026-10-11T10:05:00Z\",\"finishedAt\":\"2026-10-11T10:05:05Z\",\"status\":\"successful\"},{\"id\":\"crr-6umb0gga3oo9t3pldqif\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861884\",\"startedAt\":\"2026-10-11T10:04:00Z\",\"finishedAt\":\"2026-10-11T10:04:07Z\",\"status\":\"successful\"},{\"id\":\"crr-955a7jlm5ou2t6glf31p\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed-29861883\",\"startedAt\":\"2026-10-11T10:03:00Z\",\"finishedAt\":\"2026-10-11T10:03:04Z\",\"status\":\"successful\"}],\"lastSuccessfulRunAt\":\"2026-10-11T10:11:05Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"idleTTLSeconds\":0,\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"},\"cursor\":\"qa-20260922-cd9361-longcronxx\"},{\"service\":{\"id\":\"srv-dap3r714dm7c7390q91g\",\"name\":\"qa-20260922-cd9361-nativecron\",\"immutableName\":\"qa-20260922-cd9361-nativecron\",\"slug\":\"qa-20260922-cd9361-nativecron\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\"createdAt\":\"2026-09-22T08:34:36Z\",\"updatedAt\":\"2026-10-11T10:11:05Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"command\":\"echo QA_NATIVE_CRON_cd9361\",\"env\":\"go\",\"envSpecificDetails\":{\"buildCommand\":\"go build -o app .\",\"preDeployCommand\":\"\",\"startCommand\":\"echo QA_NATIVE_CRON_cd9361\"},\"lastSuccessfulRunAt\":\"2026-10-11T10:11:05Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"numInstances\":1,\"plan\":\"free\",\"region\":\"fsn1\",\"runtime\":\"go\",\"schedule\":\"* * * * *\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"schedule\":\"* * * * *\",\"command\":\"echo QA_NATIVE_CRON_cd9361\",\"runs\":[{\"id\":\"crr-19ls30nk6n7ak37curtt\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29855831\",\"startedAt\":\"2026-10-07T05:11:00Z\",\"finishedAt\":\"2026-10-07T05:11:15Z\",\"status\":\"unsuccessful\"},{\"id\":\"crr-7mb5i6aulfnbumaqlns0\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861891\",\"startedAt\":\"2026-10-11T10:11:00Z\",\"finishedAt\":\"2026-10-11T10:11:05Z\",\"status\":\"successful\"},{\"id\":\"crr-tfgar08lltuqa56uc601\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861890\",\"startedAt\":\"2026-10-11T10:10:00Z\",\"finishedAt\":\"2026-10-11T10:10:04Z\",\"status\":\"successful\"},{\"id\":\"crr-cqo5hfm6uok9qtrue152\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861889\",\"startedAt\":\"2026-10-11T10:09:00Z\",\"finishedAt\":\"2026-10-11T10:09:05Z\",\"status\":\"successful\"},{\"id\":\"crr-2vqp8t4rjq7md6eelfno\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861888\",\"startedAt\":\"2026-10-11T10:08:00Z\",\"finishedAt\":\"2026-10-11T10:08:06Z\",\"status\":\"successful\"},{\"id\":\"crr-75kl9658imjin5n1d3t6\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861887\",\"startedAt\":\"2026-10-11T10:07:00Z\",\"finishedAt\":\"2026-10-11T10:07:05Z\",\"status\":\"successful\"},{\"id\":\"crr-kflop6p735ntll4u9n99\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861886\",\"startedAt\":\"2026-10-11T10:06:00Z\",\"finishedAt\":\"2026-10-11T10:06:06Z\",\"status\":\"successful\"},{\"id\":\"crr-0tunisffkg4jk3b4pj8p\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861885\",\"startedAt\":\"2026-10-11T10:05:00Z\",\"finishedAt\":\"2026-10-11T10:05:05Z\",\"status\":\"successful\"},{\"id\":\"crr-b8nij5abq7vg3ju9i42o\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861884\",\"startedAt\":\"2026-10-11T10:04:00Z\",\"finishedAt\":\"2026-10-11T10:04:04Z\",\"status\":\"successful\"},{\"id\":\"crr-5umuuoldmttpvijk9s8k\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20260922-cd-e1dbb4d0ec58-29861883\",\"startedAt\":\"2026-10-11T10:03:00Z\",\"finishedAt\":\"2026-10-11T10:03:06Z\",\"status\":\"successful\"}],\"lastSuccessfulRunAt\":\"2026-10-11T10:11:05Z\",\"nextRunAt\":\"2026-10-11T10:12:00Z\",\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"},\"cursor\":\"qa-20260922-cd9361-nativecron\"},{\"service\":{\"id\":\"srv-db09vbgehcmc739j12i0\",\"name\":\"qa-20261003-c63833-zero-head\",\"immutableName\":\"qa-20261003-c63833-zero-head\",\"slug\":\"qa-20261003-c63833-zero-head\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\"createdAt\":\"2026-10-03T06:24:46Z\",\"updatedAt\":\"2026-10-11T02:21:08Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"image\",\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261003-c63833-zero-head:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"image\",\"url\":\"https://qa-20261003-c63833-zero-head.onbex.co\"},\"imagePath\":\"mendhak/http-https-echo:35\",\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Hibernated\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261003-c63833-zero-head.onbex.co\"],\"idleTTLSeconds\":0,\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"},\"cursor\":\"qa-20261003-c63833-zero-head\"},{\"service\":{\"id\":\"srv-db09u90ehcmc739j12cg\",\"name\":\"qa-20261003-f592c7-zero\",\"immutableName\":\"qa-20261003-f592c7-zero\",\"slug\":\"qa-20261003-f592c7-zero\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\"createdAt\":\"2026-10-03T06:22:29Z\",\"updatedAt\":\"2026-10-11T02:21:08Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"image\",\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261003-f592c7-zero:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"image\",\"url\":\"https://qa-20261003-f592c7-zero.onbex.co\"},\"imagePath\":\"mendhak/http-https-echo:35\",\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Hibernated\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261003-f592c7-zero.onbex.co\"],\"idleTTLSeconds\":0,\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"},\"cursor\":\"qa-20261003-f592c7-zero\"}]\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48d156a6a932994-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "baseline_restored": true,
+      "terminating": 0
+    }
+  }
+]

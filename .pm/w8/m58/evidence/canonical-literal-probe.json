@@ -1,0 +1,140 @@
+[
+  {
+    "literal_runes": "CAFÉ",
+    "op": "Literal",
+    "pattern": "(?i)café",
+    "rows": [
+      {
+        "canonical_literal_contained_after_lowercasing": true,
+        "go_lowercase_contains": true,
+        "go_regexp": true,
+        "grafana_regexp": true,
+        "line": "QA94 local CAFÉ Ελληνικά"
+      },
+      {
+        "canonical_literal_contained_after_lowercasing": true,
+        "go_lowercase_contains": true,
+        "go_regexp": true,
+        "grafana_regexp": true,
+        "line": "QA94 local café ελληνικά"
+      }
+    ],
+    "syntax": "(?i:CAFÉ)",
+    "term": "café"
+  },
+  {
+    "literal_runes": "ΕΛΛΗΝͅΚΆ",
+    "op": "Literal",
+    "pattern": "(?i)ελληνικά",
+    "rows": [
+      {
+        "canonical_literal_contained_after_lowercasing": false,
+        "go_lowercase_contains": true,
+        "go_regexp": true,
+        "grafana_regexp": true,
+        "line": "QA94 local CAFÉ Ελληνικά"
+      },
+      {
+        "canonical_literal_contained_after_lowercasing": false,
+        "go_lowercase_contains": true,
+        "go_regexp": true,
+        "grafana_regexp": true,
+        "line": "QA94 local café ελληνικά"
+      }
+    ],
+    "syntax": "(?i:ΕΛΛΗΝͅΚΆ)",
+    "term": "ελληνικά"
+  },
+  {
+    "literal_runes": "ΛΛΗΝͅΚΆ",
+    "op": "Literal",
+    "pattern": "(?i)λληνικά",
+    "rows": [
+      {
+        "canonical_literal_contained_after_lowercasing": false,
+        "go_lowercase_contains": true,
+        "go_regexp": true,
+        "grafana_regexp": true,
+        "line": "QA94 local CAFÉ Ελληνικά"
+      },
+      {
+        "canonical_literal_contained_after_lowercasing": false,
+        "go_lowercase_contains": true,
+        "go_regexp": true,
+        "grafana_regexp": true,
+        "line": "QA94 local café ελληνικά"
+      }
+    ],
+    "syntax": "(?i:ΛΛΗΝͅΚΆ)",
+    "term": "λληνικά"
+  },
+  {
+    "literal_runes": "CAFÉ ΕΛΛΗΝͅΚΆ",
+    "op": "Literal",
+    "pattern": "(?i)café ελληνικά",
+    "rows": [
+      {
+        "canonical_literal_contained_after_lowercasing": false,
+        "go_lowercase_contains": true,
+        "go_regexp": true,
+        "grafana_regexp": true,
+        "line": "QA94 local CAFÉ Ελληνικά"
+      },
+      {
+        "canonical_literal_contained_after_lowercasing": false,
+        "go_lowercase_contains": true,
+        "go_regexp": true,
+        "grafana_regexp": true,
+        "line": "QA94 local café ελληνικά"
+      }
+    ],
+    "syntax": "(?i:CAFÉ ΕΛΛΗΝͅΚΆ)",
+    "term": "café ελληνικά"
+  },
+  {
+    "literal_runes": "ͅ",
+    "op": "Literal",
+    "pattern": "(?i)ι",
+    "rows": [
+      {
+        "canonical_literal_contained_after_lowercasing": false,
+        "go_lowercase_contains": true,
+        "go_regexp": true,
+        "grafana_regexp": true,
+        "line": "QA94 local CAFÉ Ελληνικά"
+      },
+      {
+        "canonical_literal_contained_after_lowercasing": false,
+        "go_lowercase_contains": true,
+        "go_regexp": true,
+        "grafana_regexp": true,
+        "line": "QA94 local café ελληνικά"
+      }
+    ],
+    "syntax": "(?i:ͅ)",
+    "term": "ι"
+  },
+  {
+    "literal_runes": "Λ",
+    "op": "Literal",
+    "pattern": "(?i)λ",
+    "rows": [
+      {
+        "canonical_literal_contained_after_lowercasing": true,
+        "go_lowercase_contains": true,
+        "go_regexp": true,
+        "grafana_regexp": true,
+        "line": "QA94 local CAFÉ Ελληνικά"
+      },
+      {
+        "canonical_literal_contained_after_lowercasing": true,
+        "go_lowercase_contains": true,
+        "go_regexp": true,
+        "grafana_regexp": true,
+        "line": "QA94 local café ελληνικά"
+      }
+    ],
+    "syntax": "(?i:Λ)",
+    "term": "λ"
+  }
+]

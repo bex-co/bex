@@ -1,0 +1,283 @@
+[
+  {
+    "args": [
+      "--resources=srv-local-fixture",
+      "--text=LEFT",
+      "RIGHT"
+    ],
+    "case": 0,
+    "input": {
+      "ResourceIDs": [
+        "srv-local-fixture"
+      ],
+      "Instance": [],
+      "Text": [
+        "LEFT"
+      ],
+      "Level": null,
+      "Type": null,
+      "StartTime": null,
+      "EndTime": null,
+      "Host": [],
+      "StatusCode": [],
+      "Method": null,
+      "Path": [],
+      "TaskID": [],
+      "TaskRunID": [],
+      "Limit": 100,
+      "Direction": "",
+      "Tail": false,
+      "ListResourceInput": {
+        "Project": null,
+        "EnvironmentIDs": null,
+        "IncludePreviews": false
+      }
+    },
+    "remaining_args": [
+      "RIGHT"
+    ]
+  },
+  {
+    "args": [
+      "--resources=srv-local-fixture",
+      "--text=LEFT,RIGHT"
+    ],
+    "case": 1,
+    "input": {
+      "ResourceIDs": [
+        "srv-local-fixture"
+      ],
+      "Instance": [],
+      "Text": [
+        "LEFT",
+        "RIGHT"
+      ],
+      "Level": null,
+      "Type": null,
+      "StartTime": null,
+      "EndTime": null,
+      "Host": [],
+      "StatusCode": [],
+      "Method": null,
+      "Path": [],
+      "TaskID": [],
+      "TaskRunID": [],
+      "Limit": 100,
+      "Direction": "",
+      "Tail": false,
+      "ListResourceInput": {
+        "Project": null,
+        "EnvironmentIDs": null,
+        "IncludePreviews": false
+      }
+    },
+    "remaining_args": []
+  },
+  {
+    "args": [
+      "--resources=srv-local-fixture",
+      "--text=plain"
+    ],
+    "case": 2,
+    "input": {
+      "ResourceIDs": [
+        "srv-local-fixture"
+      ],
+      "Instance": [],
+      "Text": [
+        "plain"
+      ],
+      "Level": null,
+      "Type": null,
+      "StartTime": null,
+      "EndTime": null,
+      "Host": [],
+      "StatusCode": [],
+      "Method": null,
+      "Path": [],
+      "TaskID": [],
+      "TaskRunID": [],
+      "Limit": 100,
+      "Direction": "",
+      "Tail": false,
+      "ListResourceInput": {
+        "Project": null,
+        "EnvironmentIDs": null,
+        "IncludePreviews": false
+      }
+    },
+    "remaining_args": []
+  },
+  {
+    "args": [
+      "--resources=srv-local-fixture",
+      "--text=LEFT,RIGHT"
+    ],
+    "case": 3,
+    "input": {
+      "ResourceIDs": [
+        "srv-local-fixture"
+      ],
+      "Instance": [],
+      "Text": [
+        "LEFT",
+        "RIGHT"
+      ],
+      "Level": null,
+      "Type": null,
+      "StartTime": null,
+      "EndTime": null,
+      "Host": [],
+      "StatusCode": [],
+      "Method": null,
+      "Path": [],
+      "TaskID": [],
+      "TaskRunID": [],
+      "Limit": 100,
+      "Direction": "",
+      "Tail": false,
+      "ListResourceInput": {
+        "Project": null,
+        "EnvironmentIDs": null,
+        "IncludePreviews": false
+      }
+    },
+    "remaining_args": []
+  },
+  {
+    "args": [
+      "--resources=srv-local-fixture",
+      "--text=雪,LEFT"
+    ],
+    "case": 4,
+    "input": {
+      "ResourceIDs": [
+        "srv-local-fixture"
+      ],
+      "Instance": [],
+      "Text": [
+        "雪",
+        "LEFT"
+      ],
+      "Level": null,
+      "Type": null,
+      "StartTime": null,
+      "EndTime": null,
+      "Host": [],
+      "StatusCode": [],
+      "Method": null,
+      "Path": [],
+      "TaskID": [],
+      "TaskRunID": [],
+      "Limit": 100,
+      "Direction": "",
+      "Tail": false,
+      "ListResourceInput": {
+        "Project": null,
+        "EnvironmentIDs": null,
+        "IncludePreviews": false
+      }
+    },
+    "remaining_args": []
+  },
+  {
+    "args": [
+      "--resources=srv-local-fixture",
+      "--text=say",
+      "hello"
+    ],
+    "case": 5,
+    "input": {
+      "ResourceIDs": [
+        "srv-local-fixture"
+      ],
+      "Instance": [],
+      "Text": [
+        "say"
+      ],
+      "Level": null,
+      "Type": null,
+      "StartTime": null,
+      "EndTime": null,
+      "Host": [],
+      "StatusCode": [],
+      "Method": null,
+      "Path": [],
+      "TaskID": [],
+      "TaskRunID": [],
+      "Limit": 100,
+      "Direction": "",
+      "Tail": false,
+      "ListResourceInput": {
+        "Project": null,
+        "EnvironmentIDs": null,
+        "IncludePreviews": false
+      }
+    },
+    "remaining_args": [
+      "hello"
+    ]
+  },
+  {
+    "args": [
+      "--resources=srv-local-fixture",
+      "--text=first",
+      "second"
+    ],
+    "case": 6,
+    "input": {
+      "ResourceIDs": [
+        "srv-local-fixture"
+      ],
+      "Instance": [],
+      "Text": [
+        "first"
+      ],
+      "Level": null,
+      "Type": null,
+      "StartTime": null,
+      "EndTime": null,
+      "Host": [],
+      "StatusCode": [],
+      "Method": null,
+      "Path": [],
+      "TaskID": [],
+      "TaskRunID": [],
+      "Limit": 100,
+      "Direction": "",
+      "Tail": false,
+      "ListResourceInput": {
+        "Project": null,
+        "EnvironmentIDs": null,
+        "IncludePreviews": false
+      }
+    },
+    "remaining_args": [
+      "second"
+    ]
+  },
+  {
+    "args": [
+      "--resources=srv-local-fixture",
+      "--start={2026-10-11",
+      "15:30:00",
+      "+0000",
+      "UTC",
+      "0x2e3cfe353500}"
+    ],
+    "case": 7,
+    "error": "invalid argument \"{2026-10-11\" for \"--start\" flag: invalid timestamp, time must either be relative (1m, 5h, etc) or in RFC3339 format: 2026-10-11T08:56:42-07:00"
+  },
+  {
+    "args": [
+      "--resources=srv-local-fixture",
+      "--start={2026-10-11",
+      "15:50:00",
+      "+0000",
+      "UTC",
+      "<nil>}"
+    ],
+    "case": 8,
+    "error": "invalid argument \"{2026-10-11\" for \"--start\" flag: invalid timestamp, time must either be relative (1m, 5h, etc) or in RFC3339 format: 2026-10-11T08:56:42-07:00"
+  }
+]

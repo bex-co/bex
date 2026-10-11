@@ -1,0 +1,39 @@
+package main
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"github.com/render-oss/cli/pkg/tui"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+func main() {
+	detail := "QA106 underlying detail"
+	cases := []struct {
+		Name string
+		Err  error
+		Want bool
+	}{{"title-plus-err", tui.UserFacingError{Title: "An error occurred while running kv-cli", Err: errors.New(detail)}, true}, {"explicit-message", tui.UserFacingError{Title: "Error", Message: detail, Err: errors.New("secondary")}, true}, {"unwrapped-error", errors.New(detail), true}, {"title-only", tui.UserFacingError{Title: "Title only"}, false}}
+	childErr := exec.Command("/usr/bin/false").Run()
+	cases = append(cases, struct {
+		Name string
+		Err  error
+		Want bool
+	}{"real-child-exit", tui.UserFacingError{Title: "An error occurred while running kv-cli", Err: childErr}, false})
+	rows := []map[string]any{}
+	for _, c := range cases {
+		m := tui.NewErrorModel(c.Err)
+		m.Update(tui.StackSizeMsg{Width: 100, Height: 24})
+		view := m.View()
+		rows = append(rows, map[string]any{"name": c.Name, "error_string": c.Err.Error(), "expected_detail_present": c.Want, "actual_detail_present": strings.Contains(view, detail), "view": view})
+	}
+	b, e := json.MarshalIndent(rows, "", "  ")
+	if e != nil {
+		panic(e)
+	}
+	os.WriteFile("results.json", append(b, '\n'), 0600)
+	fmt.Println(string(b))
+}

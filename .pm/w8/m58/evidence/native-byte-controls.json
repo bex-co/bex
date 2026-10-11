@@ -1,0 +1,1001 @@
+[
+  {
+    "at": "2026-10-11T08:39:00.767300+00:00",
+    "client": "bex",
+    "case": "all",
+    "term": "QA94_b66611",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"QA94_b66611\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db5kklsaqkos73b0skfg",
+        "--type",
+        "app",
+        "--text",
+        "\"QA94_b66611\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 3.15,
+      "stdout": "{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.367917292Z-e6e58936\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 space core \",\n  \"timestamp\": \"2026-10-11T08:38:14.367917292Z\"\n}{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370438616Z-90546b92\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 space core\",\n  \"timestamp\": \"2026-10-11T08:38:14.370438616Z\"\n}{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370460492Z-75b7e01e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611\\ttab\\tend\\t\",\n  \"timestamp\": \"2026-10-11T08:38:14.370460492Z\"\n}{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370463254Z-e381d0fa\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 say \\\"quoted\\\"\",\n  \"timestamp\": \"2026-10-11T08:38:14.370463254Z\"\n}{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370468029Z-330296ed\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 CAFÉ Ελληνικά\",\n  \"timestamp\": \"2026-10-11T08:38:14.370468029Z\"\n}{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370470095Z-fa6b514d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 café ελληνικά\",\n  \"timestamp\": \"2026-10-11T08:38:14.370470095Z\"\n}{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370472864Z-a5fd8400\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 literal * . | \\\\ tail\",\n  \"timestamp\": \"2026-10-11T08:38:14.370472864Z\"\n}{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370474978Z-f985ad75\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 comma,left,right\",\n  \"timestamp\": \"2026-10-11T08:38:14.370474978Z\"\n}{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370500256Z-002ebcfe\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 long Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓ END\",\n  \"timestamp\": \"2026-10-11T08:38:14.370500256Z\"\n}",
+      "stderr": ""
+    },
+    "actual_messages": [
+      "QA94_b66611 space core ",
+      "QA94_b66611 space core",
+      "QA94_b66611\ttab\tend\t",
+      "QA94_b66611 say \"quoted\"",
+      "QA94_b66611 CAFÉ Ελληνικά",
+      "QA94_b66611 café ελληνικά",
+      "QA94_b66611 literal * . | \\ tail",
+      "QA94_b66611 comma,left,right",
+      "QA94_b66611 long Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓ END"
+    ],
+    "expected_messages": [
+      "QA94_b66611 space core ",
+      "QA94_b66611 space core",
+      "QA94_b66611\ttab\tend\t",
+      "QA94_b66611 say \"quoted\"",
+      "QA94_b66611 CAFÉ Ελληνικά",
+      "QA94_b66611 café ελληνικά",
+      "QA94_b66611 literal * . | \\ tail",
+      "QA94_b66611 comma,left,right",
+      "QA94_b66611 long Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓ END"
+    ],
+    "all_resource_ids": [],
+    "acceptance": "exact literal matching and original message bytes preserved"
+  },
+  {
+    "at": "2026-10-11T08:39:04.059043+00:00",
+    "client": "bex",
+    "case": "trailing-space",
+    "term": "space core ",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"space core \"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db5kklsaqkos73b0skfg",
+        "--type",
+        "app",
+        "--text",
+        "\"space core \"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 3.019,
+      "stdout": "{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.367917292Z-e6e58936\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 space core \",\n  \"timestamp\": \"2026-10-11T08:38:14.367917292Z\"\n}",
+      "stderr": ""
+    },
+    "actual_messages": [
+      "QA94_b66611 space core "
+    ],
+    "expected_messages": [
+      "QA94_b66611 space core "
+    ],
+    "all_resource_ids": [],
+    "acceptance": "exact literal matching and original message bytes preserved"
+  },
+  {
+    "at": "2026-10-11T08:39:07.195982+00:00",
+    "client": "bex",
+    "case": "without-trailing-space",
+    "term": "space core",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"space core\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db5kklsaqkos73b0skfg",
+        "--type",
+        "app",
+        "--text",
+        "\"space core\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 3.004,
+      "stdout": "{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.367917292Z-e6e58936\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 space core \",\n  \"timestamp\": \"2026-10-11T08:38:14.367917292Z\"\n}{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370438616Z-90546b92\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 space core\",\n  \"timestamp\": \"2026-10-11T08:38:14.370438616Z\"\n}",
+      "stderr": ""
+    },
+    "actual_messages": [
+      "QA94_b66611 space core ",
+      "QA94_b66611 space core"
+    ],
+    "expected_messages": [
+      "QA94_b66611 space core ",
+      "QA94_b66611 space core"
+    ],
+    "all_resource_ids": [],
+    "acceptance": "exact literal matching and original message bytes preserved"
+  },
+  {
+    "at": "2026-10-11T08:39:10.327013+00:00",
+    "client": "bex",
+    "case": "tabs",
+    "term": "\ttab\tend\t",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"\ttab\tend\t\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db5kklsaqkos73b0skfg",
+        "--type",
+        "app",
+        "--text",
+        "\"\ttab\tend\t\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.814,
+      "stdout": "{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370460492Z-75b7e01e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611\\ttab\\tend\\t\",\n  \"timestamp\": \"2026-10-11T08:38:14.370460492Z\"\n}",
+      "stderr": ""
+    },
+    "actual_messages": [
+      "QA94_b66611\ttab\tend\t"
+    ],
+    "expected_messages": [
+      "QA94_b66611\ttab\tend\t"
+    ],
+    "all_resource_ids": [],
+    "acceptance": "exact literal matching and original message bytes preserved"
+  },
+  {
+    "at": "2026-10-11T08:39:13.252523+00:00",
+    "client": "bex",
+    "case": "quotes",
+    "term": "say \"quoted\"",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"say \"\"quoted\"\"\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db5kklsaqkos73b0skfg",
+        "--type",
+        "app",
+        "--text",
+        "\"say \"\"quoted\"\"\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.783,
+      "stdout": "{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370463254Z-e381d0fa\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 say \\\"quoted\\\"\",\n  \"timestamp\": \"2026-10-11T08:38:14.370463254Z\"\n}",
+      "stderr": ""
+    },
+    "actual_messages": [
+      "QA94_b66611 say \"quoted\""
+    ],
+    "expected_messages": [
+      "QA94_b66611 say \"quoted\""
+    ],
+    "all_resource_ids": [],
+    "acceptance": "exact literal matching and original message bytes preserved"
+  },
+  {
+    "at": "2026-10-11T08:39:16.154147+00:00",
+    "client": "bex",
+    "case": "unicode",
+    "term": "café ελληνικά",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"café ελληνικά\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db5kklsaqkos73b0skfg",
+        "--type",
+        "app",
+        "--text",
+        "\"café ελληνικά\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.87,
+      "stdout": "",
+      "stderr": ""
+    },
+    "actual_messages": [],
+    "expected_messages": [
+      "QA94_b66611 CAFÉ Ελληνικά",
+      "QA94_b66611 café ελληνικά"
+    ],
+    "all_resource_ids": []
+  },
+  {
+    "at": "2026-10-11T08:41:41.232226+00:00",
+    "client": "bex",
+    "case": "literal-metacharacters",
+    "term": "literal * . | \\ tail",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"literal * . | \\ tail\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db5kklsaqkos73b0skfg",
+        "--type",
+        "app",
+        "--text",
+        "\"literal * . | \\ tail\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.705,
+      "stdout": "{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370472864Z-a5fd8400\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 literal * . | \\\\ tail\",\n  \"timestamp\": \"2026-10-11T08:38:14.370472864Z\"\n}",
+      "stderr": ""
+    },
+    "actual_messages": [
+      "QA94_b66611 literal * . | \\ tail"
+    ],
+    "expected_messages": [
+      "QA94_b66611 literal * . | \\ tail"
+    ],
+    "all_resource_ids": [],
+    "acceptance": "exact literal matching and original message bytes preserved"
+  },
+  {
+    "at": "2026-10-11T08:41:44.058111+00:00",
+    "client": "bex",
+    "case": "literal-comma",
+    "term": "comma,left,right",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"comma,left,right\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db5kklsaqkos73b0skfg",
+        "--type",
+        "app",
+        "--text",
+        "\"comma,left,right\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.488,
+      "stdout": "{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370474978Z-f985ad75\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 comma,left,right\",\n  \"timestamp\": \"2026-10-11T08:38:14.370474978Z\"\n}",
+      "stderr": ""
+    },
+    "actual_messages": [
+      "QA94_b66611 comma,left,right"
+    ],
+    "expected_messages": [
+      "QA94_b66611 comma,left,right"
+    ],
+    "all_resource_ids": [],
+    "acceptance": "exact literal matching and original message bytes preserved"
+  },
+  {
+    "at": "2026-10-11T08:41:46.664571+00:00",
+    "client": "bex",
+    "case": "long-tail",
+    "term": " END",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\" END\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db5kklsaqkos73b0skfg",
+        "--type",
+        "app",
+        "--text",
+        "\" END\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.654,
+      "stdout": "{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370500256Z-002ebcfe\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 long Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓ END\",\n  \"timestamp\": \"2026-10-11T08:38:14.370500256Z\"\n}",
+      "stderr": ""
+    },
+    "actual_messages": [
+      "QA94_b66611 long Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓ END"
+    ],
+    "expected_messages": [
+      "QA94_b66611 long Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓ END"
+    ],
+    "all_resource_ids": [],
+    "acceptance": "exact literal matching and original message bytes preserved"
+  },
+  {
+    "at": "2026-10-11T08:41:49.437194+00:00",
+    "client": "bex",
+    "case": "unicode",
+    "term": "café ελληνικά",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"café ελληνικά\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db5kklsaqkos73b0skfg",
+        "--type",
+        "app",
+        "--text",
+        "\"café ελληνικά\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.802,
+      "stdout": "",
+      "stderr": ""
+    },
+    "actual_messages": [],
+    "expected_messages": [
+      "QA94_b66611 CAFÉ Ελληνικά",
+      "QA94_b66611 café ελληνικά"
+    ],
+    "all_resource_ids": []
+  },
+  {
+    "at": "2026-10-11T08:45:50.480053+00:00",
+    "client": "render",
+    "case": "all",
+    "term": "QA94_b66611",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"QA94_b66611\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db5kklsaqkos73b0skfg",
+        "--type",
+        "app",
+        "--text",
+        "\"QA94_b66611\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 3.06,
+      "stdout": "{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.367917292Z-e6e58936\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 space core \",\n  \"timestamp\": \"2026-10-11T08:38:14.367917292Z\"\n}{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370438616Z-90546b92\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 space core\",\n  \"timestamp\": \"2026-10-11T08:38:14.370438616Z\"\n}{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370460492Z-75b7e01e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611\\ttab\\tend\\t\",\n  \"timestamp\": \"2026-10-11T08:38:14.370460492Z\"\n}{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370463254Z-e381d0fa\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 say \\\"quoted\\\"\",\n  \"timestamp\": \"2026-10-11T08:38:14.370463254Z\"\n}{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370468029Z-330296ed\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 CAFÉ Ελληνικά\",\n  \"timestamp\": \"2026-10-11T08:38:14.370468029Z\"\n}{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370470095Z-fa6b514d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 café ελληνικά\",\n  \"timestamp\": \"2026-10-11T08:38:14.370470095Z\"\n}{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370472864Z-a5fd8400\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 literal * . | \\\\ tail\",\n  \"timestamp\": \"2026-10-11T08:38:14.370472864Z\"\n}{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370474978Z-f985ad75\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 comma,left,right\",\n  \"timestamp\": \"2026-10-11T08:38:14.370474978Z\"\n}{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370500256Z-002ebcfe\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 long Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓ END\",\n  \"timestamp\": \"2026-10-11T08:38:14.370500256Z\"\n}",
+      "stderr": ""
+    },
+    "actual_messages": [
+      "QA94_b66611 space core ",
+      "QA94_b66611 space core",
+      "QA94_b66611\ttab\tend\t",
+      "QA94_b66611 say \"quoted\"",
+      "QA94_b66611 CAFÉ Ελληνικά",
+      "QA94_b66611 café ελληνικά",
+      "QA94_b66611 literal * . | \\ tail",
+      "QA94_b66611 comma,left,right",
+      "QA94_b66611 long Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓ END"
+    ],
+    "expected_messages": [
+      "QA94_b66611 space core ",
+      "QA94_b66611 space core",
+      "QA94_b66611\ttab\tend\t",
+      "QA94_b66611 say \"quoted\"",
+      "QA94_b66611 CAFÉ Ελληνικά",
+      "QA94_b66611 café ελληνικά",
+      "QA94_b66611 literal * . | \\ tail",
+      "QA94_b66611 comma,left,right",
+      "QA94_b66611 long Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓ END"
+    ],
+    "all_resource_ids": [],
+    "acceptance": "exact literal matching and original message bytes preserved"
+  },
+  {
+    "at": "2026-10-11T08:45:53.674362+00:00",
+    "client": "render",
+    "case": "trailing-space",
+    "term": "space core ",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"space core \"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db5kklsaqkos73b0skfg",
+        "--type",
+        "app",
+        "--text",
+        "\"space core \"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.586,
+      "stdout": "{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.367917292Z-e6e58936\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 space core \",\n  \"timestamp\": \"2026-10-11T08:38:14.367917292Z\"\n}",
+      "stderr": ""
+    },
+    "actual_messages": [
+      "QA94_b66611 space core "
+    ],
+    "expected_messages": [
+      "QA94_b66611 space core "
+    ],
+    "all_resource_ids": [],
+    "acceptance": "exact literal matching and original message bytes preserved"
+  },
+  {
+    "at": "2026-10-11T08:45:56.382032+00:00",
+    "client": "render",
+    "case": "without-trailing-space",
+    "term": "space core",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"space core\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db5kklsaqkos73b0skfg",
+        "--type",
+        "app",
+        "--text",
+        "\"space core\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.564,
+      "stdout": "{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.367917292Z-e6e58936\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 space core \",\n  \"timestamp\": \"2026-10-11T08:38:14.367917292Z\"\n}{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370438616Z-90546b92\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 space core\",\n  \"timestamp\": \"2026-10-11T08:38:14.370438616Z\"\n}",
+      "stderr": ""
+    },
+    "actual_messages": [
+      "QA94_b66611 space core ",
+      "QA94_b66611 space core"
+    ],
+    "expected_messages": [
+      "QA94_b66611 space core ",
+      "QA94_b66611 space core"
+    ],
+    "all_resource_ids": [],
+    "acceptance": "exact literal matching and original message bytes preserved"
+  },
+  {
+    "at": "2026-10-11T08:45:59.142353+00:00",
+    "client": "render",
+    "case": "tabs",
+    "term": "\ttab\tend\t",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"\ttab\tend\t\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db5kklsaqkos73b0skfg",
+        "--type",
+        "app",
+        "--text",
+        "\"\ttab\tend\t\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.384,
+      "stdout": "{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370460492Z-75b7e01e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611\\ttab\\tend\\t\",\n  \"timestamp\": \"2026-10-11T08:38:14.370460492Z\"\n}",
+      "stderr": ""
+    },
+    "actual_messages": [
+      "QA94_b66611\ttab\tend\t"
+    ],
+    "expected_messages": [
+      "QA94_b66611\ttab\tend\t"
+    ],
+    "all_resource_ids": [],
+    "acceptance": "exact literal matching and original message bytes preserved"
+  },
+  {
+    "at": "2026-10-11T08:46:01.730169+00:00",
+    "client": "render",
+    "case": "quotes",
+    "term": "say \"quoted\"",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"say \"\"quoted\"\"\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db5kklsaqkos73b0skfg",
+        "--type",
+        "app",
+        "--text",
+        "\"say \"\"quoted\"\"\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 3.009,
+      "stdout": "{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370463254Z-e381d0fa\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 say \\\"quoted\\\"\",\n  \"timestamp\": \"2026-10-11T08:38:14.370463254Z\"\n}",
+      "stderr": ""
+    },
+    "actual_messages": [
+      "QA94_b66611 say \"quoted\""
+    ],
+    "expected_messages": [
+      "QA94_b66611 say \"quoted\""
+    ],
+    "all_resource_ids": [],
+    "acceptance": "exact literal matching and original message bytes preserved"
+  },
+  {
+    "at": "2026-10-11T08:46:04.901854+00:00",
+    "client": "render",
+    "case": "literal-metacharacters",
+    "term": "literal * . | \\ tail",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"literal * . | \\ tail\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db5kklsaqkos73b0skfg",
+        "--type",
+        "app",
+        "--text",
+        "\"literal * . | \\ tail\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.264,
+      "stdout": "{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370472864Z-a5fd8400\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 literal * . | \\\\ tail\",\n  \"timestamp\": \"2026-10-11T08:38:14.370472864Z\"\n}",
+      "stderr": ""
+    },
+    "actual_messages": [
+      "QA94_b66611 literal * . | \\ tail"
+    ],
+    "expected_messages": [
+      "QA94_b66611 literal * . | \\ tail"
+    ],
+    "all_resource_ids": [],
+    "acceptance": "exact literal matching and original message bytes preserved"
+  },
+  {
+    "at": "2026-10-11T08:46:07.298680+00:00",
+    "client": "render",
+    "case": "literal-comma",
+    "term": "comma,left,right",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"comma,left,right\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db5kklsaqkos73b0skfg",
+        "--type",
+        "app",
+        "--text",
+        "\"comma,left,right\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.85,
+      "stdout": "{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370474978Z-f985ad75\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 comma,left,right\",\n  \"timestamp\": \"2026-10-11T08:38:14.370474978Z\"\n}",
+      "stderr": ""
+    },
+    "actual_messages": [
+      "QA94_b66611 comma,left,right"
+    ],
+    "expected_messages": [
+      "QA94_b66611 comma,left,right"
+    ],
+    "all_resource_ids": [],
+    "acceptance": "exact literal matching and original message bytes preserved"
+  },
+  {
+    "at": "2026-10-11T08:46:10.283931+00:00",
+    "client": "render",
+    "case": "long-tail",
+    "term": " END",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\" END\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db5kklsaqkos73b0skfg",
+        "--type",
+        "app",
+        "--text",
+        "\" END\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.289,
+      "stdout": "{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370500256Z-002ebcfe\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 long Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓ END\",\n  \"timestamp\": \"2026-10-11T08:38:14.370500256Z\"\n}",
+      "stderr": ""
+    },
+    "actual_messages": [
+      "QA94_b66611 long Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓ END"
+    ],
+    "expected_messages": [
+      "QA94_b66611 long Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓Abé✓ END"
+    ],
+    "all_resource_ids": [],
+    "acceptance": "exact literal matching and original message bytes preserved"
+  },
+  {
+    "at": "2026-10-11T08:46:12.703457+00:00",
+    "client": "render",
+    "case": "unicode",
+    "term": "café ελληνικά",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"café ελληνικά\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db5kklsaqkos73b0skfg",
+        "--type",
+        "app",
+        "--text",
+        "\"café ελληνικά\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.457,
+      "stdout": "",
+      "stderr": ""
+    },
+    "actual_messages": [],
+    "expected_messages": [
+      "QA94_b66611 CAFÉ Ελληνικά",
+      "QA94_b66611 café ελληνικά"
+    ],
+    "all_resource_ids": []
+  }
+]

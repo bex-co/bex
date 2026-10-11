@@ -1,0 +1,140 @@
+{
+  "id": "srv-db5qcnshj6ks739l0ljg",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "state": "deleted: CLIack/detail404/runs404/listabsent/baseline present/quota termination0; direct cluster teardown unobserved",
+  "delete_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "delete",
+      "srv-db5qcnshj6ks739l0ljg",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.21,
+    "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-11T15:08:15Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-db5qcnshj6ks739l0ljg\",\n    \"id\": \"srv-db5qcnshj6ks739l0ljg\",\n    \"name\": \"qa-20261011-e1b3ba-crontail\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-go\",\n    \"serviceDetails\": {\n      \"command\": \"python3 -u -c 'import os,time,json\\nTAG=\\\"QA132_e1b3ba\\\";batch=str(int(time.time()//60))\\nmessages=[TAG+\\\"-\\\"+batch+\\\"-short \u96ea END\\\",json.dumps({\\\"marker\\\":TAG+\\\"-\\\"+batch+\\\"-small\\\",\\\"Case\\\":\\\"KeepMixedCASE\\\",\\\"payload\\\":\\\"\u96ea\ud83d\ude80\u03b2|\\\"*800,\\\"end\\\":\\\"SMALL-END\\\"},ensure_ascii=False,separators=(\\\",\\\",\\\":\\\")),json.dumps({\\\"marker\\\":TAG+\\\"-\\\"+batch+\\\"-partial\\\",\\\"Case\\\":\\\"KeepMixedCASE\\\",\\\"payload\\\":\\\"\u96ea\ud83d\ude80\u03b2|\\\"*5000,\\\"end\\\":\\\"PARTIAL-END\\\"},ensure_ascii=False,separators=(\\\",\\\",\\\":\\\"))]\\nfor i,m in enumerate(messages):\\n b=m.encode()\\n if i:\\n  mid=len(b)//2;os.write(1,b[:mid]);time.sleep(.12);os.write(1,b[mid:]+b\\\"\\\\n\\\")\\n else:os.write(1,b+b\\\"\\\\n\\\")\\n'\",\n      \"env\": \"python\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"python3 --version\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"python3 -u -c 'import os,time,json\\nTAG=\\\"QA132_e1b3ba\\\";batch=str(int(time.time()//60))\\nmessages=[TAG+\\\"-\\\"+batch+\\\"-short \u96ea END\\\",json.dumps({\\\"marker\\\":TAG+\\\"-\\\"+batch+\\\"-small\\\",\\\"Case\\\":\\\"KeepMixedCASE\\\",\\\"payload\\\":\\\"\u96ea\ud83d\ude80\u03b2|\\\"*800,\\\"end\\\":\\\"SMALL-END\\\"},ensure_ascii=False,separators=(\\\",\\\",\\\":\\\")),json.dumps({\\\"marker\\\":TAG+\\\"-\\\"+batch+\\\"-partial\\\",\\\"Case\\\":\\\"KeepMixedCASE\\\",\\\"payload\\\":\\\"\u96ea\ud83d\ude80\u03b2|\\\"*5000,\\\"end\\\":\\\"PARTIAL-END\\\"},ensure_ascii=False,separators=(\\\",\\\",\\\":\\\"))]\\nfor i,m in enumerate(messages):\\n b=m.encode()\\n if i:\\n  mid=len(b)//2;os.write(1,b[:mid]);time.sleep(.12);os.write(1,b[mid:]+b\\\"\\\\n\\\")\\n else:os.write(1,b+b\\\"\\\\n\\\")\\n'\"\n      },\n      \"lastSuccessfulRunAt\": \"2026-10-11T15:15:05Z\",\n      \"nextRunAt\": \"2026-10-11T15:16:00Z\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"region\": \"fsn1\",\n      \"runtime\": \"python\",\n      \"schedule\": \"* * * * *\"\n    },\n    \"slug\": \"qa-20261011-e1b3ba-crontail\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"cron_job\",\n    \"updatedAt\": \"2026-10-11T15:15:05Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+    "stderr": ""
+  },
+  "detail_after_delete": {
+    "method": "GET",
+    "path": "/v1/services/srv-db5qcnshj6ks739l0ljg",
+    "body": null,
+    "status": "404",
+    "elapsed": 0.343,
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48ed497a80af497-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "runs_before_delete": {
+    "method": "GET",
+    "path": "/v1/cron-jobs/srv-db5qcnshj6ks739l0ljg/runs",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.296,
+    "response": "[{\"cronJobRun\":{\"id\":\"crr-v1tj1lq8ce1754dm0e7j\",\"status\":\"successful\",\"startedAt\":\"2026-10-11T15:15:00Z\",\"finishedAt\":\"2026-10-11T15:15:05Z\"},\"cursor\":\"crr-v1tj1lq8ce1754dm0e7j\"},{\"cronJobRun\":{\"id\":\"crr-oh15qksfgf8q7fgueref\",\"status\":\"successful\",\"startedAt\":\"2026-10-11T15:14:00Z\",\"finishedAt\":\"2026-10-11T15:14:05Z\"},\"cursor\":\"crr-oh15qksfgf8q7fgueref\"},{\"cronJobRun\":{\"id\":\"crr-8g4bm8uh8kn3out6lbn9\",\"status\":\"successful\",\"startedAt\":\"2026-10-11T15:13:00Z\",\"finishedAt\":\"2026-10-11T15:13:09Z\"},\"cursor\":\"crr-8g4bm8uh8kn3out6lbn9\"},{\"cronJobRun\":{\"id\":\"crr-lf6cmb5a0o7ievah1aae\",\"status\":\"successful\",\"startedAt\":\"2026-10-11T15:12:00Z\",\"finishedAt\":\"2026-10-11T15:12:19Z\"},\"cursor\":\"crr-lf6cmb5a0o7ievah1aae\"},{\"cronJobRun\":{\"id\":\"crr-o4adi0vv5c8o7qic2thk\",\"status\":\"successful\",\"startedAt\":\"2026-10-11T15:11:00Z\",\"finishedAt\":\"2026-10-11T15:11:18Z\"},\"cursor\":\"crr-o4adi0vv5c8o7qic2thk\"}]\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48ed1d9ab0422c6-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "runs_after_delete": {
+    "method": "GET",
+    "path": "/v1/cron-jobs/srv-db5qcnshj6ks739l0ljg/runs",
+    "body": null,
+    "status": "404",
+    "elapsed": 0.38,
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48ed49a1a11ebe9-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "all_observed_scheduled_run_child_ids": [
+    "crr-8g4bm8uh8kn3out6lbn9",
+    "crr-lf6cmb5a0o7ievah1aae",
+    "crr-o4adi0vv5c8o7qic2thk",
+    "crr-oh15qksfgf8q7fgueref",
+    "crr-v1tj1lq8ce1754dm0e7j"
+  ],
+  "workspace_after_delete_ids": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3v694dm7c7390q930",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0"
+  ],
+  "quota_after_delete": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.278,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48ed49ccba17a20-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "runtime_cleanup_limit": "cron has no public endpoint; direct Kubernetes descendant teardown unobserved; parent and scheduled-run API absence verified",
+  "delete_reconciliation": [
+    {
+      "at": "2026-10-11T15:17:13.386021+00:00",
+      "detail": {
+        "method": "GET",
+        "path": "/v1/services/srv-db5qcnshj6ks739l0ljg",
+        "body": null,
+        "status": "404",
+        "elapsed": 0.343,
+        "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48ed497a80af497-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "runs": {
+        "method": "GET",
+        "path": "/v1/cron-jobs/srv-db5qcnshj6ks739l0ljg/runs",
+        "body": null,
+        "status": "404",
+        "elapsed": 0.38,
+        "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48ed49a1a11ebe9-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "quota": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.278,
+        "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48ed49ccba17a20-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    }
+  ]
+}

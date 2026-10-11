@@ -1,0 +1,14 @@
+import pathlib,json,subprocess,datetime,shutil
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());g=c['sweep115_clear'];assert not g['cases'];cfg=p/'render-config/cli.yaml';assert not cfg.exists();cfg.parent.mkdir(mode=0o700,exist_ok=True);shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+def save():c['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+def field(file,key):return subprocess.check_output(['yq','-r','.'+key+' // ""',str(file)],text=True).strip()
+try:
+ for render in [False,True]:
+  active=cfg if render else p/'config/cli.yaml';assert not field(active,'project_filter') and not field(active,'project_name')
+  for command,label in [('psql','pg'),('pgcli','pg'),('kv-cli','kv')]:
+   guard=json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET','/v1/projects?ownerId=tea-daif693dqjvc73e7as3g&limit=100'],text=True));assert guard['status']=='200';z=json.loads(guard['response']);assert len(z)==1 and z[0].get('project',z[0])['id']==g['project']['id'];g.setdefault('selection_guards',[]).append(guard);save()
+   for mode in ['clear-filter','fresh-control']:
+    plan={'render':render,'command':command,'mode':mode,'project':g['project'],'datastore_id':g[label]['id']};(p/'sweep115-pty-plan.json').write_text(json.dumps(plan));r=json.loads(subprocess.check_output(['python3',str(p/'sweep115-pty.py')],text=True));r['saved_config_after']={'project_filter':field(active,'project_filter'),'project_name':field(active,'project_name')};g['cases'].append(r);save();assert r['exit']==0 and not r['timeout'] and r['phase']=='dismissed' and r['initial_datastore_row_seen'];assert not r['saved_config_after']['project_filter'] and not r['saved_config_after']['project_name']
+    if mode=='clear-filter':assert r['post_filter_output'] is not None and 'No Results' in r['post_filter_output'];wrong=r['post_clear_output'] is not None and 'No Results' in r['post_clear_output'] and g[label]['id'] not in r['post_clear_output'];print(json.dumps({'binary':r['binary'],'command':command,'mode':mode,'exit':r['exit'],'elapsed':r['elapsed'],'timeout':r['timeout'],'still_empty_after_clear':wrong,'saved_config_filter_empty':True}),flush=True)
+    else:print(json.dumps({'binary':r['binary'],'command':command,'mode':mode,'exit':r['exit'],'elapsed':r['elapsed'],'timeout':r['timeout'],'own_datastore_row_seen':True}),flush=True)
+finally:cfg.unlink(missing_ok=True);g['render_config_removed']=not cfg.exists();save()

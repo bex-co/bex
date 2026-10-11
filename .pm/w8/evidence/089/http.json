@@ -1,0 +1,24 @@
+[
+  {
+    "url": "https://oauth.bex.co/cron/srv-dap3v694dm7c7390q930",
+    "curl_exit": 0,
+    "status": "404",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    },
+    "body": "<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <title>404 - Route not found</title>\n    <style>\n      * {\n        transition: all 0.6s;\n      }\n      html {\n        height: 100%;\n      }\n      body {\n        font-family: sans-serif;\n        color: #888;\n        margin: 0;\n      }\n      #main {\n        display: table;\n        width: 100%;\n        height: 100vh;\n        text-align: center;\n      }\n      .fof {\n        display: table-cell;\n        vertical-align: middle;\n      }\n      .fof h1 {\n        font-size: 50px;\n        display: inline-block;\n        padding-right: 12px;\n        margin-bottom: 12px;\n        animation: type 0.5s alternate infinite;\n      }\n      @keyframes type {\n        from {\n          box-shadow: inset -3px 0 0 #888;\n        }\n        to {\n          box-shadow: inset -3px 0 0 transparent;\n        }\n      }\n    </style>\n  </head>\n  <body translate=\"no\">\n    <div id=\"main\">\n      <div class=\"fof\">\n        <h1>Error 404</h1>\n        <p>\n          The requested route does not exist. Make sure you are using the right\n          path, domain, and port.\n        </p>\n      </div>\n    </div>\n  </body>\n</html>\n",
+    "html_title": "404 - Route not found",
+    "stderr": ""
+  },
+  {
+    "url": "https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930",
+    "curl_exit": 0,
+    "status": "307",
+    "headers": {
+      "location": "/services/srv-dap3v694dm7c7390q930"
+    },
+    "body": "",
+    "html_title": null,
+    "stderr": ""
+  }
+]

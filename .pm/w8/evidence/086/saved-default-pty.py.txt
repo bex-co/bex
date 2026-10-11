@@ -1,0 +1,56 @@
+import os,sys,pty,subprocess,select,time,pathlib,json,re,fcntl,termios,struct,errno
+p=pathlib.Path(__file__).parent;plan=json.loads((p/'sweep112-pty-plan.json').read_text())
+env={k:v for k,v in os.environ.items() if not k.startswith(('RENDER_','BEX_','QA_'))}
+env.update(BEX_HOST='https://api.bex.co/v1/',BEX_CLI_CONFIG_DIR=str(p/'config'),BEX_CLI_CONFIG_PATH=str(p/'config/cli.yaml'),BEX_WORKSPACE=(p/'workspace.txt').read_text().strip(),BEX_NO_UPDATE_NOTIFIER='1',BEX_CLI_DISABLE_ANALYTICS='1',TERM='xterm-256color')
+is_render=plan['render'];binary=p/('render-pin' if is_render else 'release/bex')
+if is_render:env.update(RENDER_HOST='https://api.bex.co/v1/',RENDER_CLI_CONFIG_DIR=str(p/'render-config'),RENDER_CLI_CONFIG_PATH=str(p/'render-config/cli.yaml'),RENDER_WORKSPACE=env['BEX_WORKSPACE'],RENDER_CLI_DISABLE_ANALYTICS='1',DO_NOT_TRACK='1')
+def clean(data):
+ s=data.decode(errors='replace');s=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',s);return re.sub(r'\x1b\][^\x07]*\x07','',s)
+master,slave=pty.openpty();fcntl.ioctl(slave,termios.TIOCSWINSZ,struct.pack('HHHH',28,155,0,0))
+def setup():os.setsid();fcntl.ioctl(slave,termios.TIOCSCTTY,0)
+data=b'';start=time.monotonic();phase='initial';transitions=[];offset=None;phase_at=start;timeout=False;proc=None;typed=0
+def send(key,nextphase):
+ global phase,phase_at
+ os.write(master,key);phase=nextphase;phase_at=time.monotonic();transitions.append({'phase':phase,'at_seconds':round(phase_at-start,3),'key_hex':key.hex()})
+try:
+ proc=subprocess.Popen([str(binary),plan['surface'],'--confirm','-o','interactive'],env=env,stdin=slave,stdout=slave,stderr=slave,preexec_fn=setup);os.close(slave);slave=None
+ while time.monotonic()-start<25:
+  ready,_,_=select.select([master],[],[],.1)
+  if ready:
+   try:chunk=os.read(master,65536)
+   except OSError as e:
+    if e.errno==errno.EIO:break
+    raise
+   if not chunk:break
+   data+=chunk
+   if b'\x1b[6n' in chunk:os.write(master,b'\x1b[1;1R')
+   if b'\x1b]11;?' in chunk:os.write(master,b'\x1b]11;rgb:0000/0000/0000\x07')
+  text=clean(data);age=time.monotonic()-phase_at
+  if phase=='initial':
+   initial_ready=all(x in text for x in plan['baseline_ids']) if plan['operation']=='save' else ('Project: '+plan['saved']['name'] in text and 'No Results' in text)
+   if initial_ready:send(b'f','project-picker')
+  elif phase=='project-picker' and plan['target']['id'] in text:send(b'/','focus-search')
+  elif phase=='focus-search' and age>.3:send(plan['target']['name'][0].encode(),'typing-search');typed=1
+  elif phase=='typing-search' and age>.06:
+   if typed<len(plan['target']['name']):send(plan['target']['name'][typed].encode(),'typing-search');typed+=1
+   else:phase='exact-search';phase_at=time.monotonic()
+  elif phase=='exact-search' and age>.6:
+   if plan['operation']=='save':send(b'\x1b','blur-search')
+   else:offset=len(data);send(b'\r','selected')
+  elif phase=='blur-search' and age>.4:offset=len(data);send(b's','selected')
+  elif phase=='selected' and age>1.3:
+   after=clean(data[offset:]);expected=plan['saved']['name'] if plan['operation']=='save' or plan['variant']=='bare' else plan['target']['name']
+   if 'Project: '+expected in after and 'No Results' in after:send(b'\x03','dismissed')
+  if proc.poll() is not None:break
+ if proc.poll() is None:
+  timeout=time.monotonic()-start>=25
+  try:os.write(master,b'\x03')
+  except OSError:pass
+  try:proc.wait(timeout=2)
+  except subprocess.TimeoutExpired:proc.terminate();proc.wait(timeout=2)
+finally:
+ if slave is not None:os.close(slave)
+ if proc is not None and proc.poll() is None:proc.kill();proc.wait(timeout=2)
+ os.close(master)
+record={'binary':'unmodified Render a764810a7682' if is_render else 'released Bex v0.3.2','command':['render' if is_render else 'bex',plan['surface'],'--confirm','-o','interactive'],'operation':plan['operation'],'variant':plan['variant'],'selected_project':plan['target'],'saved_default_project':plan['saved'],'exit':proc.returncode,'elapsed':round(time.monotonic()-start,3),'timeout':timeout,'phase':phase,'transitions':transitions,'post_selection_output':None if offset is None else clean(data[offset:]),'full_terminal_output':clean(data)}
+(p/'sweep112-pty.jsonl').open('a').write(json.dumps(record)+'\n');print(json.dumps(record))

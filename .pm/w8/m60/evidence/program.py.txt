@@ -1,0 +1,12 @@
+import http.server,sys,json,os
+TAG='QA135_TEMPLATE'
+LINES=[TAG+' LEFT RIGHT',TAG+' LEFT only',TAG+' RIGHT only',TAG+' LEFT,RIGHT',TAG+' plain',TAG+' unrelated']
+class Handler(http.server.BaseHTTPRequestHandler):
+ def log_message(self,*args):pass
+ def do_GET(self):
+  if self.path=='/emit':
+   for line in LINES:print(line,flush=True)
+   body=json.dumps(LINES).encode()
+  else:body=(TAG+'-ready').encode()
+  self.send_response(200);self.end_headers();self.wfile.write(body)
+http.server.HTTPServer(('0.0.0.0',int(os.getenv('PORT','3000'))),Handler).serve_forever()
