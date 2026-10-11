@@ -25,7 +25,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 - [ ] **m193** — [Keep Key Value logical storage separate from physical PVC capacity](m193/README.md) (6 tasks) ← live qa-find-bugs 2026-10-10 pass a36; default Free catalog 1 GB but three APIs and Metrics read 10 GiB.
 
-- [ ] **m192** — [Keep paused logs visible and merge live rows chronologically](m192/README.md) (7 tasks) ← live qa-find-bugs 2026-10-10 cycle34; pause drops recent visible rows and Live replay appears below newer history.
+- [x] **m192** — [Keep paused logs visible and merge live rows chronologically](done/m192/README.md) (7 tasks) ← live qa-find-bugs 2026-10-10 cycle34; pause drops recent visible rows and Live replay appears below newer history.
 - [x] **m191** — [Track TCP and HTTP root health changes as different releases](done/m191/README.md) (7 tasks) ← live qa-find-bugs 2026-10-09–10 cycle33; a healthy mode change rolls an instance under the old revision and falsely cancels its deployment.
 - [x] **m190** — [Send service hostnames in HTTP health probes](done/m190/README.md) (7 tasks) ← live qa-find-bugs 2026-10-09 cycle32; pod-IP Host prevents a publicly healthy hostname-restricted web app from completing HTTP-health deployment.
 
