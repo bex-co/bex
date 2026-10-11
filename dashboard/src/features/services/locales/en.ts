@@ -1174,7 +1174,7 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Toast after setDisplayName succeeds",
   },
   "services.displayNameCleared": {
-    message: "Service name reset to its immutable ID.",
+    message: "Custom service name cleared.",
     description: "Toast after clearing displayName",
   },
   "services.displayNameError": {
