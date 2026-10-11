@@ -80,7 +80,7 @@ const RENDER_RANGE_ALIASES: Record<string, RangePresetID> = {
 // TanStack Router JSON-parses each query value, so `?statusCode=404` arrives as
 // the number 404 — accept it back as a string. Anything else non-string is
 // dropped: a malformed link still renders, with defaults.
-function str(value: unknown): string | undefined {
+export function str(value: unknown): string | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return String(value);
   return typeof value === "string" && value !== "" ? value : undefined;
 }

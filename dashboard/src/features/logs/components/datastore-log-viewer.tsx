@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Loader2, Search } from "lucide-react";
 import { EmptyState } from "@/common/components/empty-state";
 import { classifyRefusal } from "@/common/lib/graphql-error";
@@ -10,7 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/common/components/ui/select.tsx";
-import { useDebounce } from "@/common/hooks/use-debounce";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { LogEmptyState } from "./log-empty-state";
 import { LogLineList } from "./log-line-list";
@@ -22,6 +21,7 @@ import {
   rangeWindow,
 } from "../lib/datastore-log-range";
 import { type RangeSelection } from "@/features/metrics/lib/range";
+import { type DatastoreLogFilters } from "../lib/datastore-log-search";
 import { useLogHistory } from "../hooks/use-log-history";
 import { EMPTY_LOG_FILTERS, LOG_PAGE_SIZE } from "../types";
 
@@ -88,20 +88,24 @@ function datastoreLogCopy(
       };
 }
 
-// `range`/`onRangeChange` are the URL-persisted selection threaded down from
-// the hosting route (`databases.$databaseId` / `keyvalue.$keyValueId`, w6/065)
-// — this is a component, not a route, so persistence has to come from its
-// host. A standalone mount (unit tests) falls back to local state.
+// `range` and `filters` (text + instance) are the URL-persisted state threaded
+// down from the hosting route (`databases.$databaseId` / `keyvalue.$keyValueId`,
+// w6/065, w4/228) — this is a component, not a route, so persistence has to
+// come from its host. A standalone mount (unit tests) falls back to local state.
 export function DatastoreLogViewer({
   kind,
   resource,
   range: rangeProp,
   onRangeChange,
+  filters: urlFilters,
+  onFiltersChange,
 }: {
   kind: DatastoreLogKind;
   resource: string;
   range?: RangeSelection;
   onRangeChange?: (range: RangeSelection) => void;
+  filters?: DatastoreLogFilters;
+  onFiltersChange?: (patch: Partial<DatastoreLogFilters>) => void;
 }) {
   const { t } = useTranslations();
   const copy = datastoreLogCopy(kind, t);
@@ -110,19 +114,75 @@ export function DatastoreLogViewer({
   );
   const range = rangeProp ?? localRange;
   const setRange = onRangeChange ?? setLocalRange;
-  const [text, setText] = useState("");
-  const [instance, setInstance] = useState("");
-  const debouncedText = useDebounce(text, 300);
+  const urlText = urlFilters?.text ?? "";
+  // The instance is a discrete pick, so a hosted viewer reads it straight
+  // from the URL, like the range.
+  const [localInstance, setLocalInstance] = useState("");
+  const instance = urlFilters ? urlFilters.instance : localInstance;
+  // `text` is the input; `committedText` is what the query and the URL carry —
+  // it trails typing by one 300ms debounce, and is committed together with
+  // its URL write, so the URL echoing back always equals it.
+  const [text, setText] = useState(urlText);
+  const [committedText, setCommittedText] = useState(urlText);
+
+  // Adopt a URL text this viewer did not write — back/forward, a pasted link —
+  // during render, so the very next query already carries it. Our own write
+  // echoing back equals the committed text and is left alone, so it can't
+  // clobber text typed since.
+  // The adopted value is also used for the rest of this render pass, so no
+  // hook below ever pairs the new URL's instance with the stale text.
+  const [seenUrlText, setSeenUrlText] = useState(urlText);
+  let queryText = committedText;
+  if (seenUrlText !== urlText) {
+    setSeenUrlText(urlText);
+    if (urlText !== committedText) {
+      setText(urlText);
+      setCommittedText(urlText);
+      queryText = urlText;
+    }
+  }
+
+  // Writes happen only from user input, never on mount — navigating during
+  // hydration re-enters TanStack Start's reload loop (w7/m42). The debounce
+  // timer reads the freshest props through `latest`, and drops its commit when
+  // the input has since moved on (an adopted back/forward included).
+  const latest = useRef({ text, urlText, onFiltersChange });
+  useEffect(() => {
+    latest.current = { text, urlText, onFiltersChange };
+  });
+  const pendingText = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(pendingText.current), []);
+  const changeText = (value: string) => {
+    setText(value);
+    clearTimeout(pendingText.current);
+    pendingText.current = setTimeout(() => {
+      const current = latest.current;
+      if (current.text !== value) return;
+      setCommittedText(value);
+      if (value !== current.urlText) current.onFiltersChange?.({ text: value });
+    }, 300);
+  };
+  const changeInstance = (value: string) => {
+    if (urlFilters) onFiltersChange?.({ instance: value });
+    else setLocalInstance(value);
+  };
+
   const win = useMemo(() => rangeWindow(range), [range]);
   const queryFilters = useMemo(
-    () => ({ ...EMPTY_LOG_FILTERS, text: debouncedText, instance }),
-    [debouncedText, instance],
+    () => ({ ...EMPTY_LOG_FILTERS, text: queryText, instance }),
+    [queryText, instance],
   );
   // Paged exactly like the service Logs tab (w4/m107): scrolling to the top
   // loads older pages until `hasMore` is false (w4/m136).
   const history = useLogHistory(resource, queryFilters, win);
   const refusal = classifyRefusal(history.error, "LOGS_UNAVAILABLE");
-  const instances = useLogLabelValues(resource, "instance");
+  const discovered = useLogLabelValues(resource, "instance");
+  // A linked instance stays selectable before (or without) discovery naming
+  // it — label values arrive late and age out, and neither may clear it.
+  const instances =
+    instance && !discovered.includes(instance)
+      ? [instance, ...discovered]
+      : discovered;
 
   let body: ReactNode;
   if (refusal === "unavailable") {
@@ -200,7 +260,7 @@ export function DatastoreLogViewer({
         <Select
           value={instance || ALL_INSTANCES}
           onValueChange={(value) =>
-            setInstance(value === ALL_INSTANCES ? "" : value)
+            changeInstance(value === ALL_INSTANCES ? "" : value)
           }
         >
           <SelectTrigger
@@ -224,7 +284,7 @@ export function DatastoreLogViewer({
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={text}
-            onChange={(event) => setText(event.target.value)}
+            onChange={(event) => changeText(event.target.value)}
             placeholder={copy.searchPlaceholder}
             aria-label={copy.searchPlaceholder}
             className="pl-8"

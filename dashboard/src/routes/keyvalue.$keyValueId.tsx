@@ -31,13 +31,11 @@ import { KeyValueMaxmemoryPolicySection } from "@/features/keyvalue/components/k
 import { KeyValuePersistenceModeSection } from "@/features/keyvalue/components/key-value-persistence-mode-section";
 import { KeyValueDetailNavigation } from "@/features/keyvalue/components/key-value-detail-navigation";
 import { DatastoreLogViewer } from "@/features/logs/components/datastore-log-viewer";
-import { DEFAULT_DATASTORE_LOG_RANGE } from "@/features/logs/lib/datastore-log-range";
 import {
-  parseRangeSearch,
-  rangeFromSearch,
-  rangeToSearch,
-  type RangeSearch,
-} from "@/features/metrics/lib/range";
+  datastoreLogSearchProps,
+  parseDatastoreLogSearch,
+  type DatastoreLogSearch,
+} from "@/features/logs/lib/datastore-log-search";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
 import { KeyValueDocument } from "@/graphql/definitions";
 import {
@@ -61,14 +59,15 @@ export const Route = createFileRoute("/keyvalue/$keyValueId")({
   beforeLoad: requireAuth(),
   validateSearch: (
     search: Record<string, unknown>,
-  ): { tab?: "logs" | "metrics" } & RangeSearch => ({
+  ): { tab?: "logs" | "metrics" } & DatastoreLogSearch => ({
     tab:
       search.tab === "logs" || search.tab === "metrics"
         ? search.tab
         : undefined,
     // The Logs tab's time range persists in the shared `range`/`rangeStart`/
-    // `rangeEnd` URL shape (w6/065) so it survives a reload and is shareable.
-    ...parseRangeSearch(search),
+    // `rangeEnd` URL shape (w6/065), and its text/instance filters beside it
+    // (w4/228), so a filtered view survives a reload and is shareable.
+    ...parseDatastoreLogSearch(search),
   }),
   loader: ({ context, params, cause }) =>
     loadRouteResource(
@@ -196,17 +195,18 @@ export function KeyValueDetailPage() {
               <DatastoreLogViewer
                 kind="keyvalue"
                 resource={keyValue.id}
-                range={rangeFromSearch(search, DEFAULT_DATASTORE_LOG_RANGE)}
-                onRangeChange={(range) =>
-                  // Functional form: committed verbatim, so rangeToSearch's
-                  // explicit undefineds actually clear stale custom bounds
-                  // (w7/m42); the spread keeps `tab: "logs"` in place.
-                  void navigate({
-                    to: ".",
-                    search: (prev) => ({ ...prev, ...rangeToSearch(range) }),
-                    replace: true,
-                  })
-                }
+                {...datastoreLogSearchProps(
+                  search,
+                  (patch) =>
+                    // Functional form: committed verbatim, so a patch's explicit
+                    // undefineds actually clear stale keys (w7/m42); the spread
+                    // keeps `tab: "logs"` and the untouched keys in place.
+                    void navigate({
+                      to: ".",
+                      search: (prev) => ({ ...prev, ...patch }),
+                      replace: true,
+                    }),
+                )}
               />
             </div>
           ) : keyValue && tab === "metrics" ? (

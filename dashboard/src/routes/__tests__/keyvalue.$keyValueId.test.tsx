@@ -223,6 +223,8 @@ describe("key value detail tab search contract", () => {
     expect(validate({ tab: "bogus" })).toStrictEqual({
       tab: undefined,
       ...CLEARED_RANGE_SEARCH,
+      text: undefined,
+      instance: undefined,
     });
     // A picked preset survives a reload alongside the tab key…
     expect(validate({ tab: "logs", range: "24h" })).toEqual({
@@ -247,6 +249,8 @@ describe("key value detail tab search contract", () => {
     expect(validate({ tab: "logs", range: "6h" })).toStrictEqual({
       tab: "logs",
       ...CLEARED_RANGE_SEARCH,
+      text: undefined,
+      instance: undefined,
     });
   });
 });
