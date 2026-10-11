@@ -1,17 +1,17 @@
 # w4 · m199 — Preserve the first timestamp of a reassembled CRI log record
 
-**Worker:** worker4 **Goal:** a below-cap logical container record has the same first-chunk timestamp in durable history and live tail, so overlap renders once without merging distinct records. **Status:** todo
+**Worker:** worker4 **Goal:** a below-cap logical container record has the same first-chunk timestamp in durable history and live tail, so overlap renders once without merging distinct records. **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Deliver and pin a collector that retains the first partial timestamp | 90m | — |
-| t002 | Verify the four CRI pipelines and shared log readers | 45m | t001 |
-| t003 | Render parity | 20m | t002 |
-| t004 | Simplify | 15m | t003 |
-| t005 | Test coverage | 35m | t003 |
-| t006 | Closeout | 20m | t004, t005 |
+| t001 | Deliver and pin a collector that retains the first partial timestamp — **DONE** | 90m | — |
+| t002 | Verify the four CRI pipelines and shared log readers — **DONE** | 45m | t001 |
+| t003 | Render parity — **DONE** | 20m | t002 |
+| t004 | Simplify — **DONE** | 15m | t003 |
+| t005 | Test coverage — **DONE** | 35m | t003 |
+| t006 | Closeout — **DONE** | 20m | t004, t005 |
 
 ## Definition of done
 
@@ -34,3 +34,5 @@ Other resource/pipeline classes and the original m96 cron/framing/cancel accepta
 - **Dedupe:** regression/follow-up to w4/done/m96's record-identity guarantee. Open w4/blocked/m174 owns loss of a five-line fast-exit set, not this complete record's first/final timestamp mismatch; keep its residual open. w9/done/053's millisecond precision-format normalization remains correct.
 - **Render parity:** included because REST/GraphQL/MCP/UI receive the corrected historical timestamp. Public Render documents generated timestamps and timestamp paging; exact CRI behavior was not authenticated against Render.
 - **Unverified:** production kubelet version; live Postgres/KV/build/private/worker/cron versions of the case; original m96 scheduled/manual/cancel/framing variants; a fixed collector artifact. The current pinned image was actually replayed, and the web duplicate was actually repeated from fresh desktop/mobile pages.
+
+**Closed 2026-10-11:** pinned `ghcr.io/bex-co/bex-alloy@sha256:d448ad12…` (8e53816c0, 0acf2187e, d6ebd8d5a); live DoD and m96 controls replayed, see [verification.md](verification.md).
