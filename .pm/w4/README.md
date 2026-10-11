@@ -242,6 +242,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **247** — [Key Value suspend confirmation promises data preservation with persistence Off](247.md) (45m) ← functional QA 2026-10-10 a135; two fresh desktop/mobile Off suspend/resume cycles lose the marker after a preservation promise, durable controls pass; owned fixture deleted and own session revoked.
+
 - [ ] **246** — [Static-site build confirmation describes replacing instances](246.md) (45m) ← functional QA 2026-10-10 a134; fresh desktop/mobile confirmation uses compute copy, static publication and cancel/retry controls pass; owned fixture deleted, baseline restored, own session revoked.
 
 - [ ] **245** — [Selected custom time ranges cannot reopen the picker](245.md) (55m) ← functional QA 2026-10-10 a129; fresh Logs/Metrics and owned Key Value replays, controlled Select cause traced, exact accepted-range API control retained; all three fixtures deleted, baseline restored, own session revoked.
