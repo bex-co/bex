@@ -47,3 +47,32 @@ query DeployTimelineEvents(
     }
   }
 }
+
+# One deploy's continued pre-deploy step end (w4/m198): a canceled deploy's
+# already-running step may finish after the cancellation closed the deploy, and
+# its pre_deploy_ended fact (details.deployId) then marks where that step's
+# output really ends. Typed + cursor-paged so the matching fact is found behind
+# other deploys' step ends in the same interval.
+query DeployPreDeployEnd(
+  $serviceId: String!
+  $startTime: String
+  $endTime: String
+  $cursor: String
+  $limit: Int
+) {
+  serviceEvents(
+    serviceId: $serviceId
+    type: "pre_deploy_ended"
+    startTime: $startTime
+    endTime: $endTime
+    cursor: $cursor
+    limit: $limit
+  ) {
+    id
+    timestamp
+    cursor
+    details {
+      deployId
+    }
+  }
+}
