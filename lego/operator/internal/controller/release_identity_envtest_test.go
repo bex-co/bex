@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"strconv"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -37,12 +38,13 @@ import (
 var _ = Describe("Release identity operational reconciliation", func() {
 	const name = "release-identity-scale"
 	ctx := context.Background()
-	nn := types.NamespacedName{Name: name, Namespace: "default"}
+	var nn types.NamespacedName
 	build2NN := types.NamespacedName{Name: build.JobName(name, "gen-2"), Namespace: "default"}
 	predeploy2NN := types.NamespacedName{Name: predeploy.JobName(name, "gen-2"), Namespace: "default"}
 
 	var r *AppReconciler
 	BeforeEach(func() {
+		nn = types.NamespacedName{Name: name, Namespace: "default"}
 		r = &AppReconciler{
 			Client: k8sClient, Scheme: k8sClient.Scheme(), Mode: ModeKubernetes,
 			Registry: "zot.test:5000", BuildNamespace: "default",
@@ -167,6 +169,103 @@ var _ = Describe("Release identity operational reconciliation", func() {
 		ready := metaReadyCondition(app.Status.Conditions)
 		Expect(ready).NotTo(BeNil())
 		Expect(ready.Reason).To(Equal("Deployed"))
+	})
+
+	// w4/m191: TCP and HTTP "/" are different releases. A legacy (release-v1)
+	// identity adopts without a rollout, then each switch — stamped the way
+	// bex-api's deploy verbs stamp it — rolls its own generation on the same
+	// image and keeps the previous release's record.
+	It("adopts a legacy identity in place and rolls each TCP <-> HTTP-root switch as its own release", func() {
+		const image = "registry.example/qa:v1"
+		// Its own App: the sibling's finalizer can stay blocked on registry
+		// cleanup against the unreachable test registry.
+		nn.Name = "release-identity-health"
+		appContainerProbe := func() *corev1.Probe {
+			for _, c := range getDeployment().Spec.Template.Spec.Containers {
+				if c.Name == appContainerName {
+					return c.ReadinessProbe
+				}
+			}
+			Fail("deployment has no app container")
+			return nil
+		}
+		recordedPath := func(generation int64) string {
+			rec, err := r.readRuntimeConfigRecord(ctx, getApp(), generation)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(rec.spec.HealthCheckPath).NotTo(BeNil())
+			return *rec.spec.HealthCheckPath
+		}
+		settle := func() {
+			_, err := reconcile1()
+			Expect(err).NotTo(HaveOccurred())
+			markReady(*getDeployment().Spec.Replicas)
+			_, err = reconcile1()
+			Expect(err).NotTo(HaveOccurred())
+		}
+		// saveHealthPath is a Settings save: the path plus the release stamp the
+		// backend writes for the generation that patch produces.
+		saveHealthPath := func(path string) int64 {
+			app := getApp()
+			want := app.Generation + 1
+			app.Spec.HealthCheckPath = path
+			app.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(want, 10)
+			Expect(k8sClient.Update(ctx, app)).To(Succeed())
+			Expect(getApp().Generation).To(Equal(want))
+			return want
+		}
+
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace,
+				Annotations: map[string]string{appv1alpha1.AnnotationReleaseGeneration: "1"}},
+			Spec: appv1alpha1.AppSpec{Image: image, Port: 3000, Replicas: 1},
+		}
+		Expect(k8sClient.Create(ctx, app)).To(Succeed())
+		_, err := reconcile1() // finalizer
+		Expect(err).NotTo(HaveOccurred())
+		settle()
+		app = getApp()
+		Expect(app.Status.ActiveRevision).To(Equal("rev-1"))
+		Expect(appContainerProbe().TCPSocket).NotTo(BeNil())
+
+		// Upgrade: the served TCP release carries its release-v1 fingerprint,
+		// and an operational scale has since moved metadata.generation to 2.
+		app.Status.ReleaseFingerprint = legacyReleaseFingerprint(app.Spec)
+		Expect(k8sClient.Status().Update(ctx, app)).To(Succeed())
+		app = getApp()
+		app.Spec.Replicas = 2
+		Expect(k8sClient.Update(ctx, app)).To(Succeed())
+		before := getDeployment().Spec.Template.DeepCopy()
+		settle()
+		app = getApp()
+		Expect(&getDeployment().Spec.Template).To(Equal(before), "adoption must not roll the pods")
+		Expect(app.Status.ReleaseGeneration).To(Equal(int64(1)))
+		Expect(app.Status.ActiveRevision).To(Equal("rev-1"))
+		Expect(app.Status.ReleaseFingerprint).To(Equal(desiredAppReleaseIdentity(app.Spec).release))
+		artifact := app.Status.ArtifactFingerprint
+
+		toRoot := saveHealthPath("/")
+		settle()
+		app = getApp()
+		Expect(app.Status.ReleaseGeneration).To(Equal(toRoot))
+		Expect(app.Status.ActiveRevision).To(Equal(releaseRevision(app)))
+		Expect(app.Status.Image).To(Equal(image))
+		Expect(app.Status.ArtifactFingerprint).To(Equal(artifact))
+		Expect(appContainerProbe().HTTPGet).NotTo(BeNil())
+		Expect(appContainerProbe().HTTPGet.Path).To(Equal("/"))
+
+		toTCP := saveHealthPath("")
+		settle()
+		app = getApp()
+		Expect(app.Status.ReleaseGeneration).To(Equal(toTCP))
+		Expect(app.Status.ActiveRevision).To(Equal(releaseRevision(app)))
+		Expect(app.Status.ArtifactFingerprint).To(Equal(artifact))
+		Expect(appContainerProbe().TCPSocket).NotTo(BeNil())
+
+		// Each release kept its own record: the switch did not overwrite the
+		// release it replaced.
+		Expect(recordedPath(1)).To(Equal(""))
+		Expect(recordedPath(toRoot)).To(Equal("/"))
+		Expect(recordedPath(toTCP)).To(Equal(""))
 	})
 })
 
