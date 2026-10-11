@@ -92,6 +92,52 @@ func TestPatchEnvironmentStagesMixedOpaqueChangesAndDeploysOnce(t *testing.T) {
 	}
 }
 
+// w4/m195: on an unlinked group whose sorted DEST precedes SOURCE, deleting
+// DEST and renaming SOURCE into it is one revision-checked save that advances
+// the revision once and carries SOURCE's exact bytes.
+func TestPatchEnvironmentRenameRefillsAnExplicitlyDeletedName(t *testing.T) {
+	ctx := context.Background()
+	svc := newService(newFakeStore())
+	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
+		Name:        "refill",
+		EnvVars:     []CreateEnvVarInput{{Key: "DEST", Value: "dest value"}, {Key: "SOURCE", Value: "source value\n"}},
+		SecretFiles: []SecretFileView{{Name: "dest", Content: "dest-file"}, {Name: "source", Content: "source-file\n"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := svc.PatchEnvironment(ctx, group.ID, EnvironmentPatch{
+		ExpectedRevision: &group.Revision,
+		SaveMode:         SaveModeOnly,
+		EnvVars:          []EnvVarPatch{{Key: "DEST", Delete: true}, {Key: "DEST", FromKey: "SOURCE"}},
+		SecretFiles:      []SecretFilePatch{{Name: "dest", Delete: true}, {Name: "dest", FromName: "source"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(result.EnvVarKeys, []string{"DEST"}) || !slices.Equal(result.SecretFileNames, []string{"dest"}) ||
+		result.RolledOut || len(result.AffectedServiceIDs) != 0 {
+		t.Fatalf("result = %+v", result)
+	}
+	before, _ := decodeEnvGroupRevision(group.Revision)
+	after, _ := decodeEnvGroupRevision(result.Revision)
+	if after != before+1 {
+		t.Fatalf("revision %d -> %d, want one advance", before, after)
+	}
+	if got, err := svc.GetEnvGroupVar(ctx, group.ID, "DEST"); err != nil || got.Value != "source value\n" {
+		t.Fatalf("DEST = %+v err=%v", got, err)
+	}
+	if got, err := svc.GetEnvGroupFile(ctx, group.ID, "dest"); err != nil || got.Content != "source-file\n" {
+		t.Fatalf("dest file = %+v err=%v", got, err)
+	}
+	if _, err := svc.GetEnvGroupVar(ctx, group.ID, "SOURCE"); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("SOURCE still readable: %v", err)
+	}
+	if refreshed, err := svc.GetEnvGroup(ctx, group.ID); err != nil || len(refreshed.ServiceLinks) != 0 {
+		t.Fatalf("group = %+v err=%v, want no links", refreshed, err)
+	}
+}
+
 func TestPatchEnvironmentRejectsStaleRevisionWithoutLostUpdate(t *testing.T) {
 	ctx := context.Background()
 	svc := newService(newFakeStore())

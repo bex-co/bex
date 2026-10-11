@@ -65,8 +65,8 @@ describe("environment draft", () => {
     draft.secretFiles[0].deleted = true;
     expect(environmentDraftPatch(draft)).toEqual({
       envVars: [
-        { key: "KEEP", value: "replacement" },
         { key: "DROP", delete: true },
+        { key: "KEEP", value: "replacement" },
         { key: "ADDED", value: "new" },
       ],
       secretFiles: [{ name: "drop.pem", delete: true }],
@@ -156,6 +156,36 @@ describe("environment draft", () => {
       ],
     });
   });
+
+  // w4/m195: deleting a stored name and renaming another opaque value into it
+  // must free the name first, whichever row the store happens to list first.
+  it.each([
+    { order: "source before destination", stored: ["NEW", "RIGHT"] },
+    { order: "destination before source", stored: ["RIGHT", "NEW"] },
+  ])(
+    "deletes a destination before an opaque rename into it ($order)",
+    ({ stored }) => {
+      const files = stored.map((name) => name.toLowerCase());
+      const draft = createEnvironmentDraft(stored, files);
+      const at = stored.indexOf("RIGHT");
+      const from = stored.indexOf("NEW");
+      draft.envVars[at].deleted = true;
+      draft.envVars[from].key = "RIGHT";
+      draft.secretFiles[at].deleted = true;
+      draft.secretFiles[from].name = "right";
+      expect(isDraftValid(validateEnvironmentDraft(draft))).toBe(true);
+      expect(environmentDraftPatch(draft)).toEqual({
+        envVars: [
+          { key: "RIGHT", delete: true },
+          { key: "RIGHT", fromKey: "NEW" },
+        ],
+        secretFiles: [
+          { name: "right", delete: true },
+          { name: "right", fromName: "new" },
+        ],
+      });
+    },
+  );
 
   it("blocks invalid and duplicate names", () => {
     const draft = createEnvironmentDraft(["ONE", "TWO"], []);
