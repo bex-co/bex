@@ -18,12 +18,17 @@ package deploys
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/graphql-go/graphql"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 
@@ -236,4 +241,214 @@ func TestGraphQLRestartServerKeepsTheLiveCommit(t *testing.T) {
 	if bc := getApp(t, cl, "web").Spec.BuildCommit; bc != runningCommit {
 		t.Errorf("spec.buildCommit = %q, want %q", bc, runningCommit)
 	}
+}
+
+// w4/m201: the operator names a release in status.activeRevision as soon as it
+// serves, while history projects its row Live only later. Restart selected the
+// newest Live row, so in that window it restarted the older configuration:
+// rollback V1 serving → Restart ran V2, and deploy V2 serving → Restart ran V1.
+
+const servingImage = "python@sha256:5e1f" // same image, configuration-only releases
+
+// servingRecord writes the operator's release record for generation.
+func servingRecord(name string, generation int64, command string) client.Object {
+	raw, _ := json.Marshal(appv1alpha1.ReleaseRecordSpec{StartCommand: command})
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: appv1alpha1.ReleaseRecordName(name, generation)},
+		Data:       map[string][]byte{appv1alpha1.ReleaseRecordSpecKey: raw},
+	}
+}
+
+// servingFixture: A (generation 1) settled Live; B (generation 2, trigger
+// bTrigger) still update_in_progress, though status already reports it the
+// running release. Both run servingImage with different recorded commands.
+func servingFixture(t *testing.T, bTrigger string, wrap func(client.WithWatch) client.Client) (*Service, client.Client, *fakeStore) {
+	t.Helper()
+	ds := newFakeStore()
+	seedDeploys(ds,
+		store.Deploy{ID: "dep-b", Trigger: bTrigger, Status: store.DeployUpdateInProgress, Image: servingImage, Generation: 2, Commit: "b"},
+		store.Deploy{ID: "dep-a", Trigger: store.TriggerAPI, Status: store.DeployLive, Image: servingImage, ResolvedImage: servingImage, Generation: 1, Commit: "a"},
+	)
+	app := sampleApp("web", "srv-1")
+	app.Generation = 2
+	app.Spec.Image = "python:3.13-alpine"
+	app.Spec.StartCommand = "serve --saved"
+	app.Status = appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseRunning, ActiveRevision: "rev-2", ReleaseGeneration: 2, Image: servingImage}
+	cl := fakeClient(app, servingRecord("web", 1, "serve --a"), servingRecord("web", 2, "serve --b"))
+	if wrap != nil {
+		cl = wrap(cl.(client.WithWatch))
+	}
+	return &Service{Base: &core.Base{Client: cl, Namespace: "default", Clock: fixedNow}, Store: ds}, cl, ds
+}
+
+func assertRestartedGeneration(t *testing.T, cl client.Client, d DeployView, source int64, commit string) {
+	t.Helper()
+	got := getApp(t, cl, "web")
+	selected := got.Spec.ReleaseConfig
+	if selected == nil || selected.SourceGeneration != source || selected.Image != servingImage || !selected.PreserveGroupValues {
+		t.Fatalf("restart selected %+v, want source generation %d running %s", selected, source, servingImage)
+	}
+	if d.CommitID != commit || d.Image != servingImage {
+		t.Fatalf("restart row = commit %q image %q, want %q %q", d.CommitID, d.Image, commit, servingImage)
+	}
+	if got.Spec.StartCommand != "serve --saved" || got.Spec.Image != "python:3.13-alpine" {
+		t.Fatalf("restart rewrote saved settings: %+v", got.Spec)
+	}
+}
+
+func TestRestartSelectsTheServingReleaseBeforeItsRowIsLive(t *testing.T) {
+	for _, trigger := range []string{store.TriggerRollback, store.TriggerAPI} {
+		t.Run(trigger, func(t *testing.T) {
+			svc, cl, _ := servingFixture(t, trigger, nil)
+			d, err := svc.Restart(context.Background(), "web")
+			if err != nil {
+				t.Fatal(err)
+			}
+			assertRestartedGeneration(t, cl, d, 2, "b")
+		})
+	}
+}
+
+// Settled control: the serving row is already Live.
+func TestRestartSelectsTheSettledServingRelease(t *testing.T) {
+	svc, cl, ds := servingFixture(t, store.TriggerRollback, nil)
+	if _, err := ds.CloseDeploy(context.Background(), "dep-b", store.DeployLive, servingImage); err != nil {
+		t.Fatal(err)
+	}
+	d, err := svc.Restart(context.Background(), "web")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertRestartedGeneration(t, cl, d, 2, "b")
+}
+
+// When the serving release cannot be established, Restart is refused before
+// anything changes instead of restarting the older Live configuration.
+func TestRestartRefusesAnUnresolvableServingRelease(t *testing.T) {
+	for name, edit := range map[string]func(*appv1alpha1.App, *fakeStore, client.Client){
+		"no deploy row": func(a *appv1alpha1.App, _ *fakeStore, _ client.Client) {
+			a.Status.ActiveRevision, a.Status.ReleaseGeneration = "rev-3", 3
+		},
+		"newer release in flight": func(a *appv1alpha1.App, _ *fakeStore, _ client.Client) {
+			a.Status.ReleaseGeneration = 3
+		},
+		"no active image": func(a *appv1alpha1.App, _ *fakeStore, _ client.Client) {
+			a.Status.Image = ""
+		},
+		"record evicted": func(_ *appv1alpha1.App, _ *fakeStore, cl client.Client) {
+			_ = cl.Delete(context.Background(), servingRecord("web", 2, ""))
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			svc, cl, ds := servingFixture(t, store.TriggerRollback, nil)
+			a := getApp(t, cl, "web")
+			edit(a, ds, cl)
+			if err := cl.Update(context.Background(), a); err != nil {
+				t.Fatal(err)
+			}
+			before := getApp(t, cl, "web")
+			if _, err := svc.Restart(context.Background(), "web"); !errors.Is(err, core.ErrConflict) {
+				t.Fatalf("Restart = %v, want a retryable conflict", err)
+			}
+			after := getApp(t, cl, "web")
+			if after.Spec.RestartedAt != before.Spec.RestartedAt || after.Spec.ReleaseConfig != nil || len(ds.byApp["srv-1"]) != 2 {
+				t.Fatalf("refused restart changed state: spec %+v rows %+v", after.Spec, ds.byApp["srv-1"])
+			}
+		})
+	}
+}
+
+// Legacy status (no release generation) keeps the newest-Live selection.
+func TestRestartLegacyStatusSelectsTheNewestLiveRelease(t *testing.T) {
+	svc, cl, _ := servingFixture(t, store.TriggerAPI, nil)
+	a := getApp(t, cl, "web")
+	a.Status.ReleaseGeneration = 0
+	if err := cl.Update(context.Background(), a); err != nil {
+		t.Fatal(err)
+	}
+	d, err := svc.Restart(context.Background(), "web")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertRestartedGeneration(t, cl, d, 1, "a")
+}
+
+// advanceToB moves status from serving A (rev-1, B rolling out) to serving B.
+func advanceToB(ctx context.Context, c client.Client) error {
+	a := &appv1alpha1.App{}
+	if err := c.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web"}, a); err != nil {
+		return err
+	}
+	a.Status.ActiveRevision = "rev-2"
+	return c.Update(ctx, a)
+}
+
+// servingA rewinds the fixture to A serving while B rolls out.
+func servingA(t *testing.T, cl client.Client) {
+	t.Helper()
+	a := getApp(t, cl, "web")
+	a.Status.ActiveRevision = "rev-1"
+	if err := cl.Update(context.Background(), a); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// lookupHookStore runs onLookup once, after Restart's unlocked selection read.
+type lookupHookStore struct {
+	*fakeStore
+	onLookup func()
+}
+
+func (s *lookupHookStore) DeployIDByGeneration(ctx context.Context, appID string, generation int64) (string, error) {
+	if hook := s.onLookup; hook != nil {
+		s.onLookup = nil
+		defer hook()
+	}
+	return s.fakeStore.DeployIDByGeneration(ctx, appID, generation)
+}
+
+// B starts serving while Restart waits for the trigger lock: the selection is
+// made again from the App re-read under the lock.
+func TestRestartReselectsAfterWaitingForTheLock(t *testing.T) {
+	ctx := context.Background()
+	svc, cl, ds := servingFixture(t, store.TriggerAPI, nil)
+	servingA(t, cl)
+	svc.Store = &lookupHookStore{fakeStore: ds, onLookup: func() {
+		if err := advanceToB(ctx, cl); err != nil {
+			t.Error(err)
+		}
+	}}
+	d, err := svc.Restart(ctx, "web")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertRestartedGeneration(t, cl, d, 2, "b")
+}
+
+// B starts serving between the locked re-read and the patch: the optimistic
+// conflict re-reads the App and selects again rather than reusing A.
+func TestRestartReselectsOnOptimisticConflict(t *testing.T) {
+	ctx := context.Background()
+	patches := 0
+	svc, cl, _ := servingFixture(t, store.TriggerAPI, func(c client.WithWatch) client.Client {
+		return interceptor.NewClient(c, interceptor.Funcs{
+			Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+				if patches++; patches == 1 {
+					if err := advanceToB(ctx, c); err != nil {
+						return err
+					}
+				}
+				return c.Patch(ctx, obj, patch, opts...)
+			},
+		})
+	})
+	servingA(t, cl)
+	d, err := svc.Restart(ctx, "web")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if patches < 2 {
+		t.Fatalf("patch attempts = %d, want a conflict retry", patches)
+	}
+	assertRestartedGeneration(t, cl, d, 2, "b")
 }

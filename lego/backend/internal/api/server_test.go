@@ -144,6 +144,10 @@ func (deployHookStore) GetDeploy(context.Context, string, string) (store.Deploy,
 	return store.Deploy{}, errors.New("unexpected GetDeploy")
 }
 
+func (deployHookStore) DeployIDByGeneration(context.Context, string, int64) (string, error) {
+	return "", errors.New("unexpected DeployIDByGeneration")
+}
+
 func (deployHookStore) CloseDeploy(context.Context, string, string, string) (bool, error) {
 	return false, errors.New("unexpected CloseDeploy")
 }

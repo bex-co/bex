@@ -196,3 +196,14 @@ func (a *App) ActiveReleaseConfig() *ReleaseConfigReference {
 	}
 	return ref
 }
+
+// RevisionGeneration parses an active revision ("rev-N", AppStatus.ActiveRevision)
+// to the release generation N it serves.
+func RevisionGeneration(rev string) (int64, bool) {
+	raw, ok := strings.CutPrefix(rev, "rev-")
+	if !ok {
+		return 0, false
+	}
+	generation, err := strconv.ParseInt(raw, 10, 64)
+	return generation, err == nil && generation > 0
+}
