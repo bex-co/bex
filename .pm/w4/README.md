@@ -242,6 +242,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **249** — [Running cron jobs keep Cancel disabled with a stale “no active run” reason](249.md) (55m) ← functional QA 2026-10-11 a145; fresh desktop/mobile active rows reuse the pre-run action state until refresh, reload permits correct cancellation; owned cron deleted and session revoked.
 - [ ] **248** — [Generate Blueprint promises value prompts for exported group keys that are generated](248.md) (45m) ← functional QA 2026-10-11 a142; fresh desktop/mobile group exports emit generateValue while the preview promises sync:false prompts, service-only fallback and exact Copy/Download controls pass; both owned fixtures deleted and session revoked.
 
 - [ ] **247** — [Key Value suspend confirmation promises data preservation with persistence Off](247.md) (45m) ← functional QA 2026-10-10 a135; two fresh desktop/mobile Off suspend/resume cycles lose the marker after a preservation promise, durable controls pass; owned fixture deleted and own session revoked.
