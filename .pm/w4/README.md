@@ -244,6 +244,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **252** — [Sleeping Free web services promise wake on the next request beside an internal address](252.md) (55m) ← functional QA 2026-10-11 a163; two sleeping internal calls fail, public wake and unchanged internal caller recover; qualify wake hints and explain Connect Internal, both owned services deleted and session revoked.
+
 - [ ] **251** — [Long settings selectors push Edit and Save beyond the mobile viewport](251.md) (55m) ← functional QA 2026-10-11 a153; fresh notification/policy rows overflow360/390 while short options/desktop fit, horizontal panning recovers actions, scoped wrapping diagnoses pass; both owned fixtures deleted and session revoked.
 
 - [ ] **250** — [Escape keeps an unsaved select-field draft instead of canceling the edit](250.md) (45m) ← functional QA 2026-10-11 a152; fresh desktop/mobile notification drafts survive Escape on the closed selector, while Cancel/text Escape and saved modes work; own fixture deleted and session revoked.
