@@ -406,9 +406,10 @@ func (r *KeyValueReconciler) keyValueStorageIntent(
 		result, failErr := r.kvFail(ctx, kv, appv1alpha1.ReasonPVCReadFailed, err)
 		return nil, 0, result, true, failErr
 	}
+	// PVC capacity is deliberately absent — see growOnlyIntent.
 	currentGB, effectiveGB, shrink := growOnlyIntent(
 		kv.Status.AllocatedStorageGB, kv.Status.ObservedStorageGB, kv.Spec.StorageGB, desiredGB,
-		statefulSetStorageGB(sts), pvcRequestedStorageGB(pvc), pvcCapacityStorageGB(pvc))
+		statefulSetStorageGB(sts), pvcRequestedStorageGB(pvc))
 	if shrink {
 		return nil, 0, ctrl.Result{}, true, r.rejectKeyValueStorageShrink(ctx, kv, currentGB, kv.Spec.StorageGB)
 	}
@@ -1190,7 +1191,9 @@ func (r *KeyValueReconciler) rejectKeyValueStorageShrink(ctx context.Context, kv
 
 // reconcileKeyValueStorage converges the Valkey PVC toward desiredGB in three
 // phases: await the PVC's creation, grow it if the request is behind, then
-// report the observed capacity.
+// report the observed capacity. status.allocatedStorageGB is the logical
+// allocation (plan floor, explicit intent, accepted growth); the physical PVC
+// capacity is recorded separately in status.storageCapacityGB (w4/m193).
 func (r *KeyValueReconciler) reconcileKeyValueStorage(ctx context.Context, kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet, desiredGB int32) (keyValueStorageState, error) {
 	pvc := &corev1.PersistentVolumeClaim{}
 	key := client.ObjectKey{Namespace: kv.Namespace, Name: keyValuePVCName(kv.Name)}
@@ -1203,7 +1206,9 @@ func (r *KeyValueReconciler) reconcileKeyValueStorage(ctx context.Context, kv *a
 
 	requestedGB := pvcRequestedStorageGB(pvc)
 	capacityGB := pvcCapacityStorageGB(pvc)
-	desiredGB = max(desiredGB, requestedGB, capacityGB)
+	// Capacity is physical: it only gates readiness in finalizeKeyValueStorage
+	// and never raises the logical allocation (see growOnlyIntent).
+	desiredGB = max(desiredGB, requestedGB)
 	if desiredGB > requestedGB {
 		blocked, err := r.expandKeyValuePVC(ctx, kv, pvc, desiredGB)
 		if err != nil {

@@ -29,6 +29,7 @@ import (
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/types/tiers"
@@ -606,59 +607,76 @@ func TestServiceDiskCapacityIsLogicalSize(t *testing.T) {
 }
 
 // All three API surfaces resolve disk_capacity through the same verb, so they
-// must return byte-identical logical bytes (DoD: REST/GraphQL/MCP agree).
+// must return byte-identical logical bytes (DoD: REST/GraphQL/MCP agree). The
+// Key Value case carries the status a default Free store's operator now
+// produces on a 10 GiB provider floor (w4/m193): logical 1 GiB, physical 10.
 func TestDiskCapacityIdenticalAcrossRESTGraphQLMCP(t *testing.T) {
-	svc := newService(nil, nil, pgWithStorage("pg", "basic-1gb", 0, 0)) // 5 GiB
-	want := 5 * float64(bytesPerGiB)
+	freeKV := sampleKeyValue("cache")
+	freeKV.Spec.Plan = "free"
+	freeKV.Status.AllocatedStorageGB = 1
+	freeKV.Status.StorageCapacityGB = 10
+	for _, tc := range []struct {
+		name, kind, resource string
+		obj                  client.Object
+		want                 float64
+	}{
+		{"database", DatastoreDatabase, "pg", pgWithStorage("pg", "basic-1gb", 0, 0), 5 * float64(bytesPerGiB)},
+		{"free keyvalue on a physical floor", DatastoreKeyValue, "cache", freeKV, float64(bytesPerGiB)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := newService(nil, nil, tc.obj)
+			svc.DiskUsage = physicalPVCSource(10 * float64(bytesPerGiB))
 
-	// Service verb — the shared seam every adapter calls.
-	series, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{
-		Kind: DatastoreDatabase, Resource: "pg", Metric: MetricDiskCapacity,
-	})
-	if err != nil || len(series) != 1 || series[0].Points[0].Value != want {
-		t.Fatalf("verb disk_capacity: %v %+v", err, series)
-	}
+			// Service verb — the shared seam every adapter calls.
+			series, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{
+				Kind: tc.kind, Resource: tc.resource, Metric: MetricDiskCapacity,
+			})
+			if err != nil || len(series) != 1 || series[0].Points[0].Value != tc.want {
+				t.Fatalf("verb disk_capacity: %v %+v", err, series)
+			}
 
-	// REST.
-	var rest []renderMetricSeries
-	rec := serveREST(svc, "/v1/metrics/disk-capacity?resource=pg&kind=database")
-	if rec.Code != 200 {
-		t.Fatalf("REST disk-capacity => %d %s", rec.Code, rec.Body.String())
-	}
-	_ = json.Unmarshal(rec.Body.Bytes(), &rest)
-	if len(rest) != 1 || rest[0].Values[0].Value != want {
-		t.Fatalf("REST disk_capacity = %+v, want %v", rest, want)
-	}
+			// REST.
+			var rest []renderMetricSeries
+			rec := serveREST(svc, "/v1/metrics/disk-capacity?resource="+tc.resource+"&kind="+tc.kind)
+			if rec.Code != 200 {
+				t.Fatalf("REST disk-capacity => %d %s", rec.Code, rec.Body.String())
+			}
+			_ = json.Unmarshal(rec.Body.Bytes(), &rest)
+			if len(rest) != 1 || rest[0].Values[0].Value != tc.want {
+				t.Fatalf("REST disk_capacity = %+v, want %v", rest, tc.want)
+			}
 
-	// GraphQL.
-	schema, err := gqlSchema(svc)
-	if err != nil {
-		t.Fatalf("schema: %v", err)
-	}
-	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
-		RequestString: `{ datastoreMetrics(query: {resource: "pg", name: "DISK_CAPACITY"}) { unit values { value } } }`})
-	if len(res.Errors) > 0 {
-		t.Fatalf("gql: %v", res.Errors)
-	}
-	gqlFirst := res.Data.(map[string]any)["datastoreMetrics"].([]any)[0].(map[string]any)
-	if gqlFirst["values"].([]any)[0].(map[string]any)["value"].(float64) != want {
-		t.Errorf("GraphQL disk_capacity = %+v, want %v", gqlFirst, want)
-	}
+			// GraphQL.
+			schema, err := gqlSchema(svc)
+			if err != nil {
+				t.Fatalf("schema: %v", err)
+			}
+			res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+				RequestString: `{ datastoreMetrics(query: {kind: "` + tc.kind + `", resource: "` + tc.resource + `", name: "DISK_CAPACITY"}) { unit values { value } } }`})
+			if len(res.Errors) > 0 {
+				t.Fatalf("gql: %v", res.Errors)
+			}
+			gqlFirst := res.Data.(map[string]any)["datastoreMetrics"].([]any)[0].(map[string]any)
+			if gqlFirst["values"].([]any)[0].(map[string]any)["value"].(float64) != tc.want {
+				t.Errorf("GraphQL disk_capacity = %+v, want %v", gqlFirst, tc.want)
+			}
 
-	// MCP.
-	cs := mcpSession(t, svc)
-	result, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "get_datastore_metrics", Arguments: map[string]any{
-		"resource": "pg", "kind": "database", "metricTypes": []string{MetricDiskCapacity},
-	}})
-	if err != nil || result.IsError {
-		t.Fatalf("MCP get_datastore_metrics: err %v isError %v", err, result != nil && result.IsError)
-	}
-	var mcpOut getMetricsResult
-	b, _ := json.Marshal(result.StructuredContent)
-	if err := json.Unmarshal(b, &mcpOut); err != nil {
-		t.Fatalf("MCP structured content: %v", err)
-	}
-	if len(mcpOut.Series) != 1 || mcpOut.Series[0].Points[0].Value != want {
-		t.Fatalf("MCP disk_capacity = %+v, want %v", mcpOut, want)
+			// MCP.
+			cs := mcpSession(t, svc)
+			result, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "get_datastore_metrics", Arguments: map[string]any{
+				"resource": tc.resource, "kind": tc.kind, "metricTypes": []string{MetricDiskCapacity},
+			}})
+			if err != nil || result.IsError {
+				t.Fatalf("MCP get_datastore_metrics: err %v isError %v", err, result != nil && result.IsError)
+			}
+			var mcpOut getMetricsResult
+			b, _ := json.Marshal(result.StructuredContent)
+			if err := json.Unmarshal(b, &mcpOut); err != nil {
+				t.Fatalf("MCP structured content: %v", err)
+			}
+			if len(mcpOut.Series) != 1 || mcpOut.Series[0].Points[0].Value != tc.want {
+				t.Fatalf("MCP disk_capacity = %+v, want %v", mcpOut, tc.want)
+			}
+		})
 	}
 }
