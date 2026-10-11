@@ -22,4 +22,4 @@ images:
   # checkout can never race Argo into pulling a mutable release tag.
   - name: opensandbox-server
     newName: ghcr.io/bex-co/opensandbox-server
-    digest: sha256:767d326001697cab8561ee99c158f8fd5be7278e9f4766e5b183c48bee6b3b7a
+    digest: sha256:a512244ea701509d4f731c636f1f8a68c735b50f27afcb6a7092657a9c8745ac
