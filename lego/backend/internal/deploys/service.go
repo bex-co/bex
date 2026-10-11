@@ -58,6 +58,9 @@ type DeployStore interface {
 	CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string, generation int64, commit store.CommitInfo, triggeredBy string) (store.Deploy, error)
 	ListDeploys(ctx context.Context, appID string, filter store.DeployFilter) ([]store.Deploy, error)
 	GetDeploy(ctx context.Context, appID, deployID string) (store.Deploy, error)
+	// DeployIDByGeneration returns appID's deploy id at generation, or "" when
+	// none exists.
+	DeployIDByGeneration(ctx context.Context, appID string, generation int64) (string, error)
 	// CloseDeploy transitions a still-open deploy row terminal, CAS-guarded
 	// (see store.Store.CloseDeploy) — Cancel's write path, and the same method
 	// the reconciler's write-back uses.
@@ -243,7 +246,7 @@ type Service struct {
 //
 // a is updated in place with the patched CR.
 func (s *Service) openRelease(ctx context.Context, a *appv1alpha1.App, appID string, rowWrite func() error,
-	mutate func(a *appv1alpha1.App, release int64), open func(release int64) (store.Deploy, error)) (store.Deploy, error) {
+	mutate func(a *appv1alpha1.App, release int64) error, open func(release int64) (store.Deploy, error)) (store.Deploy, error) {
 	var d store.Deploy
 	err := s.withTriggerLock(ctx, appID, func() error {
 		// Deleted and recreated under its name while the trigger waited for
@@ -263,8 +266,7 @@ func (s *Service) openRelease(ctx context.Context, a *appv1alpha1.App, appID str
 		var previous int64
 		if err := rollout.PatchAppLocked(ctx, s.Client, a, func(a *appv1alpha1.App) error {
 			previous = a.Generation
-			mutate(a, previous+1)
-			return nil
+			return mutate(a, previous+1)
 		}); err != nil {
 			return err
 		}
@@ -756,7 +758,7 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		}
 		return nil
 	}
-	d, err := s.openRelease(ctx, a, appID, rowWrite, func(a *appv1alpha1.App, release int64) {
+	d, err := s.openRelease(ctx, a, appID, rowWrite, func(a *appv1alpha1.App, release int64) error {
 		stampReleaseGeneration(a, release)
 		stampClearCacheRelease(a, release, p.ClearCache)
 		a.Spec.ReleaseConfig = nil
@@ -786,6 +788,7 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		if p.ImageURL != "" {
 			a.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: release, Image: p.ImageURL}
 		}
+		return nil
 	}, func(release int64) (store.Deploy, error) {
 		image := a.Spec.Image
 		if p.ImageURL != "" {
@@ -1037,7 +1040,9 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string, opts .
 		return DeployView{}, err
 	}
 	disablesAutoDeploy := o.DisableAutoDeploy && a.Spec.AutoDeploy
-	d, err := s.openSelectedRelease(ctx, a, target, selected, true, o.DisableAutoDeploy)
+	d, err := s.openSelectedRelease(ctx, a, func(*appv1alpha1.App) (store.Deploy, *appv1alpha1.ReleaseConfigReference, error) {
+		return target, selected, nil
+	}, true, o.DisableAutoDeploy)
 	if err != nil {
 		return DeployView{}, err
 	}

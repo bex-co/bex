@@ -57,7 +57,7 @@ func staticRestoreSelection(app *appv1alpha1.App) *appv1alpha1.ReleaseConfigRefe
 // failed write is retried by the next pass, which re-observes the completed
 // publish Job without re-uploading.
 func (r *AppReconciler) recordStaticPublications(ctx context.Context, app *appv1alpha1.App, rev string) error {
-	if served, ok := revisionGeneration(app.Status.ActiveRevision); ok && app.Status.ActiveRevision != rev {
+	if served, ok := appv1alpha1.RevisionGeneration(app.Status.ActiveRevision); ok && app.Status.ActiveRevision != rev {
 		prefix := identity.ServedStaticPrefix(app.Status.StaticPrefix, app.Name, app.Status.ActiveRevision)
 		if err := r.writeStaticPublicationRecord(ctx, app, served, prefix, false); err != nil {
 			return err

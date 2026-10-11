@@ -249,6 +249,18 @@ func (f *fakeStore) GetDeploy(_ context.Context, appID, deployID string) (store.
 	return store.Deploy{}, store.ErrNotFound
 }
 
+// DeployIDByGeneration mirrors PGStore: the newest row at generation, or "".
+func (f *fakeStore) DeployIDByGeneration(_ context.Context, appID string, generation int64) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, d := range f.byApp[appID] {
+		if d.Generation == generation {
+			return d.ID, nil
+		}
+	}
+	return "", nil
+}
+
 // CloseDeploy mirrors store.PGStore's CAS guard (WHERE finished_at IS NULL)
 // so the fake exercises the same race-safety Cancel and the reconciler's
 // write-back both rely on.

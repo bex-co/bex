@@ -82,6 +82,14 @@ func (s *conformDeployStore) GetDeploy(_ context.Context, appID, deployID string
 	}
 	return store.Deploy{}, core.ErrNotFound
 }
+func (s *conformDeployStore) DeployIDByGeneration(_ context.Context, appID string, generation int64) (string, error) {
+	for _, d := range s.byApp[appID] {
+		if d.Generation == generation {
+			return d.ID, nil
+		}
+	}
+	return "", nil
+}
 func (s *conformDeployStore) CloseDeploy(_ context.Context, _, _, _ string) (bool, error) {
 	return false, errors.New("conformDeployStore: CloseDeploy not expected")
 }
