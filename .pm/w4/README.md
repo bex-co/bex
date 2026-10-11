@@ -244,6 +244,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **254** — [Mobile environment-group breadcrumb links lose their accessible name](254.md) (40m) ← functional QA 2026-10-11 a171; fresh390 unnamed icon link, working keyboard destination and named desktop/Back controls; owned group deleted and session revoked.
+
 - [ ] **253** — [A parameter refresh silently discards an unfinished edit after another tab saves](253.md) (55m) ← functional QA 2026-10-11 a166; desktop/mobile dirty drafts disappear on saved-spec polling, unchanged-spec and removal controls pass; owned database deleted and session revoked.
 
 - [ ] **252** — [Sleeping Free web services promise wake on the next request beside an internal address](252.md) (55m) ← functional QA 2026-10-11 a163; two sleeping internal calls fail, public wake and unchanged internal caller recover; qualify wake hints and explain Connect Internal, both owned services deleted and session revoked.
