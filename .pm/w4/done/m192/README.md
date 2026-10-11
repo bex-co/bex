@@ -1,18 +1,18 @@
 # w4 · m192 — Keep paused logs visible and merge live rows chronologically
 
-**Worker:** worker4 **Goal:** operators can pause to inspect rows they just saw and read live/history logs in timestamp order. **Status:** todo
+**Worker:** worker4 **Goal:** operators can pause to inspect rows they just saw and read live/history logs in timestamp order. **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Preserve current-reader rows when the user pauses Live | 45m | — |
-| t002 | Merge history and live replay into chronological display order | 35m | — |
-| t003 | Audit both live callers and shared virtualized reader controls | 30m | w4/m192/t001, w4/m192/t002 |
-| t004 | Check Render parity and unchanged log API contracts | 20m | w4/m192/t001, w4/m192/t002, w4/m192/t003 |
-| t005 | Simplify the milestone changes | 15m | w4/m192/t004 |
-| t006 | Test retention, replay ordering and pending-reader boundaries | 40m | w4/m192/t004, w4/m192/t005 |
-| t007 | Closeout after observable live acceptance | 10m | w4/m192/t006 |
+| t001 | Preserve current-reader rows when the user pauses Live — **DONE** | 45m | — |
+| t002 | Merge history and live replay into chronological display order — **DONE** | 35m | — |
+| t003 | Audit both live callers and shared virtualized reader controls — **DONE** | 30m | w4/m192/t001, w4/m192/t002 |
+| t004 | Check Render parity and unchanged log API contracts — **DONE** | 20m | w4/m192/t001, w4/m192/t002, w4/m192/t003 |
+| t005 | Simplify the milestone changes — **DONE** | 15m | w4/m192/t004 |
+| t006 | Test retention, replay ordering and pending-reader boundaries — **DONE** | 40m | w4/m192/t004, w4/m192/t005 |
+| t007 | Closeout after observable live acceptance — **DONE** | 10m | w4/m192/t006 |
 
 Total: **7 tasks, 195m**. This ships the researched filing, not product fixes.
 
@@ -36,3 +36,7 @@ Use the Free image fixture and exact probes in [finding.md](finding.md). These r
 - **Render parity included:** tenant-facing reader behavior changes; official logging docs support runtime search/ranges/live/instance controls, while exact authenticated Render pause behavior is unverified.
 - **Limits:** web was probed live; seven-family scope, build completion, pending races, mobile and busy-buffer cases are explicitly verification work. Both findings are minor; no backend data loss is claimed.
 - **Cleanup:** owned Free service deleted, service/public 404, all six identity sets restored, isolated session revoked and cookie/state files removed.
+
+## Closeout
+
+Shipped `8a6d82e19` (2026-10-11); live acceptance, API parity, redeploy tail and cleanup recorded in [verification.md](verification.md).
