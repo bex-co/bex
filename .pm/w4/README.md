@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m198** — [Include continued pre-deploy output after cancellation](m198/README.md) (7 tasks, ~2h 40m) ← functional QA 2026-10-10 a147; canceled success/error steps finish later, but default logs hide their final markers; owned fixture/session cleanup verified.
+
 - [ ] **m197** — [Restore a static rollback's retained publication](m197/README.md) (7 tasks) ← functional QA 2026-10-10 a79; exact v1 image fails under today's bad publish directory and succeeds after restoring dist; owned fixture/session cleanup verified.
 
 - [ ] **m196** — [Keep plan-picker loading geometry faithful](m196/README.md) (6 tasks) ← functional QA 2026-10-10 a77; Free/Paid loading regions omitted with 196px desktop and 244px mobile expansion; owned fixture/session cleanup verified.
