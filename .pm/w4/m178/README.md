@@ -1,6 +1,6 @@
 # w4 · m178 — Refresh source project and environment membership after moves
 
-**Worker:** worker4 **Goal:** a completed project move removes the resource from the source project's and environment's row and count without a reload, while preserving authoritative target placement and existing navigation caching. **Status:** todo (t007 ready; t001–t002 done)
+**Worker:** worker4 **Goal:** a completed project move removes the resource from the source project's and environment's row and count without a reload, while preserving authoritative target placement and existing navigation caching. **Status:** in progress (t001–t005, t007, t008 done; t006 Closeout pending live replay)
 
 ## Tasks (in order)
 
@@ -8,11 +8,11 @@
 | --- | --- | --- | --- |
 | t001 | Refresh the source Project before publishing the loader snapshot — **DONE** | 30m | — |
 | t002 | Audit the shared move family and preserve passing refresh controls — **DONE** | 20m | w4/m178/t001 |
-| t007 | Refresh the source Environment after project move and removal | 45m | w4/m178/t001, w4/m178/t002 |
-| t008 | Audit the three-kind Environment refresh and preserve passing consumers | 25m | w4/m178/t007 |
-| t003 | Render parity (rerun for Environment refresh) | 15m | w4/m178/t002, w4/m178/t008 |
-| t004 | Simplify (rerun after the added fix) | 10m | w4/m178/t003 |
-| t005 | Test coverage with real Router, Apollo and Environment consumer | 40m | w4/m178/t003, w4/m178/t004, w4/m178/t008 |
+| t007 | Refresh the source Environment after project move and removal — **DONE** | 45m | w4/m178/t001, w4/m178/t002 |
+| t008 | Audit the three-kind Environment refresh and preserve passing consumers — **DONE** | 25m | w4/m178/t007 |
+| t003 | Render parity (rerun for Environment refresh) — **DONE** | 15m | w4/m178/t002, w4/m178/t008 |
+| t004 | Simplify (rerun after the added fix) — **DONE** | 10m | w4/m178/t003 |
+| t005 | Test coverage with real Router, Apollo and Environment consumer — **DONE** | 40m | w4/m178/t003, w4/m178/t004, w4/m178/t008 |
 | t006 | Closeout | 10m | w4/m178/t005 |
 
 ## Definition of done
