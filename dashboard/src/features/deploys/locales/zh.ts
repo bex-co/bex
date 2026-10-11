@@ -174,6 +174,18 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy detail page: accurate explanation of a storeless build-log response",
   },
+  "deploys.logStepEndMissing": {
+    message:
+      "该部署在预部署步骤结束前已取消，且未记录该步骤的完成时间，因此其之后的输出可能不在此时间范围内。请在日志选项中选择更大的范围查看。",
+    description:
+      "Deploy log viewer: a canceled deploy's continued pre-deploy step has no recorded end, so the deploy window may omit its later output",
+  },
+  "deploys.logStepEndUnavailable": {
+    message:
+      "无法确认该部署的预部署步骤何时结束，因此之后的步骤输出可能不在此时间范围内。请重试，或在日志选项中选择更大的范围。",
+    description:
+      "Deploy log viewer: reading a canceled deploy's continued pre-deploy step end failed; offers a retry",
+  },
   "deploys.timelineTitle": {
     message: "状态时间线",
     description: "Deploy detail page: status-timeline card title",

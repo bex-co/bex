@@ -4,6 +4,7 @@ import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useServiceBase } from "@/features/services/lib/service-base";
 import { useDeploy } from "../hooks/use-deploy";
+import { useCanceledStepEnd } from "../hooks/use-canceled-step-end";
 import { rangeStart, type LogRange } from "../lib/log-range";
 import { DeployHeader } from "./deploy-header";
 import { DeployLogPanel } from "./deploy-log-panel";
@@ -61,6 +62,26 @@ export function DeployDetailPage({
     return undefined;
   }, [range]);
 
+  // A canceled deploy's continued pre-deploy step widens its own window to
+  // the step's end fact; while that resolves the window stays unknown (the
+  // panel's loading state), never the known-truncated cancellation bound.
+  const stepEnd = useCanceledStepEnd(serviceId, deploy);
+  const deployStart =
+    stepEnd.status === "checking"
+      ? undefined
+      : (deploy?.createdAt ?? undefined);
+  const deployEnd =
+    stepEnd.status === "found"
+      ? stepEnd.end
+      : (deploy?.finishedAt ?? undefined);
+
+  const limitedWindow =
+    stepEnd.status === "error"
+      ? { onRetry: stepEnd.retry }
+      : stepEnd.status === "missing"
+        ? {}
+        : undefined;
+
   if (error) {
     return (
       <EmptyState
@@ -100,12 +121,13 @@ export function DeployDetailPage({
       <DeployLogPanel
         key={deployId}
         resource={serviceId}
-        startTime={window ? window.start : (deploy?.createdAt ?? undefined)}
-        endTime={window ? window.end : (deploy?.finishedAt ?? undefined)}
+        startTime={window ? window.start : deployStart}
+        endTime={window ? window.end : deployEnd}
         hasPreDeploy={!!deploy?.preDeployStatus}
         followBuild={deploy?.status === "build_in_progress"}
         range={range}
         onRangeChange={onRangeChange}
+        limitedWindow={limitedWindow}
       />
     </div>
   );

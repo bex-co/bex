@@ -62,6 +62,12 @@ export interface DeployLogPanelProps {
   onRangeChange?: (range: LogRange | undefined) => void;
   /** Test seam for the build SSE source. */
   createEventSource?: EventSourceFactory;
+  /**
+   * Set when the deploy window may end before a canceled deploy's continued
+   * pre-deploy step did (w4/m198): its end fact is missing, or the read failed
+   * (`onRetry` re-reads it). The wider ranges stay available in Log options.
+   */
+  limitedWindow?: { onRetry?: () => void };
 }
 
 /**
@@ -89,6 +95,7 @@ export function DeployLogPanel({
   range,
   onRangeChange,
   createEventSource,
+  limitedWindow,
 }: DeployLogPanelProps) {
   const { t } = useTranslations();
   const [search, setSearch] = useState("");
@@ -332,6 +339,28 @@ export function DeployLogPanel({
             {t("deploys.buildLogsStoreUnavailable")}.
           </span>{" "}
           {t("deploys.buildLogsStoreUnavailableBody")}
+        </div>
+      ) : null}
+      {limitedWindow && !range ? (
+        <div
+          role="status"
+          className="flex flex-wrap items-center gap-2 rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground"
+        >
+          {limitedWindow.onRetry ? (
+            <>
+              <span>{t("deploys.logStepEndUnavailable")}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={limitedWindow.onRetry}
+              >
+                {t("common.tryAgain")}
+              </Button>
+            </>
+          ) : (
+            <span>{t("deploys.logStepEndMissing")}</span>
+          )}
         </div>
       ) : null}
       {hasMore && lines.length > 0 ? (
