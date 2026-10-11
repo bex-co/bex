@@ -58,7 +58,7 @@ var (
 )
 
 const defaultCNBBuilder = "paketobuildpacks/builder-jammy-base@" +
-	"sha256:170ab193d433972c94d31f814c1dfdbeb0e2a2cd3556fe0b35ec6b8da0668985"
+	"sha256:36c91de1fd14a3f4e5434659c4a8d9f8f379f46408117234b0c77b3f7e35d078"
 
 // appActivityReader observes free web services' served traffic before they
 // auto-sleep (w1/m151), over the same Prometheus the database disk autoscaler
