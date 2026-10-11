@@ -1,0 +1,178 @@
+{
+  "sweep": 95,
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "id": "srv-db5kv4db3aac73f8m6ag",
+  "name": "qa-20261011-b47051-livetext",
+  "nonce": "b47051",
+  "marker": "QA95_b47051",
+  "messages": [
+    "QA95_b47051 CAFÉ Ελληνικά",
+    "QA95_b47051 café ελληνικά"
+  ],
+  "dual_live": {
+    "at": "2026-10-11T09:00:38.766982+00:00",
+    "state": "complete: both native tails matched; harness SIGINT terminated and reaped both processes",
+    "term": "QA95_b47051 café ελληνικά",
+    "streams": [
+      {
+        "client": "bex",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db5kv4db3aac73f8m6ag",
+          "--type",
+          "app",
+          "--text",
+          "\"QA95_b47051 café ελληνικά\"",
+          "--limit",
+          "100",
+          "--tail",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "started": "2026-10-11T09:00:38.807434+00:00",
+        "state": "running",
+        "pid": 56040,
+        "observed_messages": [
+          "QA95_b47051 CAFÉ Ελληνικά",
+          "QA95_b47051 café ελληνικά"
+        ],
+        "harness_stop": {
+          "at": "2026-10-11T09:00:45.541955+00:00",
+          "signal": "SIGINT after bounded observation"
+        },
+        "native_result": {
+          "exit": -2,
+          "elapsed": 6.758,
+          "stdout": "{\n  \"id\": \"srv-db5kv4db3aac73f8m6ag-e0qoevd2j7iiraffg2s5-2026-10-11T09:00:45.390048205Z-a4d53825\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kv4db3aac73f8m6ag\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kv4db3aac73f8m6ag-e0qoevd2j7iiraffg2s5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA95_b47051 CAFÉ Ελληνικά\",\n  \"timestamp\": \"2026-10-11T09:00:45.390048205Z\"\n}{\n  \"id\": \"srv-db5kv4db3aac73f8m6ag-e0qoevd2j7iiraffg2s5-2026-10-11T09:00:45.390103768Z-2b9e06c5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kv4db3aac73f8m6ag\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kv4db3aac73f8m6ag-e0qoevd2j7iiraffg2s5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA95_b47051 café ελληνικά\",\n  \"timestamp\": \"2026-10-11T09:00:45.390103768Z\"\n}",
+          "stderr": "",
+          "reaped": true
+        }
+      },
+      {
+        "client": "render",
+        "command": [
+          "render",
+          "logs",
+          "--resources",
+          "srv-db5kv4db3aac73f8m6ag",
+          "--type",
+          "app",
+          "--text",
+          "\"QA95_b47051 café ελληνικά\"",
+          "--limit",
+          "100",
+          "--tail",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "started": "2026-10-11T09:00:38.850921+00:00",
+        "state": "running",
+        "pid": 56043,
+        "observed_messages": [
+          "QA95_b47051 CAFÉ Ελληνικά",
+          "QA95_b47051 café ελληνικά"
+        ],
+        "harness_stop": {
+          "at": "2026-10-11T09:00:45.585415+00:00",
+          "signal": "SIGINT after bounded observation"
+        },
+        "native_result": {
+          "exit": -2,
+          "elapsed": 6.8,
+          "stdout": "{\n  \"id\": \"srv-db5kv4db3aac73f8m6ag-e0qoevd2j7iiraffg2s5-2026-10-11T09:00:45.390048205Z-a4d53825\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kv4db3aac73f8m6ag\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kv4db3aac73f8m6ag-e0qoevd2j7iiraffg2s5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA95_b47051 CAFÉ Ελληνικά\",\n  \"timestamp\": \"2026-10-11T09:00:45.390048205Z\"\n}{\n  \"id\": \"srv-db5kv4db3aac73f8m6ag-e0qoevd2j7iiraffg2s5-2026-10-11T09:00:45.390103768Z-2b9e06c5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kv4db3aac73f8m6ag\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kv4db3aac73f8m6ag-e0qoevd2j7iiraffg2s5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA95_b47051 café ελληνικά\",\n  \"timestamp\": \"2026-10-11T09:00:45.390103768Z\"\n}",
+          "stderr": "",
+          "reaped": true
+        }
+      }
+    ],
+    "wire": "not intercepted; native output/runtime trigger receipts retained",
+    "before_emit": [
+      {
+        "client": "bex",
+        "at": "2026-10-11T09:00:44.894476+00:00",
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "client": "render",
+        "at": "2026-10-11T09:00:44.894887+00:00",
+        "stdout": "",
+        "stderr": ""
+      }
+    ],
+    "emit": {
+      "at": "2026-10-11T09:00:45.473734+00:00",
+      "exit": 0,
+      "status": "200",
+      "stderr": "",
+      "body": "QA95_b47051\n",
+      "expected_messages": [
+        "QA95_b47051 CAFÉ Ελληνικά",
+        "QA95_b47051 café ελληνικά"
+      ]
+    },
+    "both_expected_exact_once": true,
+    "completed": "2026-10-11T09:00:45.627858+00:00",
+    "acceptance": "both native live tails received both original Greek messages exactly once",
+    "stop_qualification": "The initial harness postcondition incorrectly assumed SIGINT exit0. Both noninteractive clients terminated with POSIX signal -2; no forced kill, timeout or product interruption failure is claimed. Original native receipts retained."
+  },
+  "history_after_live": [
+    {
+      "at": "2026-10-11T09:01:50.132230+00:00",
+      "client": "bex",
+      "native_result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db5kv4db3aac73f8m6ag",
+          "--type",
+          "app",
+          "--text",
+          "\"QA95_b47051 café ελληνικά\"",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.166,
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-11T09:01:53.145379+00:00",
+      "client": "render",
+      "native_result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "logs",
+          "--resources",
+          "srv-db5kv4db3aac73f8m6ag",
+          "--type",
+          "app",
+          "--text",
+          "\"QA95_b47051 café ελληνικά\"",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.934,
+        "stdout": "",
+        "stderr": ""
+      }
+    }
+  ],
+  "history_qualification": "After-tail historical reads returned empty, but no independent ASCII history read proved these new HTTP-emitted lines had reached Loki before deletion. These sweep95 reads alone are not a new history finding; sweep94 has independent full-history proof."
+}

@@ -1,0 +1,59 @@
+[
+  {
+    "at": "2026-10-11T10:45:07.490551+00:00",
+    "client": "bex",
+    "term": "no-text-control",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "red-db5mcvcf52sc73b2rsog",
+      "--limit",
+      "5",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.903,
+      "stdout": "{\n  \"id\": \"red-db5mcvcf52sc73b2rsog-b0vssm2k318eag22ke8p-2026-10-11T10:37:05.849674986Z-6146680d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db5mcvcf52sc73b2rsog\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db5mcvcf52sc73b2rsog-b0vssm2k318eag22ke8p\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 11 Oct 2026 10:37:05.849 * DB loaded from base file appendonly.aof.1.base.rdb: 0.002 seconds\",\n  \"timestamp\": \"2026-10-11T10:37:05.849674986Z\"\n}{\n  \"id\": \"red-db5mcvcf52sc73b2rsog-b0vssm2k318eag22ke8p-2026-10-11T10:37:05.849683612Z-e48fd470\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db5mcvcf52sc73b2rsog\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db5mcvcf52sc73b2rsog-b0vssm2k318eag22ke8p\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 11 Oct 2026 10:37:05.849 * DB loaded from append only file: 0.002 seconds\",\n  \"timestamp\": \"2026-10-11T10:37:05.849683612Z\"\n}{\n  \"id\": \"red-db5mcvcf52sc73b2rsog-b0vssm2k318eag22ke8p-2026-10-11T10:37:05.849738684Z-fecf203d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db5mcvcf52sc73b2rsog\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db5mcvcf52sc73b2rsog-b0vssm2k318eag22ke8p\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 11 Oct 2026 10:37:05.849 * Opening AOF incr file appendonly.aof.1.incr.aof on server start\",\n  \"timestamp\": \"2026-10-11T10:37:05.849738684Z\"\n}{\n  \"id\": \"red-db5mcvcf52sc73b2rsog-b0vssm2k318eag22ke8p-2026-10-11T10:37:05.849740557Z-f7777094\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db5mcvcf52sc73b2rsog\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db5mcvcf52sc73b2rsog-b0vssm2k318eag22ke8p\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 11 Oct 2026 10:37:05.849 * Ready to accept connections tcp\",\n  \"timestamp\": \"2026-10-11T10:37:05.849740557Z\"\n}{\n  \"id\": \"red-db5mcvcf52sc73b2rsog-b0vssm2k318eag22ke8p-2026-10-11T10:37:05.849742Z-e28898a6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db5mcvcf52sc73b2rsog\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db5mcvcf52sc73b2rsog-b0vssm2k318eag22ke8p\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 11 Oct 2026 10:37:05.849 * Ready to accept connections tls\",\n  \"timestamp\": \"2026-10-11T10:37:05.849742Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T10:45:08.411077+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=red-db5mcvcf52sc73b2rsog&limit=5",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "red-db5mcvcf52sc73b2rsog"
+            ],
+            "limit": [
+              "5"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48d46032cd14f08-SJC"
+        },
+        "response": "{\"hasMore\":true,\"nextStartTime\":\"2026-10-11T09:45:08.361835278Z\",\"nextEndTime\":\"2026-10-11T10:37:05.849674985Z\",\"logs\":[{\"id\":\"red-db5mcvcf52sc73b2rsog-b0vssm2k318eag22ke8p-2026-10-11T10:37:05.849674986Z-6146680d\",\"message\":\"1:M 11 Oct 2026 10:37:05.849 * DB loaded from base file appendonly.aof.1.base.rdb: 0.002 seconds\",\"timestamp\":\"2026-10-11T10:37:05.849674986Z\",\"labels\":[{\"name\":\"type\",\"value\":\"keyvalue\"},{\"name\":\"resource\",\"value\":\"red-db5mcvcf52sc73b2rsog\"},{\"name\":\"instance\",\"value\":\"red-db5mcvcf52sc73b2rsog-b0vssm2k318eag22ke8p\"},{\"name\":\"container\",\"value\":\"valkey\"}]},{\"id\":\"red-db5mcvcf52sc73b2rsog-b0vssm2k318eag22ke8p-2026-10-11T10:37:05.849683612Z-e48fd470\",\"message\":\"1:M 11 Oct 2026 10:37:05.849 * DB loaded from append only file: 0.002 seconds\",\"timestamp\":\"2026-10-11T10:37:05.849683612Z\",\"labels\":[{\"name\":\"type\",\"value\":\"keyvalue\"},{\"name\":\"resource\",\"value\":\"red-db5mcvcf52sc73b2rsog\"},{\"name\":\"instance\",\"value\":\"red-db5mcvcf52sc73b2rsog-b0vssm2k318eag22ke8p\"},{\"name\":\"container\",\"value\":\"valkey\"}]},{\"id\":\"red-db5mcvcf52sc73b2rsog-b0vssm2k318eag22ke8p-2026-10-11T10:37:05.849738684Z-fecf203d\",\"message\":\"1:M 11 Oct 2026 10:37:05.849 * Opening AOF incr file appendonly.aof.1.incr.aof on server start\",\"timestamp\":\"2026-10-11T10:37:05.849738684Z\",\"labels\":[{\"name\":\"type\",\"value\":\"keyvalue\"},{\"name\":\"resource\",\"value\":\"red-db5mcvcf52sc73b2rsog\"},{\"name\":\"instance\",\"value\":\"red-db5mcvcf52sc73b2rsog-b0vssm2k318eag22ke8p\"},{\"name\":\"container\",\"value\":\"valkey\"}]},{\"id\":\"red-db5mcvcf52sc73b2rsog-b0vssm2k318eag22ke8p-2026-10-11T10:37:05.849740557Z-f7777094\",\"message\":\"1:M 11 Oct 2026 10:37:05.849 * Ready to accept connections tcp\",\"timestamp\":\"2026-10-11T10:37:05.849740557Z\",\"labels\":[{\"name\":\"type\",\"value\":\"keyvalue\"},{\"name\":\"resource\",\"value\":\"red-db5mcvcf52sc73b2rsog\"},{\"name\":\"instance\",\"value\":\"red-db5mcvcf52sc73b2rsog-b0vssm2k318eag22ke8p\"},{\"name\":\"container\",\"value\":\"valkey\"}]},{\"id\":\"red-db5mcvcf52sc73b2rsog-b0vssm2k318eag22ke8p-2026-10-11T10:37:05.849742Z-e28898a6\",\"message\":\"1:M 11 Oct 2026 10:37:05.849 * Ready to accept connections tls\",\"timestamp\":\"2026-10-11T10:37:05.849742Z\",\"labels\":[{\"name\":\"type\",\"value\":\"keyvalue\"},{\"name\":\"resource\",\"value\":\"red-db5mcvcf52sc73b2rsog\"},{\"name\":\"instance\",\"value\":\"red-db5mcvcf52sc73b2rsog-b0vssm2k318eag22ke8p\"},{\"name\":\"container\",\"value\":\"valkey\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  }
+]

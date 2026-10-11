@@ -1,0 +1,8 @@
+{
+  "reviewed_at": "2026-10-11T11:34:31.440920+00:00",
+  "reviewed_sha": "c4d106cfdaf8eec6d23475155e43f4baeeed2013",
+  "url": "https://raw.githubusercontent.com/render-oss/cli/c4d106cfdaf8eec6d23475155e43f4baeeed2013/pkg/tui/error.go",
+  "message_field_used": true,
+  "err_fallback_present": false,
+  "qualification": "Exact later commit source review only; not a claim about current latest release or an external issue census."
+}

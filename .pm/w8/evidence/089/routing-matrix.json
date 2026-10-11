@@ -1,0 +1,181 @@
+{
+  "cases": [
+    {
+      "input": "https://oauth.bex.co/web/srv-local-fixture",
+      "output": "https://dashboard.bex.co/web/srv-local-fixture",
+      "expected": "https://dashboard.bex.co/web/srv-local-fixture",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/web/srv-local-fixture?tab=events&value=one%20two#anchor",
+      "output": "https://dashboard.bex.co/web/srv-local-fixture?tab=events&value=one%20two#anchor",
+      "expected": "https://dashboard.bex.co/web/srv-local-fixture?tab=events&value=one%20two#anchor",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/web/srv-local-fixture/deploys/dep-local-fixture",
+      "output": "https://dashboard.bex.co/web/srv-local-fixture/deploys/dep-local-fixture",
+      "expected": "https://dashboard.bex.co/web/srv-local-fixture/deploys/dep-local-fixture",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/web/srv-local-fixture/deploys/dep-local-fixture?tab=events&value=one%20two#anchor",
+      "output": "https://dashboard.bex.co/web/srv-local-fixture/deploys/dep-local-fixture?tab=events&value=one%20two#anchor",
+      "expected": "https://dashboard.bex.co/web/srv-local-fixture/deploys/dep-local-fixture?tab=events&value=one%20two#anchor",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/worker/srv-local-fixture",
+      "output": "https://dashboard.bex.co/worker/srv-local-fixture",
+      "expected": "https://dashboard.bex.co/worker/srv-local-fixture",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/worker/srv-local-fixture?tab=events&value=one%20two#anchor",
+      "output": "https://dashboard.bex.co/worker/srv-local-fixture?tab=events&value=one%20two#anchor",
+      "expected": "https://dashboard.bex.co/worker/srv-local-fixture?tab=events&value=one%20two#anchor",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/worker/srv-local-fixture/deploys/dep-local-fixture",
+      "output": "https://dashboard.bex.co/worker/srv-local-fixture/deploys/dep-local-fixture",
+      "expected": "https://dashboard.bex.co/worker/srv-local-fixture/deploys/dep-local-fixture",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/worker/srv-local-fixture/deploys/dep-local-fixture?tab=events&value=one%20two#anchor",
+      "output": "https://dashboard.bex.co/worker/srv-local-fixture/deploys/dep-local-fixture?tab=events&value=one%20two#anchor",
+      "expected": "https://dashboard.bex.co/worker/srv-local-fixture/deploys/dep-local-fixture?tab=events&value=one%20two#anchor",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/pserv/srv-local-fixture",
+      "output": "https://dashboard.bex.co/pserv/srv-local-fixture",
+      "expected": "https://dashboard.bex.co/pserv/srv-local-fixture",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/pserv/srv-local-fixture?tab=events&value=one%20two#anchor",
+      "output": "https://dashboard.bex.co/pserv/srv-local-fixture?tab=events&value=one%20two#anchor",
+      "expected": "https://dashboard.bex.co/pserv/srv-local-fixture?tab=events&value=one%20two#anchor",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/pserv/srv-local-fixture/deploys/dep-local-fixture",
+      "output": "https://dashboard.bex.co/pserv/srv-local-fixture/deploys/dep-local-fixture",
+      "expected": "https://dashboard.bex.co/pserv/srv-local-fixture/deploys/dep-local-fixture",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/pserv/srv-local-fixture/deploys/dep-local-fixture?tab=events&value=one%20two#anchor",
+      "output": "https://dashboard.bex.co/pserv/srv-local-fixture/deploys/dep-local-fixture?tab=events&value=one%20two#anchor",
+      "expected": "https://dashboard.bex.co/pserv/srv-local-fixture/deploys/dep-local-fixture?tab=events&value=one%20two#anchor",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/static/srv-local-fixture",
+      "output": "https://dashboard.bex.co/static/srv-local-fixture",
+      "expected": "https://dashboard.bex.co/static/srv-local-fixture",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/static/srv-local-fixture?tab=events&value=one%20two#anchor",
+      "output": "https://dashboard.bex.co/static/srv-local-fixture?tab=events&value=one%20two#anchor",
+      "expected": "https://dashboard.bex.co/static/srv-local-fixture?tab=events&value=one%20two#anchor",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/static/srv-local-fixture/deploys/dep-local-fixture",
+      "output": "https://dashboard.bex.co/static/srv-local-fixture/deploys/dep-local-fixture",
+      "expected": "https://dashboard.bex.co/static/srv-local-fixture/deploys/dep-local-fixture",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/static/srv-local-fixture/deploys/dep-local-fixture?tab=events&value=one%20two#anchor",
+      "output": "https://dashboard.bex.co/static/srv-local-fixture/deploys/dep-local-fixture?tab=events&value=one%20two#anchor",
+      "expected": "https://dashboard.bex.co/static/srv-local-fixture/deploys/dep-local-fixture?tab=events&value=one%20two#anchor",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/cron/srv-local-fixture",
+      "output": "https://dashboard.bex.co/cron/srv-local-fixture",
+      "expected": "https://dashboard.bex.co/cron/srv-local-fixture",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/cron/srv-local-fixture?tab=events&value=one%20two#anchor",
+      "output": "https://dashboard.bex.co/cron/srv-local-fixture?tab=events&value=one%20two#anchor",
+      "expected": "https://dashboard.bex.co/cron/srv-local-fixture?tab=events&value=one%20two#anchor",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/cron/srv-local-fixture/deploys/dep-local-fixture",
+      "output": "https://dashboard.bex.co/cron/srv-local-fixture/deploys/dep-local-fixture",
+      "expected": "https://dashboard.bex.co/cron/srv-local-fixture/deploys/dep-local-fixture",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/cron/srv-local-fixture/deploys/dep-local-fixture?tab=events&value=one%20two#anchor",
+      "output": "https://dashboard.bex.co/cron/srv-local-fixture/deploys/dep-local-fixture?tab=events&value=one%20two#anchor",
+      "expected": "https://dashboard.bex.co/cron/srv-local-fixture/deploys/dep-local-fixture?tab=events&value=one%20two#anchor",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/d/srv-local-fixture",
+      "output": "https://dashboard.bex.co/d/srv-local-fixture",
+      "expected": "https://dashboard.bex.co/d/srv-local-fixture",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/d/srv-local-fixture?tab=events&value=one%20two#anchor",
+      "output": "https://dashboard.bex.co/d/srv-local-fixture?tab=events&value=one%20two#anchor",
+      "expected": "https://dashboard.bex.co/d/srv-local-fixture?tab=events&value=one%20two#anchor",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/r/srv-local-fixture",
+      "output": "https://dashboard.bex.co/r/srv-local-fixture",
+      "expected": "https://dashboard.bex.co/r/srv-local-fixture",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/r/srv-local-fixture?tab=events&value=one%20two#anchor",
+      "output": "https://dashboard.bex.co/r/srv-local-fixture?tab=events&value=one%20two#anchor",
+      "expected": "https://dashboard.bex.co/r/srv-local-fixture?tab=events&value=one%20two#anchor",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/oauth2/device/verify?user_code=LOCAL",
+      "output": "https://oauth.bex.co/oauth2/device/verify?user_code=LOCAL",
+      "expected": "https://oauth.bex.co/oauth2/device/verify?user_code=LOCAL",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/oauth2/auth?client_id=LOCAL",
+      "output": "https://oauth.bex.co/oauth2/auth?client_id=LOCAL",
+      "expected": "https://oauth.bex.co/oauth2/auth?client_id=LOCAL",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/oauth2/token",
+      "output": "https://oauth.bex.co/oauth2/token",
+      "expected": "https://oauth.bex.co/oauth2/token",
+      "pass": true
+    },
+    {
+      "input": "https://dashboard.bex.co/cron/srv-local-fixture",
+      "output": "https://dashboard.bex.co/cron/srv-local-fixture",
+      "expected": "https://dashboard.bex.co/cron/srv-local-fixture",
+      "pass": true
+    },
+    {
+      "input": "https://oauth.bex.co/web/",
+      "output": "https://oauth.bex.co/web/",
+      "expected": "https://oauth.bex.co/web/",
+      "pass": true
+    }
+  ],
+  "qualification": "Go regexp substitution only; proposed routing rule, no live middleware or OAuth requests",
+  "regex": "^https://oauth[.]bex[.]co/(web|worker|pserv|static|cron|d|r)/(.+)$",
+  "replacement": "https://dashboard.bex.co/${1}/${2}"
+}

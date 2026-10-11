@@ -1,0 +1,18 @@
+{
+  "sha": "c4d106cfdaf8eec6d23475155e43f4baeeed2013",
+  "at": "2026-10-11T11:53:44.983332+00:00",
+  "files": [
+    {
+      "path": "pkg/tui/views/resourceloader.go",
+      "url": "https://raw.githubusercontent.com/render-oss/cli/c4d106cfdaf8eec6d23475155e43f4baeeed2013/pkg/tui/views/resourceloader.go",
+      "selected_project_guard_present": false,
+      "qualification": "Exact later commit source inspection, not later native test or latest-release claim."
+    },
+    {
+      "path": "pkg/tui/views/resourcelist.go",
+      "url": "https://raw.githubusercontent.com/render-oss/cli/c4d106cfdaf8eec6d23475155e43f4baeeed2013/pkg/tui/views/resourcelist.go",
+      "selected_project_guard_present": false,
+      "qualification": "Exact later commit source inspection, not later native test or latest-release claim."
+    }
+  ]
+}

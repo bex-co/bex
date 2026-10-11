@@ -1,0 +1,81 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"sync"
+
+	"github.com/render-oss/cli/pkg/client"
+	"github.com/render-oss/cli/pkg/resource"
+	"github.com/render-oss/cli/pkg/tui/views"
+)
+
+func main() {
+	var mu sync.Mutex
+	requests := []map[string]string{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		requests = append(requests, map[string]string{"method": r.Method, "path": r.URL.Path, "query": r.URL.RawQuery})
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/v1/services" && r.URL.Query().Get("environmentId") == "" {
+			fmt.Fprint(w, `[{"service":{"id":"srv-00000000000000000001","name":"QA109 workspace service","type":"web_service"},"cursor":"local-cursor"}]`)
+		} else {
+			fmt.Fprint(w, `[]`)
+		}
+	}))
+	defer server.Close()
+	dir, err := os.MkdirTemp(".", "isolated-probe-config-")
+	if err != nil {
+		panic(err)
+	}
+	defer os.RemoveAll(dir)
+	for k, v := range map[string]string{"RENDER_HOST": server.URL + "/v1/", "RENDER_API_KEY": "qa-local-probe", "RENDER_WORKSPACE": "tea-00000000000000000000", "RENDER_CLI_CONFIG_PATH": filepath.Join(dir, "cli.yaml"), "RENDER_CLI_CONFIG_DIR": dir} {
+		os.Setenv(k, v)
+	}
+	service, err := resource.NewDefaultResourceService()
+	if err != nil {
+		panic(err)
+	}
+	loader := views.NewResourceLoader(service)
+	cases := []struct {
+		Name  string
+		Input views.ListResourceInput
+		Want  int
+	}{
+		{"all-projects", views.ListResourceInput{}, 1},
+		{"selected-empty-project", views.ListResourceInput{Project: &client.Project{Id: "prj-00000000000000000000", Name: "QA109 empty", EnvironmentIds: []string{}}, EnvironmentIDs: []string{}}, 0},
+		{"selected-project-with-empty-environment", views.ListResourceInput{Project: &client.Project{Id: "prj-00000000000000000000", Name: "QA109 control", EnvironmentIds: []string{"evm-00000000000000000000"}}, EnvironmentIDs: []string{"evm-00000000000000000000"}}, 0},
+		{"explicit-empty-environment-flags-no-project", views.ListResourceInput{EnvironmentIDs: []string{}}, 1},
+	}
+	rows := []map[string]any{}
+	for _, c := range cases {
+		mu.Lock()
+		requests = nil
+		mu.Unlock()
+		resources, err := loader.LoadResourceData(context.Background(), c.Input)
+		ids := []string{}
+		for _, r := range resources {
+			ids = append(ids, r.ID())
+		}
+		mu.Lock()
+		calls := append([]map[string]string(nil), requests...)
+		mu.Unlock()
+		e := ""
+		if err != nil {
+			e = err.Error()
+		}
+		rows = append(rows, map[string]any{"case": c.Name, "expected_count": c.Want, "actual_count": len(resources), "ids": ids, "error": e, "requests": calls, "params": c.Input.ToParams()})
+	}
+	b, err := json.MarshalIndent(rows, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	os.WriteFile("results.json", append(b, '\n'), 0600)
+	fmt.Println(string(b))
+}

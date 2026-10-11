@@ -1,0 +1,53 @@
+[
+  {
+    "serialized": "--resources=srv-local-fixture --text=LEFT RIGHT",
+    "text": [
+      "LEFT RIGHT"
+    ]
+  },
+  {
+    "serialized": "--resources=srv-local-fixture --text=LEFT,RIGHT",
+    "text": [
+      "LEFT,RIGHT"
+    ]
+  },
+  {
+    "serialized": "--resources=srv-local-fixture --text=plain",
+    "text": [
+      "plain"
+    ]
+  },
+  {
+    "serialized": "--resources=srv-local-fixture --text=LEFT,RIGHT",
+    "text": [
+      "LEFT",
+      "RIGHT"
+    ]
+  },
+  {
+    "serialized": "--resources=srv-local-fixture --text=雪,LEFT",
+    "text": [
+      "雪,LEFT"
+    ]
+  },
+  {
+    "serialized": "--resources=srv-local-fixture --text=say \"hello\"",
+    "text": [
+      "say \"hello\""
+    ]
+  },
+  {
+    "serialized": "--resources=srv-local-fixture --text=first\r\nsecond",
+    "text": [
+      "first\r\nsecond"
+    ]
+  },
+  {
+    "serialized": "--resources=srv-local-fixture --start={2026-10-11 15:30:00 +0000 UTC 0x2e3cfe353500}",
+    "time_original": "30m"
+  },
+  {
+    "serialized": "--resources=srv-local-fixture --start={2026-10-11 15:50:00 +0000 UTC <nil>}",
+    "time_original": "2026-10-11T15:50:00Z"
+  }
+]

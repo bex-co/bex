@@ -1,0 +1,80 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"github.com/render-oss/cli/pkg/config"
+	"github.com/render-oss/cli/pkg/dashboard"
+	"github.com/render-oss/cli/pkg/keyvalue"
+	"github.com/render-oss/cli/pkg/postgres"
+	"github.com/render-oss/cli/pkg/service"
+	"os"
+	"path/filepath"
+	"time"
+)
+
+func main() {
+	d := os.Args[1]
+	cfg := filepath.Join(d, "cli.yaml")
+	if err := os.WriteFile(cfg, []byte("version: 1\n"), 0600); err != nil {
+		panic(err)
+	}
+	defer os.Remove(cfg)
+	os.Setenv("RENDER_CLI_CONFIG_PATH", cfg)
+	if err := config.SetDashboardURL("https://oauth.bex.co/oauth2/device/verify"); err != nil {
+		panic(err)
+	}
+	type Case struct {
+		Kind string `json:"kind"`
+		Type string `json:"type"`
+		URL  string `json:"url"`
+	}
+	out := []Case{}
+	types := []string{service.WebServiceResourceType, service.BackgroundWorkerResourceType, service.PrivateServiceResourceType, service.StaticSiteResourceType, service.CronJobResourceType, postgres.PostgresType, keyvalue.KeyValueType}
+	for i, t := range types {
+		for _, kind := range []string{"resource", "deploy"} {
+			if kind == "deploy" && i >= 5 {
+				continue
+			}
+			capture := filepath.Join(d, "open.json")
+			os.Remove(capture)
+			os.Setenv("QA_DASHBOARD_CAPTURE", capture)
+			var err error
+			if kind == "resource" {
+				err = dashboard.OpenResource("srv-local-fixture", t)
+			} else {
+				err = dashboard.OpenDeploy("srv-local-fixture", t, "dep-local-fixture")
+			}
+			if err != nil {
+				panic(err)
+			}
+			var b []byte
+			for j := 0; j < 200; j++ {
+				b, err = os.ReadFile(capture)
+				if err == nil {
+					break
+				}
+				time.Sleep(10 * time.Millisecond)
+			}
+			if err != nil {
+				panic(err)
+			}
+			var v struct {
+				Argv []string `json:"argv"`
+			}
+			if err = json.Unmarshal(b, &v); err != nil {
+				panic(err)
+			}
+			if len(v.Argv) != 1 {
+				panic("unexpected browser arguments")
+			}
+			out = append(out, Case{kind, t, v.Argv[0]})
+			os.Remove(capture)
+		}
+	}
+	b, err := json.MarshalIndent(map[string]any{"saved_origin": config.DashboardURL(), "cases": out, "qualification": "Actual pinned SetDashboardURL/OpenResource/OpenDeploy; local config and captured OS child only; no production or authentication request"}, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(b))
+}

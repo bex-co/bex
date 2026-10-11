@@ -1,0 +1,207 @@
+{
+  "resources": [
+    {
+      "type": "project",
+      "role": "saved",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "id": "prj-db5o0rjnt75c73b8g5sg",
+      "name": "qa-20261011-8e4446-saved",
+      "nonce": "8e4446",
+      "time": "2026-10-11T12:26:22.055415+00:00",
+      "command": {
+        "method": "POST",
+        "path": "/v1/projects",
+        "body": {
+          "name": "qa-20261011-8e4446-saved",
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "environments": [
+            {
+              "name": "qa-20261011-8e4446-saved-empty"
+            }
+          ]
+        }
+      },
+      "create_result": {
+        "method": "POST",
+        "path": "/v1/projects",
+        "body": "{\"name\": \"qa-20261011-8e4446-saved\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"environments\": [{\"name\": \"qa-20261011-8e4446-saved-empty\"}]}",
+        "status": "201",
+        "elapsed": 0.595,
+        "response": "{\"id\":\"prj-db5o0rjnt75c73b8g5sg\",\"name\":\"qa-20261011-8e4446-saved\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"environmentIds\":[\"evm-db5o0rjnt75c73b8g5t0\"],\"createdAt\":\"2026-10-11T12:26:22.404417Z\",\"updatedAt\":\"2026-10-11T12:26:22.404417Z\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48dda50ed63c65e-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "create_response": {
+        "id": "prj-db5o0rjnt75c73b8g5sg",
+        "name": "qa-20261011-8e4446-saved",
+        "owner": {
+          "id": "tea-daif693dqjvc73e7as3g",
+          "name": "bex-canary",
+          "email": "puncsky@gmail.com",
+          "type": "team"
+        },
+        "environmentIds": ["evm-db5o0rjnt75c73b8g5t0"],
+        "createdAt": "2026-10-11T12:26:22.404417Z",
+        "updatedAt": "2026-10-11T12:26:22.404417Z"
+      },
+      "dependent_inventory": {
+        "method": "POST",
+        "path": "/graphql",
+        "body": "{\"query\": \"query($id:String!){project(id:$id){id ownerId serviceIds databaseIds keyValueIds}}\", \"variables\": {\"id\": \"prj-db5o0rjnt75c73b8g5sg\"}}",
+        "status": "200",
+        "elapsed": 0.276,
+        "response": "{\"data\":{\"project\":{\"databaseIds\":[],\"id\":\"prj-db5o0rjnt75c73b8g5sg\",\"keyValueIds\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"serviceIds\":[]}}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48dda5b6800f017-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "dependency_ids": ["evm-db5o0rjnt75c73b8g5t0"],
+      "baseline_project_ids": []
+    },
+    {
+      "type": "environment",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "id": "evm-db5o0rjnt75c73b8g5t0",
+      "name": "qa-20261011-8e4446-saved-empty",
+      "nonce": "8e4446",
+      "time": "2026-10-11T12:26:22.861752+00:00",
+      "create_proof": {
+        "method": "POST",
+        "path": "/v1/projects",
+        "status": "201",
+        "parent_id": "prj-db5o0rjnt75c73b8g5sg",
+        "returned_environment_ids": ["evm-db5o0rjnt75c73b8g5t0"]
+      },
+      "readback_proof": {
+        "method": "GET",
+        "path": "/v1/environments/evm-db5o0rjnt75c73b8g5t0",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.778,
+        "response": "{\"id\":\"evm-db5o0rjnt75c73b8g5t0\",\"projectId\":\"prj-db5o0rjnt75c73b8g5sg\",\"name\":\"qa-20261011-8e4446-saved-empty\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48dda55ee8b0b82-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "parent_id": "prj-db5o0rjnt75c73b8g5sg",
+      "dependency_ids": []
+    },
+    {
+      "type": "project",
+      "role": "selected",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "id": "prj-db5o0s1n4lvc73ah9rh0",
+      "name": "qa-20261011-8e4446-selected",
+      "nonce": "8e4446",
+      "time": "2026-10-11T12:26:24.188764+00:00",
+      "command": {
+        "method": "POST",
+        "path": "/v1/projects",
+        "body": {
+          "name": "qa-20261011-8e4446-selected",
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "environments": []
+        }
+      },
+      "create_result": {
+        "method": "POST",
+        "path": "/v1/projects",
+        "body": "{\"name\": \"qa-20261011-8e4446-selected\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"environments\": []}",
+        "status": "201",
+        "elapsed": 0.614,
+        "response": "{\"id\":\"prj-db5o0s1n4lvc73ah9rh0\",\"name\":\"qa-20261011-8e4446-selected\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"environmentIds\":[],\"createdAt\":\"2026-10-11T12:26:24.811539Z\",\"updatedAt\":\"2026-10-11T12:26:24.811539Z\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48dda5e39a6eb25-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "create_response": {
+        "id": "prj-db5o0s1n4lvc73ah9rh0",
+        "name": "qa-20261011-8e4446-selected",
+        "owner": {
+          "id": "tea-daif693dqjvc73e7as3g",
+          "name": "bex-canary",
+          "email": "puncsky@gmail.com",
+          "type": "team"
+        },
+        "environmentIds": [],
+        "createdAt": "2026-10-11T12:26:24.811539Z",
+        "updatedAt": "2026-10-11T12:26:24.811539Z"
+      },
+      "dependent_inventory": {
+        "method": "POST",
+        "path": "/graphql",
+        "body": "{\"query\": \"query($id:String!){project(id:$id){id ownerId serviceIds databaseIds keyValueIds}}\", \"variables\": {\"id\": \"prj-db5o0s1n4lvc73ah9rh0\"}}",
+        "status": "200",
+        "elapsed": 0.259,
+        "response": "{\"data\":{\"project\":{\"databaseIds\":[],\"id\":\"prj-db5o0s1n4lvc73ah9rh0\",\"keyValueIds\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"serviceIds\":[]}}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48dda630e30cf1a-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "dependency_ids": ["evm-db5o2upn4lvc73ah9rig"],
+      "baseline_project_ids": []
+    },
+    {
+      "type": "environment",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "id": "evm-db5o2upn4lvc73ah9rig",
+      "name": "qa-20261011-8e4446-selected-empty",
+      "nonce": "8e4446",
+      "time": "2026-10-11T12:30:51.449162+00:00",
+      "command": {
+        "method": "POST",
+        "path": "/v1/environments",
+        "body": {
+          "projectId": "prj-db5o0s1n4lvc73ah9rh0",
+          "name": "qa-20261011-8e4446-selected-empty"
+        }
+      },
+      "create_result": {
+        "method": "POST",
+        "path": "/v1/environments",
+        "body": "{\"projectId\": \"prj-db5o0s1n4lvc73ah9rh0\", \"name\": \"qa-20261011-8e4446-selected-empty\"}",
+        "status": "201",
+        "elapsed": 0.273,
+        "response": "{\"id\":\"evm-db5o2upn4lvc73ah9rig\",\"projectId\":\"prj-db5o0s1n4lvc73ah9rh0\",\"name\":\"qa-20261011-8e4446-selected-empty\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48de0e4de65b625-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "parent_id": "prj-db5o0s1n4lvc73ah9rh0",
+      "dependency_ids": []
+    }
+  ],
+  "setup_inventory": {
+    "method": "GET",
+    "path": "/v1/projects?ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.301,
+    "response": "[]\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48dda4e18ebf31f-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  }
+}

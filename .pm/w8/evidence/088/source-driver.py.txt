@@ -1,0 +1,30 @@
+import pathlib,json,subprocess,datetime,secrets,sys,shutil
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());ws='tea-daif693dqjvc73e7as3g';mode=sys.argv[1]
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True))
+def cli(args,render=False,bound=45):
+ cmd=['python3',str(p/('run-render.py' if render else 'run.py')),'--bound='+str(bound),*([] if render else ['--release']),*args]
+ return json.loads(subprocess.check_output(cmd,text=True))
+def image(tag):
+ m=json.loads((p/('sweep117-echo'+('' if tag==35 else str(tag))+'-manifest.json')).read_text());assert all(a in [x.get('platform',{}).get('architecture') for x in m['manifests']] for a in ['amd64','arm64']);return 'docker.io/mendhak/http-https-echo@'+m['digest']
+base={x if isinstance(x,str) else x.get('service',x)['id'] for x in c['baseline']['services']}
+if mode=='create':
+ render=sys.argv[2]=='render';role='render' if render else 'bex';g=c.setdefault('sweep117_images',{'source_head':c['head'],'image35':image(35),'image42':image(42),'fixtures':[],'sources':['https://github.com/mendhak/docker-http-https-echo/blob/35/index.js','https://github.com/mendhak/docker-http-https-echo/blob/42/index.js'],'runtime_oracle':'Own echo endpoint echoes nonce path/header; image42 has httpVersion, image35 does not; os.hostname observes restart replacement.'});assert g['image35']!=g['image42'];assert not any(x.get('role')==role and not x['state'].startswith('rejected:') for x in c['resources'] if x.get('sweep')==117)
+ q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';quota=json.loads(q['response']);assert quota['services']['used']+quota['services']['terminating']<quota['services']['limit']
+ if render:
+  cfg=p/'render-config/cli.yaml';assert not cfg.exists();cfg.parent.mkdir(mode=0o700,exist_ok=True);shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600);g['copied_render_config']=str(cfg);save()
+ nonce=secrets.token_hex(3);name='qa-20261011-'+nonce+'-src-'+role;assert len(name)<=30;args=['services','create','--name',name,'--type','web_service','--image',g['image35'],'--plan','free','--region','frankfurt','--health-check-path','/','--env-var','HTTP_PORT=3000','--env-var','WHOAMI_PORT_NUMBER=3000','--env-var','LOG_IGNORE_PATH=^','--env-var','DISABLE_REQUEST_LOGS=true','--auto-deploy=false','--confirm','-o','json'];x={'sweep':117,'workspace':ws,'type':'web_service','role':role,'nonce':nonce,'name':name,'time':now(),'state':'native Free image fixture create intent persisted','command':['render' if render else 'bex',*args],'capacity_proof':q,'dependency_ids':[],'actions':[]};c['resources'].append(x);save();r=cli(args,render);x['create_result']=r;save();assert r['exit']==0;v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v);assert v['id'] not in base;x.update(id=v['id'],create_response=v,state='created: native Free image35 fixture; runtime pending');g['fixtures'].append(v['id']);save();print(json.dumps({'role':role,'id':v['id'],'name':name,'exit':r['exit'],'elapsed':r['elapsed']}),flush=True)
+else:
+ sid=sys.argv[2];x=next(z for z in c['resources'] if z.get('id')==sid);g=c['sweep117_images'];assert x['sweep']==117 and sid in g['fixtures'] and sid not in base and x['workspace']==ws and x['create_result']['exit']==0 and x['create_response']['id']==sid and not x['state'].startswith('deleted:');render=x['role']=='render'
+ if mode=='observe':
+  r=cli(['deploys','list',sid,'--confirm','-o','json'],render);assert r['exit']==0;x['deploy_children']=json.loads(r['stdout']);x.setdefault('deploy_observations',[]).append({'at':now(),'result':r});x['children_enumeration_evidence']=r;save();print('Deploys',x['role'],[(v['id'],v['status']) for v in x['deploy_children']],flush=True)
+  r=wire('/v1/services/'+sid);assert r['status']=='200';v=json.loads(r['response']);x.setdefault('service_readbacks',[]).append(r);save();print('Saved source',{'repo':v.get('repo'),'image':v.get('imagePath'),'runtime':v.get('serviceDetails',{}).get('runtime'),'rootDir':v.get('rootDir')},flush=True)
+  path='/qa117-'+x['nonce'];url=x['create_response']['serviceDetails']['url'].rstrip('/')+path;body=p/('sweep117-'+x['role']+'-runtime.json');r=subprocess.run(['curl','-sS','--max-time','12','-H','X-QA-Marker: '+x['nonce'],'-o',str(body),'-w','%{http_code}',url],text=True,capture_output=True);obs={'at':now(),'url':url,'exit':r.returncode,'status':r.stdout,'stderr':r.stderr,'body':body.read_text() if body.exists() else ''};x.setdefault('runtime_observations',[]).append(obs);save()
+  try:z=json.loads(obs['body'])
+  except json.JSONDecodeError:z={}
+  print('Runtime',x['role'],obs['status'],{'nonce_path':z.get('path')==path,'nonce_header':z.get('headers',{}).get('x-qa-marker')==x['nonce'],'httpVersion':z.get('httpVersion'),'hostname':z.get('os',{}).get('hostname')},flush=True)
+ elif mode in ['save','deploy','restart','config','repo']:
+  args=['services','update',sid,'--repo','https://github.com/traefik/whoami','--branch','master','--confirm','-o','json'] if mode=='repo' else ['services','update',sid,'--image',g['image42'],'--confirm','-o','json'] if mode=='save' else ['deploys','create',sid,'--wait','--confirm','-o','json'] if mode=='deploy' else ['restart',sid,'--confirm','-o','json'] if mode=='restart' else ['services','update',sid,'--health-check-path','/qa117-health-'+x['nonce'],'--confirm','-o','json']
+  action={'operation':mode,'at':now(),'state':'native mutation intent persisted','command':['render' if render else 'bex',*args]};x['actions'].append(action);save();r=cli(args,render,210 if mode=='deploy' else 45);action.update(result=r,state='native command completed; runtime reconciliation required');save();print(json.dumps({'role':x['role'],'operation':mode,'exit':r['exit'],'elapsed':r['elapsed'],'stderr':r['stderr'][-1000:]}),flush=True)
+ else:raise ValueError(mode)

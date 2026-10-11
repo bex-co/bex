@@ -1,0 +1,55 @@
+{
+  "display_mode": {
+    "at": "2026-10-11T08:50:14.051506+00:00",
+    "api_only": {
+      "method": "GET",
+      "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5kklsaqkos73b0skfg&type=app&text=%CE%B9&limit=100&textMode=display",
+      "body": null,
+      "status": "200",
+      "elapsed": 2.331,
+      "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T07:50:13.953533215Z\",\"nextEndTime\":\"2026-10-11T08:38:14.370468028Z\",\"logs\":[{\"id\":\"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370468029Z-330296ed\",\"message\":\"QA94_b66611 CAFÉ Ελληνικά\",\"timestamp\":\"2026-10-11T08:38:14.370468029Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5kklsaqkos73b0skfg\"},{\"name\":\"instance\",\"value\":\"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370470095Z-fa6b514d\",\"message\":\"QA94_b66611 café ελληνικά\",\"timestamp\":\"2026-10-11T08:38:14.370470095Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5kklsaqkos73b0skfg\"},{\"name\":\"instance\",\"value\":\"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48c9da79ec4eb2a-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "native_cli_flag": "not available; diagnostic Bex extension request"
+  },
+  "raw_graphql": {
+    "at": "2026-10-11T08:51:26.109236+00:00",
+    "api_only": {
+      "method": "POST",
+      "path": "/graphql",
+      "body": "{\"query\": \"query QaOwnUnicode($id:String!,$term:String!){logs(resource:$id,type:\\\"app\\\",text:$term,limit:100){hasMore logs{message timestamp}}}\", \"variables\": {\"id\": \"srv-db5kklsaqkos73b0skfg\", \"term\": \"\\u03b9\"}}",
+      "status": "200",
+      "elapsed": 2.694,
+      "response": "{\"data\":{\"logs\":{\"hasMore\":false,\"logs\":[]}}}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48c9f67a91731f4-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "discarded_setup": {
+      "at": "2026-10-11T08:50:59.481908+00:00",
+      "api_only": {
+        "method": "POST",
+        "path": "/graphql",
+        "body": "{\"query\": \"query QaOwnUnicode($id:String!,$term:String!){logs(resource:$id,type:\\\"app\\\",text:$term,limit:100){message timestamp}}\", \"variables\": {\"id\": \"srv-db5kklsaqkos73b0skfg\", \"term\": \"\\u03b9\"}}",
+        "status": "200",
+        "elapsed": 0.28,
+        "response": "{\"data\":null,\"errors\":[{\"message\":\"Cannot query field \\\"message\\\" on type \\\"LogList\\\".\",\"locations\":[{\"line\":1,\"column\":98}]},{\"message\":\"Cannot query field \\\"timestamp\\\" on type \\\"LogList\\\".\",\"locations\":[{\"line\":1,\"column\":106}]}]}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48c9ed05a71f579-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    "qualification": "first setup queried entry fields on envelope and was correctly refused; corrected LogList query used for evidence"
+  }
+}

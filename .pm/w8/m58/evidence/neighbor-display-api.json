@@ -1,0 +1,55 @@
+[
+  {
+    "at": "2026-10-11T09:13:00.742277+00:00",
+    "case": "prefixed-istanbul",
+    "expected_messages": [
+      "QA96_394cfd İSTANBUL",
+      "QA96_394cfd ISTANBUL",
+      "QA96_394cfd istanbul"
+    ],
+    "actual_messages": [
+      "QA96_394cfd ISTANBUL",
+      "QA96_394cfd istanbul"
+    ],
+    "api_only": {
+      "method": "GET",
+      "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5l3ijcgaac73d05ft0&type=app&text=QA96_394cfd+istanbul&limit=100&textMode=display",
+      "body": null,
+      "status": "200",
+      "elapsed": 2.351,
+      "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T08:13:00.643288935Z\",\"nextEndTime\":\"2026-10-11T09:09:34.306608602Z\",\"logs\":[{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306608603Z-ff68b4e4\",\"message\":\"QA96_394cfd ISTANBUL\",\"timestamp\":\"2026-10-11T09:09:34.306608603Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.307530313Z-6f9118e4\",\"message\":\"QA96_394cfd istanbul\",\"timestamp\":\"2026-10-11T09:09:34.307530313Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48cbf055fcf7e56-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "at": "2026-10-11T09:13:03.248400+00:00",
+    "case": "greek-rho",
+    "expected_messages": [
+      "QA96_394cfd ΡΟΔΟ",
+      "QA96_394cfd ροδο"
+    ],
+    "actual_messages": [
+      "QA96_394cfd ΡΟΔΟ",
+      "QA96_394cfd ροδο"
+    ],
+    "api_only": {
+      "method": "GET",
+      "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5l3ijcgaac73d05ft0&type=app&text=%CF%81%CE%BF%CE%B4%CE%BF&limit=100&textMode=display",
+      "body": null,
+      "status": "200",
+      "elapsed": 2.43,
+      "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T08:13:03.145466429Z\",\"nextEndTime\":\"2026-10-11T09:09:34.306465576Z\",\"logs\":[{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306465577Z-d5be63f1\",\"message\":\"QA96_394cfd ΡΟΔΟ\",\"timestamp\":\"2026-10-11T09:09:34.306465577Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306478802Z-25384784\",\"message\":\"QA96_394cfd ροδο\",\"timestamp\":\"2026-10-11T09:09:34.306478802Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48cbf145d657ad6-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    }
+  }
+]

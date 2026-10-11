@@ -1,0 +1,13 @@
+package main
+import("bytes";"compress/gzip";"encoding/base64";"encoding/json";"fmt";"io";"net";"net/http";"net/http/httputil";"net/url";"os";"sync";"time")
+var mu sync.Mutex
+var captures []map[string]any
+var output string
+func save(){ b,_:=json.MarshalIndent(captures,"","  ");_ = os.WriteFile(output,b,0600) }
+func add(v map[string]any)int{mu.Lock();defer mu.Unlock();captures=append(captures,v);save();return len(captures)-1}
+type traced struct{io.ReadWriteCloser; index int}
+func(t *traced)Read(p []byte)(int,error){n,e:=t.ReadWriteCloser.Read(p);mu.Lock();if n>0 { prior,_:=captures[t.index]["server_ws_bytes"].([]byte); captures[t.index]["server_ws_bytes"]=append(prior,p[:n]...) };if e!=nil{captures[t.index]["server_read_end"]=e.Error()};save();mu.Unlock();return n,e}
+func main(){_ = os.Args[1];output=os.Args[2];u,_:=url.Parse("https://api.bex.co");proxy:=httputil.NewSingleHostReverseProxy(u);base:=proxy.Director;proxy.Director=func(r *http.Request){base(r);r.Host="api.bex.co"};proxy.ErrorLog=nil
+proxy.ModifyResponse=func(r *http.Response)error{hs:=map[string]string{};for _,k:=range []string{"Content-Type","Content-Encoding","Content-Length","Upgrade","Connection","Sec-WebSocket-Accept","CF-Ray","X-Request-ID"}{if v:=r.Header.Get(k);v!=""{hs[k]=v}};req:=r.Request;sh:=map[string]string{};for _,k:=range []string{"User-Agent","X-Bex-Workspace","X-Bex-Cli-Version"}{if v:=req.Header.Get(k);v!=""{sh[k]=v}};v:=map[string]any{"at":time.Now().UTC().Format(time.RFC3339Nano),"request":map[string]any{"method":req.Method,"path":req.URL.RequestURI(),"headers":sh},"status":r.StatusCode,"response_headers":hs};if r.StatusCode==101 {rw,ok:=r.Body.(io.ReadWriteCloser);if !ok{return fmt.Errorf("upgraded response is not duplex")};i:=add(v);r.Body=&traced{rw,i}} else {b,e:=io.ReadAll(r.Body);if e!=nil{return e};_ = r.Body.Close();r.Body=io.NopCloser(bytes.NewReader(b));v["wire_body_base64"]=base64.StdEncoding.EncodeToString(b);decoded:=b;if r.Header.Get("Content-Encoding")=="gzip" {gz,ge:=gzip.NewReader(bytes.NewReader(b));if ge!=nil{return ge};decoded,ge=io.ReadAll(gz);_ = gz.Close();if ge!=nil{return ge};v["response_encoding"]="gzip decoded for journal only; original bytes forwarded unchanged"};v["response"]=string(decoded);add(v)};return nil}
+listener,e:=net.Listen("tcp","127.0.0.1:0");if e!=nil{panic(e)};fmt.Printf("%d\n",listener.Addr().(*net.TCPAddr).Port);handler:=http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){allowed:=r.URL.Path=="/v1/postgres/dpg-00000000000000000000/restart" || r.URL.Path=="/v1/services/srv-00000000000000000000/restart";if r.Method!="POST" || !allowed || r.ContentLength>0 {http.Error(w,"outside exact synthetic restart controls",400);return};proxy.ServeHTTP(w,r)});_ = http.Serve(listener,handler)
+}

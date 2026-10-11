@@ -1,0 +1,42 @@
+{
+  "authority_forwarding": "Exact owned GET log requests only; duplex response wrapper forwards all WS bytes unchanged; fixed api.bex.co HTTPS upstream; no Authorization journal",
+  "captures": [
+    {
+      "at": "2026-10-11T10:43:22.09925Z",
+      "request": {
+        "headers": {
+          "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+        },
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=red-db5mcvcf52sc73b2rsog&text=QA102_209d86+%CE%B9&limit=100"
+      },
+      "response_headers": {
+        "CF-Ray": "a48d436b7cd66cd4-SJC",
+        "Connection": "upgrade",
+        "Sec-WebSocket-Accept": "AoRUq1UMn3ZMR8+s7giOHQnT4zs=",
+        "Upgrade": "websocket"
+      },
+      "server_read_end": "EOF",
+      "status": 101
+    },
+    {
+      "at": "2026-10-11T10:43:22.879487Z",
+      "request": {
+        "headers": {
+          "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+        },
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=red-db5mcvcf52sc73b2rsog&text=QA102_209d86+%CE%B9&limit=100"
+      },
+      "response_headers": {
+        "CF-Ray": "a48d4370e9e9707f-SJC",
+        "Connection": "upgrade",
+        "Sec-WebSocket-Accept": "nCJ7MhM62ZTnefP8VFMVZuAlvW4=",
+        "Upgrade": "websocket"
+      },
+      "server_read_end": "EOF",
+      "status": 101
+    }
+  ],
+  "cleanup": "both native children reaped/configs removed; exact proxy process group stopped"
+}

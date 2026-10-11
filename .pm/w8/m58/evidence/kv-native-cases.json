@@ -1,0 +1,104 @@
+[
+  {
+    "client": "bex",
+    "term": "QA101_c081f6",
+    "expected_count": 3,
+    "actual_count": 3,
+    "expected_messages": [
+      "1:M 11 Oct 2026 10:30:13.382 * QA101_c081f6 Ι",
+      "1:M 11 Oct 2026 10:30:15.215 * QA101_c081f6 ι",
+      "1:M 11 Oct 2026 10:30:16.954 * QA101_c081f6 λ"
+    ],
+    "actual_messages": [
+      "1:M 11 Oct 2026 10:30:13.382 * QA101_c081f6 Ι",
+      "1:M 11 Oct 2026 10:30:15.215 * QA101_c081f6 ι",
+      "1:M 11 Oct 2026 10:30:16.954 * QA101_c081f6 λ"
+    ],
+    "native_exit": 0,
+    "elapsed": 3.547,
+    "status": 200,
+    "native_message_bytes_match_wire": true
+  },
+  {
+    "client": "bex",
+    "term": "ι",
+    "expected_count": 2,
+    "actual_count": 0,
+    "expected_messages": [
+      "1:M 11 Oct 2026 10:30:13.382 * QA101_c081f6 Ι",
+      "1:M 11 Oct 2026 10:30:15.215 * QA101_c081f6 ι"
+    ],
+    "actual_messages": [],
+    "native_exit": 0,
+    "elapsed": 2.565,
+    "status": 200,
+    "native_message_bytes_match_wire": true
+  },
+  {
+    "client": "bex",
+    "term": "λ",
+    "expected_count": 1,
+    "actual_count": 1,
+    "expected_messages": [
+      "1:M 11 Oct 2026 10:30:16.954 * QA101_c081f6 λ"
+    ],
+    "actual_messages": [
+      "1:M 11 Oct 2026 10:30:16.954 * QA101_c081f6 λ"
+    ],
+    "native_exit": 0,
+    "elapsed": 2.681,
+    "status": 200,
+    "native_message_bytes_match_wire": true
+  },
+  {
+    "client": "render",
+    "term": "QA101_c081f6",
+    "expected_count": 3,
+    "actual_count": 3,
+    "expected_messages": [
+      "1:M 11 Oct 2026 10:30:13.382 * QA101_c081f6 Ι",
+      "1:M 11 Oct 2026 10:30:15.215 * QA101_c081f6 ι",
+      "1:M 11 Oct 2026 10:30:16.954 * QA101_c081f6 λ"
+    ],
+    "actual_messages": [
+      "1:M 11 Oct 2026 10:30:13.382 * QA101_c081f6 Ι",
+      "1:M 11 Oct 2026 10:30:15.215 * QA101_c081f6 ι",
+      "1:M 11 Oct 2026 10:30:16.954 * QA101_c081f6 λ"
+    ],
+    "native_exit": 0,
+    "elapsed": 2.847,
+    "status": 200,
+    "native_message_bytes_match_wire": true
+  },
+  {
+    "client": "render",
+    "term": "ι",
+    "expected_count": 2,
+    "actual_count": 0,
+    "expected_messages": [
+      "1:M 11 Oct 2026 10:30:13.382 * QA101_c081f6 Ι",
+      "1:M 11 Oct 2026 10:30:15.215 * QA101_c081f6 ι"
+    ],
+    "actual_messages": [],
+    "native_exit": 0,
+    "elapsed": 3.16,
+    "status": 200,
+    "native_message_bytes_match_wire": true
+  },
+  {
+    "client": "render",
+    "term": "λ",
+    "expected_count": 1,
+    "actual_count": 1,
+    "expected_messages": [
+      "1:M 11 Oct 2026 10:30:16.954 * QA101_c081f6 λ"
+    ],
+    "actual_messages": [
+      "1:M 11 Oct 2026 10:30:16.954 * QA101_c081f6 λ"
+    ],
+    "native_exit": 0,
+    "elapsed": 3.068,
+    "status": 200,
+    "native_message_bytes_match_wire": true
+  }
+]

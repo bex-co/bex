@@ -1,0 +1,959 @@
+{
+  "id": "srv-db5lnhaek99c73ahuqjg",
+  "name": "qa-20261011-f5ca3d-static",
+  "nonce": "f5ca3d",
+  "sweep": 99,
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "role": "native static output-directory change and clear-cache publication regression check",
+  "command": [
+    "bex",
+    "services",
+    "create",
+    "--name",
+    "qa-20261011-f5ca3d-static",
+    "--type",
+    "static_site",
+    "--repo",
+    "https://github.com/bex-co/bex",
+    "--auto-deploy=false",
+    "--root-directory",
+    "examples/static-site",
+    "--build-command",
+    "mkdir -p qa-dist-a; printf '%s' 'QA99_f5ca3d_a' > qa-dist-a/index.html; printf '%s' 'QA99_f5ca3d_a_asset' > qa-dist-a/version.txt",
+    "--publish-directory",
+    "qa-dist-a",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "create_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261011-f5ca3d-static",
+      "--type",
+      "static_site",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--auto-deploy=false",
+      "--root-directory",
+      "examples/static-site",
+      "--build-command",
+      "mkdir -p qa-dist-a; printf '%s' 'QA99_f5ca3d_a' > qa-dist-a/index.html; printf '%s' 'QA99_f5ca3d_a_asset' > qa-dist-a/version.txt",
+      "--publish-directory",
+      "qa-dist-a",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.06,
+    "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-11T09:49:57Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db5lnhaek99c73ahuqjg\",\n  \"id\": \"srv-db5lnhaek99c73ahuqjg\",\n  \"name\": \"qa-20261011-f5ca3d-static\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/static-site\",\n  \"serviceDetails\": {\n    \"buildCommand\": \"mkdir -p qa-dist-a; printf '%s' 'QA99_f5ca3d_a' \\u003e qa-dist-a/index.html; printf '%s' 'QA99_f5ca3d_a_asset' \\u003e qa-dist-a/version.txt\",\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"publishPath\": \"qa-dist-a\",\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"url\": \"https://qa-20261011-f5ca3d-static.onbex.co\"\n  },\n  \"slug\": \"qa-20261011-f5ca3d-static\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"static_site\",\n  \"updatedAt\": \"2026-10-11T09:49:57.290766387Z\"\n}",
+    "stderr": ""
+  },
+  "create_response": {
+    "autoDeploy": "no",
+    "autoDeployTrigger": "off",
+    "branch": "main",
+    "createdAt": "2026-10-11T09:49:57Z",
+    "dashboardUrl": "https://dashboard.bex.co/static/srv-db5lnhaek99c73ahuqjg",
+    "id": "srv-db5lnhaek99c73ahuqjg",
+    "name": "qa-20261011-f5ca3d-static",
+    "notifyOnFail": "default",
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "repo": "https://github.com/bex-co/bex",
+    "rootDir": "examples/static-site",
+    "serviceDetails": {
+      "buildCommand": "mkdir -p qa-dist-a; printf '%s' 'QA99_f5ca3d_a' > qa-dist-a/index.html; printf '%s' 'QA99_f5ca3d_a_asset' > qa-dist-a/version.txt",
+      "numInstances": 1,
+      "plan": "free",
+      "publishPath": "qa-dist-a",
+      "region": "fsn1",
+      "renderSubdomainPolicy": "enabled",
+      "url": "https://qa-20261011-f5ca3d-static.onbex.co"
+    },
+    "slug": "qa-20261011-f5ca3d-static",
+    "suspended": "not_suspended",
+    "suspenders": [],
+    "type": "static_site",
+    "updatedAt": "2026-10-11T09:49:57.290766387Z"
+  },
+  "replacement_marker": "QA99_f5ca3d_b",
+  "initial_marker": "QA99_f5ca3d_a",
+  "update": {
+    "at": "2026-10-11T09:52:41.290719+00:00",
+    "command": [
+      "bex",
+      "services",
+      "update",
+      "srv-db5lnhaek99c73ahuqjg",
+      "--build-command",
+      "mkdir -p qa-dist-b; printf '%s' 'QA99_f5ca3d_b' > qa-dist-b/index.html; printf '%s' 'QA99_f5ca3d_b_asset' > qa-dist-b/version.txt",
+      "--publish-directory",
+      "qa-dist-b",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "result received; enumerate new children before repeating",
+    "deploy_ids_before": [
+      "dep-db5lnhaek99c73ahuqk0"
+    ],
+    "result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "update",
+        "srv-db5lnhaek99c73ahuqjg",
+        "--build-command",
+        "mkdir -p qa-dist-b; printf '%s' 'QA99_f5ca3d_b' > qa-dist-b/index.html; printf '%s' 'QA99_f5ca3d_b_asset' > qa-dist-b/version.txt",
+        "--publish-directory",
+        "qa-dist-b",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.34,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-11T09:49:57Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db5lnhaek99c73ahuqjg\",\n    \"id\": \"srv-db5lnhaek99c73ahuqjg\",\n    \"name\": \"qa-20261011-f5ca3d-static\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/static-site\",\n    \"serviceDetails\": {\n      \"buildCommand\": \"mkdir -p qa-dist-b; printf '%s' 'QA99_f5ca3d_b' \\u003e qa-dist-b/index.html; printf '%s' 'QA99_f5ca3d_b_asset' \\u003e qa-dist-b/version.txt\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"publishPath\": \"qa-dist-b\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"url\": \"https://qa-20261011-f5ca3d-static.onbex.co\"\n    },\n    \"slug\": \"qa-20261011-f5ca3d-static\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"static_site\",\n    \"updatedAt\": \"2026-10-11T09:52:42.086648088Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+      "stderr": ""
+    }
+  },
+  "redeploy": {
+    "at": "2026-10-11T09:54:23.620513+00:00",
+    "command": [
+      "bex",
+      "deploys",
+      "create",
+      "srv-db5lnhaek99c73ahuqjg",
+      "--clear-cache",
+      "--wait",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "result received; enumerate new children before repeating",
+    "deploy_ids_before": [
+      "dep-db5loqlm4o4s73bmn950",
+      "dep-db5lnhaek99c73ahuqk0"
+    ],
+    "result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "create",
+        "srv-db5lnhaek99c73ahuqjg",
+        "--clear-cache",
+        "--wait",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 79.012,
+      "stdout": "{\n  \"commit\": {\n    \"createdAt\": \"2026-10-11T09:40:37Z\",\n    \"id\": \"741b541d2d32af54cb36ed09f237969c1bef78ae\",\n    \"message\": \"fix(static): restore rollback from retained publication (w4/m197)\\n\\nA static_site rollback extracted the target's image through today's saved\\npublish directory, so a bad saved directory made every rollback fail.\\n\\n- operator records each successful publish's object-store prefix per\\n  generation (\\u003capp\\u003e-static-r\\u003cgen\\u003e), backfilling the outgoing served one\\n- releaseConfig.staticPrefix selects a retained publication; image is now\\n  optional (CEL: image or staticPrefix)\\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\\n  fails named on empty/unreadable source, upload copies to the new revision\\n- bex-api Rollback selects the record for static sites (built and direct),\\n  refuses unrecorded targets with a named 409 before dispatch; the\\n  capability projection makes the same check\\n- saved build/publish settings and BuildCommit stay unchanged\"\n  },\n  \"createdAt\": \"2026-10-11T09:54:24.418486Z\",\n  \"finishedAt\": \"2026-10-11T09:55:38.65345Z\",\n  \"id\": \"dep-db5lpk5m4o4s73bmn960\",\n  \"startedAt\": \"2026-10-11T09:54:38.6386Z\",\n  \"status\": \"live\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-11T09:55:38.653451Z\"\n}",
+      "stderr": "Waiting for deploy dep-db5lpk5m4o4s73bmn960 to complete...\n\n"
+    }
+  },
+  "direct": {
+    "at": "2026-10-11T09:56:19.786855+00:00",
+    "command": [
+      "bex",
+      "services",
+      "update",
+      "srv-db5lnhaek99c73ahuqjg",
+      "--build-command",
+      "",
+      "--publish-directory",
+      ".",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "result received; enumerate new children before repeating",
+    "deploy_ids_before": [
+      "dep-db5lpk5m4o4s73bmn960",
+      "dep-db5loqlm4o4s73bmn950",
+      "dep-db5lnhaek99c73ahuqk0"
+    ],
+    "result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "update",
+        "srv-db5lnhaek99c73ahuqjg",
+        "--build-command",
+        "",
+        "--publish-directory",
+        ".",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.536,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-11T09:49:57Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db5lnhaek99c73ahuqjg\",\n    \"id\": \"srv-db5lnhaek99c73ahuqjg\",\n    \"name\": \"qa-20261011-f5ca3d-static\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/static-site\",\n    \"serviceDetails\": {\n      \"buildCommand\": \"\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"publishPath\": \".\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"url\": \"https://qa-20261011-f5ca3d-static.onbex.co\"\n    },\n    \"slug\": \"qa-20261011-f5ca3d-static\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"static_site\",\n    \"updatedAt\": \"2026-10-11T09:56:20.752659826Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+      "stderr": ""
+    }
+  },
+  "deploy_children": [
+    {
+      "commit": {
+        "createdAt": "2026-10-11T09:40:37Z",
+        "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+        "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+      },
+      "createdAt": "2026-10-11T09:56:20.846162Z",
+      "finishedAt": "2026-10-11T09:56:38.666392Z",
+      "id": "dep-db5lqh5m4o4s73bmn97g",
+      "status": "build_failed",
+      "trigger": "service_updated",
+      "updatedAt": "2026-10-11T09:56:38.666393Z"
+    },
+    {
+      "commit": {
+        "createdAt": "2026-10-11T09:40:37Z",
+        "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+        "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+      },
+      "createdAt": "2026-10-11T09:54:24.418486Z",
+      "finishedAt": "2026-10-11T09:55:38.65345Z",
+      "id": "dep-db5lpk5m4o4s73bmn960",
+      "startedAt": "2026-10-11T09:54:38.6386Z",
+      "status": "live",
+      "trigger": "api",
+      "updatedAt": "2026-10-11T09:55:38.653451Z"
+    },
+    {
+      "commit": {
+        "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+        "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+      },
+      "createdAt": "2026-10-11T09:52:42.146887Z",
+      "finishedAt": "2026-10-11T09:53:51.017439Z",
+      "id": "dep-db5loqlm4o4s73bmn950",
+      "startedAt": "2026-10-11T09:52:51.847893Z",
+      "status": "deactivated",
+      "trigger": "service_updated",
+      "updatedAt": "2026-10-11T09:55:38.658919Z"
+    },
+    {
+      "commit": {
+        "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+        "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+      },
+      "createdAt": "2026-10-11T09:49:57.237171Z",
+      "finishedAt": "2026-10-11T09:52:08.831606Z",
+      "id": "dep-db5lnhaek99c73ahuqk0",
+      "startedAt": "2026-10-11T09:51:08.753562Z",
+      "status": "deactivated",
+      "trigger": "other",
+      "updatedAt": "2026-10-11T09:53:51.024737Z"
+    }
+  ],
+  "children_enumeration_evidence": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "deploys",
+      "list",
+      "srv-db5lnhaek99c73ahuqjg",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.437,
+    "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-11T09:40:37Z\",\n      \"id\": \"741b541d2d32af54cb36ed09f237969c1bef78ae\",\n      \"message\": \"fix(static): restore rollback from retained publication (w4/m197)\\n\\nA static_site rollback extracted the target's image through today's saved\\npublish directory, so a bad saved directory made every rollback fail.\\n\\n- operator records each successful publish's object-store prefix per\\n  generation (\\u003capp\\u003e-static-r\\u003cgen\\u003e), backfilling the outgoing served one\\n- releaseConfig.staticPrefix selects a retained publication; image is now\\n  optional (CEL: image or staticPrefix)\\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\\n  fails named on empty/unreadable source, upload copies to the new revision\\n- bex-api Rollback selects the record for static sites (built and direct),\\n  refuses unrecorded targets with a named 409 before dispatch; the\\n  capability projection makes the same check\\n- saved build/publish settings and BuildCommit stay unchanged\"\n    },\n    \"createdAt\": \"2026-10-11T09:56:20.846162Z\",\n    \"finishedAt\": \"2026-10-11T09:56:38.666392Z\",\n    \"id\": \"dep-db5lqh5m4o4s73bmn97g\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-11T09:56:38.666393Z\"\n  },\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-11T09:40:37Z\",\n      \"id\": \"741b541d2d32af54cb36ed09f237969c1bef78ae\",\n      \"message\": \"fix(static): restore rollback from retained publication (w4/m197)\\n\\nA static_site rollback extracted the target's image through today's saved\\npublish directory, so a bad saved directory made every rollback fail.\\n\\n- operator records each successful publish's object-store prefix per\\n  generation (\\u003capp\\u003e-static-r\\u003cgen\\u003e), backfilling the outgoing served one\\n- releaseConfig.staticPrefix selects a retained publication; image is now\\n  optional (CEL: image or staticPrefix)\\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\\n  fails named on empty/unreadable source, upload copies to the new revision\\n- bex-api Rollback selects the record for static sites (built and direct),\\n  refuses unrecorded targets with a named 409 before dispatch; the\\n  capability projection makes the same check\\n- saved build/publish settings and BuildCommit stay unchanged\"\n    },\n    \"createdAt\": \"2026-10-11T09:54:24.418486Z\",\n    \"finishedAt\": \"2026-10-11T09:55:38.65345Z\",\n    \"id\": \"dep-db5lpk5m4o4s73bmn960\",\n    \"startedAt\": \"2026-10-11T09:54:38.6386Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-11T09:55:38.653451Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"741b541d2d32af54cb36ed09f237969c1bef78ae\",\n      \"message\": \"fix(static): restore rollback from retained publication (w4/m197)\\n\\nA static_site rollback extracted the target's image through today's saved\\npublish directory, so a bad saved directory made every rollback fail.\\n\\n- operator records each successful publish's object-store prefix per\\n  generation (\\u003capp\\u003e-static-r\\u003cgen\\u003e), backfilling the outgoing served one\\n- releaseConfig.staticPrefix selects a retained publication; image is now\\n  optional (CEL: image or staticPrefix)\\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\\n  fails named on empty/unreadable source, upload copies to the new revision\\n- bex-api Rollback selects the record for static sites (built and direct),\\n  refuses unrecorded targets with a named 409 before dispatch; the\\n  capability projection makes the same check\\n- saved build/publish settings and BuildCommit stay unchanged\"\n    },\n    \"createdAt\": \"2026-10-11T09:52:42.146887Z\",\n    \"finishedAt\": \"2026-10-11T09:53:51.017439Z\",\n    \"id\": \"dep-db5loqlm4o4s73bmn950\",\n    \"startedAt\": \"2026-10-11T09:52:51.847893Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-11T09:55:38.658919Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"741b541d2d32af54cb36ed09f237969c1bef78ae\",\n      \"message\": \"fix(static): restore rollback from retained publication (w4/m197)\\n\\nA static_site rollback extracted the target's image through today's saved\\npublish directory, so a bad saved directory made every rollback fail.\\n\\n- operator records each successful publish's object-store prefix per\\n  generation (\\u003capp\\u003e-static-r\\u003cgen\\u003e), backfilling the outgoing served one\\n- releaseConfig.staticPrefix selects a retained publication; image is now\\n  optional (CEL: image or staticPrefix)\\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\\n  fails named on empty/unreadable source, upload copies to the new revision\\n- bex-api Rollback selects the record for static sites (built and direct),\\n  refuses unrecorded targets with a named 409 before dispatch; the\\n  capability projection makes the same check\\n- saved build/publish settings and BuildCommit stay unchanged\"\n    },\n    \"createdAt\": \"2026-10-11T09:49:57.237171Z\",\n    \"finishedAt\": \"2026-10-11T09:52:08.831606Z\",\n    \"id\": \"dep-db5lnhaek99c73ahuqk0\",\n    \"startedAt\": \"2026-10-11T09:51:08.753562Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-11T09:53:51.024737Z\"\n  }\n]",
+    "stderr": ""
+  },
+  "service_observations": [
+    {
+      "at": "2026-10-11T09:50:08.444832+00:00",
+      "api_only": {
+        "method": "GET",
+        "path": "/v1/services/srv-db5lnhaek99c73ahuqjg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.634,
+        "response": "{\"id\":\"srv-db5lnhaek99c73ahuqjg\",\"name\":\"qa-20261011-f5ca3d-static\",\"immutableName\":\"qa-20261011-f5ca3d-static\",\"slug\":\"qa-20261011-f5ca3d-static\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db5lnhaek99c73ahuqjg\",\"createdAt\":\"2026-10-11T09:49:57Z\",\"updatedAt\":\"2026-10-11T09:49:57.290766387Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"mkdir -p qa-dist-a; printf '%s' 'QA99_f5ca3d_a' \\u003e qa-dist-a/index.html; printf '%s' 'QA99_f5ca3d_a_asset' \\u003e qa-dist-a/version.txt\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\"qa-dist-a\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261011-f5ca3d-static.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48cf57308f8c685-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-11T09:50:28.370094+00:00",
+      "api_only": {
+        "method": "GET",
+        "path": "/v1/services/srv-db5lnhaek99c73ahuqjg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.31,
+        "response": "{\"id\":\"srv-db5lnhaek99c73ahuqjg\",\"name\":\"qa-20261011-f5ca3d-static\",\"immutableName\":\"qa-20261011-f5ca3d-static\",\"slug\":\"qa-20261011-f5ca3d-static\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db5lnhaek99c73ahuqjg\",\"createdAt\":\"2026-10-11T09:49:57Z\",\"updatedAt\":\"2026-10-11T09:50:08Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"mkdir -p qa-dist-a; printf '%s' 'QA99_f5ca3d_a' \\u003e qa-dist-a/index.html; printf '%s' 'QA99_f5ca3d_a_asset' \\u003e qa-dist-a/version.txt\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\"qa-dist-a\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261011-f5ca3d-static.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48cf5f19c3c7542-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-11T09:51:03.311350+00:00",
+      "api_only": {
+        "method": "GET",
+        "path": "/v1/services/srv-db5lnhaek99c73ahuqjg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.268,
+        "response": "{\"id\":\"srv-db5lnhaek99c73ahuqjg\",\"name\":\"qa-20261011-f5ca3d-static\",\"immutableName\":\"qa-20261011-f5ca3d-static\",\"slug\":\"qa-20261011-f5ca3d-static\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db5lnhaek99c73ahuqjg\",\"createdAt\":\"2026-10-11T09:49:57Z\",\"updatedAt\":\"2026-10-11T09:50:58Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"mkdir -p qa-dist-a; printf '%s' 'QA99_f5ca3d_a' \\u003e qa-dist-a/index.html; printf '%s' 'QA99_f5ca3d_a_asset' \\u003e qa-dist-a/version.txt\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\"qa-dist-a\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261011-f5ca3d-static.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48cf6cc3cf3e8c2-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-11T09:51:43.721015+00:00",
+      "api_only": {
+        "method": "GET",
+        "path": "/v1/services/srv-db5lnhaek99c73ahuqjg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.423,
+        "response": "{\"id\":\"srv-db5lnhaek99c73ahuqjg\",\"name\":\"qa-20261011-f5ca3d-static\",\"immutableName\":\"qa-20261011-f5ca3d-static\",\"slug\":\"qa-20261011-f5ca3d-static\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db5lnhaek99c73ahuqjg\",\"createdAt\":\"2026-10-11T09:49:57Z\",\"updatedAt\":\"2026-10-11T09:50:58Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"mkdir -p qa-dist-a; printf '%s' 'QA99_f5ca3d_a' \\u003e qa-dist-a/index.html; printf '%s' 'QA99_f5ca3d_a_asset' \\u003e qa-dist-a/version.txt\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\"qa-dist-a\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261011-f5ca3d-static.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48cf7c7dc397e2a-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-11T09:52:29.950256+00:00",
+      "api_only": {
+        "method": "GET",
+        "path": "/v1/services/srv-db5lnhaek99c73ahuqjg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.286,
+        "response": "{\"id\":\"srv-db5lnhaek99c73ahuqjg\",\"name\":\"qa-20261011-f5ca3d-static\",\"immutableName\":\"qa-20261011-f5ca3d-static\",\"slug\":\"qa-20261011-f5ca3d-static\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db5lnhaek99c73ahuqjg\",\"createdAt\":\"2026-10-11T09:49:57Z\",\"updatedAt\":\"2026-10-11T09:52:07Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"mkdir -p qa-dist-a; printf '%s' 'QA99_f5ca3d_a' \\u003e qa-dist-a/index.html; printf '%s' 'QA99_f5ca3d_a_asset' \\u003e qa-dist-a/version.txt\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\"qa-dist-a\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261011-f5ca3d-static.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-f5ca3d-static.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48cf8e99e612b10-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-11T09:52:53.033171+00:00",
+      "api_only": {
+        "method": "GET",
+        "path": "/v1/services/srv-db5lnhaek99c73ahuqjg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.286,
+        "response": "{\"id\":\"srv-db5lnhaek99c73ahuqjg\",\"name\":\"qa-20261011-f5ca3d-static\",\"immutableName\":\"qa-20261011-f5ca3d-static\",\"slug\":\"qa-20261011-f5ca3d-static\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db5lnhaek99c73ahuqjg\",\"createdAt\":\"2026-10-11T09:49:57Z\",\"updatedAt\":\"2026-10-11T09:52:47Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"mkdir -p qa-dist-b; printf '%s' 'QA99_f5ca3d_b' \\u003e qa-dist-b/index.html; printf '%s' 'QA99_f5ca3d_b_asset' \\u003e qa-dist-b/version.txt\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\"qa-dist-b\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261011-f5ca3d-static.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-f5ca3d-static.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48cf979dcf6251c-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-11T09:53:24.218093+00:00",
+      "api_only": {
+        "method": "GET",
+        "path": "/v1/services/srv-db5lnhaek99c73ahuqjg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.269,
+        "response": "{\"id\":\"srv-db5lnhaek99c73ahuqjg\",\"name\":\"qa-20261011-f5ca3d-static\",\"immutableName\":\"qa-20261011-f5ca3d-static\",\"slug\":\"qa-20261011-f5ca3d-static\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db5lnhaek99c73ahuqjg\",\"createdAt\":\"2026-10-11T09:49:57Z\",\"updatedAt\":\"2026-10-11T09:52:47Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"mkdir -p qa-dist-b; printf '%s' 'QA99_f5ca3d_b' \\u003e qa-dist-b/index.html; printf '%s' 'QA99_f5ca3d_b_asset' \\u003e qa-dist-b/version.txt\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\"qa-dist-b\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261011-f5ca3d-static.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-f5ca3d-static.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48cfa3d19d67ae5-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-11T09:54:10.149328+00:00",
+      "api_only": {
+        "method": "GET",
+        "path": "/v1/services/srv-db5lnhaek99c73ahuqjg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.312,
+        "response": "{\"id\":\"srv-db5lnhaek99c73ahuqjg\",\"name\":\"qa-20261011-f5ca3d-static\",\"immutableName\":\"qa-20261011-f5ca3d-static\",\"slug\":\"qa-20261011-f5ca3d-static\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db5lnhaek99c73ahuqjg\",\"createdAt\":\"2026-10-11T09:49:57Z\",\"updatedAt\":\"2026-10-11T09:53:39Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"mkdir -p qa-dist-b; printf '%s' 'QA99_f5ca3d_b' \\u003e qa-dist-b/index.html; printf '%s' 'QA99_f5ca3d_b_asset' \\u003e qa-dist-b/version.txt\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\"qa-dist-b\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261011-f5ca3d-static.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-2\",\"urls\":[\"https://qa-20261011-f5ca3d-static.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48cfb5bfe19ebf3-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-11T09:56:12.844591+00:00",
+      "api_only": {
+        "method": "GET",
+        "path": "/v1/services/srv-db5lnhaek99c73ahuqjg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.68,
+        "response": "{\"id\":\"srv-db5lnhaek99c73ahuqjg\",\"name\":\"qa-20261011-f5ca3d-static\",\"immutableName\":\"qa-20261011-f5ca3d-static\",\"slug\":\"qa-20261011-f5ca3d-static\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db5lnhaek99c73ahuqjg\",\"createdAt\":\"2026-10-11T09:49:57Z\",\"updatedAt\":\"2026-10-11T09:55:22Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"mkdir -p qa-dist-b; printf '%s' 'QA99_f5ca3d_b' \\u003e qa-dist-b/index.html; printf '%s' 'QA99_f5ca3d_b_asset' \\u003e qa-dist-b/version.txt\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\"qa-dist-b\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261011-f5ca3d-static.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-3\",\"urls\":[\"https://qa-20261011-f5ca3d-static.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48cfe588df5fa66-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    }
+  ],
+  "publication_checks": [
+    {
+      "at": "2026-10-11T09:50:09.567480+00:00",
+      "deploys": [
+        {
+          "commit": {
+            "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+            "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+          },
+          "createdAt": "2026-10-11T09:49:57.237171Z",
+          "id": "dep-db5lnhaek99c73ahuqk0",
+          "status": "created",
+          "trigger": "other",
+          "updatedAt": "2026-10-11T09:49:57.237171Z"
+        }
+      ],
+      "expected_stage": "a",
+      "checks": [
+        {
+          "path": "/",
+          "status": "404",
+          "exit": 0,
+          "body": "404 page not found\n",
+          "expected": "QA99_f5ca3d_a",
+          "matches": false
+        },
+        {
+          "path": "/version.txt",
+          "status": "404",
+          "exit": 0,
+          "body": "404 page not found\n",
+          "expected": "QA99_f5ca3d_a_asset",
+          "matches": false
+        }
+      ]
+    },
+    {
+      "at": "2026-10-11T09:50:29.620886+00:00",
+      "deploys": [
+        {
+          "commit": {
+            "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+            "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+          },
+          "createdAt": "2026-10-11T09:49:57.237171Z",
+          "id": "dep-db5lnhaek99c73ahuqk0",
+          "status": "queued",
+          "trigger": "other",
+          "updatedAt": "2026-10-11T09:50:08.755011Z"
+        }
+      ],
+      "expected_stage": "a",
+      "checks": [
+        {
+          "path": "/",
+          "status": "404",
+          "exit": 0,
+          "body": "404 page not found\n",
+          "expected": "QA99_f5ca3d_a",
+          "matches": false
+        },
+        {
+          "path": "/version.txt",
+          "status": "404",
+          "exit": 0,
+          "body": "404 page not found\n",
+          "expected": "QA99_f5ca3d_a_asset",
+          "matches": false
+        }
+      ]
+    },
+    {
+      "at": "2026-10-11T09:51:04.415868+00:00",
+      "deploys": [
+        {
+          "commit": {
+            "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+            "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+          },
+          "createdAt": "2026-10-11T09:49:57.237171Z",
+          "id": "dep-db5lnhaek99c73ahuqk0",
+          "status": "queued",
+          "trigger": "other",
+          "updatedAt": "2026-10-11T09:50:08.755011Z"
+        }
+      ],
+      "expected_stage": "a",
+      "checks": [
+        {
+          "path": "/",
+          "status": "404",
+          "exit": 0,
+          "body": "404 page not found\n",
+          "expected": "QA99_f5ca3d_a",
+          "matches": false
+        },
+        {
+          "path": "/version.txt",
+          "status": "404",
+          "exit": 0,
+          "body": "404 page not found\n",
+          "expected": "QA99_f5ca3d_a_asset",
+          "matches": false
+        }
+      ]
+    },
+    {
+      "at": "2026-10-11T09:51:44.827215+00:00",
+      "deploys": [
+        {
+          "commit": {
+            "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+            "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+          },
+          "createdAt": "2026-10-11T09:49:57.237171Z",
+          "id": "dep-db5lnhaek99c73ahuqk0",
+          "startedAt": "2026-10-11T09:51:08.753562Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-11T09:51:08.753563Z"
+        }
+      ],
+      "expected_stage": "a",
+      "checks": [
+        {
+          "path": "/",
+          "status": "404",
+          "exit": 0,
+          "body": "404 page not found\n",
+          "expected": "QA99_f5ca3d_a",
+          "matches": false
+        },
+        {
+          "path": "/version.txt",
+          "status": "404",
+          "exit": 0,
+          "body": "404 page not found\n",
+          "expected": "QA99_f5ca3d_a_asset",
+          "matches": false
+        }
+      ]
+    },
+    {
+      "at": "2026-10-11T09:52:31.188949+00:00",
+      "deploys": [
+        {
+          "commit": {
+            "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+            "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+          },
+          "createdAt": "2026-10-11T09:49:57.237171Z",
+          "finishedAt": "2026-10-11T09:52:08.831606Z",
+          "id": "dep-db5lnhaek99c73ahuqk0",
+          "startedAt": "2026-10-11T09:51:08.753562Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-11T09:52:08.831607Z"
+        }
+      ],
+      "expected_stage": "a",
+      "checks": [
+        {
+          "path": "/",
+          "status": "200",
+          "exit": 0,
+          "body": "QA99_f5ca3d_a",
+          "expected": "QA99_f5ca3d_a",
+          "matches": true
+        },
+        {
+          "path": "/version.txt",
+          "status": "200",
+          "exit": 0,
+          "body": "QA99_f5ca3d_a_asset",
+          "expected": "QA99_f5ca3d_a_asset",
+          "matches": true
+        }
+      ]
+    },
+    {
+      "at": "2026-10-11T09:52:54.149982+00:00",
+      "deploys": [
+        {
+          "commit": {
+            "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+            "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+          },
+          "createdAt": "2026-10-11T09:52:42.146887Z",
+          "id": "dep-db5loqlm4o4s73bmn950",
+          "startedAt": "2026-10-11T09:52:51.847893Z",
+          "status": "build_in_progress",
+          "trigger": "service_updated",
+          "updatedAt": "2026-10-11T09:52:51.847894Z"
+        },
+        {
+          "commit": {
+            "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+            "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+          },
+          "createdAt": "2026-10-11T09:49:57.237171Z",
+          "finishedAt": "2026-10-11T09:52:08.831606Z",
+          "id": "dep-db5lnhaek99c73ahuqk0",
+          "startedAt": "2026-10-11T09:51:08.753562Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-11T09:52:08.831607Z"
+        }
+      ],
+      "expected_stage": "b",
+      "checks": [
+        {
+          "path": "/",
+          "status": "200",
+          "exit": 0,
+          "body": "QA99_f5ca3d_a",
+          "expected": "QA99_f5ca3d_b",
+          "matches": false,
+          "prior_content_matches": true
+        },
+        {
+          "path": "/version.txt",
+          "status": "200",
+          "exit": 0,
+          "body": "QA99_f5ca3d_a_asset",
+          "expected": "QA99_f5ca3d_b_asset",
+          "matches": false,
+          "prior_content_matches": true
+        }
+      ]
+    },
+    {
+      "at": "2026-10-11T09:53:25.362929+00:00",
+      "deploys": [
+        {
+          "commit": {
+            "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+            "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+          },
+          "createdAt": "2026-10-11T09:52:42.146887Z",
+          "id": "dep-db5loqlm4o4s73bmn950",
+          "startedAt": "2026-10-11T09:52:51.847893Z",
+          "status": "build_in_progress",
+          "trigger": "service_updated",
+          "updatedAt": "2026-10-11T09:52:51.847894Z"
+        },
+        {
+          "commit": {
+            "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+            "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+          },
+          "createdAt": "2026-10-11T09:49:57.237171Z",
+          "finishedAt": "2026-10-11T09:52:08.831606Z",
+          "id": "dep-db5lnhaek99c73ahuqk0",
+          "startedAt": "2026-10-11T09:51:08.753562Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-11T09:52:08.831607Z"
+        }
+      ],
+      "expected_stage": "b",
+      "checks": [
+        {
+          "path": "/",
+          "status": "200",
+          "exit": 0,
+          "body": "QA99_f5ca3d_a",
+          "expected": "QA99_f5ca3d_b",
+          "matches": false,
+          "prior_content_matches": true
+        },
+        {
+          "path": "/version.txt",
+          "status": "200",
+          "exit": 0,
+          "body": "QA99_f5ca3d_a_asset",
+          "expected": "QA99_f5ca3d_b_asset",
+          "matches": false,
+          "prior_content_matches": true
+        }
+      ]
+    },
+    {
+      "at": "2026-10-11T09:54:11.365212+00:00",
+      "deploys": [
+        {
+          "commit": {
+            "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+            "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+          },
+          "createdAt": "2026-10-11T09:52:42.146887Z",
+          "finishedAt": "2026-10-11T09:53:51.017439Z",
+          "id": "dep-db5loqlm4o4s73bmn950",
+          "startedAt": "2026-10-11T09:52:51.847893Z",
+          "status": "live",
+          "trigger": "service_updated",
+          "updatedAt": "2026-10-11T09:53:51.01744Z"
+        },
+        {
+          "commit": {
+            "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+            "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+          },
+          "createdAt": "2026-10-11T09:49:57.237171Z",
+          "finishedAt": "2026-10-11T09:52:08.831606Z",
+          "id": "dep-db5lnhaek99c73ahuqk0",
+          "startedAt": "2026-10-11T09:51:08.753562Z",
+          "status": "deactivated",
+          "trigger": "other",
+          "updatedAt": "2026-10-11T09:53:51.024737Z"
+        }
+      ],
+      "expected_stage": "b",
+      "checks": [
+        {
+          "path": "/",
+          "status": "200",
+          "exit": 0,
+          "body": "QA99_f5ca3d_b",
+          "expected": "QA99_f5ca3d_b",
+          "matches": true,
+          "prior_content_matches": false
+        },
+        {
+          "path": "/version.txt",
+          "status": "200",
+          "exit": 0,
+          "body": "QA99_f5ca3d_b_asset",
+          "expected": "QA99_f5ca3d_b_asset",
+          "matches": true,
+          "prior_content_matches": false
+        }
+      ]
+    },
+    {
+      "at": "2026-10-11T09:56:13.967567+00:00",
+      "deploys": [
+        {
+          "commit": {
+            "createdAt": "2026-10-11T09:40:37Z",
+            "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+            "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+          },
+          "createdAt": "2026-10-11T09:54:24.418486Z",
+          "finishedAt": "2026-10-11T09:55:38.65345Z",
+          "id": "dep-db5lpk5m4o4s73bmn960",
+          "startedAt": "2026-10-11T09:54:38.6386Z",
+          "status": "live",
+          "trigger": "api",
+          "updatedAt": "2026-10-11T09:55:38.653451Z"
+        },
+        {
+          "commit": {
+            "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+            "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+          },
+          "createdAt": "2026-10-11T09:52:42.146887Z",
+          "finishedAt": "2026-10-11T09:53:51.017439Z",
+          "id": "dep-db5loqlm4o4s73bmn950",
+          "startedAt": "2026-10-11T09:52:51.847893Z",
+          "status": "deactivated",
+          "trigger": "service_updated",
+          "updatedAt": "2026-10-11T09:55:38.658919Z"
+        },
+        {
+          "commit": {
+            "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+            "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+          },
+          "createdAt": "2026-10-11T09:49:57.237171Z",
+          "finishedAt": "2026-10-11T09:52:08.831606Z",
+          "id": "dep-db5lnhaek99c73ahuqk0",
+          "startedAt": "2026-10-11T09:51:08.753562Z",
+          "status": "deactivated",
+          "trigger": "other",
+          "updatedAt": "2026-10-11T09:53:51.024737Z"
+        }
+      ],
+      "expected_stage": "b",
+      "checks": [
+        {
+          "path": "/",
+          "status": "200",
+          "exit": 0,
+          "body": "QA99_f5ca3d_b",
+          "expected": "QA99_f5ca3d_b",
+          "matches": true,
+          "prior_content_matches": false
+        },
+        {
+          "path": "/version.txt",
+          "status": "200",
+          "exit": 0,
+          "body": "QA99_f5ca3d_b_asset",
+          "expected": "QA99_f5ca3d_b_asset",
+          "matches": true,
+          "prior_content_matches": false
+        }
+      ]
+    }
+  ],
+  "direct_publication_checks": [
+    {
+      "at": "2026-10-11T09:56:42.035715+00:00",
+      "deploys": [
+        {
+          "commit": {
+            "createdAt": "2026-10-11T09:40:37Z",
+            "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+            "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+          },
+          "createdAt": "2026-10-11T09:56:20.846162Z",
+          "finishedAt": "2026-10-11T09:56:38.666392Z",
+          "id": "dep-db5lqh5m4o4s73bmn97g",
+          "status": "build_failed",
+          "trigger": "service_updated",
+          "updatedAt": "2026-10-11T09:56:38.666393Z"
+        },
+        {
+          "commit": {
+            "createdAt": "2026-10-11T09:40:37Z",
+            "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+            "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+          },
+          "createdAt": "2026-10-11T09:54:24.418486Z",
+          "finishedAt": "2026-10-11T09:55:38.65345Z",
+          "id": "dep-db5lpk5m4o4s73bmn960",
+          "startedAt": "2026-10-11T09:54:38.6386Z",
+          "status": "live",
+          "trigger": "api",
+          "updatedAt": "2026-10-11T09:55:38.653451Z"
+        },
+        {
+          "commit": {
+            "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+            "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+          },
+          "createdAt": "2026-10-11T09:52:42.146887Z",
+          "finishedAt": "2026-10-11T09:53:51.017439Z",
+          "id": "dep-db5loqlm4o4s73bmn950",
+          "startedAt": "2026-10-11T09:52:51.847893Z",
+          "status": "deactivated",
+          "trigger": "service_updated",
+          "updatedAt": "2026-10-11T09:55:38.658919Z"
+        },
+        {
+          "commit": {
+            "id": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+            "message": "fix(static): restore rollback from retained publication (w4/m197)\n\nA static_site rollback extracted the target's image through today's saved\npublish directory, so a bad saved directory made every rollback fail.\n\n- operator records each successful publish's object-store prefix per\n  generation (<app>-static-r<gen>), backfilling the outgoing served one\n- releaseConfig.staticPrefix selects a retained publication; image is now\n  optional (CEL: image or staticPrefix)\n- publish Job gains a retained-copy mode: aws-cli `fetch` syncs the prefix,\n  fails named on empty/unreadable source, upload copies to the new revision\n- bex-api Rollback selects the record for static sites (built and direct),\n  refuses unrecorded targets with a named 409 before dispatch; the\n  capability projection makes the same check\n- saved build/publish settings and BuildCommit stay unchanged"
+          },
+          "createdAt": "2026-10-11T09:49:57.237171Z",
+          "finishedAt": "2026-10-11T09:52:08.831606Z",
+          "id": "dep-db5lnhaek99c73ahuqk0",
+          "startedAt": "2026-10-11T09:51:08.753562Z",
+          "status": "deactivated",
+          "trigger": "other",
+          "updatedAt": "2026-10-11T09:53:51.024737Z"
+        }
+      ],
+      "source_commit": "741b541d2d32af54cb36ed09f237969c1bef78ae",
+      "expected_index": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>bex static site</title>\n    <style>\n      *,\n      *::before,\n      *::after {\n        box-sizing: border-box;\n        margin: 0;\n        padding: 0;\n      }\n      body {\n        font-family: system-ui, sans-serif;\n        background: #0f172a;\n        color: #e2e8f0;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        min-height: 100vh;\n      }\n      .card {\n        text-align: center;\n        padding: 3rem 4rem;\n        border: 1px solid #1e293b;\n        border-radius: 1rem;\n        background: #1e293b;\n        max-width: 480px;\n      }\n      h1 {\n        font-size: 2rem;\n        font-weight: 700;\n        letter-spacing: -0.03em;\n        color: #f8fafc;\n      }\n      p {\n        margin-top: 0.75rem;\n        color: #94a3b8;\n        line-height: 1.6;\n      }\n      .badge {\n        display: inline-block;\n        margin-top: 1.5rem;\n        padding: 0.35rem 0.85rem;\n        border-radius: 9999px;\n        font-size: 0.8rem;\n        font-weight: 600;\n        background: #6366f1;\n        color: #fff;\n      }\n    </style>\n  </head>\n  <body>\n    <div class=\"card\">\n      <h1>Hello from bex</h1>\n      <p>\n        This static site is served by bex — no server, no Dockerfile. Edit\n        <code>index.html</code>, push to git, and bex redeploys instantly.\n      </p>\n      <span class=\"badge\">static_site</span>\n    </div>\n  </body>\n</html>\n",
+      "checks": [
+        {
+          "path": "/",
+          "status": "200",
+          "exit": 0,
+          "body": "QA99_f5ca3d_b",
+          "expected_direct_matches": false,
+          "prior_content_matches": true
+        },
+        {
+          "path": "/version.txt",
+          "status": "200",
+          "exit": 0,
+          "body": "QA99_f5ca3d_b_asset",
+          "expected_direct_matches": false,
+          "prior_content_matches": true
+        }
+      ]
+    }
+  ],
+  "strategy_observations": [
+    {
+      "at": "2026-10-11T10:05:22.171286+00:00",
+      "request": {
+        "query": "query QA99StaticStrategy($id: String!) { service(id: $id) { id type runtime builder buildCommand publishPath } }",
+        "variables": {
+          "id": "srv-db5lnhaek99c73ahuqjg"
+        }
+      },
+      "api_only": {
+        "method": "POST",
+        "path": "/graphql",
+        "body": "{\"query\": \"query QA99StaticStrategy($id: String!) { service(id: $id) { id type runtime builder buildCommand publishPath } }\", \"variables\": {\"id\": \"srv-db5lnhaek99c73ahuqjg\"}}",
+        "status": "200",
+        "elapsed": 0.283,
+        "response": "{\"data\":{\"service\":{\"buildCommand\":\"\",\"builder\":\"native\",\"id\":\"srv-db5lnhaek99c73ahuqjg\",\"publishPath\":\".\",\"runtime\":\"\",\"type\":\"static_site\"}}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48d0bc4592ecf1b-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-11T10:09:15.092141+00:00",
+      "request": {
+        "query": "query QA99StaticStrategy($id: String!) { service(id: $id) { id type runtime builder buildCommand publishPath } }",
+        "variables": {
+          "id": "srv-db5lnhaek99c73ahuqjg"
+        }
+      },
+      "api_only": {
+        "method": "POST",
+        "path": "/graphql",
+        "body": "{\"query\": \"query QA99StaticStrategy($id: String!) { service(id: $id) { id type runtime builder buildCommand publishPath } }\", \"variables\": {\"id\": \"srv-db5lnhaek99c73ahuqjg\"}}",
+        "status": "200",
+        "elapsed": 0.259,
+        "response": "{\"data\":{\"service\":{\"buildCommand\":\"\",\"builder\":\"native\",\"id\":\"srv-db5lnhaek99c73ahuqjg\",\"publishPath\":\".\",\"runtime\":\"\",\"type\":\"static_site\"}}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48d11744be2c710-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    }
+  ]
+}

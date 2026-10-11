@@ -1,0 +1,1199 @@
+[
+  {
+    "at": "2026-10-11T09:11:12.646000+00:00",
+    "client": "bex",
+    "term": "QA96_394cfd",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5l3ijcgaac73d05ft0",
+      "--type",
+      "app",
+      "--text",
+      "\"QA96_394cfd\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.686,
+      "stdout": "{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306066423Z-cb4ea9c6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd РУССКИЙ\",\n  \"timestamp\": \"2026-10-11T09:09:34.306066423Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306454667Z-ff2be17a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd русский\",\n  \"timestamp\": \"2026-10-11T09:09:34.306454667Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306465577Z-d5be63f1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd ΡΟΔΟ\",\n  \"timestamp\": \"2026-10-11T09:09:34.306465577Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306478802Z-25384784\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd ροδο\",\n  \"timestamp\": \"2026-10-11T09:09:34.306478802Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306520649Z-fab29de0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd KELVIN\",\n  \"timestamp\": \"2026-10-11T09:09:34.306520649Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306523624Z-1c94aa4f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd KELVIN\",\n  \"timestamp\": \"2026-10-11T09:09:34.306523624Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306604846Z-f1c510cf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd kelvin\",\n  \"timestamp\": \"2026-10-11T09:09:34.306604846Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.30660733Z-c710147d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd İSTANBUL\",\n  \"timestamp\": \"2026-10-11T09:09:34.30660733Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306608603Z-ff68b4e4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd ISTANBUL\",\n  \"timestamp\": \"2026-10-11T09:09:34.306608603Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.307530313Z-6f9118e4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd istanbul\",\n  \"timestamp\": \"2026-10-11T09:09:34.307530313Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.307540742Z-ce5d89fb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd Ι\",\n  \"timestamp\": \"2026-10-11T09:09:34.307540742Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.307548066Z-ae5d579b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd ι\",\n  \"timestamp\": \"2026-10-11T09:09:34.307548066Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T09:11:15.347107+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5l3ijcgaac73d05ft0&type=app&text=QA96_394cfd&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5l3ijcgaac73d05ft0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA96_394cfd"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48cbc70ba63d001-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T08:11:15.253772376Z\",\"nextEndTime\":\"2026-10-11T09:09:34.306066422Z\",\"logs\":[{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306066423Z-cb4ea9c6\",\"message\":\"QA96_394cfd РУССКИЙ\",\"timestamp\":\"2026-10-11T09:09:34.306066423Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306454667Z-ff2be17a\",\"message\":\"QA96_394cfd русский\",\"timestamp\":\"2026-10-11T09:09:34.306454667Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306465577Z-d5be63f1\",\"message\":\"QA96_394cfd ΡΟΔΟ\",\"timestamp\":\"2026-10-11T09:09:34.306465577Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306478802Z-25384784\",\"message\":\"QA96_394cfd ροδο\",\"timestamp\":\"2026-10-11T09:09:34.306478802Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306520649Z-fab29de0\",\"message\":\"QA96_394cfd KELVIN\",\"timestamp\":\"2026-10-11T09:09:34.306520649Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306523624Z-1c94aa4f\",\"message\":\"QA96_394cfd KELVIN\",\"timestamp\":\"2026-10-11T09:09:34.306523624Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306604846Z-f1c510cf\",\"message\":\"QA96_394cfd kelvin\",\"timestamp\":\"2026-10-11T09:09:34.306604846Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.30660733Z-c710147d\",\"message\":\"QA96_394cfd İSTANBUL\",\"timestamp\":\"2026-10-11T09:09:34.30660733Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306608603Z-ff68b4e4\",\"message\":\"QA96_394cfd ISTANBUL\",\"timestamp\":\"2026-10-11T09:09:34.306608603Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.307530313Z-6f9118e4\",\"message\":\"QA96_394cfd istanbul\",\"timestamp\":\"2026-10-11T09:09:34.307530313Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.307540742Z-ce5d89fb\",\"message\":\"QA96_394cfd Ι\",\"timestamp\":\"2026-10-11T09:09:34.307540742Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.307548066Z-ae5d579b\",\"message\":\"QA96_394cfd ι\",\"timestamp\":\"2026-10-11T09:09:34.307548066Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T09:11:15.898833+00:00",
+    "client": "bex",
+    "term": "русский",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5l3ijcgaac73d05ft0",
+      "--type",
+      "app",
+      "--text",
+      "\"русский\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 3.224,
+      "stdout": "{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306454667Z-ff2be17a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd русский\",\n  \"timestamp\": \"2026-10-11T09:09:34.306454667Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T09:11:19.140438+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5l3ijcgaac73d05ft0&type=app&text=%D1%80%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5l3ijcgaac73d05ft0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "русский"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48cbc850d122714-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T08:11:19.04472845Z\",\"nextEndTime\":\"2026-10-11T09:09:34.306454666Z\",\"logs\":[{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306454667Z-ff2be17a\",\"message\":\"QA96_394cfd русский\",\"timestamp\":\"2026-10-11T09:09:34.306454667Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T09:11:19.645944+00:00",
+    "client": "bex",
+    "term": "ροδο",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5l3ijcgaac73d05ft0",
+      "--type",
+      "app",
+      "--text",
+      "\"ροδο\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.875,
+      "stdout": "{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306478802Z-25384784\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd ροδο\",\n  \"timestamp\": \"2026-10-11T09:09:34.306478802Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T09:11:22.535152+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5l3ijcgaac73d05ft0&type=app&text=%CF%81%CE%BF%CE%B4%CE%BF&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5l3ijcgaac73d05ft0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "ροδο"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48cbc9c7de0e8d9-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T08:11:22.440043226Z\",\"nextEndTime\":\"2026-10-11T09:09:34.306478801Z\",\"logs\":[{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306478802Z-25384784\",\"message\":\"QA96_394cfd ροδο\",\"timestamp\":\"2026-10-11T09:09:34.306478802Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T09:11:22.910277+00:00",
+    "client": "bex",
+    "term": "kelvin",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5l3ijcgaac73d05ft0",
+      "--type",
+      "app",
+      "--text",
+      "\"kelvin\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.6,
+      "stdout": "{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306523624Z-1c94aa4f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd KELVIN\",\n  \"timestamp\": \"2026-10-11T09:09:34.306523624Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306604846Z-f1c510cf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd kelvin\",\n  \"timestamp\": \"2026-10-11T09:09:34.306604846Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T09:11:25.525149+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5l3ijcgaac73d05ft0&type=app&text=kelvin&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5l3ijcgaac73d05ft0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "kelvin"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48cbcb0de3dfb40-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T08:11:25.425191141Z\",\"nextEndTime\":\"2026-10-11T09:09:34.306523623Z\",\"logs\":[{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306523624Z-1c94aa4f\",\"message\":\"QA96_394cfd KELVIN\",\"timestamp\":\"2026-10-11T09:09:34.306523624Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306604846Z-f1c510cf\",\"message\":\"QA96_394cfd kelvin\",\"timestamp\":\"2026-10-11T09:09:34.306604846Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T09:11:26.163167+00:00",
+    "client": "bex",
+    "term": "istanbul",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5l3ijcgaac73d05ft0",
+      "--type",
+      "app",
+      "--text",
+      "\"istanbul\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.961,
+      "stdout": "{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306608603Z-ff68b4e4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd ISTANBUL\",\n  \"timestamp\": \"2026-10-11T09:09:34.306608603Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.307530313Z-6f9118e4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd istanbul\",\n  \"timestamp\": \"2026-10-11T09:09:34.307530313Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T09:11:29.140089+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5l3ijcgaac73d05ft0&type=app&text=istanbul&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5l3ijcgaac73d05ft0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "istanbul"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48cbcc53b3e7af2-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T08:11:29.046401683Z\",\"nextEndTime\":\"2026-10-11T09:09:34.306608602Z\",\"logs\":[{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306608603Z-ff68b4e4\",\"message\":\"QA96_394cfd ISTANBUL\",\"timestamp\":\"2026-10-11T09:09:34.306608603Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.307530313Z-6f9118e4\",\"message\":\"QA96_394cfd istanbul\",\"timestamp\":\"2026-10-11T09:09:34.307530313Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T09:11:29.407193+00:00",
+    "client": "bex",
+    "term": "ι",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5l3ijcgaac73d05ft0",
+      "--type",
+      "app",
+      "--text",
+      "\"ι\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.916,
+      "stdout": "",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T09:11:32.339940+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5l3ijcgaac73d05ft0&type=app&text=%CE%B9&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5l3ijcgaac73d05ft0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "ι"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48cbcd97b26f31f-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T08:11:32Z\",\"nextEndTime\":\"2026-10-11T09:11:32Z\",\"logs\":[]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T09:11:32.663042+00:00",
+    "client": "bex",
+    "term": "QA96_394cfd русский",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5l3ijcgaac73d05ft0",
+      "--type",
+      "app",
+      "--text",
+      "\"QA96_394cfd русский\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.58,
+      "stdout": "{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306066423Z-cb4ea9c6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd РУССКИЙ\",\n  \"timestamp\": \"2026-10-11T09:09:34.306066423Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306454667Z-ff2be17a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd русский\",\n  \"timestamp\": \"2026-10-11T09:09:34.306454667Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T09:11:35.256730+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5l3ijcgaac73d05ft0&type=app&text=QA96_394cfd+%D1%80%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5l3ijcgaac73d05ft0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA96_394cfd русский"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48cbcee1acfeb26-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T08:11:35.162409374Z\",\"nextEndTime\":\"2026-10-11T09:09:34.306066422Z\",\"logs\":[{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306066423Z-cb4ea9c6\",\"message\":\"QA96_394cfd РУССКИЙ\",\"timestamp\":\"2026-10-11T09:09:34.306066423Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306454667Z-ff2be17a\",\"message\":\"QA96_394cfd русский\",\"timestamp\":\"2026-10-11T09:09:34.306454667Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T09:11:35.922622+00:00",
+    "client": "bex",
+    "term": "QA96_394cfd istanbul",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5l3ijcgaac73d05ft0",
+      "--type",
+      "app",
+      "--text",
+      "\"QA96_394cfd istanbul\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.815,
+      "stdout": "{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.30660733Z-c710147d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd İSTANBUL\",\n  \"timestamp\": \"2026-10-11T09:09:34.30660733Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306608603Z-ff68b4e4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd ISTANBUL\",\n  \"timestamp\": \"2026-10-11T09:09:34.306608603Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.307530313Z-6f9118e4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd istanbul\",\n  \"timestamp\": \"2026-10-11T09:09:34.307530313Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T09:11:38.753061+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5l3ijcgaac73d05ft0&type=app&text=QA96_394cfd+istanbul&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5l3ijcgaac73d05ft0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA96_394cfd istanbul"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48cbd022f1614b6-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T08:11:38.661388059Z\",\"nextEndTime\":\"2026-10-11T09:09:34.306607329Z\",\"logs\":[{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.30660733Z-c710147d\",\"message\":\"QA96_394cfd İSTANBUL\",\"timestamp\":\"2026-10-11T09:09:34.30660733Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306608603Z-ff68b4e4\",\"message\":\"QA96_394cfd ISTANBUL\",\"timestamp\":\"2026-10-11T09:09:34.306608603Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.307530313Z-6f9118e4\",\"message\":\"QA96_394cfd istanbul\",\"timestamp\":\"2026-10-11T09:09:34.307530313Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T09:11:39.183394+00:00",
+    "client": "bex",
+    "term": "QA96_394cfd kelvin",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5l3ijcgaac73d05ft0",
+      "--type",
+      "app",
+      "--text",
+      "\"QA96_394cfd kelvin\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.535,
+      "stdout": "{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306520649Z-fab29de0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd KELVIN\",\n  \"timestamp\": \"2026-10-11T09:09:34.306520649Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306523624Z-1c94aa4f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd KELVIN\",\n  \"timestamp\": \"2026-10-11T09:09:34.306523624Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306604846Z-f1c510cf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd kelvin\",\n  \"timestamp\": \"2026-10-11T09:09:34.306604846Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T09:11:41.734660+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5l3ijcgaac73d05ft0&type=app&text=QA96_394cfd+kelvin&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5l3ijcgaac73d05ft0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA96_394cfd kelvin"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48cbd169a545a2e-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T08:11:41.643065132Z\",\"nextEndTime\":\"2026-10-11T09:09:34.306520648Z\",\"logs\":[{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306520649Z-fab29de0\",\"message\":\"QA96_394cfd KELVIN\",\"timestamp\":\"2026-10-11T09:09:34.306520649Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306523624Z-1c94aa4f\",\"message\":\"QA96_394cfd KELVIN\",\"timestamp\":\"2026-10-11T09:09:34.306523624Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306604846Z-f1c510cf\",\"message\":\"QA96_394cfd kelvin\",\"timestamp\":\"2026-10-11T09:09:34.306604846Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T09:11:41.932273+00:00",
+    "client": "render",
+    "term": "QA96_394cfd",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5l3ijcgaac73d05ft0",
+      "--type",
+      "app",
+      "--text",
+      "\"QA96_394cfd\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.7,
+      "stdout": "{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306066423Z-cb4ea9c6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd РУССКИЙ\",\n  \"timestamp\": \"2026-10-11T09:09:34.306066423Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306454667Z-ff2be17a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd русский\",\n  \"timestamp\": \"2026-10-11T09:09:34.306454667Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306465577Z-d5be63f1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd ΡΟΔΟ\",\n  \"timestamp\": \"2026-10-11T09:09:34.306465577Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306478802Z-25384784\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd ροδο\",\n  \"timestamp\": \"2026-10-11T09:09:34.306478802Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306520649Z-fab29de0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd KELVIN\",\n  \"timestamp\": \"2026-10-11T09:09:34.306520649Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306523624Z-1c94aa4f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd KELVIN\",\n  \"timestamp\": \"2026-10-11T09:09:34.306523624Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306604846Z-f1c510cf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd kelvin\",\n  \"timestamp\": \"2026-10-11T09:09:34.306604846Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.30660733Z-c710147d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd İSTANBUL\",\n  \"timestamp\": \"2026-10-11T09:09:34.30660733Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306608603Z-ff68b4e4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd ISTANBUL\",\n  \"timestamp\": \"2026-10-11T09:09:34.306608603Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.307530313Z-6f9118e4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd istanbul\",\n  \"timestamp\": \"2026-10-11T09:09:34.307530313Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.307540742Z-ce5d89fb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd Ι\",\n  \"timestamp\": \"2026-10-11T09:09:34.307540742Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.307548066Z-ae5d579b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd ι\",\n  \"timestamp\": \"2026-10-11T09:09:34.307548066Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T09:11:44.646019+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5l3ijcgaac73d05ft0&type=app&text=QA96_394cfd&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5l3ijcgaac73d05ft0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA96_394cfd"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48cbd283cc4ea80-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T08:11:44.541039417Z\",\"nextEndTime\":\"2026-10-11T09:09:34.306066422Z\",\"logs\":[{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306066423Z-cb4ea9c6\",\"message\":\"QA96_394cfd РУССКИЙ\",\"timestamp\":\"2026-10-11T09:09:34.306066423Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306454667Z-ff2be17a\",\"message\":\"QA96_394cfd русский\",\"timestamp\":\"2026-10-11T09:09:34.306454667Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306465577Z-d5be63f1\",\"message\":\"QA96_394cfd ΡΟΔΟ\",\"timestamp\":\"2026-10-11T09:09:34.306465577Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306478802Z-25384784\",\"message\":\"QA96_394cfd ροδο\",\"timestamp\":\"2026-10-11T09:09:34.306478802Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306520649Z-fab29de0\",\"message\":\"QA96_394cfd KELVIN\",\"timestamp\":\"2026-10-11T09:09:34.306520649Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306523624Z-1c94aa4f\",\"message\":\"QA96_394cfd KELVIN\",\"timestamp\":\"2026-10-11T09:09:34.306523624Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306604846Z-f1c510cf\",\"message\":\"QA96_394cfd kelvin\",\"timestamp\":\"2026-10-11T09:09:34.306604846Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.30660733Z-c710147d\",\"message\":\"QA96_394cfd İSTANBUL\",\"timestamp\":\"2026-10-11T09:09:34.30660733Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306608603Z-ff68b4e4\",\"message\":\"QA96_394cfd ISTANBUL\",\"timestamp\":\"2026-10-11T09:09:34.306608603Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.307530313Z-6f9118e4\",\"message\":\"QA96_394cfd istanbul\",\"timestamp\":\"2026-10-11T09:09:34.307530313Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.307540742Z-ce5d89fb\",\"message\":\"QA96_394cfd Ι\",\"timestamp\":\"2026-10-11T09:09:34.307540742Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.307548066Z-ae5d579b\",\"message\":\"QA96_394cfd ι\",\"timestamp\":\"2026-10-11T09:09:34.307548066Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T09:11:45.256133+00:00",
+    "client": "render",
+    "term": "русский",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5l3ijcgaac73d05ft0",
+      "--type",
+      "app",
+      "--text",
+      "\"русский\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.391,
+      "stdout": "{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306454667Z-ff2be17a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd русский\",\n  \"timestamp\": \"2026-10-11T09:09:34.306454667Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T09:11:47.661104+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5l3ijcgaac73d05ft0&type=app&text=%D1%80%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5l3ijcgaac73d05ft0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "русский"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48cbd3c8e38174a-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T08:11:47.569673888Z\",\"nextEndTime\":\"2026-10-11T09:09:34.306454666Z\",\"logs\":[{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306454667Z-ff2be17a\",\"message\":\"QA96_394cfd русский\",\"timestamp\":\"2026-10-11T09:09:34.306454667Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T09:11:48.000003+00:00",
+    "client": "render",
+    "term": "ροδο",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5l3ijcgaac73d05ft0",
+      "--type",
+      "app",
+      "--text",
+      "\"ροδο\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.521,
+      "stdout": "{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306478802Z-25384784\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd ροδο\",\n  \"timestamp\": \"2026-10-11T09:09:34.306478802Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T09:11:50.536227+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5l3ijcgaac73d05ft0&type=app&text=%CF%81%CE%BF%CE%B4%CE%BF&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5l3ijcgaac73d05ft0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "ροδο"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48cbd4dce31138a-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T08:11:50.440853827Z\",\"nextEndTime\":\"2026-10-11T09:09:34.306478801Z\",\"logs\":[{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306478802Z-25384784\",\"message\":\"QA96_394cfd ροδο\",\"timestamp\":\"2026-10-11T09:09:34.306478802Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T09:11:50.770181+00:00",
+    "client": "render",
+    "term": "kelvin",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5l3ijcgaac73d05ft0",
+      "--type",
+      "app",
+      "--text",
+      "\"kelvin\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.551,
+      "stdout": "{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306523624Z-1c94aa4f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd KELVIN\",\n  \"timestamp\": \"2026-10-11T09:09:34.306523624Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306604846Z-f1c510cf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd kelvin\",\n  \"timestamp\": \"2026-10-11T09:09:34.306604846Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T09:11:53.335730+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5l3ijcgaac73d05ft0&type=app&text=kelvin&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5l3ijcgaac73d05ft0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "kelvin"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48cbd5efd2f1b51-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T08:11:53.243327457Z\",\"nextEndTime\":\"2026-10-11T09:09:34.306523623Z\",\"logs\":[{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306523624Z-1c94aa4f\",\"message\":\"QA96_394cfd KELVIN\",\"timestamp\":\"2026-10-11T09:09:34.306523624Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306604846Z-f1c510cf\",\"message\":\"QA96_394cfd kelvin\",\"timestamp\":\"2026-10-11T09:09:34.306604846Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T09:11:54.018230+00:00",
+    "client": "render",
+    "term": "istanbul",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5l3ijcgaac73d05ft0",
+      "--type",
+      "app",
+      "--text",
+      "\"istanbul\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.803,
+      "stdout": "{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306608603Z-ff68b4e4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd ISTANBUL\",\n  \"timestamp\": \"2026-10-11T09:09:34.306608603Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.307530313Z-6f9118e4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd istanbul\",\n  \"timestamp\": \"2026-10-11T09:09:34.307530313Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T09:11:56.835087+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5l3ijcgaac73d05ft0&type=app&text=istanbul&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5l3ijcgaac73d05ft0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "istanbul"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48cbd734a095024-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T08:11:56.743953052Z\",\"nextEndTime\":\"2026-10-11T09:09:34.306608602Z\",\"logs\":[{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306608603Z-ff68b4e4\",\"message\":\"QA96_394cfd ISTANBUL\",\"timestamp\":\"2026-10-11T09:09:34.306608603Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.307530313Z-6f9118e4\",\"message\":\"QA96_394cfd istanbul\",\"timestamp\":\"2026-10-11T09:09:34.307530313Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T09:11:57.271988+00:00",
+    "client": "render",
+    "term": "ι",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5l3ijcgaac73d05ft0",
+      "--type",
+      "app",
+      "--text",
+      "\"ι\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.561,
+      "stdout": "",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T09:11:59.847252+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5l3ijcgaac73d05ft0&type=app&text=%CE%B9&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5l3ijcgaac73d05ft0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "ι"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48cbd879df24c7c-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T08:11:59Z\",\"nextEndTime\":\"2026-10-11T09:11:59Z\",\"logs\":[]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T09:12:00.518962+00:00",
+    "client": "render",
+    "term": "QA96_394cfd русский",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5l3ijcgaac73d05ft0",
+      "--type",
+      "app",
+      "--text",
+      "\"QA96_394cfd русский\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.767,
+      "stdout": "{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306066423Z-cb4ea9c6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd РУССКИЙ\",\n  \"timestamp\": \"2026-10-11T09:09:34.306066423Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306454667Z-ff2be17a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd русский\",\n  \"timestamp\": \"2026-10-11T09:09:34.306454667Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T09:12:03.301679+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5l3ijcgaac73d05ft0&type=app&text=QA96_394cfd+%D1%80%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5l3ijcgaac73d05ft0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA96_394cfd русский"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48cbd9bdceddc0d-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T08:12:03.149736343Z\",\"nextEndTime\":\"2026-10-11T09:09:34.306066422Z\",\"logs\":[{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306066423Z-cb4ea9c6\",\"message\":\"QA96_394cfd РУССКИЙ\",\"timestamp\":\"2026-10-11T09:09:34.306066423Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306454667Z-ff2be17a\",\"message\":\"QA96_394cfd русский\",\"timestamp\":\"2026-10-11T09:09:34.306454667Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T09:12:03.768000+00:00",
+    "client": "render",
+    "term": "QA96_394cfd istanbul",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5l3ijcgaac73d05ft0",
+      "--type",
+      "app",
+      "--text",
+      "\"QA96_394cfd istanbul\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.756,
+      "stdout": "{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.30660733Z-c710147d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd İSTANBUL\",\n  \"timestamp\": \"2026-10-11T09:09:34.30660733Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306608603Z-ff68b4e4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd ISTANBUL\",\n  \"timestamp\": \"2026-10-11T09:09:34.306608603Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.307530313Z-6f9118e4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd istanbul\",\n  \"timestamp\": \"2026-10-11T09:09:34.307530313Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T09:12:06.535780+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5l3ijcgaac73d05ft0&type=app&text=QA96_394cfd+istanbul&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5l3ijcgaac73d05ft0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA96_394cfd istanbul"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48cbdb0390df897-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T08:12:06.406242372Z\",\"nextEndTime\":\"2026-10-11T09:09:34.306607329Z\",\"logs\":[{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.30660733Z-c710147d\",\"message\":\"QA96_394cfd İSTANBUL\",\"timestamp\":\"2026-10-11T09:09:34.30660733Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306608603Z-ff68b4e4\",\"message\":\"QA96_394cfd ISTANBUL\",\"timestamp\":\"2026-10-11T09:09:34.306608603Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.307530313Z-6f9118e4\",\"message\":\"QA96_394cfd istanbul\",\"timestamp\":\"2026-10-11T09:09:34.307530313Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T09:12:07.015701+00:00",
+    "client": "render",
+    "term": "QA96_394cfd kelvin",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5l3ijcgaac73d05ft0",
+      "--type",
+      "app",
+      "--text",
+      "\"QA96_394cfd kelvin\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.406,
+      "stdout": "{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306520649Z-fab29de0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd KELVIN\",\n  \"timestamp\": \"2026-10-11T09:09:34.306520649Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306523624Z-1c94aa4f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd KELVIN\",\n  \"timestamp\": \"2026-10-11T09:09:34.306523624Z\"\n}{\n  \"id\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306604846Z-f1c510cf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA96_394cfd kelvin\",\n  \"timestamp\": \"2026-10-11T09:09:34.306604846Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T09:12:09.435518+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5l3ijcgaac73d05ft0&type=app&text=QA96_394cfd+kelvin&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5l3ijcgaac73d05ft0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA96_394cfd kelvin"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48cbdc479c76c97-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T08:12:09.342068841Z\",\"nextEndTime\":\"2026-10-11T09:09:34.306520648Z\",\"logs\":[{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306520649Z-fab29de0\",\"message\":\"QA96_394cfd KELVIN\",\"timestamp\":\"2026-10-11T09:09:34.306520649Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306523624Z-1c94aa4f\",\"message\":\"QA96_394cfd KELVIN\",\"timestamp\":\"2026-10-11T09:09:34.306523624Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1-2026-10-11T09:09:34.306604846Z-f1c510cf\",\"message\":\"QA96_394cfd kelvin\",\"timestamp\":\"2026-10-11T09:09:34.306604846Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5l3ijcgaac73d05ft0\"},{\"name\":\"instance\",\"value\":\"srv-db5l3ijcgaac73d05ft0-5vt552fdanb7lcf6v1e1\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  }
+]

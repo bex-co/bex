@@ -1,0 +1,338 @@
+[
+  {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5jv0gmmd8c73drribg",
+      "--type",
+      "app",
+      "--text",
+      "\"QA89_LEFT_4b444e,QA89_RIGHT_4b444e\"",
+      "--start",
+      "2026-10-11T07:51:22Z",
+      "--end",
+      "2026-10-11T07:51:25Z",
+      "--limit",
+      "10",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.065,
+    "stdout": "{\n  \"id\": \"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084512411Z-033fe9d0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5jv0gmmd8c73drribg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA89_LEFT_4b444e,QA89_RIGHT_4b444e\",\n  \"timestamp\": \"2026-10-11T07:51:23.084512411Z\"\n}",
+    "stderr": "",
+    "client": "bex",
+    "case": "literal-comma",
+    "parsed_rows": [
+      {
+        "id": "srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084512411Z-033fe9d0",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5jv0gmmd8c73drribg"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA89_LEFT_4b444e,QA89_RIGHT_4b444e",
+        "timestamp": "2026-10-11T07:51:23.084512411Z"
+      }
+    ]
+  },
+  {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5jv0gmmd8c73drribg",
+      "--type",
+      "app",
+      "--text",
+      "QA89_LEFT_4b444e,QA89_RIGHT_4b444e",
+      "--start",
+      "2026-10-11T07:51:22Z",
+      "--end",
+      "2026-10-11T07:51:25Z",
+      "--limit",
+      "10",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.325,
+    "stdout": "{\n  \"id\": \"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084512411Z-033fe9d0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5jv0gmmd8c73drribg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA89_LEFT_4b444e,QA89_RIGHT_4b444e\",\n  \"timestamp\": \"2026-10-11T07:51:23.084512411Z\"\n}{\n  \"id\": \"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084784989Z-4b42a646\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5jv0gmmd8c73drribg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA89_LEFT_4b444e only\",\n  \"timestamp\": \"2026-10-11T07:51:23.084784989Z\"\n}{\n  \"id\": \"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084789748Z-7074492b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5jv0gmmd8c73drribg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA89_RIGHT_4b444e only\",\n  \"timestamp\": \"2026-10-11T07:51:23.084789748Z\"\n}",
+    "stderr": "",
+    "client": "bex",
+    "case": "two-OR-terms",
+    "parsed_rows": [
+      {
+        "id": "srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084512411Z-033fe9d0",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5jv0gmmd8c73drribg"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA89_LEFT_4b444e,QA89_RIGHT_4b444e",
+        "timestamp": "2026-10-11T07:51:23.084512411Z"
+      },
+      {
+        "id": "srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084784989Z-4b42a646",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5jv0gmmd8c73drribg"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA89_LEFT_4b444e only",
+        "timestamp": "2026-10-11T07:51:23.084784989Z"
+      },
+      {
+        "id": "srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084789748Z-7074492b",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5jv0gmmd8c73drribg"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA89_RIGHT_4b444e only",
+        "timestamp": "2026-10-11T07:51:23.084789748Z"
+      }
+    ]
+  },
+  {
+    "binary": "unmodified Render pin a764810a7682",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5jv0gmmd8c73drribg",
+      "--type",
+      "app",
+      "--text",
+      "\"QA89_LEFT_4b444e,QA89_RIGHT_4b444e\"",
+      "--start",
+      "2026-10-11T07:51:22Z",
+      "--end",
+      "2026-10-11T07:51:25Z",
+      "--limit",
+      "10",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.427,
+    "stdout": "{\n  \"id\": \"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084512411Z-033fe9d0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5jv0gmmd8c73drribg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA89_LEFT_4b444e,QA89_RIGHT_4b444e\",\n  \"timestamp\": \"2026-10-11T07:51:23.084512411Z\"\n}",
+    "stderr": "",
+    "client": "render",
+    "case": "literal-comma",
+    "parsed_rows": [
+      {
+        "id": "srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084512411Z-033fe9d0",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5jv0gmmd8c73drribg"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA89_LEFT_4b444e,QA89_RIGHT_4b444e",
+        "timestamp": "2026-10-11T07:51:23.084512411Z"
+      }
+    ]
+  },
+  {
+    "binary": "unmodified Render pin a764810a7682",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5jv0gmmd8c73drribg",
+      "--type",
+      "app",
+      "--text",
+      "QA89_LEFT_4b444e,QA89_RIGHT_4b444e",
+      "--start",
+      "2026-10-11T07:51:22Z",
+      "--end",
+      "2026-10-11T07:51:25Z",
+      "--limit",
+      "10",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.429,
+    "stdout": "{\n  \"id\": \"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084512411Z-033fe9d0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5jv0gmmd8c73drribg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA89_LEFT_4b444e,QA89_RIGHT_4b444e\",\n  \"timestamp\": \"2026-10-11T07:51:23.084512411Z\"\n}{\n  \"id\": \"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084784989Z-4b42a646\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5jv0gmmd8c73drribg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA89_LEFT_4b444e only\",\n  \"timestamp\": \"2026-10-11T07:51:23.084784989Z\"\n}{\n  \"id\": \"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084789748Z-7074492b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5jv0gmmd8c73drribg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA89_RIGHT_4b444e only\",\n  \"timestamp\": \"2026-10-11T07:51:23.084789748Z\"\n}",
+    "stderr": "",
+    "client": "render",
+    "case": "two-OR-terms",
+    "parsed_rows": [
+      {
+        "id": "srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084512411Z-033fe9d0",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5jv0gmmd8c73drribg"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA89_LEFT_4b444e,QA89_RIGHT_4b444e",
+        "timestamp": "2026-10-11T07:51:23.084512411Z"
+      },
+      {
+        "id": "srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084784989Z-4b42a646",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5jv0gmmd8c73drribg"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA89_LEFT_4b444e only",
+        "timestamp": "2026-10-11T07:51:23.084784989Z"
+      },
+      {
+        "id": "srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5-2026-10-11T07:51:23.084789748Z-7074492b",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5jv0gmmd8c73drribg"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5jv0gmmd8c73drribg-gv32q42k2calc07jktq5"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA89_RIGHT_4b444e only",
+        "timestamp": "2026-10-11T07:51:23.084789748Z"
+      }
+    ]
+  }
+]

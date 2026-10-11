@@ -1,0 +1,212 @@
+[
+  {
+    "file": "pkg/tui/flows/log.go",
+    "line": 63,
+    "text": "return command.AddToStack("
+  },
+  {
+    "file": "pkg/tui/flows/log.go",
+    "line": 83,
+    "text": "return command.AddToStack(f.deps.Stack(), f.deps.LogsCmd(), \"Resources\", &input, resourceTable)"
+  },
+  {
+    "file": "pkg/tui/flows/log.go",
+    "line": 87,
+    "text": "return command.AddToStackFunc(ctx, f.deps.LogsCmd(), breadcrumb, &in, views.NewLogsView(ctx, f.deps.LogsCmd(), f.filterLogs, in, f.deps.LogLoader().LoadLogData))"
+  },
+  {
+    "file": "pkg/tui/flows/options.go",
+    "line": 63,
+    "text": "return command.AddToStackFunc(ctx, cmd, breadcrumb, in,"
+  },
+  {
+    "file": "pkg/tui/flows/workspace.go",
+    "line": 27,
+    "text": "return command.AddToStack(f.deps.Stack(), f.deps.WorkspaceSetCmd(), \"Set Workspace\", &input, views.NewWorkspaceView(ctx, input))"
+  },
+  {
+    "file": "pkg/tui/flows/workflow.go",
+    "line": 84,
+    "text": "return command.AddToStack("
+  },
+  {
+    "file": "pkg/tui/flows/workflow.go",
+    "line": 118,
+    "text": "return command.AddToStack("
+  },
+  {
+    "file": "pkg/tui/flows/workflow.go",
+    "line": 128,
+    "text": "return command.AddToStack("
+  },
+  {
+    "file": "pkg/tui/flows/workflow.go",
+    "line": 164,
+    "text": "return command.AddToStack("
+  },
+  {
+    "file": "pkg/tui/flows/workflow.go",
+    "line": 191,
+    "text": "return command.AddToStack("
+  },
+  {
+    "file": "pkg/tui/flows/workflow.go",
+    "line": 201,
+    "text": "return command.AddToStack(f.deps.Stack(), f.deps.ListWorkflow(), resource.BreadcrumbForResource(r), &views.PaletteCommand{},"
+  },
+  {
+    "file": "pkg/tui/flows/workflow.go",
+    "line": 255,
+    "text": "return command.AddToStack(f.deps.Stack(), f.deps.ListVersions(), v.Name, &views.PaletteCommand{},"
+  },
+  {
+    "file": "pkg/tui/flows/workflow.go",
+    "line": 289,
+    "text": "return command.AddToStack(f.deps.Stack(), f.deps.ListTask(), t.Name, &views.PaletteCommand{},"
+  },
+  {
+    "file": "pkg/tui/flows/workflow.go",
+    "line": 310,
+    "text": "return command.AddToStack(f.deps.Stack(), f.deps.ListRuns(), \"Runs\", input, workflowviews.NewTaskRunListView("
+  },
+  {
+    "file": "pkg/tui/flows/workflow.go",
+    "line": 319,
+    "text": "return command.AddToStack(f.deps.Stack(), f.deps.ListRuns(), taskRun.Id, &views.PaletteCommand{},"
+  },
+  {
+    "file": "pkg/tui/flows/workflow.go",
+    "line": 364,
+    "text": "return command.AddToStack(f.deps.Stack(), f.deps.RunDetailsCmd(), \"Details\", input, tui.NewDetailsModel[*workflows.TaskRunDetails]("
+  },
+  {
+    "file": "cmd/pgcli.go",
+    "line": 35,
+    "text": "return command.AddToStackFunc("
+  },
+  {
+    "file": "cmd/service.go",
+    "line": 230,
+    "text": "return command.AddToStackFunc(ctx, servicesCmd, breadcrumb, &in,"
+  },
+  {
+    "file": "cmd/workflowcreate.go",
+    "line": 123,
+    "text": "return command.AddToStackFunc("
+  },
+  {
+    "file": "cmd/palette.go",
+    "line": 12,
+    "text": "return command.AddToStackFunc(ctx, servicesCmd, breadcrumb, &views.PaletteCommand{},"
+  },
+  {
+    "file": "cmd/instancelist.go",
+    "line": 64,
+    "text": "return command.AddToStackFunc("
+  },
+  {
+    "file": "cmd/instancelist.go",
+    "line": 85,
+    "text": "return command.AddToStackFunc(ctx, instanceListCmd, breadcrumb, &input, views.NewInstanceListView("
+  },
+  {
+    "file": "cmd/kvcli.go",
+    "line": 34,
+    "text": "return command.AddToStackFunc("
+  },
+  {
+    "file": "cmd/joblist.go",
+    "line": 34,
+    "text": "return command.AddToStackFunc(ctx, jobListCmd, breadcrumb, &views.ProjectInput{}, views.NewJobListView(ctx,"
+  },
+  {
+    "file": "cmd/joblist.go",
+    "line": 45,
+    "text": "return command.AddToStackFunc("
+  },
+  {
+    "file": "cmd/environment.go",
+    "line": 29,
+    "text": "return command.AddToStackFunc(ctx, environmentCmd, breadcrumb, &input, views.NewEnvironmentList(ctx, input,"
+  },
+  {
+    "file": "cmd/deploycancel.go",
+    "line": 23,
+    "text": "return command.AddToStackFunc(ctx, deployCancelCmd, breadcrumb, &input, views.NewDeployCancelView(ctx, input))"
+  },
+  {
+    "file": "cmd/psql.go",
+    "line": 46,
+    "text": "return command.AddToStackFunc("
+  },
+  {
+    "file": "cmd/deploylist.go",
+    "line": 34,
+    "text": "return command.AddToStackFunc(ctx, deployListCmd, breadcrumb, &input, views.NewDeployListView("
+  },
+  {
+    "file": "cmd/deploylist.go",
+    "line": 46,
+    "text": "return command.AddToStackFunc("
+  },
+  {
+    "file": "cmd/deploycreate.go",
+    "line": 48,
+    "text": "return command.AddToStackFunc("
+  },
+  {
+    "file": "cmd/deploycreate.go",
+    "line": 61,
+    "text": "return command.AddToStackFunc("
+  },
+  {
+    "file": "cmd/restart.go",
+    "line": 31,
+    "text": "return command.AddToStackFunc(ctx, restartCmd, breadcrumb, &input, views.NewRestartView(ctx, input, func() tea.Cmd {"
+  },
+  {
+    "file": "cmd/jobcreate.go",
+    "line": 34,
+    "text": "return command.AddToStackFunc("
+  },
+  {
+    "file": "cmd/jobcreate.go",
+    "line": 51,
+    "text": "return command.AddToStackFunc("
+  },
+  {
+    "file": "cmd/jobcancel.go",
+    "line": 23,
+    "text": "return command.AddToStackFunc(ctx, jobCancelCmd, breadcrumb, &input, views.NewJobCancelView(ctx, input))"
+  },
+  {
+    "file": "cmd/workspaces.go",
+    "line": 39,
+    "text": "command.AddToStackFunc(ctx, workspacesCmd, \"Workspaces\", &input, views.NewWorkspaceView(ctx, input))"
+  },
+  {
+    "file": "cmd/project.go",
+    "line": 27,
+    "text": "command.AddToStackFunc("
+  },
+  {
+    "file": "cmd/ssh.go",
+    "line": 43,
+    "text": "return command.AddToStackFunc(ctx, sshCmd, breadcrumb, input, views.NewSSHView(ctx, input))"
+  },
+  {
+    "file": "cmd/ssh.go",
+    "line": 55,
+    "text": "return command.AddToStackFunc("
+  },
+  {
+    "file": "cmd/ssh.go",
+    "line": 66,
+    "text": "return command.AddToStackFunc("
+  },
+  {
+    "file": "cmd/ssh.go",
+    "line": 83,
+    "text": "return command.AddToStackFunc("
+  }
+]

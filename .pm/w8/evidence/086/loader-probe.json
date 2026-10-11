@@ -1,0 +1,222 @@
+[
+  {
+    "actual_count": 1,
+    "case": "all-projects",
+    "error": "",
+    "expected_count": 1,
+    "ids": [
+      "srv-00000000000000000001"
+    ],
+    "params": {
+      "EnvironmentIDs": null,
+      "IncludePreviews": false
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/postgres",
+        "query": "ownerId=tea-00000000000000000000&limit=100"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/projects",
+        "query": "ownerId=tea-00000000000000000000&limit=100"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/workflows",
+        "query": "ownerId=tea-00000000000000000000"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services",
+        "query": "ownerId=tea-00000000000000000000&includePreviews=false&limit=100"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/projects",
+        "query": "ownerId=tea-00000000000000000000&limit=100"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/key-value",
+        "query": "ownerId=tea-00000000000000000000"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/projects",
+        "query": "ownerId=tea-00000000000000000000&limit=100"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/projects",
+        "query": "ownerId=tea-00000000000000000000&limit=100"
+      }
+    ]
+  },
+  {
+    "actual_count": 1,
+    "case": "selected-empty-project",
+    "error": "",
+    "expected_count": 0,
+    "ids": [
+      "srv-00000000000000000001"
+    ],
+    "params": {
+      "EnvironmentIDs": [],
+      "IncludePreviews": false
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/postgres",
+        "query": "ownerId=tea-00000000000000000000&limit=100"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/workflows",
+        "query": "ownerId=tea-00000000000000000000"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services",
+        "query": "ownerId=tea-00000000000000000000&includePreviews=false&limit=100"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/projects",
+        "query": "ownerId=tea-00000000000000000000&limit=100"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/key-value",
+        "query": "ownerId=tea-00000000000000000000"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/projects",
+        "query": "ownerId=tea-00000000000000000000&limit=100"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/projects",
+        "query": "ownerId=tea-00000000000000000000&limit=100"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/projects",
+        "query": "ownerId=tea-00000000000000000000&limit=100"
+      }
+    ]
+  },
+  {
+    "actual_count": 0,
+    "case": "selected-project-with-empty-environment",
+    "error": "",
+    "expected_count": 0,
+    "ids": [],
+    "params": {
+      "EnvironmentIDs": [
+        "evm-00000000000000000000"
+      ],
+      "IncludePreviews": false
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/workflows",
+        "query": "ownerId=tea-00000000000000000000&environmentId=evm-00000000000000000000"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/postgres",
+        "query": "ownerId=tea-00000000000000000000&environmentId=evm-00000000000000000000&limit=100"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/key-value",
+        "query": "ownerId=tea-00000000000000000000&environmentId=evm-00000000000000000000"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services",
+        "query": "environmentId=evm-00000000000000000000&ownerId=tea-00000000000000000000&includePreviews=false&limit=100"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/projects",
+        "query": "ownerId=tea-00000000000000000000&limit=100"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/projects",
+        "query": "ownerId=tea-00000000000000000000&limit=100"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/projects",
+        "query": "ownerId=tea-00000000000000000000&limit=100"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/projects",
+        "query": "ownerId=tea-00000000000000000000&limit=100"
+      }
+    ]
+  },
+  {
+    "actual_count": 1,
+    "case": "explicit-empty-environment-flags-no-project",
+    "error": "",
+    "expected_count": 1,
+    "ids": [
+      "srv-00000000000000000001"
+    ],
+    "params": {
+      "EnvironmentIDs": [],
+      "IncludePreviews": false
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/workflows",
+        "query": "ownerId=tea-00000000000000000000"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/key-value",
+        "query": "ownerId=tea-00000000000000000000"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/postgres",
+        "query": "ownerId=tea-00000000000000000000&limit=100"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/projects",
+        "query": "ownerId=tea-00000000000000000000&limit=100"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/projects",
+        "query": "ownerId=tea-00000000000000000000&limit=100"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services",
+        "query": "ownerId=tea-00000000000000000000&includePreviews=false&limit=100"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/projects",
+        "query": "ownerId=tea-00000000000000000000&limit=100"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/projects",
+        "query": "ownerId=tea-00000000000000000000&limit=100"
+      }
+    ]
+  }
+]

@@ -1,0 +1,27 @@
+import json,sys,time,os
+from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
+def messages(batch):
+ def line(case,payload): return json.dumps({'case':'QA111_18c2df-'+batch+'-'+case,'payload':payload,'end':'tail-'+case},separators=(',',':'))
+ return [line('short-out','ready'),line('short-err','ready'),line('long-out','ordinary-detail|'*3000),line('mixed-out','ordinary-detail|'*3000),line('mixed-err','ordinary-error-control')]
+class H(BaseHTTPRequestHandler):
+ seen=set()
+ def log_message(self,*args): pass
+ def do_GET(self):
+  parts=self.path.split('/')
+  if len(parts)==3 and parts[1] in ('emit','expected') and parts[2] in ('b1','b2'):
+   batch=parts[2]; rows=messages(batch)
+   if parts[1]=='emit':
+    if batch in self.seen:
+     self.send_response(409);self.end_headers();self.wfile.write(b'already emitted');return
+    self.seen.add(batch)
+    sys.stdout.write(rows[0]+'\n');sys.stdout.flush()
+    sys.stderr.write(rows[1]+'\n');sys.stderr.flush()
+    sys.stdout.write(rows[2][:38000]);sys.stdout.flush();time.sleep(.18)
+    sys.stdout.write(rows[2][38000:]+'\n');sys.stdout.flush();time.sleep(.18)
+    sys.stdout.write(rows[3][:38000]);sys.stdout.flush();time.sleep(.18)
+    sys.stderr.write(rows[4]+'\n');sys.stderr.flush();time.sleep(.18)
+    sys.stdout.write(rows[3][38000:]+'\n');sys.stdout.flush()
+   body=json.dumps(rows,separators=(',',':')).encode()
+  else: body=b'QA111_18c2df-ready'
+  self.send_response(200);self.send_header('Content-Type','application/json');self.end_headers();self.wfile.write(body)
+ThreadingHTTPServer(('0.0.0.0',int(os.getenv('PORT','3000'))),H).serve_forever()

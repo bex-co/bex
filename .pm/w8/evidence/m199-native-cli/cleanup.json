@@ -1,0 +1,64 @@
+{
+  "id": "srv-db5q2pt13j8s73csrf2g",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+  "delete_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "delete",
+      "srv-db5q2pt13j8s73csrf2g",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 2.063,
+    "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-11T14:47:03Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db5q2pt13j8s73csrf2g\",\n    \"id\": \"srv-db5q2pt13j8s73csrf2g\",\n    \"name\": \"qa-20261011-66ac1b-logtime\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-go\",\n    \"serviceDetails\": {\n      \"env\": \"python\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"python3 --version\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"python3 -u -c 'import os,json,time,http.server\\nTAG=\\\"QA128_66ac1b\\\"\\ndef messages(batch):\\n return [TAG+\\\"-\\\"+batch+\\\"-short \u96ea\ud83d\ude80\u03b2 END\\\",json.dumps({\\\"marker\\\":TAG+\\\"-\\\"+batch+\\\"-small\\\",\\\"Case\\\":\\\"KeepMixedCASE\\\",\\\"payload\\\":\\\"\u96ea\ud83d\ude80\u03b2|\\\"*800,\\\"end\\\":\\\"SMALL-END\\\"},ensure_ascii=False,separators=(\\\",\\\",\\\":\\\")),json.dumps({\\\"marker\\\":TAG+\\\"-\\\"+batch+\\\"-partial\\\",\\\"Case\\\":\\\"KeepMixedCASE\\\",\\\"payload\\\":\\\"\u96ea\ud83d\ude80\u03b2|\\\"*5000,\\\"end\\\":\\\"PARTIAL-END\\\"},ensure_ascii=False,separators=(\\\",\\\",\\\":\\\"))]\\nclass H(http.server.BaseHTTPRequestHandler):\\n def log_message(self,*a): pass\\n def do_GET(self):\\n  parts=self.path.split(\\\"/\\\");batch=parts[-1];items=messages(batch)\\n  if self.path.startswith(\\\"/emit/\\\"):\\n   for i,m in enumerate(items):\\n    b=m.encode()\\n    if i:\\n     mid=len(b)//2;os.write(1,b[:mid]);time.sleep(.12);os.write(1,b[mid:]+b\\\"\\\\n\\\")\\n    else:os.write(1,b+b\\\"\\\\n\\\")\\n  data=json.dumps(items,ensure_ascii=False).encode() if self.path.startswith((\\\"/emit/\\\",\\\"/expected/\\\")) else (TAG+\\\"-ready\\\").encode()\\n  self.send_response(200);self.send_header(\\\"Content-Length\\\",str(len(data)));self.end_headers();self.wfile.write(data)\\nhttp.server.ThreadingHTTPServer((\\\"0.0.0.0\\\",int(os.getenv(\\\"PORT\\\",\\\"3000\\\"))),H).serve_forever()\\n'\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261011-66ac1b-logtime:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"python\",\n      \"url\": \"https://qa-20261011-66ac1b-logtime.onbex.co\"\n    },\n    \"slug\": \"qa-20261011-66ac1b-logtime\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-11T14:49:22Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+    "stderr": ""
+  },
+  "detail_after_delete": {
+    "method": "GET",
+    "path": "/v1/services/srv-db5q2pt13j8s73csrf2g",
+    "body": null,
+    "status": "404",
+    "elapsed": 0.293,
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48eaeb52e2a58f1-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "workspace_after_delete_ids": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3v694dm7c7390q930",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0"
+  ],
+  "runtime_after_delete_checks": [
+    {
+      "exit": 0,
+      "stdout": "404 page not found\n\n404",
+      "stderr": ""
+    }
+  ],
+  "quota_after_delete": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.292,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48eaebf5bda2716-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "cases": [
+    {
+      "kind": "resource",
+      "type": "Web Service",
+      "url": "/web/srv-local-fixture"
+    },
+    {
+      "kind": "deploy",
+      "type": "Web Service",
+      "url": "/web/srv-local-fixture/deploys/dep-local-fixture"
+    },
+    {
+      "kind": "resource",
+      "type": "Background Worker",
+      "url": "/worker/srv-local-fixture"
+    },
+    {
+      "kind": "deploy",
+      "type": "Background Worker",
+      "url": "/worker/srv-local-fixture/deploys/dep-local-fixture"
+    },
+    {
+      "kind": "resource",
+      "type": "Private Service",
+      "url": "/pserv/srv-local-fixture"
+    },
+    {
+      "kind": "deploy",
+      "type": "Private Service",
+      "url": "/pserv/srv-local-fixture/deploys/dep-local-fixture"
+    },
+    {
+      "kind": "resource",
+      "type": "Static Site",
+      "url": "/static/srv-local-fixture"
+    },
+    {
+      "kind": "deploy",
+      "type": "Static Site",
+      "url": "/static/srv-local-fixture/deploys/dep-local-fixture"
+    },
+    {
+      "kind": "resource",
+      "type": "Cron Job",
+      "url": "/cron/srv-local-fixture"
+    },
+    {
+      "kind": "deploy",
+      "type": "Cron Job",
+      "url": "/cron/srv-local-fixture/deploys/dep-local-fixture"
+    },
+    {
+      "kind": "resource",
+      "type": "Postgres",
+      "url": "/d/srv-local-fixture"
+    },
+    {
+      "kind": "resource",
+      "type": "Key Value",
+      "url": "/r/srv-local-fixture"
+    }
+  ],
+  "qualification": "Actual pinned empty DashboardURL/OpenResource/OpenDeploy; local config and captured OS child only; no production or authentication request",
+  "saved_origin": ""
+}

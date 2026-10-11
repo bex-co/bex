@@ -1,0 +1,56 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"regexp"
+	"strings"
+)
+
+func main() {
+	b, err := os.ReadFile(os.Args[1])
+	if err != nil {
+		panic(err)
+	}
+	var in struct {
+		Cases []struct {
+			URL string `json:"url"`
+		} `json:"cases"`
+	}
+	if err = json.Unmarshal(b, &in); err != nil {
+		panic(err)
+	}
+	pattern := `^https://oauth[.]bex[.]co/(web|worker|pserv|static|cron|d|r)/(.+)$`
+	replacement := `https://dashboard.bex.co/${1}/${2}`
+	re := regexp.MustCompile(pattern)
+	type Row struct {
+		Input    string `json:"input"`
+		Output   string `json:"output"`
+		Expected string `json:"expected"`
+		Pass     bool   `json:"pass"`
+	}
+	rows := []Row{}
+	check := func(u, want string) {
+		got := re.ReplaceAllString(u, replacement)
+		rows = append(rows, Row{u, got, want, got == want})
+		if got != want {
+			panic("routing proposal mismatch")
+		}
+	}
+	for _, c := range in.Cases {
+		for _, suffix := range []string{"", "?tab=events&value=one%20two#anchor"} {
+			u := c.URL + suffix
+			check(u, strings.Replace(u, "https://oauth.bex.co/", "https://dashboard.bex.co/", 1))
+		}
+	}
+	for _, u := range []string{"https://oauth.bex.co/oauth2/device/verify?user_code=LOCAL", "https://oauth.bex.co/oauth2/auth?client_id=LOCAL", "https://oauth.bex.co/oauth2/token", "https://dashboard.bex.co/cron/srv-local-fixture", "https://oauth.bex.co/web/"} {
+		check(u, u)
+	}
+	out := map[string]any{"regex": pattern, "replacement": replacement, "cases": rows, "qualification": "Go regexp substitution only; proposed routing rule, no live middleware or OAuth requests"}
+	b, err = json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(b))
+}

@@ -1,0 +1,536 @@
+[
+  {
+    "at": "2026-10-11T08:40:52.197807+00:00",
+    "client": "bex",
+    "term": "café ελληνικά",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"café ελληνικά\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 3.259,
+      "stdout": "",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T08:40:55.471816+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5kklsaqkos73b0skfg&type=app&text=caf%C3%A9+%CE%B5%CE%BB%CE%BB%CE%B7%CE%BD%CE%B9%CE%BA%CE%AC&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5kklsaqkos73b0skfg"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "café ελληνικά"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48c9000faa82700-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T07:40:55Z\",\"nextEndTime\":\"2026-10-11T08:40:55Z\",\"logs\":[]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T08:41:06.500099+00:00",
+    "client": "render",
+    "term": "café ελληνικά",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"café ελληνικά\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.57,
+      "stdout": "",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T08:41:09.086424+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5kklsaqkos73b0skfg&type=app&text=caf%C3%A9+%CE%B5%CE%BB%CE%BB%CE%B7%CE%BD%CE%B9%CE%BA%CE%AC&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5kklsaqkos73b0skfg"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "café ελληνικά"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48c9058ed2af98f-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T07:41:09Z\",\"nextEndTime\":\"2026-10-11T08:41:09Z\",\"logs\":[]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T08:42:10.019597+00:00",
+    "client": "bex",
+    "term": "café",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"café\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.836,
+      "stdout": "{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370468029Z-330296ed\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 CAFÉ Ελληνικά\",\n  \"timestamp\": \"2026-10-11T08:38:14.370468029Z\"\n}{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370470095Z-fa6b514d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 café ελληνικά\",\n  \"timestamp\": \"2026-10-11T08:38:14.370470095Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T08:42:12.871255+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5kklsaqkos73b0skfg&type=app&text=caf%C3%A9&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5kklsaqkos73b0skfg"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "café"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48c91e5ae5fcecd-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T07:42:12.829076427Z\",\"nextEndTime\":\"2026-10-11T08:38:14.370468028Z\",\"logs\":[{\"id\":\"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370468029Z-330296ed\",\"message\":\"QA94_b66611 CAFÉ Ελληνικά\",\"timestamp\":\"2026-10-11T08:38:14.370468029Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5kklsaqkos73b0skfg\"},{\"name\":\"instance\",\"value\":\"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370470095Z-fa6b514d\",\"message\":\"QA94_b66611 café ελληνικά\",\"timestamp\":\"2026-10-11T08:38:14.370470095Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5kklsaqkos73b0skfg\"},{\"name\":\"instance\",\"value\":\"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T08:42:33.133101+00:00",
+    "client": "bex",
+    "term": "ελληνικά",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"ελληνικά\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.62,
+      "stdout": "",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T08:42:35.765725+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5kklsaqkos73b0skfg&type=app&text=%CE%B5%CE%BB%CE%BB%CE%B7%CE%BD%CE%B9%CE%BA%CE%AC&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5kklsaqkos73b0skfg"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "ελληνικά"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48c927698baeb24-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T07:42:35Z\",\"nextEndTime\":\"2026-10-11T08:42:35Z\",\"logs\":[]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T08:43:09.869847+00:00",
+    "client": "bex",
+    "term": "λληνικά",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"λληνικά\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 3.184,
+      "stdout": "",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T08:43:13.066521+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5kklsaqkos73b0skfg&type=app&text=%CE%BB%CE%BB%CE%B7%CE%BD%CE%B9%CE%BA%CE%AC&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5kklsaqkos73b0skfg"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "λληνικά"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48c935c8b17d8a7-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T07:43:13Z\",\"nextEndTime\":\"2026-10-11T08:43:13Z\",\"logs\":[]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T08:48:49.137828+00:00",
+    "client": "bex",
+    "term": "ι",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"ι\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.605,
+      "stdout": "",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T08:48:51.759298+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5kklsaqkos73b0skfg&type=app&text=%CE%B9&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5kklsaqkos73b0skfg"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "ι"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48c9ba4cbbadc0d-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T07:48:51Z\",\"nextEndTime\":\"2026-10-11T08:48:51Z\",\"logs\":[]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T08:49:12.285064+00:00",
+    "client": "bex",
+    "term": "λ",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"λ\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.415,
+      "stdout": "{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370468029Z-330296ed\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 CAFÉ Ελληνικά\",\n  \"timestamp\": \"2026-10-11T08:38:14.370468029Z\"\n}{\n  \"id\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370470095Z-fa6b514d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA94_b66611 café ελληνικά\",\n  \"timestamp\": \"2026-10-11T08:38:14.370470095Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T08:49:14.712248+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5kklsaqkos73b0skfg&type=app&text=%CE%BB&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5kklsaqkos73b0skfg"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "λ"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48c9c358c7ccf26-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T07:49:14.634175382Z\",\"nextEndTime\":\"2026-10-11T08:38:14.370468028Z\",\"logs\":[{\"id\":\"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370468029Z-330296ed\",\"message\":\"QA94_b66611 CAFÉ Ελληνικά\",\"timestamp\":\"2026-10-11T08:38:14.370468029Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5kklsaqkos73b0skfg\"},{\"name\":\"instance\",\"value\":\"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5-2026-10-11T08:38:14.370470095Z-fa6b514d\",\"message\":\"QA94_b66611 café ελληνικά\",\"timestamp\":\"2026-10-11T08:38:14.370470095Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db5kklsaqkos73b0skfg\"},{\"name\":\"instance\",\"value\":\"srv-db5kklsaqkos73b0skfg-suutdqtpccopugfl7nj5\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-11T08:49:21.881654+00:00",
+    "client": "render",
+    "term": "ι",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5kklsaqkos73b0skfg",
+      "--type",
+      "app",
+      "--text",
+      "\"ι\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 2.54,
+      "stdout": "",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T08:49:24.434528+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db5kklsaqkos73b0skfg&type=app&text=%CE%B9&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db5kklsaqkos73b0skfg"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "ι"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48c9c70fe02152b-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T07:49:24Z\",\"nextEndTime\":\"2026-10-11T08:49:24Z\",\"logs\":[]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  }
+]

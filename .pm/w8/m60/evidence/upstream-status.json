@@ -1,0 +1,22 @@
+{
+  "main_sha": "c4d106cfdaf8eec6d23475155e43f4baeeed2013",
+  "source_url": "https://github.com/render-oss/cli/blob/c4d106cfdaf8eec6d23475155e43f4baeeed2013/pkg/command/inputs.go",
+  "serializer_to_eof_byte_identical": true,
+  "queries": [
+    {
+      "q": "repo:render-oss/cli \"clipboard\" \"quote\"",
+      "count": 0,
+      "items": []
+    },
+    {
+      "q": "repo:render-oss/cli \"InputToString\"",
+      "count": 0,
+      "items": []
+    },
+    {
+      "q": "repo:render-oss/cli \"copy command\"",
+      "count": 0,
+      "items": []
+    }
+  ]
+}

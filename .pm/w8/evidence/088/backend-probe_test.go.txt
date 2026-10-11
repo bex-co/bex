@@ -1,0 +1,19 @@
+package apps
+
+import (
+ "encoding/json"
+ "testing"
+ appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+)
+
+func TestQASweep117SourceProjection(t *testing.T) {
+ for _, kind := range []string{appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService, appv1alpha1.TypeBackgroundWorker, appv1alpha1.TypeCronJob} {
+  a:=sampleApp("qa-source");a.Spec.Type=kind;a.Spec.Runtime="image";a.Spec.Builder="auto";a.Spec.Repo="";a.Spec.Image="nginx:1"
+  repo:="https://github.com/traefik/whoami";next,err:=resolveSourcePatch(a,sourcePatch{Repo:&repo});if err!=nil{t.Fatal(err)};next.applySourceChange(a)
+  v:=view(a);r:=toRenderService(v);b,err:=json.Marshal(map[string]any{"type":kind,"configuredRepo":a.Spec.Repo,"configuredImage":a.Spec.Image,"persistedRuntime":a.Spec.Runtime,"viewRuntime":v.Runtime,"wire":r,"expectedRuntime":"docker","mismatch":v.Runtime!="docker"});if err!=nil{t.Fatal(err)};t.Log("QA117",string(b))
+  if a.Spec.Repo!=repo || a.Spec.Image!="" {t.Fatal("source switch did not apply")}
+ }
+ for _, spec:=range []appv1alpha1.AppSpec{{Type:appv1alpha1.TypeWebService,Repo:"https://github.com/traefik/whoami",Builder:"auto"},{Type:appv1alpha1.TypeWebService,Repo:"https://github.com/traefik/whoami",Runtime:"go",Builder:"native"},{Type:appv1alpha1.TypeWebService,Image:"nginx:1",Runtime:"image",Builder:"auto"}}{
+  got:=effectiveRuntime(spec,spec.Type);t.Logf("QA117 control repo=%q image=%q persistedRuntime=%q builder=%q viewRuntime=%q",spec.Repo,spec.Image,spec.Runtime,spec.Builder,got);if got==""{t.Fatal("positive control omitted runtime")}
+ }
+}

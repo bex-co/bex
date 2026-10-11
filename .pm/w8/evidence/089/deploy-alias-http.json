@@ -1,0 +1,13 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930/deploys/dep-dap3v694dm7c7390q93g",
+    "authentication": "none",
+    "redirects_followed": false
+  },
+  "exit": 0,
+  "status": "307",
+  "headers": "HTTP/2 307 \ndate: Sun, 11 Oct 2026 15:03:18 GMT\nlocation: /services/srv-dap3v694dm7c7390q930/deploys/dep-dap3v694dm7c7390q93g\ncf-cache-status: DYNAMIC\nreport-to: {\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=a2egXAToYRy7FanPpyIy6hyGmUznpC%2FF%2B3lLG4643Dwgdx44zeB0tn46GzjlVI8n1uz4UQNU%2B%2BnHh0tzkI7W%2FY1Sis28tDjBYX3S52149seqFi%2FAL9aNQtEuAtsgP46HqIdVYUDDnLDA72fDRNzL\"}]}\nnel: {\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}\nserver: cloudflare\ncf-ray: a48ec0341d02f40f-SJC\nalt-svc: h3=\":443\"; ma=86400\n",
+  "body": "",
+  "stderr": ""
+}

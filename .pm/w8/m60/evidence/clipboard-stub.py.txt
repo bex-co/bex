@@ -1,0 +1,3 @@
+#!/usr/bin/env python3
+import os,sys,pathlib,json
+f=pathlib.Path(os.environ["QA_COPY_CAPTURE"]);f.write_text(json.dumps({"stdin":sys.stdin.read(),"argv":sys.argv[1:]}));f.chmod(0o600)

@@ -1,0 +1,28 @@
+import pathlib,json,subprocess,datetime,sys,shlex,shutil
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());sid=(p/'sweep135-id.txt').read_text();x=next(z for z in c['resources'] if z.get('id')==sid);assert x['sweep']==135 and x['create_result']['exit']==0;mode=sys.argv[1]
+cases={'phrase':'LEFT RIGHT','comma':'"LEFT,RIGHT"','plain':'plain','multi':'LEFT,RIGHT','relative':'plain'}
+def save():c['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(c,indent=2));cp.chmod(0o600)
+def rows(s):
+ d=json.JSONDecoder();r=[];i=0
+ while i<len(s):
+  if s[i].isspace():i+=1;continue
+  z,n=d.raw_decode(s[i:]);r.append(z);i+=n
+ return r
+if mode=='emit':
+ assert x['runtime_observations'][-1]['status']=='200' and x['runtime_observations'][-1]['marker_exact'];assert not x.get('copy_emit');url=x['create_response']['serviceDetails']['url']+'/emit';x['copy_emit']={'intent':'own known six stdout lines through one HTTP request','url':url};save();r=subprocess.run(['curl','-sS','--max-time','12','-w','\n%{http_code}',url],capture_output=True,text=True);x['copy_emit']['result']={'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr};save();assert r.returncode==0 and r.stdout.endswith('200');expected=[x['marker']+' '+s for s in ['LEFT RIGHT','LEFT only','RIGHT only','LEFT,RIGHT','plain','unrelated']];assert json.loads(r.stdout.rsplit('\n',1)[0])==expected;x['copy_emit']['expected_lines']=expected;save();print('Own emitter HTTP200; six exact marker lines',flush=True)
+elif mode in ['controls','replays']:
+ assert not (p/'render-config/cli.yaml').exists();(p/'render-config').mkdir(mode=0o700,exist_ok=True);shutil.copy2(p/'config/cli.yaml',p/'render-config/cli.yaml');records=[]
+ try:
+  for role in ['bex','render']:
+   for case,term in cases.items():
+    if mode=='controls':
+     args=['logs','--resources',sid,'--text',term,'--type','app'];
+     if case=='relative':args+=['--start','30m']
+    else:
+     z=json.loads((p/('sweep135-'+role+'-'+case+'-result.json')).read_text());assert z['exit']==0 and not z['timeout'];parts=shlex.split(z['clipboard_capture']['stdin']);assert parts[0]==role and parts[1]=='logs' and any(a=='--resources='+sid for a in parts);args=parts[1:]
+    args+=['--confirm','-o','json'];cmd=['python3',str(p/('run-render.py' if role=='render' else 'run.py'))];
+    if role=='bex':cmd+=['--release']
+    r=json.loads(subprocess.check_output([*cmd,*args],text=True));v=rows(r['stdout']) if r['exit']==0 else [];record={'client':role,'case':case,'result':r,'logs':v,'messages':[z['message'] for z in v]};records.append(record);(p/('sweep135-'+mode+'.json')).write_text(json.dumps(records,indent=2));print(role,case,'exit',r['exit'],'rows',len(v),'seconds',r['elapsed'],flush=True)
+ finally:(p/'render-config/cli.yaml').unlink(missing_ok=True)
+ x['copy_'+mode]={'records_path':str(p/('sweep135-'+mode+'.json')),'completed':len(records)==10};save()
+else:raise ValueError(mode)

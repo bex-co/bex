@@ -1,0 +1,130 @@
+{
+  "project": {
+    "command": {
+      "method": "POST",
+      "path": "/v1/projects",
+      "body": {
+        "name": "qa-20261011-247c4f-emptyfilter",
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "environments": []
+      }
+    },
+    "create_result": {
+      "method": "POST",
+      "path": "/v1/projects",
+      "body": "{\"name\": \"qa-20261011-247c4f-emptyfilter\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"environments\": []}",
+      "status": "201",
+      "elapsed": 0.27,
+      "response": "{\"id\":\"prj-db5ndphn4lvc73ah9qn0\",\"name\":\"qa-20261011-247c4f-emptyfilter\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"environmentIds\":[],\"createdAt\":\"2026-10-11T11:45:42.993183Z\",\"updatedAt\":\"2026-10-11T11:45:42.993183Z\"}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48d9ec2fe00d041-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "create_response": {
+      "id": "prj-db5ndphn4lvc73ah9qn0",
+      "name": "qa-20261011-247c4f-emptyfilter",
+      "owner": {
+        "id": "tea-daif693dqjvc73e7as3g",
+        "name": "bex-canary",
+        "email": "puncsky@gmail.com",
+        "type": "team"
+      },
+      "environmentIds": [],
+      "createdAt": "2026-10-11T11:45:42.993183Z",
+      "updatedAt": "2026-10-11T11:45:42.993183Z"
+    },
+    "project_readback": {
+      "method": "GET",
+      "path": "/v1/projects/prj-db5ndphn4lvc73ah9qn0",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.304,
+      "response": "{\"id\":\"prj-db5ndphn4lvc73ah9qn0\",\"name\":\"qa-20261011-247c4f-emptyfilter\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"environmentIds\":[],\"createdAt\":\"2026-10-11T11:45:42.993183Z\",\"updatedAt\":\"2026-10-11T11:45:42.993183Z\"}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48d9ec5ece26af7-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "environment_inventory": {
+      "method": "GET",
+      "path": "/v1/environments?projectId=prj-db5ndphn4lvc73ah9qn0&limit=100",
+      "body": null,
+      "status": "200",
+      "elapsed": 1.597,
+      "response": "[]\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48d9ec82f79d02d-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "dependent_inventory": {
+      "method": "POST",
+      "path": "/graphql",
+      "body": "{\"query\": \"query($id:String!){project(id:$id){id name ownerId serviceIds databaseIds keyValueIds}}\", \"variables\": {\"id\": \"prj-db5ndphn4lvc73ah9qn0\"}}",
+      "status": "200",
+      "elapsed": 0.233,
+      "response": "{\"data\":{\"project\":{\"databaseIds\":[],\"id\":\"prj-db5ndphn4lvc73ah9qn0\",\"keyValueIds\":[],\"name\":\"qa-20261011-247c4f-emptyfilter\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"serviceIds\":[]}}}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48d9ed2bfb9eb24-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    }
+  },
+  "control_environment": {
+    "command": {
+      "method": "POST",
+      "path": "/v1/environments",
+      "body": {
+        "name": "qa-20261011-247c4f-emptyfilter-control",
+        "projectId": "prj-db5ndphn4lvc73ah9qn0"
+      }
+    },
+    "create_result": {
+      "method": "POST",
+      "path": "/v1/environments",
+      "body": "{\"name\": \"qa-20261011-247c4f-emptyfilter-control\", \"projectId\": \"prj-db5ndphn4lvc73ah9qn0\"}",
+      "status": "201",
+      "elapsed": 0.669,
+      "response": "{\"id\":\"evm-db5ng5hn4lvc73ah9r00\",\"projectId\":\"prj-db5ndphn4lvc73ah9qn0\",\"name\":\"qa-20261011-247c4f-emptyfilter-control\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48da62c2eaced40-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "create_response": {
+      "id": "evm-db5ng5hn4lvc73ah9r00",
+      "projectId": "prj-db5ndphn4lvc73ah9qn0",
+      "name": "qa-20261011-247c4f-emptyfilter-control",
+      "serviceIds": [],
+      "databaseIds": [],
+      "keyValueIds": [],
+      "databasesIds": [],
+      "redisIds": [],
+      "envGroupIds": [],
+      "protectedStatus": "unprotected",
+      "networkIsolationEnabled": false,
+      "ipAllowList": [
+        {
+          "cidrBlock": "0.0.0.0/0",
+          "description": "Allow all (default)"
+        },
+        {
+          "cidrBlock": "::/0",
+          "description": "Allow all (default)"
+        }
+      ]
+    }
+  },
+  "qualification": "API-only metadata fixture setup; no native project/environment creation claim."
+}

@@ -1,0 +1,84 @@
+{
+  "delete_intent": {
+    "at": "2026-10-11T11:32:36.129075+00:00",
+    "id": "red-db5n4789n5bc73aqij2g",
+    "workspace": "tea-daif693dqjvc73e7as3g"
+  },
+  "delete_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "keyvalues",
+      "delete",
+      "red-db5n4789n5bc73aqij2g",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.002,
+    "stdout": "{\n  \"data\": {\n    \"id\": \"red-db5n4789n5bc73aqij2g\",\n    \"name\": \"qa-20261011-069d45-kvexit\",\n    \"plan\": \"free\",\n    \"region\": \"fsn1\",\n    \"status\": \"available\",\n    \"createdAt\": \"2026-10-11T11:25:17Z\",\n    \"updatedAt\": \"2026-10-11T11:27:31Z\",\n    \"version\": \"8\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"ownerType\": \"team\",\n    \"projectId\": null,\n    \"environmentId\": null,\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"162.224.81.143/32\",\n        \"description\": \"own-cli-qa\"\n      }\n    ],\n    \"maxmemoryPolicy\": \"noeviction\",\n    \"persistenceMode\": \"journal_snapshot\"\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+    "stderr": ""
+  },
+  "detail_after_delete": {
+    "method": "GET",
+    "path": "/v1/key-value/red-db5n4789n5bc73aqij2g",
+    "body": null,
+    "status": "404",
+    "elapsed": 0.268,
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48d8b9598e47ace-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "cached_connection_before_delete": {
+    "at": "2026-10-11T11:32:36.074009+00:00",
+    "exit": 0,
+    "pong": true,
+    "stderr_present": false,
+    "connection_refused": false
+  },
+  "cached_connection_after_delete": [
+    {
+      "at": "2026-10-11T11:32:39.507438+00:00",
+      "exit": 1,
+      "pong": false,
+      "stderr_present": true,
+      "connection_refused": false
+    },
+    {
+      "at": "2026-10-11T11:32:55.593580+00:00",
+      "exit": 1,
+      "pong": false,
+      "stderr_present": true,
+      "connection_refused": false
+    }
+  ],
+  "quota_after_delete": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.272,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48d8c086ee722c6-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "baseline_service_ids_after_delete": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3v694dm7c7390q930",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0"
+  ],
+  "state": "deleted: CLIack/detail404/listempty/baseline present/former Redis endpoint refused/quota0 termination0",
+  "command_error_render_config_removed": true
+}

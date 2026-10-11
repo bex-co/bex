@@ -1,0 +1,86 @@
+[
+  {
+    "actual_ui_apply_end": "2026-10-11T00:41:23Z",
+    "actual_ui_apply_start": "2026-10-11T00:41:23Z",
+    "fraction_preserved": false,
+    "input": "2026-10-11T00:41:23.603458191Z",
+    "network_calls": 0,
+    "original_start": "2026-10-11T00:41:23.603458191Z",
+    "rendered_form_start": "2026-10-11T00:41:23Z",
+    "unrelated_text_edit_end": "2026-10-11T00:41:23Z",
+    "unrelated_text_edit_start": "2026-10-11T00:41:23Z",
+    "unrelated_text_edit_text": [
+      "updated"
+    ]
+  },
+  {
+    "actual_ui_apply_end": "2026-10-11T06:11:23+05:30",
+    "actual_ui_apply_start": "2026-10-11T06:11:23+05:30",
+    "fraction_preserved": false,
+    "input": "2026-10-11T06:11:23.603458191+05:30",
+    "network_calls": 0,
+    "original_start": "2026-10-11T06:11:23.603458191+05:30",
+    "rendered_form_start": "2026-10-11T06:11:23+05:30",
+    "unrelated_text_edit_end": "2026-10-11T06:11:23+05:30",
+    "unrelated_text_edit_start": "2026-10-11T06:11:23+05:30",
+    "unrelated_text_edit_text": [
+      "updated"
+    ]
+  },
+  {
+    "actual_ui_apply_end": "2026-10-11T00:41:23Z",
+    "actual_ui_apply_start": "2026-10-11T00:41:23Z",
+    "fraction_preserved": false,
+    "input": "2026-10-11T00:41:23.001Z",
+    "network_calls": 0,
+    "original_start": "2026-10-11T00:41:23.001Z",
+    "rendered_form_start": "2026-10-11T00:41:23Z",
+    "unrelated_text_edit_end": "2026-10-11T00:41:23Z",
+    "unrelated_text_edit_start": "2026-10-11T00:41:23Z",
+    "unrelated_text_edit_text": [
+      "updated"
+    ]
+  },
+  {
+    "actual_ui_apply_end": "2026-10-11T00:41:23Z",
+    "actual_ui_apply_start": "2026-10-11T00:41:23Z",
+    "fraction_preserved": true,
+    "input": "2026-10-11T00:41:23Z",
+    "network_calls": 0,
+    "original_start": "2026-10-11T00:41:23Z",
+    "rendered_form_start": "2026-10-11T00:41:23Z",
+    "unrelated_text_edit_end": "2026-10-11T00:41:23Z",
+    "unrelated_text_edit_start": "2026-10-11T00:41:23Z",
+    "unrelated_text_edit_text": [
+      "updated"
+    ]
+  },
+  {
+    "actual_ui_apply_end": "2026-10-11T06:11:23+05:30",
+    "actual_ui_apply_start": "2026-10-11T06:11:23+05:30",
+    "fraction_preserved": true,
+    "input": "2026-10-11T06:11:23+05:30",
+    "network_calls": 0,
+    "original_start": "2026-10-11T06:11:23+05:30",
+    "rendered_form_start": "2026-10-11T06:11:23+05:30",
+    "unrelated_text_edit_end": "2026-10-11T06:11:23+05:30",
+    "unrelated_text_edit_start": "2026-10-11T06:11:23+05:30",
+    "unrelated_text_edit_text": [
+      "updated"
+    ]
+  },
+  {
+    "actual_ui_apply_end": "5m",
+    "actual_ui_apply_start": "5m",
+    "fraction_preserved": true,
+    "input": "5m",
+    "network_calls": 0,
+    "original_start": "5m",
+    "rendered_form_start": "5m",
+    "unrelated_text_edit_end": "5m",
+    "unrelated_text_edit_start": "5m",
+    "unrelated_text_edit_text": [
+      "updated"
+    ]
+  }
+]

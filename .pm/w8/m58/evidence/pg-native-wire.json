@@ -1,0 +1,441 @@
+{
+  "qualification": "First app-specific helper included --type app; this is outside the documented managed Postgres filter subset and correctly returned400. It is not a finding; all six case receipts use no type argument and succeed200/exit0. Exact expected matches derive from the independent full-marker control.",
+  "captured_searches": [
+    {
+      "at": "2026-10-11T10:21:55.927143+00:00",
+      "client": "bex",
+      "term": "QA100_998562",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "dpg-db5m5m09n5bc73aqiib0",
+        "--type",
+        "app",
+        "--text",
+        "\"QA100_998562\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+      "native_result": {
+        "exit": 1,
+        "elapsed": 0.454,
+        "stdout": "",
+        "stderr": "Error: error listing logs: received response code 400: bad request: managed Postgres logs support text, time range, direction, level, limit, and instance filters\n"
+      },
+      "captures": [
+        {
+          "at": "2026-10-11T10:21:56.398999+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=dpg-db5m5m09n5bc73aqiib0&type=app&text=QA100_998562&limit=100",
+            "query": {
+              "ownerId": [
+                "tea-daif693dqjvc73e7as3g"
+              ],
+              "direction": [
+                "backward"
+              ],
+              "resource": [
+                "dpg-db5m5m09n5bc73aqiib0"
+              ],
+              "type": [
+                "app"
+              ],
+              "text": [
+                "QA100_998562"
+              ],
+              "limit": [
+                "100"
+              ]
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 400,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a48d240a4d463708-SJC"
+          },
+          "response": "{\"error\":\"bad request: managed Postgres logs support text, time range, direction, level, limit, and instance filters\",\"id\":\"bad_request\",\"message\":\"bad request: managed Postgres logs support text, time range, direction, level, limit, and instance filters\"}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-11T10:22:22.523888+00:00",
+      "client": "bex",
+      "term": "QA100_998562",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "dpg-db5m5m09n5bc73aqiib0",
+        "--text",
+        "\"QA100_998562\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 3.12,
+        "stdout": "{\n  \"id\": \"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5-2026-10-11T10:21:39.40132123Z-61fdb6dd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db5m5m09n5bc73aqiib0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-11 10:21:39.400 UTC [153] LOG:  QA100_998562 Ι\",\n  \"timestamp\": \"2026-10-11T10:21:39.40132123Z\"\n}{\n  \"id\": \"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5-2026-10-11T10:21:41.738373922Z-240876c3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db5m5m09n5bc73aqiib0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-11 10:21:41.738 UTC [154] LOG:  QA100_998562 ι\",\n  \"timestamp\": \"2026-10-11T10:21:41.738373922Z\"\n}{\n  \"id\": \"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5-2026-10-11T10:21:44.001792358Z-92a32c46\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db5m5m09n5bc73aqiib0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-11 10:21:44.001 UTC [155] LOG:  QA100_998562 λ\",\n  \"timestamp\": \"2026-10-11T10:21:44.001792358Z\"\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-11T10:22:25.659637+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=dpg-db5m5m09n5bc73aqiib0&text=QA100_998562&limit=100",
+            "query": {
+              "ownerId": [
+                "tea-daif693dqjvc73e7as3g"
+              ],
+              "direction": [
+                "backward"
+              ],
+              "resource": [
+                "dpg-db5m5m09n5bc73aqiib0"
+              ],
+              "text": [
+                "QA100_998562"
+              ],
+              "limit": [
+                "100"
+              ]
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a48d24afdb0ca473-SJC"
+          },
+          "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T09:22:25.626485923Z\",\"nextEndTime\":\"2026-10-11T10:21:39.401321229Z\",\"logs\":[{\"id\":\"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5-2026-10-11T10:21:39.40132123Z-61fdb6dd\",\"message\":\"2026-10-11 10:21:39.400 UTC [153] LOG:  QA100_998562 Ι\",\"timestamp\":\"2026-10-11T10:21:39.40132123Z\",\"labels\":[{\"name\":\"type\",\"value\":\"postgres\"},{\"name\":\"resource\",\"value\":\"dpg-db5m5m09n5bc73aqiib0\"},{\"name\":\"instance\",\"value\":\"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5\"},{\"name\":\"container\",\"value\":\"postgres\"},{\"name\":\"level\",\"value\":\"info\"}]},{\"id\":\"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5-2026-10-11T10:21:41.738373922Z-240876c3\",\"message\":\"2026-10-11 10:21:41.738 UTC [154] LOG:  QA100_998562 ι\",\"timestamp\":\"2026-10-11T10:21:41.738373922Z\",\"labels\":[{\"name\":\"type\",\"value\":\"postgres\"},{\"name\":\"resource\",\"value\":\"dpg-db5m5m09n5bc73aqiib0\"},{\"name\":\"instance\",\"value\":\"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5\"},{\"name\":\"container\",\"value\":\"postgres\"},{\"name\":\"level\",\"value\":\"info\"}]},{\"id\":\"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5-2026-10-11T10:21:44.001792358Z-92a32c46\",\"message\":\"2026-10-11 10:21:44.001 UTC [155] LOG:  QA100_998562 λ\",\"timestamp\":\"2026-10-11T10:21:44.001792358Z\",\"labels\":[{\"name\":\"type\",\"value\":\"postgres\"},{\"name\":\"resource\",\"value\":\"dpg-db5m5m09n5bc73aqiib0\"},{\"name\":\"instance\",\"value\":\"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5\"},{\"name\":\"container\",\"value\":\"postgres\"},{\"name\":\"level\",\"value\":\"info\"}]}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-11T10:22:57.142452+00:00",
+      "client": "render",
+      "term": "QA100_998562",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "dpg-db5m5m09n5bc73aqiib0",
+        "--text",
+        "\"QA100_998562\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 2.822,
+        "stdout": "{\n  \"id\": \"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5-2026-10-11T10:21:39.40132123Z-61fdb6dd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db5m5m09n5bc73aqiib0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-11 10:21:39.400 UTC [153] LOG:  QA100_998562 Ι\",\n  \"timestamp\": \"2026-10-11T10:21:39.40132123Z\"\n}{\n  \"id\": \"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5-2026-10-11T10:21:41.738373922Z-240876c3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db5m5m09n5bc73aqiib0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-11 10:21:41.738 UTC [154] LOG:  QA100_998562 ι\",\n  \"timestamp\": \"2026-10-11T10:21:41.738373922Z\"\n}{\n  \"id\": \"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5-2026-10-11T10:21:44.001792358Z-92a32c46\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db5m5m09n5bc73aqiib0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-11 10:21:44.001 UTC [155] LOG:  QA100_998562 λ\",\n  \"timestamp\": \"2026-10-11T10:21:44.001792358Z\"\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-11T10:22:59.979118+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=dpg-db5m5m09n5bc73aqiib0&text=QA100_998562&limit=100",
+            "query": {
+              "ownerId": [
+                "tea-daif693dqjvc73e7as3g"
+              ],
+              "direction": [
+                "backward"
+              ],
+              "resource": [
+                "dpg-db5m5m09n5bc73aqiib0"
+              ],
+              "text": [
+                "QA100_998562"
+              ],
+              "limit": [
+                "100"
+              ]
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a48d25887d1e8f74-SJC"
+          },
+          "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T09:22:59.946912628Z\",\"nextEndTime\":\"2026-10-11T10:21:39.401321229Z\",\"logs\":[{\"id\":\"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5-2026-10-11T10:21:39.40132123Z-61fdb6dd\",\"message\":\"2026-10-11 10:21:39.400 UTC [153] LOG:  QA100_998562 Ι\",\"timestamp\":\"2026-10-11T10:21:39.40132123Z\",\"labels\":[{\"name\":\"type\",\"value\":\"postgres\"},{\"name\":\"resource\",\"value\":\"dpg-db5m5m09n5bc73aqiib0\"},{\"name\":\"instance\",\"value\":\"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5\"},{\"name\":\"container\",\"value\":\"postgres\"},{\"name\":\"level\",\"value\":\"info\"}]},{\"id\":\"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5-2026-10-11T10:21:41.738373922Z-240876c3\",\"message\":\"2026-10-11 10:21:41.738 UTC [154] LOG:  QA100_998562 ι\",\"timestamp\":\"2026-10-11T10:21:41.738373922Z\",\"labels\":[{\"name\":\"type\",\"value\":\"postgres\"},{\"name\":\"resource\",\"value\":\"dpg-db5m5m09n5bc73aqiib0\"},{\"name\":\"instance\",\"value\":\"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5\"},{\"name\":\"container\",\"value\":\"postgres\"},{\"name\":\"level\",\"value\":\"info\"}]},{\"id\":\"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5-2026-10-11T10:21:44.001792358Z-92a32c46\",\"message\":\"2026-10-11 10:21:44.001 UTC [155] LOG:  QA100_998562 λ\",\"timestamp\":\"2026-10-11T10:21:44.001792358Z\",\"labels\":[{\"name\":\"type\",\"value\":\"postgres\"},{\"name\":\"resource\",\"value\":\"dpg-db5m5m09n5bc73aqiib0\"},{\"name\":\"instance\",\"value\":\"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5\"},{\"name\":\"container\",\"value\":\"postgres\"},{\"name\":\"level\",\"value\":\"info\"}]}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-11T10:23:03.914217+00:00",
+      "client": "bex",
+      "term": "ι",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "dpg-db5m5m09n5bc73aqiib0",
+        "--text",
+        "\"ι\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 2.852,
+        "stdout": "",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-11T10:23:06.784254+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=dpg-db5m5m09n5bc73aqiib0&text=%CE%B9&limit=100",
+            "query": {
+              "ownerId": [
+                "tea-daif693dqjvc73e7as3g"
+              ],
+              "direction": [
+                "backward"
+              ],
+              "resource": [
+                "dpg-db5m5m09n5bc73aqiib0"
+              ],
+              "text": [
+                "ι"
+              ],
+              "limit": [
+                "100"
+              ]
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a48d25b2ec40ebe3-SJC"
+          },
+          "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T09:23:06Z\",\"nextEndTime\":\"2026-10-11T10:23:06Z\",\"logs\":[]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-11T10:23:11.202250+00:00",
+      "client": "render",
+      "term": "ι",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "dpg-db5m5m09n5bc73aqiib0",
+        "--text",
+        "\"ι\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 2.753,
+        "stdout": "",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-11T10:23:13.969390+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=dpg-db5m5m09n5bc73aqiib0&text=%CE%B9&limit=100",
+            "query": {
+              "ownerId": [
+                "tea-daif693dqjvc73e7as3g"
+              ],
+              "direction": [
+                "backward"
+              ],
+              "resource": [
+                "dpg-db5m5m09n5bc73aqiib0"
+              ],
+              "text": [
+                "ι"
+              ],
+              "limit": [
+                "100"
+              ]
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a48d25e00dc38e1f-SJC"
+          },
+          "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T09:23:13Z\",\"nextEndTime\":\"2026-10-11T10:23:13Z\",\"logs\":[]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-11T10:23:19.855569+00:00",
+      "client": "bex",
+      "term": "λ",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "dpg-db5m5m09n5bc73aqiib0",
+        "--text",
+        "\"λ\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 2.485,
+        "stdout": "{\n  \"id\": \"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5-2026-10-11T10:21:44.001792358Z-92a32c46\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db5m5m09n5bc73aqiib0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-11 10:21:44.001 UTC [155] LOG:  QA100_998562 λ\",\n  \"timestamp\": \"2026-10-11T10:21:44.001792358Z\"\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-11T10:23:22.357803+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=dpg-db5m5m09n5bc73aqiib0&text=%CE%BB&limit=100",
+            "query": {
+              "ownerId": [
+                "tea-daif693dqjvc73e7as3g"
+              ],
+              "direction": [
+                "backward"
+              ],
+              "resource": [
+                "dpg-db5m5m09n5bc73aqiib0"
+              ],
+              "text": [
+                "λ"
+              ],
+              "limit": [
+                "100"
+              ]
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a48d26162d6a7a33-SJC"
+          },
+          "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T09:23:22.326234722Z\",\"nextEndTime\":\"2026-10-11T10:21:44.001792357Z\",\"logs\":[{\"id\":\"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5-2026-10-11T10:21:44.001792358Z-92a32c46\",\"message\":\"2026-10-11 10:21:44.001 UTC [155] LOG:  QA100_998562 λ\",\"timestamp\":\"2026-10-11T10:21:44.001792358Z\",\"labels\":[{\"name\":\"type\",\"value\":\"postgres\"},{\"name\":\"resource\",\"value\":\"dpg-db5m5m09n5bc73aqiib0\"},{\"name\":\"instance\",\"value\":\"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5\"},{\"name\":\"container\",\"value\":\"postgres\"},{\"name\":\"level\",\"value\":\"info\"}]}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-11T10:23:27.422958+00:00",
+      "client": "render",
+      "term": "λ",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "dpg-db5m5m09n5bc73aqiib0",
+        "--text",
+        "\"λ\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 3.141,
+        "stdout": "{\n  \"id\": \"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5-2026-10-11T10:21:44.001792358Z-92a32c46\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db5m5m09n5bc73aqiib0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-11 10:21:44.001 UTC [155] LOG:  QA100_998562 λ\",\n  \"timestamp\": \"2026-10-11T10:21:44.001792358Z\"\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-11T10:23:30.578289+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=dpg-db5m5m09n5bc73aqiib0&text=%CE%BB&limit=100",
+            "query": {
+              "ownerId": [
+                "tea-daif693dqjvc73e7as3g"
+              ],
+              "direction": [
+                "backward"
+              ],
+              "resource": [
+                "dpg-db5m5m09n5bc73aqiib0"
+              ],
+              "text": [
+                "λ"
+              ],
+              "limit": [
+                "100"
+              ]
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a48d26457d9f7af8-SJC"
+          },
+          "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-11T09:23:30.544026717Z\",\"nextEndTime\":\"2026-10-11T10:21:44.001792357Z\",\"logs\":[{\"id\":\"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5-2026-10-11T10:21:44.001792358Z-92a32c46\",\"message\":\"2026-10-11 10:21:44.001 UTC [155] LOG:  QA100_998562 λ\",\"timestamp\":\"2026-10-11T10:21:44.001792358Z\",\"labels\":[{\"name\":\"type\",\"value\":\"postgres\"},{\"name\":\"resource\",\"value\":\"dpg-db5m5m09n5bc73aqiib0\"},{\"name\":\"instance\",\"value\":\"dpg-db5m5m09n5bc73aqiib0-qch3e0q3rj0bsedunhp5\"},{\"name\":\"container\",\"value\":\"postgres\"},{\"name\":\"level\",\"value\":\"info\"}]}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    }
+  ]
+}

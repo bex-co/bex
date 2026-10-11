@@ -1,0 +1,32 @@
+{
+  "checked_at": "2026-10-11T12:59:40.363197+00:00",
+  "exact_later_source_commit": "c4d106cfdaf8eec6d23475155e43f4baeeed2013",
+  "native_test_oracle": "v2.27.0/a764810a768202704e7206eb7b87a47211fcd98e",
+  "qualification": "Later source only; no execution of later main or a newer release; no external issue absence claim",
+  "files": [
+    {
+      "file": "cmd/psql.go",
+      "source_url": "https://raw.githubusercontent.com/render-oss/cli/c4d106cfdaf8eec6d23475155e43f4baeeed2013/cmd/psql.go",
+      "sha256": "739b6be91910172bbadbab71122b4b3ad4bce165421e3b3f49ebaeee765004af",
+      "byte_identical_to_tested_pin": true
+    },
+    {
+      "file": "cmd/pgcli.go",
+      "source_url": "https://raw.githubusercontent.com/render-oss/cli/c4d106cfdaf8eec6d23475155e43f4baeeed2013/cmd/pgcli.go",
+      "sha256": "3be49c5b8340f612c7ad0756c89413098acfce4e10fb498d675816666fa4ca20",
+      "byte_identical_to_tested_pin": true
+    },
+    {
+      "file": "cmd/kvcli.go",
+      "source_url": "https://raw.githubusercontent.com/render-oss/cli/c4d106cfdaf8eec6d23475155e43f4baeeed2013/cmd/kvcli.go",
+      "sha256": "a08495d10da06cd010f6667a0e4479c9b190b600f213d2ca56ca7248352dae09",
+      "byte_identical_to_tested_pin": true
+    },
+    {
+      "file": "pkg/tui/views/projectfilter.go",
+      "source_url": "https://raw.githubusercontent.com/render-oss/cli/c4d106cfdaf8eec6d23475155e43f4baeeed2013/pkg/tui/views/projectfilter.go",
+      "sha256": "25deb52be6fab10914dd2c46c2f1cc2e14758ad428e3d2a5f05c4300594781c3",
+      "byte_identical_to_tested_pin": true
+    }
+  ]
+}

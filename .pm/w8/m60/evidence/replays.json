@@ -1,0 +1,944 @@
+[
+  {
+    "client": "bex",
+    "case": "phrase",
+    "result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources=srv-db5r0gc9vsac73cmeu3g",
+        "--text=LEFT",
+        "RIGHT",
+        "--type=app",
+        "--limit=100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.228,
+      "stdout": "{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524133213Z-920f69a6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d LEFT RIGHT\",\n  \"timestamp\": \"2026-10-11T15:59:18.524133213Z\"\n}{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524191381Z-7051da56\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d LEFT only\",\n  \"timestamp\": \"2026-10-11T15:59:18.524191381Z\"\n}{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524203183Z-959eab9a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d LEFT,RIGHT\",\n  \"timestamp\": \"2026-10-11T15:59:18.524203183Z\"\n}",
+      "stderr": ""
+    },
+    "logs": [
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524133213Z-920f69a6",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d LEFT RIGHT",
+        "timestamp": "2026-10-11T15:59:18.524133213Z"
+      },
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524191381Z-7051da56",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d LEFT only",
+        "timestamp": "2026-10-11T15:59:18.524191381Z"
+      },
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524203183Z-959eab9a",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d LEFT,RIGHT",
+        "timestamp": "2026-10-11T15:59:18.524203183Z"
+      }
+    ],
+    "messages": [
+      "QA135_8b460d LEFT RIGHT",
+      "QA135_8b460d LEFT only",
+      "QA135_8b460d LEFT,RIGHT"
+    ]
+  },
+  {
+    "client": "bex",
+    "case": "comma",
+    "result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources=srv-db5r0gc9vsac73cmeu3g",
+        "--text=LEFT,RIGHT",
+        "--type=app",
+        "--limit=100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.282,
+      "stdout": "{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524133213Z-920f69a6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d LEFT RIGHT\",\n  \"timestamp\": \"2026-10-11T15:59:18.524133213Z\"\n}{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524191381Z-7051da56\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d LEFT only\",\n  \"timestamp\": \"2026-10-11T15:59:18.524191381Z\"\n}{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524201319Z-37a8dd0d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d RIGHT only\",\n  \"timestamp\": \"2026-10-11T15:59:18.524201319Z\"\n}{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524203183Z-959eab9a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d LEFT,RIGHT\",\n  \"timestamp\": \"2026-10-11T15:59:18.524203183Z\"\n}",
+      "stderr": ""
+    },
+    "logs": [
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524133213Z-920f69a6",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d LEFT RIGHT",
+        "timestamp": "2026-10-11T15:59:18.524133213Z"
+      },
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524191381Z-7051da56",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d LEFT only",
+        "timestamp": "2026-10-11T15:59:18.524191381Z"
+      },
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524201319Z-37a8dd0d",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d RIGHT only",
+        "timestamp": "2026-10-11T15:59:18.524201319Z"
+      },
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524203183Z-959eab9a",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d LEFT,RIGHT",
+        "timestamp": "2026-10-11T15:59:18.524203183Z"
+      }
+    ],
+    "messages": [
+      "QA135_8b460d LEFT RIGHT",
+      "QA135_8b460d LEFT only",
+      "QA135_8b460d RIGHT only",
+      "QA135_8b460d LEFT,RIGHT"
+    ]
+  },
+  {
+    "client": "bex",
+    "case": "plain",
+    "result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources=srv-db5r0gc9vsac73cmeu3g",
+        "--text=plain",
+        "--type=app",
+        "--limit=100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.321,
+      "stdout": "{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524204836Z-46c59a63\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d plain\",\n  \"timestamp\": \"2026-10-11T15:59:18.524204836Z\"\n}",
+      "stderr": ""
+    },
+    "logs": [
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524204836Z-46c59a63",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d plain",
+        "timestamp": "2026-10-11T15:59:18.524204836Z"
+      }
+    ],
+    "messages": [
+      "QA135_8b460d plain"
+    ]
+  },
+  {
+    "client": "bex",
+    "case": "multi",
+    "result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources=srv-db5r0gc9vsac73cmeu3g",
+        "--text=LEFT,RIGHT",
+        "--type=app",
+        "--limit=100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.47,
+      "stdout": "{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524133213Z-920f69a6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d LEFT RIGHT\",\n  \"timestamp\": \"2026-10-11T15:59:18.524133213Z\"\n}{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524191381Z-7051da56\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d LEFT only\",\n  \"timestamp\": \"2026-10-11T15:59:18.524191381Z\"\n}{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524201319Z-37a8dd0d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d RIGHT only\",\n  \"timestamp\": \"2026-10-11T15:59:18.524201319Z\"\n}{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524203183Z-959eab9a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d LEFT,RIGHT\",\n  \"timestamp\": \"2026-10-11T15:59:18.524203183Z\"\n}",
+      "stderr": ""
+    },
+    "logs": [
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524133213Z-920f69a6",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d LEFT RIGHT",
+        "timestamp": "2026-10-11T15:59:18.524133213Z"
+      },
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524191381Z-7051da56",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d LEFT only",
+        "timestamp": "2026-10-11T15:59:18.524191381Z"
+      },
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524201319Z-37a8dd0d",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d RIGHT only",
+        "timestamp": "2026-10-11T15:59:18.524201319Z"
+      },
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524203183Z-959eab9a",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d LEFT,RIGHT",
+        "timestamp": "2026-10-11T15:59:18.524203183Z"
+      }
+    ],
+    "messages": [
+      "QA135_8b460d LEFT RIGHT",
+      "QA135_8b460d LEFT only",
+      "QA135_8b460d RIGHT only",
+      "QA135_8b460d LEFT,RIGHT"
+    ]
+  },
+  {
+    "client": "bex",
+    "case": "relative",
+    "result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources=srv-db5r0gc9vsac73cmeu3g",
+        "--text=plain",
+        "--type=app",
+        "--start={2026-10-11",
+        "08:30:05.415654",
+        "-0700",
+        "PDT",
+        "m=-1799.973905249",
+        "0x719618c71250}",
+        "--limit=100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.037,
+      "stdout": "",
+      "stderr": "Error: invalid argument \"{2026-10-11\" for \"--start\" flag: invalid timestamp, time must either be relative (1m, 5h, etc) or in RFC3339 format: 2026-10-11T09:01:04-07:00\nUsage:\n  bex logs [flags]\n\nExamples:\n  # Tail logs for a service\n  bex logs --resources srv-abc123 --tail\n\n  # Query logs in a time range\n  bex logs --resources srv-abc123 --start 2026-03-01T00:00:00Z --end 2026-03-01T01:00:00Z\n\n  # Output logs as JSON in non-interactive mode\n  bex logs --resources srv-abc123 --output json\n\nFlags:\n      --direction enum        Set log query direction (backward or forward)\n      --end time              Filter logs at or before the specified end time\n  -h, --help                  help for logs\n      --host strings          Filter logs by comma-separated host values\n      --instance strings      Filter logs by comma-separated instance IDs\n      --level enum            Filter logs by comma-separated log levels\n      --limit int             Limit the number of logs returned (default 100)\n      --method enum           Filter logs by comma-separated HTTP methods\n      --path strings          Filter logs by comma-separated request paths\n  -r, --resources strings     Filter logs by comma-separated resource IDs (Required in non-interactive mode)\n      --start time            Filter logs at or after the specified start time\n      --status-code strings   Filter logs by comma-separated status codes\n      --tail                  Stream new logs\n      --task-id strings       Filter logs by comma-separated task IDs\n      --task-run-id strings   Filter logs by comma-separated task run IDs\n      --text strings          Filter logs by comma-separated text values\n      --type enum             Filter logs by comma-separated log types\n\nGlobal Flags:\n      --confirm         Skip all confirmation prompts\n  -o, --output string   Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default \"interactive\")\n\n"
+    },
+    "logs": [],
+    "messages": []
+  },
+  {
+    "client": "render",
+    "case": "phrase",
+    "result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources=srv-db5r0gc9vsac73cmeu3g",
+        "--text=LEFT",
+        "RIGHT",
+        "--type=app",
+        "--limit=100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.186,
+      "stdout": "{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524133213Z-920f69a6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d LEFT RIGHT\",\n  \"timestamp\": \"2026-10-11T15:59:18.524133213Z\"\n}{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524191381Z-7051da56\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d LEFT only\",\n  \"timestamp\": \"2026-10-11T15:59:18.524191381Z\"\n}{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524203183Z-959eab9a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d LEFT,RIGHT\",\n  \"timestamp\": \"2026-10-11T15:59:18.524203183Z\"\n}",
+      "stderr": ""
+    },
+    "logs": [
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524133213Z-920f69a6",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d LEFT RIGHT",
+        "timestamp": "2026-10-11T15:59:18.524133213Z"
+      },
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524191381Z-7051da56",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d LEFT only",
+        "timestamp": "2026-10-11T15:59:18.524191381Z"
+      },
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524203183Z-959eab9a",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d LEFT,RIGHT",
+        "timestamp": "2026-10-11T15:59:18.524203183Z"
+      }
+    ],
+    "messages": [
+      "QA135_8b460d LEFT RIGHT",
+      "QA135_8b460d LEFT only",
+      "QA135_8b460d LEFT,RIGHT"
+    ]
+  },
+  {
+    "client": "render",
+    "case": "comma",
+    "result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources=srv-db5r0gc9vsac73cmeu3g",
+        "--text=LEFT,RIGHT",
+        "--type=app",
+        "--limit=100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.444,
+      "stdout": "{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524133213Z-920f69a6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d LEFT RIGHT\",\n  \"timestamp\": \"2026-10-11T15:59:18.524133213Z\"\n}{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524191381Z-7051da56\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d LEFT only\",\n  \"timestamp\": \"2026-10-11T15:59:18.524191381Z\"\n}{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524201319Z-37a8dd0d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d RIGHT only\",\n  \"timestamp\": \"2026-10-11T15:59:18.524201319Z\"\n}{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524203183Z-959eab9a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d LEFT,RIGHT\",\n  \"timestamp\": \"2026-10-11T15:59:18.524203183Z\"\n}",
+      "stderr": ""
+    },
+    "logs": [
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524133213Z-920f69a6",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d LEFT RIGHT",
+        "timestamp": "2026-10-11T15:59:18.524133213Z"
+      },
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524191381Z-7051da56",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d LEFT only",
+        "timestamp": "2026-10-11T15:59:18.524191381Z"
+      },
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524201319Z-37a8dd0d",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d RIGHT only",
+        "timestamp": "2026-10-11T15:59:18.524201319Z"
+      },
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524203183Z-959eab9a",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d LEFT,RIGHT",
+        "timestamp": "2026-10-11T15:59:18.524203183Z"
+      }
+    ],
+    "messages": [
+      "QA135_8b460d LEFT RIGHT",
+      "QA135_8b460d LEFT only",
+      "QA135_8b460d RIGHT only",
+      "QA135_8b460d LEFT,RIGHT"
+    ]
+  },
+  {
+    "client": "render",
+    "case": "plain",
+    "result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources=srv-db5r0gc9vsac73cmeu3g",
+        "--text=plain",
+        "--type=app",
+        "--limit=100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.177,
+      "stdout": "{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524204836Z-46c59a63\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d plain\",\n  \"timestamp\": \"2026-10-11T15:59:18.524204836Z\"\n}",
+      "stderr": ""
+    },
+    "logs": [
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524204836Z-46c59a63",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d plain",
+        "timestamp": "2026-10-11T15:59:18.524204836Z"
+      }
+    ],
+    "messages": [
+      "QA135_8b460d plain"
+    ]
+  },
+  {
+    "client": "render",
+    "case": "multi",
+    "result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources=srv-db5r0gc9vsac73cmeu3g",
+        "--text=LEFT,RIGHT",
+        "--type=app",
+        "--limit=100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.665,
+      "stdout": "{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524133213Z-920f69a6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d LEFT RIGHT\",\n  \"timestamp\": \"2026-10-11T15:59:18.524133213Z\"\n}{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524191381Z-7051da56\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d LEFT only\",\n  \"timestamp\": \"2026-10-11T15:59:18.524191381Z\"\n}{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524201319Z-37a8dd0d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d RIGHT only\",\n  \"timestamp\": \"2026-10-11T15:59:18.524201319Z\"\n}{\n  \"id\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524203183Z-959eab9a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA135_8b460d LEFT,RIGHT\",\n  \"timestamp\": \"2026-10-11T15:59:18.524203183Z\"\n}",
+      "stderr": ""
+    },
+    "logs": [
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524133213Z-920f69a6",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d LEFT RIGHT",
+        "timestamp": "2026-10-11T15:59:18.524133213Z"
+      },
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524191381Z-7051da56",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d LEFT only",
+        "timestamp": "2026-10-11T15:59:18.524191381Z"
+      },
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524201319Z-37a8dd0d",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d RIGHT only",
+        "timestamp": "2026-10-11T15:59:18.524201319Z"
+      },
+      {
+        "id": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk-2026-10-11T15:59:18.524203183Z-959eab9a",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db5r0gc9vsac73cmeu3g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db5r0gc9vsac73cmeu3g-f8g33qjiejelg0ghk0qk"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA135_8b460d LEFT,RIGHT",
+        "timestamp": "2026-10-11T15:59:18.524203183Z"
+      }
+    ],
+    "messages": [
+      "QA135_8b460d LEFT RIGHT",
+      "QA135_8b460d LEFT only",
+      "QA135_8b460d RIGHT only",
+      "QA135_8b460d LEFT,RIGHT"
+    ]
+  },
+  {
+    "client": "render",
+    "case": "relative",
+    "result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources=srv-db5r0gc9vsac73cmeu3g",
+        "--text=plain",
+        "--type=app",
+        "--start={2026-10-11",
+        "08:30:40.080291",
+        "-0700",
+        "PDT",
+        "m=-1799.976855541",
+        "0x74dca052d2f0}",
+        "--limit=100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.031,
+      "stdout": "",
+      "stderr": "Error: invalid argument \"{2026-10-11\" for \"--start\" flag: invalid timestamp, time must either be relative (1m, 5h, etc) or in RFC3339 format: 2026-10-11T09:01:13-07:00\nUsage:\n  render logs [flags]\n\nExamples:\n  # Tail logs for a service\n  render logs --resources srv-abc123 --tail\n\n  # Query logs in a time range\n  render logs --resources srv-abc123 --start 2026-03-01T00:00:00Z --end 2026-03-01T01:00:00Z\n\n  # Output logs as JSON in non-interactive mode\n  render logs --resources srv-abc123 --output json\n\nFlags:\n      --direction enum        Set log query direction (backward or forward)\n      --end time              Filter logs at or before the specified end time\n  -h, --help                  help for logs\n      --host strings          Filter logs by comma-separated host values\n      --instance strings      Filter logs by comma-separated instance IDs\n      --level enum            Filter logs by comma-separated log levels\n      --limit int             Limit the number of logs returned (default 100)\n      --method enum           Filter logs by comma-separated HTTP methods\n      --path strings          Filter logs by comma-separated request paths\n  -r, --resources strings     Filter logs by comma-separated resource IDs (Required in non-interactive mode)\n      --start time            Filter logs at or after the specified start time\n      --status-code strings   Filter logs by comma-separated status codes\n      --tail                  Stream new logs\n      --task-id strings       Filter logs by comma-separated task IDs\n      --task-run-id strings   Filter logs by comma-separated task run IDs\n      --text strings          Filter logs by comma-separated text values\n      --type enum             Filter logs by comma-separated log types\n\nGlobal Flags:\n      --confirm         Skip all confirmation prompts\n  -o, --output string   Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default \"interactive\")\n\n"
+    },
+    "logs": [],
+    "messages": []
+  }
+]

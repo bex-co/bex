@@ -1,0 +1,150 @@
+{
+  "project": {
+    "delete_intent": {
+      "at": "2026-10-11T11:52:56.464607+00:00",
+      "id": "prj-db5ndphn4lvc73ah9qn0"
+    },
+    "delete_result": {
+      "method": "DELETE",
+      "path": "/v1/projects/prj-db5ndphn4lvc73ah9qn0",
+      "body": null,
+      "status": "204",
+      "elapsed": 0.265,
+      "response": "",
+      "headers": {
+        "cf-ray": "a48da959bfbced3f-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "method": "GET",
+      "path": "/v1/projects/prj-db5ndphn4lvc73ah9qn0",
+      "body": null,
+      "status": "404",
+      "elapsed": 0.226,
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"project not found\",\"id\":\"not_found\",\"message\":\"project not found\",\"params\":null}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48da95bfa5e33fc-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "dependent_inventory_before_delete": {
+      "method": "POST",
+      "path": "/graphql",
+      "body": "{\"query\": \"query($id:String!){project(id:$id){id ownerId serviceIds databaseIds keyValueIds}}\", \"variables\": {\"id\": \"prj-db5ndphn4lvc73ah9qn0\"}}",
+      "status": "200",
+      "elapsed": 0.271,
+      "response": "{\"data\":{\"project\":{\"databaseIds\":[],\"id\":\"prj-db5ndphn4lvc73ah9qn0\",\"keyValueIds\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"serviceIds\":[]}}}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48da954e915156a-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "empty_environment_inventory_before_delete": {
+      "method": "GET",
+      "path": "/v1/projects/prj-db5ndphn4lvc73ah9qn0",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.262,
+      "response": "{\"id\":\"prj-db5ndphn4lvc73ah9qn0\",\"name\":\"qa-20261011-247c4f-emptyfilter\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"environmentIds\":[],\"createdAt\":\"2026-10-11T11:45:42.993183Z\",\"updatedAt\":\"2026-10-11T11:45:42.993183Z\"}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48da9573922b917-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "state": "deleted: API204/detail404; no dependencies"
+  },
+  "environment": {
+    "delete_intent": {
+      "at": "2026-10-11T11:52:54.666526+00:00",
+      "id": "evm-db5ng5hn4lvc73ah9r00"
+    },
+    "delete_result": {
+      "method": "DELETE",
+      "path": "/v1/environments/evm-db5ng5hn4lvc73ah9r00",
+      "body": null,
+      "status": "204",
+      "elapsed": 0.517,
+      "response": "",
+      "headers": {
+        "cf-ray": "a48da94e8d8b9657-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "method": "GET",
+      "path": "/v1/environments/evm-db5ng5hn4lvc73ah9r00",
+      "body": null,
+      "status": "404",
+      "elapsed": 0.273,
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"environment not found\",\"id\":\"not_found\",\"message\":\"environment not found\",\"params\":null}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48da9525d2b4c7c-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "dependent_inventory_before_delete": {
+      "method": "GET",
+      "path": "/v1/environments/evm-db5ng5hn4lvc73ah9r00",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.826,
+      "response": "{\"id\":\"evm-db5ng5hn4lvc73ah9r00\",\"projectId\":\"prj-db5ndphn4lvc73ah9qn0\",\"name\":\"qa-20261011-247c4f-emptyfilter-control\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48da948bbdcc6c6-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "state": "deleted: API204/detail404; empty own child"
+  },
+  "project_list_after_delete": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "projects",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.36,
+    "stdout": "null",
+    "stderr": ""
+  },
+  "baseline_ids_after_delete": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3v694dm7c7390q930",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0"
+  ],
+  "quota_after_delete": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.258,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48da9642a27c4f3-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "cleanup_state": "complete: exact own environment/project API204/detail404; parent inventories empty; native project list absent; six baseline services present; PG/KV quota and termination zero",
+  "render_config_removed": true
+}

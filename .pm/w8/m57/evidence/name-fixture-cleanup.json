@@ -1,0 +1,216 @@
+{
+  "id": "srv-db5k4h0mmd8c73drrii0",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "name": "qa-20261011-2f057a-timeform",
+  "nonce": "2f057a",
+  "display_name": "qa-20261011-2f057a-timeform,2f057a",
+  "time": "2026-10-11T08:01:07.736361+00:00",
+  "role": "native unchanged log form preserves an owned comma display-name selector",
+  "command": [
+    "bex",
+    "services",
+    "create",
+    "--name",
+    "qa-20261011-2f057a-timeform",
+    "--type",
+    "web_service",
+    "--runtime",
+    "node",
+    "--repo",
+    "https://github.com/bex-co/bex",
+    "--branch",
+    "main",
+    "--root-directory",
+    "examples/hello-node",
+    "--build-command",
+    "node --version",
+    "--start-command",
+    "node -e 'console.log(\"QA91_FORM_2f057a\");const http=require(\"node:http\");http.createServer((req,res)=>{const u=new URL(req.url,\"http://fixture\");const path=decodeURIComponent(u.pathname);const ok=req.url===\"/\"||req.url===\"/healthz\"||(path===\"/qa/\u2713+ready\"&&u.searchParams.get(\"mode\")===\"blue sky\"&&u.searchParams.get(\"mark\")===\"qa91-2f057a\");const code=ok?200:404;console.log(\"QA91_REQUEST \"+JSON.stringify({raw:req.url,host:req.headers.host,ua:req.headers[\"user-agent\"],code}));res.writeHead(code,{\"Content-Type\":\"text/plain\"});res.end(\"qa91-2f057a\\n\");}).listen(Number(process.env.PORT),\"0.0.0.0\")'",
+    "--health-check-path",
+    "/healthz",
+    "--plan",
+    "free",
+    "--region",
+    "frankfurt",
+    "--auto-deploy=false",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+  "form_target_log": {
+    "id": "srv-db5k4h0mmd8c73drrii0-83oaqq26i727mcf9ia3i-2026-10-11T08:03:08.062438769Z-087408fe",
+    "labels": [
+      {
+        "name": "type",
+        "value": "app"
+      },
+      {
+        "name": "resource",
+        "value": "srv-db5k4h0mmd8c73drrii0"
+      },
+      {
+        "name": "instance",
+        "value": "srv-db5k4h0mmd8c73drrii0-83oaqq26i727mcf9ia3i"
+      },
+      {
+        "name": "container",
+        "value": "app"
+      },
+      {
+        "name": "level",
+        "value": "unknown"
+      }
+    ],
+    "message": "QA91_FORM_2f057a",
+    "timestamp": "2026-10-11T08:03:08.062438769Z"
+  },
+  "deploy_children": [
+    {
+      "commit": {
+        "id": "599fb16c690defd1b61626644edf6d168692cad4",
+        "message": "fix(dashboard): keep plan-picker loading geometry faithful (w4/m196)\n\nThe Instance Type picker's loading state was one ungrouped grid of six\nfixed 96px bars, so the card grew 196px (desktop) / 244px (mobile) when the\ncatalog settled into separate Free and Paid groups of 108px cards.\n\nThe ready picker and every plan-loading skeleton now share one group/card\nlayout (instance-type-groups.tsx): same group stack, heading, responsive\ngrid, card frame and text rows. The skeleton is shaped by service type via\nthe existing paid-only policy (offersFreeTier): web/cron reserve Free + Paid,\nworker/private reserve Paid only, and an undecided type never guesses Free.\nThe route pending frame reads the parent loader's type; the parent-pending\nand server-gate skeletons read it from the Apollo cache when present.\nSave stays disabled and no tier is selectable while loading."
+      },
+      "createdAt": "2026-10-11T08:01:08.765226Z",
+      "finishedAt": "2026-10-11T08:03:27.960166Z",
+      "id": "dep-db5k4h0mmd8c73drriig",
+      "startedAt": "2026-10-11T08:02:10.512978Z",
+      "status": "live",
+      "trigger": "other",
+      "updatedAt": "2026-10-11T08:03:27.960166Z"
+    }
+  ],
+  "runtime_checks": [
+    {
+      "at": "2026-10-11T08:01:35.757615+00:00",
+      "kind": "root",
+      "path": "/",
+      "exit": 0,
+      "status": "404",
+      "body": "404 page not found\n",
+      "marker_matches": false
+    },
+    {
+      "at": "2026-10-11T08:01:36.529541+00:00",
+      "kind": "encoded",
+      "path": "/qa/%E2%9C%93%2Bready?mode=blue+sky&mark=qa91-2f057a",
+      "exit": 0,
+      "status": "404",
+      "body": "404 page not found\n",
+      "marker_matches": false
+    },
+    {
+      "at": "2026-10-11T08:02:47.927287+00:00",
+      "kind": "root",
+      "path": "/",
+      "exit": 0,
+      "status": "404",
+      "body": "404 page not found\n",
+      "marker_matches": false
+    },
+    {
+      "at": "2026-10-11T08:02:48.477245+00:00",
+      "kind": "encoded",
+      "path": "/qa/%E2%9C%93%2Bready?mode=blue+sky&mark=qa91-2f057a",
+      "exit": 0,
+      "status": "404",
+      "body": "404 page not found\n",
+      "marker_matches": false
+    },
+    {
+      "at": "2026-10-11T08:03:48.574918+00:00",
+      "kind": "root",
+      "path": "/",
+      "exit": 0,
+      "status": "200",
+      "body": "qa91-2f057a\n",
+      "marker_matches": true
+    },
+    {
+      "at": "2026-10-11T08:03:49.129726+00:00",
+      "kind": "encoded",
+      "path": "/qa/%E2%9C%93%2Bready?mode=blue+sky&mark=qa91-2f057a",
+      "exit": 0,
+      "status": "200",
+      "body": "qa91-2f057a\n",
+      "marker_matches": true
+    }
+  ],
+  "display_name_unique_api_proof": {
+    "path": "/v1/services?ownerId=tea-daif693dqjvc73e7as3g&name=qa-20261011-2f057a-timeform%2C2f057a",
+    "status": "200",
+    "owned_ids": [
+      "srv-db5k4h0mmd8c73drrii0"
+    ]
+  },
+  "workspace_after_delete_ids": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3v694dm7c7390q930",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0"
+  ],
+  "runtime_after_delete_checks": [
+    {
+      "exit": 0,
+      "stdout": "404 page not found\n\n404",
+      "stderr": ""
+    }
+  ],
+  "quota_after_delete": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.429,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48c5d78fdd54e48-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "rename_command": [
+    "bex",
+    "services",
+    "update",
+    "srv-db5k4h0mmd8c73drrii0",
+    "--name",
+    "qa-20261011-2f057a-timeform,2f057a",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "rename_exit": 0,
+  "rename_elapsed": 1.818,
+  "create_exit": 0,
+  "create_elapsed": 1.114,
+  "delete_command": [
+    "bex",
+    "services",
+    "delete",
+    "srv-db5k4h0mmd8c73drrii0",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "delete_exit": 0,
+  "delete_elapsed": 1.685,
+  "detail_after_delete": {
+    "method": "GET",
+    "path": "/v1/services/srv-db5k4h0mmd8c73drrii0",
+    "body": null,
+    "status": "404",
+    "elapsed": 0.411,
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48c5d6b79a11b51-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "unintercepted": "native create/rename/delete wire not captured"
+}

@@ -1,0 +1,66 @@
+[
+  {
+    "postgres_repo_error": "",
+    "qualification": "loopback actual-pin response-consumer probe; non-404 statuses are not live platform observations",
+    "requests": 3,
+    "service_repo_error": "",
+    "status": 200,
+    "typed_response_error": ""
+  },
+  {
+    "postgres_repo_error": "",
+    "qualification": "loopback actual-pin response-consumer probe; non-404 statuses are not live platform observations",
+    "requests": 3,
+    "service_repo_error": "",
+    "status": 202,
+    "typed_response_error": ""
+  },
+  {
+    "postgres_repo_error": "",
+    "qualification": "loopback actual-pin response-consumer probe; non-404 statuses are not live platform observations",
+    "requests": 3,
+    "service_repo_error": "received response code 400 (NOT_FOUND): not found",
+    "status": 400,
+    "typed_response_error": "received response code 400 (NOT_FOUND): not found"
+  },
+  {
+    "postgres_repo_error": "",
+    "qualification": "loopback actual-pin response-consumer probe; non-404 statuses are not live platform observations",
+    "requests": 3,
+    "service_repo_error": "received response code 404 (NOT_FOUND): not found",
+    "status": 404,
+    "typed_response_error": "received response code 404 (NOT_FOUND): not found"
+  },
+  {
+    "postgres_repo_error": "",
+    "qualification": "loopback actual-pin response-consumer probe; non-404 statuses are not live platform observations",
+    "requests": 3,
+    "service_repo_error": "received response code 409 (NOT_FOUND): not found",
+    "status": 409,
+    "typed_response_error": "received response code 409 (NOT_FOUND): not found"
+  },
+  {
+    "postgres_repo_error": "",
+    "qualification": "loopback actual-pin response-consumer probe; non-404 statuses are not live platform observations",
+    "requests": 3,
+    "service_repo_error": "too many requests",
+    "status": 429,
+    "typed_response_error": "too many requests"
+  },
+  {
+    "postgres_repo_error": "",
+    "qualification": "loopback actual-pin response-consumer probe; non-404 statuses are not live platform observations",
+    "requests": 3,
+    "service_repo_error": "received response code 500 (NOT_FOUND): not found",
+    "status": 500,
+    "typed_response_error": "received response code 500 (NOT_FOUND): not found"
+  },
+  {
+    "postgres_repo_error": "",
+    "qualification": "loopback actual-pin response-consumer probe; non-404 statuses are not live platform observations",
+    "requests": 3,
+    "service_repo_error": "received response code 503 (NOT_FOUND): not found",
+    "status": 503,
+    "typed_response_error": "received response code 503 (NOT_FOUND): not found"
+  }
+]

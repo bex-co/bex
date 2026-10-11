@@ -1,0 +1,17 @@
+import os,json,time,http.server
+TAG="QA128_66ac1b"
+def messages(batch):
+ return [TAG+"-"+batch+"-short 雪🚀β END",json.dumps({"marker":TAG+"-"+batch+"-small","Case":"KeepMixedCASE","payload":"雪🚀β|"*800,"end":"SMALL-END"},ensure_ascii=False,separators=(",",":")),json.dumps({"marker":TAG+"-"+batch+"-partial","Case":"KeepMixedCASE","payload":"雪🚀β|"*5000,"end":"PARTIAL-END"},ensure_ascii=False,separators=(",",":"))]
+class H(http.server.BaseHTTPRequestHandler):
+ def log_message(self,*a): pass
+ def do_GET(self):
+  parts=self.path.split("/");batch=parts[-1];items=messages(batch)
+  if self.path.startswith("/emit/"):
+   for i,m in enumerate(items):
+    b=m.encode()
+    if i:
+     mid=len(b)//2;os.write(1,b[:mid]);time.sleep(.12);os.write(1,b[mid:]+b"\n")
+    else:os.write(1,b+b"\n")
+  data=json.dumps(items,ensure_ascii=False).encode() if self.path.startswith(("/emit/","/expected/")) else (TAG+"-ready").encode()
+  self.send_response(200);self.send_header("Content-Length",str(len(data)));self.end_headers();self.wfile.write(data)
+http.server.ThreadingHTTPServer(("0.0.0.0",int(os.getenv("PORT","3000"))),H).serve_forever()

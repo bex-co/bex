@@ -1,0 +1,350 @@
+[
+  {
+    "at": "2026-10-11T09:11:15.785291+00:00",
+    "client": "bex",
+    "case": "all",
+    "term": "QA96_394cfd",
+    "expected_messages": [
+      "QA96_394cfd РУССКИЙ",
+      "QA96_394cfd русский",
+      "QA96_394cfd ΡΟΔΟ",
+      "QA96_394cfd ροδο",
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd kelvin",
+      "QA96_394cfd İSTANBUL",
+      "QA96_394cfd ISTANBUL",
+      "QA96_394cfd istanbul",
+      "QA96_394cfd Ι",
+      "QA96_394cfd ι"
+    ],
+    "actual_messages": [
+      "QA96_394cfd РУССКИЙ",
+      "QA96_394cfd русский",
+      "QA96_394cfd ΡΟΔΟ",
+      "QA96_394cfd ροδο",
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd kelvin",
+      "QA96_394cfd İSTANBUL",
+      "QA96_394cfd ISTANBUL",
+      "QA96_394cfd istanbul",
+      "QA96_394cfd Ι",
+      "QA96_394cfd ι"
+    ],
+    "pass": true,
+    "capture_index": 0,
+    "expectation": "normalized case-insensitive literal contract; stricter ASCII-prefixed controls also prove the broader term cannot legitimately lose matching rows"
+  },
+  {
+    "at": "2026-10-11T09:11:19.532115+00:00",
+    "client": "bex",
+    "case": "russian",
+    "term": "русский",
+    "expected_messages": [
+      "QA96_394cfd РУССКИЙ",
+      "QA96_394cfd русский"
+    ],
+    "actual_messages": [
+      "QA96_394cfd русский"
+    ],
+    "pass": false,
+    "capture_index": 1,
+    "expectation": "normalized case-insensitive literal contract; stricter ASCII-prefixed controls also prove the broader term cannot legitimately lose matching rows"
+  },
+  {
+    "at": "2026-10-11T09:11:22.796230+00:00",
+    "client": "bex",
+    "case": "greek-rho",
+    "term": "ροδο",
+    "expected_messages": [
+      "QA96_394cfd ΡΟΔΟ",
+      "QA96_394cfd ροδο"
+    ],
+    "actual_messages": [
+      "QA96_394cfd ροδο"
+    ],
+    "pass": false,
+    "capture_index": 2,
+    "expectation": "normalized case-insensitive literal contract; stricter ASCII-prefixed controls also prove the broader term cannot legitimately lose matching rows"
+  },
+  {
+    "at": "2026-10-11T09:11:26.053214+00:00",
+    "client": "bex",
+    "case": "ascii-kelvin",
+    "term": "kelvin",
+    "expected_messages": [
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd kelvin"
+    ],
+    "actual_messages": [
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd kelvin"
+    ],
+    "pass": false,
+    "capture_index": 3,
+    "expectation": "normalized case-insensitive literal contract; stricter ASCII-prefixed controls also prove the broader term cannot legitimately lose matching rows"
+  },
+  {
+    "at": "2026-10-11T09:11:29.300525+00:00",
+    "client": "bex",
+    "case": "ascii-istanbul",
+    "term": "istanbul",
+    "expected_messages": [
+      "QA96_394cfd İSTANBUL",
+      "QA96_394cfd ISTANBUL",
+      "QA96_394cfd istanbul"
+    ],
+    "actual_messages": [
+      "QA96_394cfd ISTANBUL",
+      "QA96_394cfd istanbul"
+    ],
+    "pass": false,
+    "capture_index": 4,
+    "expectation": "normalized case-insensitive literal contract; stricter ASCII-prefixed controls also prove the broader term cannot legitimately lose matching rows"
+  },
+  {
+    "at": "2026-10-11T09:11:32.550187+00:00",
+    "client": "bex",
+    "case": "iota",
+    "term": "ι",
+    "expected_messages": [
+      "QA96_394cfd Ι",
+      "QA96_394cfd ι"
+    ],
+    "actual_messages": [],
+    "pass": false,
+    "capture_index": 5,
+    "expectation": "normalized case-insensitive literal contract; stricter ASCII-prefixed controls also prove the broader term cannot legitimately lose matching rows"
+  },
+  {
+    "at": "2026-10-11T09:11:35.806747+00:00",
+    "client": "bex",
+    "case": "prefixed-russian",
+    "term": "QA96_394cfd русский",
+    "expected_messages": [
+      "QA96_394cfd РУССКИЙ",
+      "QA96_394cfd русский"
+    ],
+    "actual_messages": [
+      "QA96_394cfd РУССКИЙ",
+      "QA96_394cfd русский"
+    ],
+    "pass": true,
+    "capture_index": 6,
+    "expectation": "normalized case-insensitive literal contract; stricter ASCII-prefixed controls also prove the broader term cannot legitimately lose matching rows"
+  },
+  {
+    "at": "2026-10-11T09:11:39.065275+00:00",
+    "client": "bex",
+    "case": "prefixed-istanbul",
+    "term": "QA96_394cfd istanbul",
+    "expected_messages": [
+      "QA96_394cfd İSTANBUL",
+      "QA96_394cfd ISTANBUL",
+      "QA96_394cfd istanbul"
+    ],
+    "actual_messages": [
+      "QA96_394cfd İSTANBUL",
+      "QA96_394cfd ISTANBUL",
+      "QA96_394cfd istanbul"
+    ],
+    "pass": true,
+    "capture_index": 7,
+    "expectation": "normalized case-insensitive literal contract; stricter ASCII-prefixed controls also prove the broader term cannot legitimately lose matching rows"
+  },
+  {
+    "at": "2026-10-11T09:11:41.818662+00:00",
+    "client": "bex",
+    "case": "prefixed-kelvin",
+    "term": "QA96_394cfd kelvin",
+    "expected_messages": [
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd kelvin"
+    ],
+    "actual_messages": [
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd kelvin"
+    ],
+    "pass": true,
+    "capture_index": 8,
+    "expectation": "normalized case-insensitive literal contract; stricter ASCII-prefixed controls also prove the broader term cannot legitimately lose matching rows"
+  },
+  {
+    "at": "2026-10-11T09:11:45.140276+00:00",
+    "client": "render",
+    "case": "all",
+    "term": "QA96_394cfd",
+    "expected_messages": [
+      "QA96_394cfd РУССКИЙ",
+      "QA96_394cfd русский",
+      "QA96_394cfd ΡΟΔΟ",
+      "QA96_394cfd ροδο",
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd kelvin",
+      "QA96_394cfd İSTANBUL",
+      "QA96_394cfd ISTANBUL",
+      "QA96_394cfd istanbul",
+      "QA96_394cfd Ι",
+      "QA96_394cfd ι"
+    ],
+    "actual_messages": [
+      "QA96_394cfd РУССКИЙ",
+      "QA96_394cfd русский",
+      "QA96_394cfd ΡΟΔΟ",
+      "QA96_394cfd ροδο",
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd kelvin",
+      "QA96_394cfd İSTANBUL",
+      "QA96_394cfd ISTANBUL",
+      "QA96_394cfd istanbul",
+      "QA96_394cfd Ι",
+      "QA96_394cfd ι"
+    ],
+    "pass": true,
+    "capture_index": 9,
+    "expectation": "normalized case-insensitive literal contract; stricter ASCII-prefixed controls also prove the broader term cannot legitimately lose matching rows"
+  },
+  {
+    "at": "2026-10-11T09:11:47.890982+00:00",
+    "client": "render",
+    "case": "russian",
+    "term": "русский",
+    "expected_messages": [
+      "QA96_394cfd РУССКИЙ",
+      "QA96_394cfd русский"
+    ],
+    "actual_messages": [
+      "QA96_394cfd русский"
+    ],
+    "pass": false,
+    "capture_index": 10,
+    "expectation": "normalized case-insensitive literal contract; stricter ASCII-prefixed controls also prove the broader term cannot legitimately lose matching rows"
+  },
+  {
+    "at": "2026-10-11T09:11:50.661089+00:00",
+    "client": "render",
+    "case": "greek-rho",
+    "term": "ροδο",
+    "expected_messages": [
+      "QA96_394cfd ΡΟΔΟ",
+      "QA96_394cfd ροδο"
+    ],
+    "actual_messages": [
+      "QA96_394cfd ροδο"
+    ],
+    "pass": false,
+    "capture_index": 11,
+    "expectation": "normalized case-insensitive literal contract; stricter ASCII-prefixed controls also prove the broader term cannot legitimately lose matching rows"
+  },
+  {
+    "at": "2026-10-11T09:11:53.906583+00:00",
+    "client": "render",
+    "case": "ascii-kelvin",
+    "term": "kelvin",
+    "expected_messages": [
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd kelvin"
+    ],
+    "actual_messages": [
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd kelvin"
+    ],
+    "pass": false,
+    "capture_index": 12,
+    "expectation": "normalized case-insensitive literal contract; stricter ASCII-prefixed controls also prove the broader term cannot legitimately lose matching rows"
+  },
+  {
+    "at": "2026-10-11T09:11:57.159175+00:00",
+    "client": "render",
+    "case": "ascii-istanbul",
+    "term": "istanbul",
+    "expected_messages": [
+      "QA96_394cfd İSTANBUL",
+      "QA96_394cfd ISTANBUL",
+      "QA96_394cfd istanbul"
+    ],
+    "actual_messages": [
+      "QA96_394cfd ISTANBUL",
+      "QA96_394cfd istanbul"
+    ],
+    "pass": false,
+    "capture_index": 13,
+    "expectation": "normalized case-insensitive literal contract; stricter ASCII-prefixed controls also prove the broader term cannot legitimately lose matching rows"
+  },
+  {
+    "at": "2026-10-11T09:12:00.404716+00:00",
+    "client": "render",
+    "case": "iota",
+    "term": "ι",
+    "expected_messages": [
+      "QA96_394cfd Ι",
+      "QA96_394cfd ι"
+    ],
+    "actual_messages": [],
+    "pass": false,
+    "capture_index": 14,
+    "expectation": "normalized case-insensitive literal contract; stricter ASCII-prefixed controls also prove the broader term cannot legitimately lose matching rows"
+  },
+  {
+    "at": "2026-10-11T09:12:03.660000+00:00",
+    "client": "render",
+    "case": "prefixed-russian",
+    "term": "QA96_394cfd русский",
+    "expected_messages": [
+      "QA96_394cfd РУССКИЙ",
+      "QA96_394cfd русский"
+    ],
+    "actual_messages": [
+      "QA96_394cfd РУССКИЙ",
+      "QA96_394cfd русский"
+    ],
+    "pass": true,
+    "capture_index": 15,
+    "expectation": "normalized case-insensitive literal contract; stricter ASCII-prefixed controls also prove the broader term cannot legitimately lose matching rows"
+  },
+  {
+    "at": "2026-10-11T09:12:06.907443+00:00",
+    "client": "render",
+    "case": "prefixed-istanbul",
+    "term": "QA96_394cfd istanbul",
+    "expected_messages": [
+      "QA96_394cfd İSTANBUL",
+      "QA96_394cfd ISTANBUL",
+      "QA96_394cfd istanbul"
+    ],
+    "actual_messages": [
+      "QA96_394cfd İSTANBUL",
+      "QA96_394cfd ISTANBUL",
+      "QA96_394cfd istanbul"
+    ],
+    "pass": true,
+    "capture_index": 16,
+    "expectation": "normalized case-insensitive literal contract; stricter ASCII-prefixed controls also prove the broader term cannot legitimately lose matching rows"
+  },
+  {
+    "at": "2026-10-11T09:12:09.645200+00:00",
+    "client": "render",
+    "case": "prefixed-kelvin",
+    "term": "QA96_394cfd kelvin",
+    "expected_messages": [
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd kelvin"
+    ],
+    "actual_messages": [
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd KELVIN",
+      "QA96_394cfd kelvin"
+    ],
+    "pass": true,
+    "capture_index": 17,
+    "expectation": "normalized case-insensitive literal contract; stricter ASCII-prefixed controls also prove the broader term cannot legitimately lose matching rows"
+  }
+]

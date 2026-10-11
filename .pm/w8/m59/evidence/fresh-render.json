@@ -1,0 +1,438 @@
+{
+  "id": "srv-db5luiaek99c73ahur10",
+  "name": "qa-20261011-217991-built",
+  "nonce": "217991",
+  "sweep": 99,
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "role": "born-built2 native clear-build strategy control",
+  "command": [
+    "bex",
+    "services",
+    "create",
+    "--name",
+    "qa-20261011-217991-built",
+    "--type",
+    "static_site",
+    "--repo",
+    "https://github.com/bex-co/bex",
+    "--auto-deploy=false",
+    "--root-directory",
+    "examples/static-site",
+    "--publish-directory",
+    "dist",
+    "--build-command",
+    "mkdir -p dist; printf '%s' 'QA99_217991_control' > dist/index.html; printf '%s' 'QA99_217991_control_asset' > dist/version.txt",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "create_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261011-217991-built",
+      "--type",
+      "static_site",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--auto-deploy=false",
+      "--root-directory",
+      "examples/static-site",
+      "--publish-directory",
+      "dist",
+      "--build-command",
+      "mkdir -p dist; printf '%s' 'QA99_217991_control' > dist/index.html; printf '%s' 'QA99_217991_control_asset' > dist/version.txt",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.973,
+    "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-11T10:04:58Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db5luiaek99c73ahur10\",\n  \"id\": \"srv-db5luiaek99c73ahur10\",\n  \"name\": \"qa-20261011-217991-built\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/static-site\",\n  \"serviceDetails\": {\n    \"buildCommand\": \"mkdir -p dist; printf '%s' 'QA99_217991_control' \\u003e dist/index.html; printf '%s' 'QA99_217991_control_asset' \\u003e dist/version.txt\",\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"publishPath\": \"dist\",\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"url\": \"https://qa-20261011-217991-built.onbex.co\"\n  },\n  \"slug\": \"qa-20261011-217991-built\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"static_site\",\n  \"updatedAt\": \"2026-10-11T10:04:58Z\"\n}",
+    "stderr": ""
+  },
+  "create_response": {
+    "autoDeploy": "no",
+    "autoDeployTrigger": "off",
+    "branch": "main",
+    "createdAt": "2026-10-11T10:04:58Z",
+    "dashboardUrl": "https://dashboard.bex.co/static/srv-db5luiaek99c73ahur10",
+    "id": "srv-db5luiaek99c73ahur10",
+    "name": "qa-20261011-217991-built",
+    "notifyOnFail": "default",
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "repo": "https://github.com/bex-co/bex",
+    "rootDir": "examples/static-site",
+    "serviceDetails": {
+      "buildCommand": "mkdir -p dist; printf '%s' 'QA99_217991_control' > dist/index.html; printf '%s' 'QA99_217991_control_asset' > dist/version.txt",
+      "numInstances": 1,
+      "plan": "free",
+      "publishPath": "dist",
+      "region": "fsn1",
+      "renderSubdomainPolicy": "enabled",
+      "url": "https://qa-20261011-217991-built.onbex.co"
+    },
+    "slug": "qa-20261011-217991-built",
+    "suspended": "not_suspended",
+    "suspenders": [],
+    "type": "static_site",
+    "updatedAt": "2026-10-11T10:04:58Z"
+  },
+  "marker": "QA99_217991_control",
+  "build_command": "mkdir -p dist; printf '%s' 'QA99_217991_control' > dist/index.html; printf '%s' 'QA99_217991_control_asset' > dist/version.txt",
+  "clear": {
+    "at": "2026-10-11T10:07:41.145481+00:00",
+    "client": "render",
+    "command": [
+      "render",
+      "services",
+      "update",
+      "srv-db5luiaek99c73ahur10",
+      "--build-command",
+      "",
+      "--publish-directory",
+      ".",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "result received; reconciliation pending",
+    "authority_forwarding": "GET and exact clear-command PATCH to fixed owned ID at api.bex.co; unchanged path/body; isolated configuration; auth never journaled",
+    "result": {
+      "exit": 0,
+      "elapsed": 1.554,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-11T10:04:58Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db5luiaek99c73ahur10\",\n    \"id\": \"srv-db5luiaek99c73ahur10\",\n    \"name\": \"qa-20261011-217991-built\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/static-site\",\n    \"serviceDetails\": {\n      \"buildCommand\": \"\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"publishPath\": \".\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"url\": \"https://qa-20261011-217991-built.onbex.co\"\n    },\n    \"slug\": \"qa-20261011-217991-built\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"static_site\",\n    \"updatedAt\": \"2026-10-11T10:07:42.092671087Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-11T10:07:41.548509+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db5luiaek99c73ahur10",
+          "body": null,
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48d0f2b9f14c6ec-SJC"
+        },
+        "response": "{\"id\":\"srv-db5luiaek99c73ahur10\",\"name\":\"qa-20261011-217991-built\",\"immutableName\":\"qa-20261011-217991-built\",\"slug\":\"qa-20261011-217991-built\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db5luiaek99c73ahur10\",\"createdAt\":\"2026-10-11T10:04:58Z\",\"updatedAt\":\"2026-10-11T10:07:01Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"mkdir -p dist; printf '%s' 'QA99_217991_control' \\u003e dist/index.html; printf '%s' 'QA99_217991_control_asset' \\u003e dist/version.txt\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\"dist\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261011-217991-built.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-217991-built.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n"
+      },
+      {
+        "at": "2026-10-11T10:07:41.817781+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db5luiaek99c73ahur10",
+          "body": null,
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48d0f2d4b3a7a33-SJC"
+        },
+        "response": "{\"id\":\"srv-db5luiaek99c73ahur10\",\"name\":\"qa-20261011-217991-built\",\"immutableName\":\"qa-20261011-217991-built\",\"slug\":\"qa-20261011-217991-built\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db5luiaek99c73ahur10\",\"createdAt\":\"2026-10-11T10:04:58Z\",\"updatedAt\":\"2026-10-11T10:07:01Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"mkdir -p dist; printf '%s' 'QA99_217991_control' \\u003e dist/index.html; printf '%s' 'QA99_217991_control_asset' \\u003e dist/version.txt\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\"dist\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261011-217991-built.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-217991-built.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n"
+      },
+      {
+        "at": "2026-10-11T10:07:42.232304+00:00",
+        "request": {
+          "method": "PATCH",
+          "path": "/v1/services/srv-db5luiaek99c73ahur10",
+          "body": {
+            "serviceDetails": {
+              "buildCommand": "",
+              "publishPath": "."
+            }
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48d0f2eee4dfa4e-SJC"
+        },
+        "response": "{\"id\":\"srv-db5luiaek99c73ahur10\",\"name\":\"qa-20261011-217991-built\",\"immutableName\":\"qa-20261011-217991-built\",\"slug\":\"qa-20261011-217991-built\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db5luiaek99c73ahur10\",\"createdAt\":\"2026-10-11T10:04:58Z\",\"updatedAt\":\"2026-10-11T10:07:42.092671087Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\".\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261011-217991-built.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-217991-built.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n"
+      },
+      {
+        "at": "2026-10-11T10:07:42.494270+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db5luiaek99c73ahur10",
+          "body": null,
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48d0f318eeae8d9-SJC"
+        },
+        "response": "{\"id\":\"srv-db5luiaek99c73ahur10\",\"name\":\"qa-20261011-217991-built\",\"immutableName\":\"qa-20261011-217991-built\",\"slug\":\"qa-20261011-217991-built\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db5luiaek99c73ahur10\",\"createdAt\":\"2026-10-11T10:04:58Z\",\"updatedAt\":\"2026-10-11T10:07:42.092671087Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\".\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261011-217991-built.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-217991-built.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n"
+      },
+      {
+        "at": "2026-10-11T10:07:42.728157+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/projects?ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+          "body": null,
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a48d0f332db43911-SJC"
+        },
+        "response": "[]\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  "deploy_children": [
+    {
+      "commit": {
+        "id": "ee15052ae34433ac46f8f3b5e4bccba7a3adb150",
+        "message": "docs(pm): distinguish dotted Postgres table identities (w4/255)"
+      },
+      "createdAt": "2026-10-11T10:07:42.162528Z",
+      "finishedAt": "2026-10-11T10:07:52.94526Z",
+      "id": "dep-db5lvrlm4o4s73bmn9lg",
+      "status": "build_failed",
+      "trigger": "service_updated",
+      "updatedAt": "2026-10-11T10:07:52.945261Z"
+    },
+    {
+      "commit": {
+        "id": "ee15052ae34433ac46f8f3b5e4bccba7a3adb150",
+        "message": "docs(pm): distinguish dotted Postgres table identities (w4/255)"
+      },
+      "createdAt": "2026-10-11T10:04:57.960583Z",
+      "finishedAt": "2026-10-11T10:07:08.848587Z",
+      "id": "dep-db5luiaek99c73ahur1g",
+      "startedAt": "2026-10-11T10:06:08.855193Z",
+      "status": "live",
+      "trigger": "other",
+      "updatedAt": "2026-10-11T10:07:08.848588Z"
+    }
+  ],
+  "children_enumeration_evidence": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "deploys",
+      "list",
+      "srv-db5luiaek99c73ahur10",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.298,
+    "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"ee15052ae34433ac46f8f3b5e4bccba7a3adb150\",\n      \"message\": \"docs(pm): distinguish dotted Postgres table identities (w4/255)\"\n    },\n    \"createdAt\": \"2026-10-11T10:07:42.162528Z\",\n    \"finishedAt\": \"2026-10-11T10:07:52.94526Z\",\n    \"id\": \"dep-db5lvrlm4o4s73bmn9lg\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-11T10:07:52.945261Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"ee15052ae34433ac46f8f3b5e4bccba7a3adb150\",\n      \"message\": \"docs(pm): distinguish dotted Postgres table identities (w4/255)\"\n    },\n    \"createdAt\": \"2026-10-11T10:04:57.960583Z\",\n    \"finishedAt\": \"2026-10-11T10:07:08.848587Z\",\n    \"id\": \"dep-db5luiaek99c73ahur1g\",\n    \"startedAt\": \"2026-10-11T10:06:08.855193Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-11T10:07:08.848588Z\"\n  }\n]",
+    "stderr": ""
+  },
+  "service_observations": [
+    {
+      "at": "2026-10-11T10:06:22.043139+00:00",
+      "api_only": {
+        "method": "GET",
+        "path": "/v1/services/srv-db5luiaek99c73ahur10",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.264,
+        "response": "{\"id\":\"srv-db5luiaek99c73ahur10\",\"name\":\"qa-20261011-217991-built\",\"immutableName\":\"qa-20261011-217991-built\",\"slug\":\"qa-20261011-217991-built\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db5luiaek99c73ahur10\",\"createdAt\":\"2026-10-11T10:04:58Z\",\"updatedAt\":\"2026-10-11T10:05:59Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"mkdir -p dist; printf '%s' 'QA99_217991_control' \\u003e dist/index.html; printf '%s' 'QA99_217991_control_asset' \\u003e dist/version.txt\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\"dist\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261011-217991-built.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48d0d3aaea4eb30-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-11T10:07:30.911683+00:00",
+      "api_only": {
+        "method": "GET",
+        "path": "/v1/services/srv-db5luiaek99c73ahur10",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.374,
+        "response": "{\"id\":\"srv-db5luiaek99c73ahur10\",\"name\":\"qa-20261011-217991-built\",\"immutableName\":\"qa-20261011-217991-built\",\"slug\":\"qa-20261011-217991-built\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db5luiaek99c73ahur10\",\"createdAt\":\"2026-10-11T10:04:58Z\",\"updatedAt\":\"2026-10-11T10:07:01Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"mkdir -p dist; printf '%s' 'QA99_217991_control' \\u003e dist/index.html; printf '%s' 'QA99_217991_control_asset' \\u003e dist/version.txt\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\"dist\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261011-217991-built.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-217991-built.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48d0ee88c7adc04-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-11T10:08:49.771901+00:00",
+      "api_only": {
+        "method": "GET",
+        "path": "/v1/services/srv-db5luiaek99c73ahur10",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.317,
+        "response": "{\"id\":\"srv-db5luiaek99c73ahur10\",\"name\":\"qa-20261011-217991-built\",\"immutableName\":\"qa-20261011-217991-built\",\"slug\":\"qa-20261011-217991-built\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db5luiaek99c73ahur10\",\"createdAt\":\"2026-10-11T10:04:58Z\",\"updatedAt\":\"2026-10-11T10:07:42.092671087Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\".\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261011-217991-built.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-217991-built.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48d10d5afc19e59-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    }
+  ],
+  "deploy_observations": [
+    {
+      "at": "2026-10-11T10:06:22.478908+00:00",
+      "api_only": {
+        "method": "GET",
+        "path": "/v1/services/srv-db5luiaek99c73ahur10/deploys/dep-db5luiaek99c73ahur1g",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.374,
+        "response": "{\"id\":\"dep-db5luiaek99c73ahur1g\",\"serviceId\":\"srv-db5luiaek99c73ahur10\",\"status\":\"build_in_progress\",\"trigger\":\"other\",\"bexTrigger\":\"create\",\"commit\":{\"id\":\"ee15052ae34433ac46f8f3b5e4bccba7a3adb150\",\"message\":\"docs(pm): distinguish dotted Postgres table identities (w4/255)\"},\"createdAt\":\"2026-10-11T10:04:57.960583Z\",\"updatedAt\":\"2026-10-11T10:06:08.855194Z\",\"startedAt\":\"2026-10-11T10:06:08.855193Z\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48d0d3cbc203023-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-11T10:07:31.244953+00:00",
+      "api_only": {
+        "method": "GET",
+        "path": "/v1/services/srv-db5luiaek99c73ahur10/deploys/dep-db5luiaek99c73ahur1g",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.278,
+        "response": "{\"id\":\"dep-db5luiaek99c73ahur1g\",\"serviceId\":\"srv-db5luiaek99c73ahur10\",\"status\":\"live\",\"trigger\":\"other\",\"bexTrigger\":\"create\",\"commit\":{\"id\":\"ee15052ae34433ac46f8f3b5e4bccba7a3adb150\",\"message\":\"docs(pm): distinguish dotted Postgres table identities (w4/255)\"},\"createdAt\":\"2026-10-11T10:04:57.960583Z\",\"updatedAt\":\"2026-10-11T10:07:08.848588Z\",\"startedAt\":\"2026-10-11T10:06:08.855193Z\",\"finishedAt\":\"2026-10-11T10:07:08.848587Z\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48d0eeb4b87c4f3-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-11T10:08:50.083923+00:00",
+      "api_only": {
+        "method": "GET",
+        "path": "/v1/services/srv-db5luiaek99c73ahur10/deploys/dep-db5lvrlm4o4s73bmn9lg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.255,
+        "response": "{\"id\":\"dep-db5lvrlm4o4s73bmn9lg\",\"serviceId\":\"srv-db5luiaek99c73ahur10\",\"status\":\"build_failed\",\"trigger\":\"service_updated\",\"bexTrigger\":\"config_change\",\"commit\":{\"id\":\"ee15052ae34433ac46f8f3b5e4bccba7a3adb150\",\"message\":\"docs(pm): distinguish dotted Postgres table identities (w4/255)\"},\"createdAt\":\"2026-10-11T10:07:42.162528Z\",\"updatedAt\":\"2026-10-11T10:07:52.945261Z\",\"finishedAt\":\"2026-10-11T10:07:52.94526Z\",\"failureReason\":\"dispatching build: build: native runtime node requires buildCommand\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48d10d8081f15ff-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    }
+  ],
+  "runtime_checks": [
+    {
+      "at": "2026-10-11T10:06:23.043750+00:00",
+      "status": "404",
+      "exit": 0,
+      "body": "404 page not found\n",
+      "matches_initial_or_built": false,
+      "expected_stage": "built",
+      "previous_built_marker_matches": false
+    },
+    {
+      "at": "2026-10-11T10:07:31.890019+00:00",
+      "status": "200",
+      "exit": 0,
+      "body": "QA99_217991_control",
+      "matches_initial_or_built": true,
+      "expected_stage": "built",
+      "previous_built_marker_matches": true
+    },
+    {
+      "at": "2026-10-11T10:08:50.641572+00:00",
+      "status": "200",
+      "exit": 0,
+      "body": "QA99_217991_control",
+      "matches_initial_or_built": false,
+      "expected_stage": "direct",
+      "previous_built_marker_matches": true
+    }
+  ],
+  "strategy_observations": [
+    {
+      "at": "2026-10-11T10:05:23.308232+00:00",
+      "request": {
+        "query": "query QA99StaticStrategy($id: String!) { service(id: $id) { id type runtime builder buildCommand publishPath } }",
+        "variables": {
+          "id": "srv-db5luiaek99c73ahur10"
+        }
+      },
+      "api_only": {
+        "method": "POST",
+        "path": "/graphql",
+        "body": "{\"query\": \"query QA99StaticStrategy($id: String!) { service(id: $id) { id type runtime builder buildCommand publishPath } }\", \"variables\": {\"id\": \"srv-db5luiaek99c73ahur10\"}}",
+        "status": "200",
+        "elapsed": 0.265,
+        "response": "{\"data\":{\"service\":{\"buildCommand\":\"mkdir -p dist; printf '%s' 'QA99_217991_control' \\u003e dist/index.html; printf '%s' 'QA99_217991_control_asset' \\u003e dist/version.txt\",\"builder\":\"native\",\"id\":\"srv-db5luiaek99c73ahur10\",\"publishPath\":\"dist\",\"runtime\":\"\",\"type\":\"static_site\"}}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48d0bcb9bd3eb24-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-11T10:09:16.043550+00:00",
+      "request": {
+        "query": "query QA99StaticStrategy($id: String!) { service(id: $id) { id type runtime builder buildCommand publishPath } }",
+        "variables": {
+          "id": "srv-db5luiaek99c73ahur10"
+        }
+      },
+      "api_only": {
+        "method": "POST",
+        "path": "/graphql",
+        "body": "{\"query\": \"query QA99StaticStrategy($id: String!) { service(id: $id) { id type runtime builder buildCommand publishPath } }\", \"variables\": {\"id\": \"srv-db5luiaek99c73ahur10\"}}",
+        "status": "200",
+        "elapsed": 0.247,
+        "response": "{\"data\":{\"service\":{\"buildCommand\":\"\",\"builder\":\"native\",\"id\":\"srv-db5luiaek99c73ahur10\",\"publishPath\":\".\",\"runtime\":\"\",\"type\":\"static_site\"}}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48d117a486fd883-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    }
+  ],
+  "final_asset_check": {
+    "at": "2026-10-11T10:09:17.389233+00:00",
+    "path": "/version.txt",
+    "status": "200",
+    "exit": 0,
+    "body": "QA99_217991_control_asset",
+    "prior_built_asset_matches": true
+  }
+}

@@ -1,0 +1,200 @@
+{
+  "id": "prj-db5ndphn4lvc73ah9qn0",
+  "name": "qa-20261011-247c4f-emptyfilter",
+  "source_head": "0b8a659c0ee43c61a50e5d7deb55340660770047",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "baseline_ids": [
+    "srv-dap3v694dm7c7390q930",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-db09vbgehcmc739j12i0",
+    "srv-db09u90ehcmc739j12cg"
+  ],
+  "empty_project_cases": [
+    {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "interactive"
+      ],
+      "pid": 1378,
+      "exit": 0,
+      "elapsed": 5.032,
+      "timeout": false,
+      "error_screen_seen": false,
+      "dismissed_error_screen": false,
+      "harness_error": null,
+      "interactive_query_sent": false,
+      "quit_after_expected_row": true,
+      "rollback_on_exit": false,
+      "project_filter_sent": true,
+      "exact_name_filter_sent": true,
+      "selected_own_project": true,
+      "selected_project_header_seen": true,
+      "baseline_rows_after_selection": true,
+      "post_selection_output": "tea-daif693dqjvc73e7as3g > Services > Project Filter > qa-20261011-247c4f-emptyfilter\n[Ctrl+C]: Quit  [Esc]: Back  [Ctrl+S]: Copy command to clipboard\nProject: qa-20261011-247c4f-emptyfilter\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n┃Name                                            ┃Project                 ┃Environment             ┃Type              ┃ID                            ┃\n┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n┃qa-20260922-cd9361-boundary                     ┃                        ┃                        ┃Cron Job          ┃srv-dap3v694dm7c7390q930      ┃\n┃qa-20260922-cd9361-longcronxx                   ┃                        ┃                        ┃Cron Job          ┃srv-dap3umrbdpcs73f5eeug      ┃\n┃qa-20260922-cd9361-nativecron                   ┃                        ┃                        ┃Cron Job          ┃srv-dap3r714dm7c7390q91g      ┃\n┃hello-go                                        ┃                        ┃                        ┃Web Service       ┃srv-daif6dsmg29s73d1umvg      ┃\n┃qa-20261003-c63833-zero-head                    ┃                        ┃                        ┃Web Service       ┃srv-db09vbgehcmc739j12i0      ┃\n┃qa-20261003-f592c7-zero                         ┃                        ┃                        ┃Web Service       ┃srv-db09u90ehcmc739j12cg      ┃\n┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n┃1/1                                                                                                                                                 ┃\n┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n[c]: Copy ID  [w]: Change Workspace  [f]: Filter by Project  [/]: Search\n[Ctrl+C]: Quit  [Esc]: Back  [Ctrl+S]: Copy command to clipboard",
+      "output": "┻━━━━━━━━━━━━━━━━━━━━━━━━━┫\n┃1/1                                                                                                                                                 ┃\n┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n[s]: Save as default filter  [x]: Clear filter  [/]: Search\ntea-daif693dqjvc73e7as3g > Services > Project Filter > qa-20261011-247c4f-emptyfilter\nProject: qa-20261011-247c4f-emptyfilter\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n┃Name                                            ┃Project                 ┃Environment             ┃Type              ┃ID                            ┃\n┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n┃qa-20260922-cd9361-boundary                     ┃                        ┃                        ┃Cron Job          ┃srv-dap3v694dm7c7390q930      ┃\n┃qa-20260922-cd9361-longcronxx                   ┃                        ┃                        ┃Cron Job          ┃srv-dap3umrbdpcs73f5eeug      ┃\n┃qa-20260922-cd9361-nativecron                   ┃                        ┃                        ┃Cron Job          ┃srv-dap3r714dm7c7390q91g      ┃\n┃hello-go                                        ┃                        ┃                        ┃Web Service       ┃srv-daif6dsmg29s73d1umvg      ┃\n┃qa-20261003-c63833-zero-head                    ┃                        ┃                        ┃Web Service       ┃srv-db09vbgehcmc739j12i0      ┃\n┃qa-20261003-f592c7-zero                         ┃                        ┃                        ┃Web Service       ┃srv-db09u90ehcmc739j12cg      ┃\n┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n┃1/1                                                                                                                                                 ┃\n┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n[c]: Copy ID  [w]: Change Workspace  [f]: Filter by Project  [/]: Search"
+    },
+    {
+      "binary": "unmodified Render a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "--confirm",
+        "-o",
+        "interactive"
+      ],
+      "pid": 1393,
+      "exit": 0,
+      "elapsed": 4.962,
+      "timeout": false,
+      "error_screen_seen": false,
+      "dismissed_error_screen": false,
+      "harness_error": null,
+      "interactive_query_sent": false,
+      "quit_after_expected_row": true,
+      "rollback_on_exit": false,
+      "project_filter_sent": true,
+      "exact_name_filter_sent": true,
+      "selected_own_project": true,
+      "selected_project_header_seen": true,
+      "baseline_rows_after_selection": true,
+      "post_selection_output": "tea-daif693dqjvc73e7as3g > Services > Project Filter > qa-20261011-247c4f-emptyfilter\n[Ctrl+C]: Quit  [Esc]: Back  [Ctrl+S]: Copy command to clipboard\nProject: qa-20261011-247c4f-emptyfilter\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n┃Name                                            ┃Project                 ┃Environment             ┃Type              ┃ID                            ┃\n┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n┃qa-20260922-cd9361-boundary                     ┃                        ┃                        ┃Cron Job          ┃srv-dap3v694dm7c7390q930      ┃\n┃qa-20260922-cd9361-longcronxx                   ┃                        ┃                        ┃Cron Job          ┃srv-dap3umrbdpcs73f5eeug      ┃\n┃qa-20260922-cd9361-nativecron                   ┃                        ┃                        ┃Cron Job          ┃srv-dap3r714dm7c7390q91g      ┃\n┃hello-go                                        ┃                        ┃                        ┃Web Service       ┃srv-daif6dsmg29s73d1umvg      ┃\n┃qa-20261003-c63833-zero-head                    ┃                        ┃                        ┃Web Service       ┃srv-db09vbgehcmc739j12i0      ┃\n┃qa-20261003-f592c7-zero                         ┃                        ┃                        ┃Web Service       ┃srv-db09u90ehcmc739j12cg      ┃\n┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n┃1/1                                                                                                                                                 ┃\n┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n[c]: Copy ID  [w]: Change Workspace  [f]: Filter by Project  [/]: Search\n[Ctrl+C]: Quit  [Esc]: Back  [Ctrl+S]: Copy command to clipboard",
+      "output": "┻━━━━━━━━━━━━━━━━━━━━━━━━━┫\n┃1/1                                                                                                                                                 ┃\n┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n[s]: Save as default filter  [x]: Clear filter  [/]: Search\ntea-daif693dqjvc73e7as3g > Services > Project Filter > qa-20261011-247c4f-emptyfilter\nProject: qa-20261011-247c4f-emptyfilter\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n┃Name                                            ┃Project                 ┃Environment             ┃Type              ┃ID                            ┃\n┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n┃qa-20260922-cd9361-boundary                     ┃                        ┃                        ┃Cron Job          ┃srv-dap3v694dm7c7390q930      ┃\n┃qa-20260922-cd9361-longcronxx                   ┃                        ┃                        ┃Cron Job          ┃srv-dap3umrbdpcs73f5eeug      ┃\n┃qa-20260922-cd9361-nativecron                   ┃                        ┃                        ┃Cron Job          ┃srv-dap3r714dm7c7390q91g      ┃\n┃hello-go                                        ┃                        ┃                        ┃Web Service       ┃srv-daif6dsmg29s73d1umvg      ┃\n┃qa-20261003-c63833-zero-head                    ┃                        ┃                        ┃Web Service       ┃srv-db09vbgehcmc739j12i0      ┃\n┃qa-20261003-f592c7-zero                         ┃                        ┃                        ┃Web Service       ┃srv-db09u90ehcmc739j12cg      ┃\n┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n┃1/1                                                                                                                                                 ┃\n┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n[c]: Copy ID  [w]: Change Workspace  [f]: Filter by Project  [/]: Search"
+    }
+  ],
+  "empty_environment_control_cases": [
+    {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "interactive"
+      ],
+      "pid": 2213,
+      "exit": 0,
+      "elapsed": 6.786,
+      "timeout": false,
+      "error_screen_seen": false,
+      "dismissed_error_screen": false,
+      "harness_error": null,
+      "interactive_query_sent": false,
+      "quit_after_expected_row": true,
+      "rollback_on_exit": false,
+      "project_filter_sent": true,
+      "exact_name_filter_sent": true,
+      "selected_own_project": true,
+      "selected_project_header_seen": true,
+      "baseline_rows_after_selection": false,
+      "post_selection_output": "tea-daif693dqjvc73e7as3g > Services > Project Filter > qa-20261011-247c4f-emptyfilter\n[Ctrl+C]: Quit  [Esc]: Back  [Ctrl+S]: Copy command to clipboard\nProject: qa-20261011-247c4f-emptyfilter\n                                                                      No Results\n[c]: Copy ID  [w]: Change Workspace  [f]: Filter by Project  [/]: Search",
+      "output": "         ┃srv-dap3r714dm7c7390q91g      ┃\n┃hello-go                                        ┃                        ┃                        ┃Web Service       ┃srv-daif6dsmg29s73d1umvg      ┃\n┃qa-20261003-c63833-zero-head                    ┃                        ┃                        ┃Web Service       ┃srv-db09vbgehcmc739j12i0      ┃\n┃qa-20261003-f592c7-zero                         ┃                        ┃                        ┃Web Service       ┃srv-db09u90ehcmc739j12cg      ┃\n┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n┃1/1                                                                                                                                                 ┃\n┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n[c]: Copy ID  [w]: Change Workspace  [f]: Filter by Project  [/]: Search\ntea-daif693dqjvc73e7as3g > Services > Project Filter\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━┓\n┃Name                                                                                                                      ┃ID                       ┃\n┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━┫\n┃qa-20261011-247c4f-emptyfilter                                                                                            ┃prj-db5ndphn4lvc73ah9qn0 ┃\n┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━━┫\n┃1/1                                                                                                                                                 ┃\n┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n[s]: Save as default filter  [x]: Clear filter  [/]: Search\ntea-daif693dqjvc73e7as3g > Services > Project Filter > qa-20261011-247c4f-emptyfilter\nProject: qa-20261011-247c4f-emptyfilter\nNo Results\n[c]: Copy ID  [w]: Change Workspace  [f]: Filter by Project  [/]: Search"
+    },
+    {
+      "binary": "unmodified Render a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "--confirm",
+        "-o",
+        "interactive"
+      ],
+      "pid": 2269,
+      "exit": 0,
+      "elapsed": 6.444,
+      "timeout": false,
+      "error_screen_seen": false,
+      "dismissed_error_screen": false,
+      "harness_error": null,
+      "interactive_query_sent": false,
+      "quit_after_expected_row": true,
+      "rollback_on_exit": false,
+      "project_filter_sent": true,
+      "exact_name_filter_sent": true,
+      "selected_own_project": true,
+      "selected_project_header_seen": true,
+      "baseline_rows_after_selection": false,
+      "post_selection_output": "tea-daif693dqjvc73e7as3g > Services > Project Filter > qa-20261011-247c4f-emptyfilter\n[Ctrl+C]: Quit  [Esc]: Back  [Ctrl+S]: Copy command to clipboard\nProject: qa-20261011-247c4f-emptyfilter\n                                                                      No Results\n[c]: Copy ID  [w]: Change Workspace  [f]: Filter by Project  [/]: Search",
+      "output": "         ┃srv-dap3r714dm7c7390q91g      ┃\n┃hello-go                                        ┃                        ┃                        ┃Web Service       ┃srv-daif6dsmg29s73d1umvg      ┃\n┃qa-20261003-c63833-zero-head                    ┃                        ┃                        ┃Web Service       ┃srv-db09vbgehcmc739j12i0      ┃\n┃qa-20261003-f592c7-zero                         ┃                        ┃                        ┃Web Service       ┃srv-db09u90ehcmc739j12cg      ┃\n┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n┃1/1                                                                                                                                                 ┃\n┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n[c]: Copy ID  [w]: Change Workspace  [f]: Filter by Project  [/]: Search\ntea-daif693dqjvc73e7as3g > Services > Project Filter\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━┓\n┃Name                                                                                                                      ┃ID                       ┃\n┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━┫\n┃qa-20261011-247c4f-emptyfilter                                                                                            ┃prj-db5ndphn4lvc73ah9qn0 ┃\n┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━━┫\n┃1/1                                                                                                                                                 ┃\n┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n[s]: Save as default filter  [x]: Clear filter  [/]: Search\ntea-daif693dqjvc73e7as3g > Services > Project Filter > qa-20261011-247c4f-emptyfilter\nProject: qa-20261011-247c4f-emptyfilter\nNo Results\n[c]: Copy ID  [w]: Change Workspace  [f]: Filter by Project  [/]: Search"
+    }
+  ],
+  "selection_guards": [
+    {
+      "method": "GET",
+      "path": "/v1/projects?ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.378,
+      "response": "[{\"project\":{\"id\":\"prj-db5ndphn4lvc73ah9qn0\",\"name\":\"qa-20261011-247c4f-emptyfilter\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"environmentIds\":[],\"createdAt\":\"2026-10-11T11:45:42.993183Z\",\"updatedAt\":\"2026-10-11T11:45:42.993183Z\"},\"cursor\":\"prj-db5ndphn4lvc73ah9qn0\"}]\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48da058cb8035d6-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    {
+      "method": "GET",
+      "path": "/v1/projects?ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.315,
+      "response": "[{\"project\":{\"id\":\"prj-db5ndphn4lvc73ah9qn0\",\"name\":\"qa-20261011-247c4f-emptyfilter\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"environmentIds\":[],\"createdAt\":\"2026-10-11T11:45:42.993183Z\",\"updatedAt\":\"2026-10-11T11:45:42.993183Z\"},\"cursor\":\"prj-db5ndphn4lvc73ah9qn0\"}]\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48da1ed9a1c0b82-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    {
+      "method": "GET",
+      "path": "/v1/projects?ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.266,
+      "response": "[{\"project\":{\"id\":\"prj-db5ndphn4lvc73ah9qn0\",\"name\":\"qa-20261011-247c4f-emptyfilter\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"environmentIds\":[],\"createdAt\":\"2026-10-11T11:45:42.993183Z\",\"updatedAt\":\"2026-10-11T11:45:42.993183Z\"},\"cursor\":\"prj-db5ndphn4lvc73ah9qn0\"}]\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48da2102f0a2546-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    {
+      "method": "GET",
+      "path": "/v1/projects?ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.296,
+      "response": "[{\"project\":{\"id\":\"prj-db5ndphn4lvc73ah9qn0\",\"name\":\"qa-20261011-247c4f-emptyfilter\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"environmentIds\":[\"evm-db5ng5hn4lvc73ah9r00\"],\"createdAt\":\"2026-10-11T11:45:42.993183Z\",\"updatedAt\":\"2026-10-11T11:45:42.993183Z\"},\"cursor\":\"prj-db5ndphn4lvc73ah9qn0\"}]\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48da6317dbdcf1b-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    {
+      "method": "GET",
+      "path": "/v1/projects?ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.261,
+      "response": "[{\"project\":{\"id\":\"prj-db5ndphn4lvc73ah9qn0\",\"name\":\"qa-20261011-247c4f-emptyfilter\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"environmentIds\":[\"evm-db5ng5hn4lvc73ah9r00\"],\"createdAt\":\"2026-10-11T11:45:42.993183Z\",\"updatedAt\":\"2026-10-11T11:45:42.993183Z\"},\"cursor\":\"prj-db5ndphn4lvc73ah9qn0\"}]\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48da65eff9b1f2f-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    }
+  ],
+  "harness_qualification": "Initial event-loop timer ran only when new terminal output arrived, so it never sent Enter after the quiet project-search frame. It was corrected to run on every bounded loop iteration; timeout is excluded from product evidence.",
+  "qualification": "All three standard streams share one PTY. Post-selection output removes blank redraw rows and loading-spinner rows; substantive rendered lines are preserved. Native HTTP requests were not intercepted. Ctrl+C deliberately dismisses each completed observation."
+}

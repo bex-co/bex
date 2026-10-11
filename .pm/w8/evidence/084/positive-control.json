@@ -1,0 +1,244 @@
+{
+  "id": "dpg-db5mnp09n5bc73aqiipg",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "name": "qa-20261011-00fba6-pglocal",
+  "nonce": "00fba6",
+  "role": "native Postgres restart with SQL process-start oracle",
+  "create_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "postgres",
+      "create",
+      "--name",
+      "qa-20261011-00fba6-pglocal",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--version",
+      "18",
+      "--connection-pool",
+      "none",
+      "--database-name",
+      "qa_restart_00fba6",
+      "--database-user",
+      "qa_user_00fba6",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.698,
+    "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-11T10:58:44Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db5mnp09n5bc73aqiipg\",\n    \"databaseName\": \"qa_restart_00fba6\",\n    \"databaseUser\": \"qa_user_00fba6\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db5mnp09n5bc73aqiipg\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-20261011-00fba6-pglocal\",\n    \"owner\": {\n      \"email\": \"puncsky@gmail.com\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"creating\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-11T10:58:44.547866511Z\",\n    \"version\": \"18\",\n    \"projectId\": null\n  }\n}",
+    "stderr": ""
+  },
+  "create_response": {
+    "connectionPool": "none",
+    "createdAt": "2026-10-11T10:58:44Z",
+    "dashboardUrl": "https://dashboard.bex.co/d/dpg-db5mnp09n5bc73aqiipg",
+    "databaseName": "qa_restart_00fba6",
+    "databaseUser": "qa_user_00fba6",
+    "diskAutoscalingEnabled": false,
+    "diskSizeGB": 1,
+    "highAvailabilityEnabled": false,
+    "id": "dpg-db5mnp09n5bc73aqiipg",
+    "ipAllowList": [
+      {
+        "cidrBlock": "0.0.0.0/0",
+        "description": ""
+      },
+      {
+        "cidrBlock": "::/0",
+        "description": ""
+      }
+    ],
+    "name": "qa-20261011-00fba6-pglocal",
+    "owner": {
+      "email": "puncsky@gmail.com",
+      "id": "tea-daif693dqjvc73e7as3g",
+      "name": "bex-canary",
+      "type": "team"
+    },
+    "plan": "free",
+    "readReplicas": [],
+    "region": "fsn1",
+    "role": "",
+    "status": "creating",
+    "suspended": "not_suspended",
+    "suspenders": null,
+    "updatedAt": "2026-10-11T10:58:44.547866511Z",
+    "version": "18",
+    "projectId": null
+  },
+  "last_readback": {
+    "connectionPool": "none",
+    "createdAt": "2026-10-11T10:58:44Z",
+    "dashboardUrl": "https://dashboard.bex.co/d/dpg-db5mnp09n5bc73aqiipg",
+    "databaseName": "qa_restart_00fba6",
+    "databaseUser": "qa_user_00fba6",
+    "diskAutoscalingEnabled": false,
+    "diskSizeGB": 1,
+    "highAvailabilityEnabled": false,
+    "id": "dpg-db5mnp09n5bc73aqiipg",
+    "ipAllowList": [
+      {
+        "cidrBlock": "0.0.0.0/0",
+        "description": ""
+      },
+      {
+        "cidrBlock": "::/0",
+        "description": ""
+      }
+    ],
+    "name": "qa-20261011-00fba6-pglocal",
+    "owner": {
+      "email": "puncsky@gmail.com",
+      "id": "tea-daif693dqjvc73e7as3g",
+      "name": "bex-canary",
+      "type": "team"
+    },
+    "plan": "free",
+    "readReplicas": [],
+    "region": "fsn1",
+    "role": "",
+    "status": "available",
+    "suspended": "not_suspended",
+    "suspenders": null,
+    "updatedAt": "2026-10-11T11:00:22Z",
+    "version": "18",
+    "projectId": null
+  },
+  "restart_sql_init": {
+    "at": "2026-10-11T11:00:31.938976+00:00",
+    "sql": "CREATE TABLE qa_restart_probe (marker text PRIMARY KEY); INSERT INTO qa_restart_probe VALUES ('QA103_00fba6'); SELECT json_build_object('postmasterStart',pg_postmaster_start_time(),'marker',(SELECT marker FROM qa_restart_probe),'rowCount',(SELECT count(*) FROM qa_restart_probe));",
+    "state": "intent persisted",
+    "result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "psql",
+        "dpg-db5mnp09n5bc73aqiipg",
+        "--command",
+        "CREATE TABLE qa_restart_probe (marker text PRIMARY KEY); INSERT INTO qa_restart_probe VALUES ('QA103_00fba6'); SELECT json_build_object('postmasterStart',pg_postmaster_start_time(),'marker',(SELECT marker FROM qa_restart_probe),'rowCount',(SELECT count(*) FROM qa_restart_probe));",
+        "--confirm",
+        "-o",
+        "json",
+        "--",
+        "-X",
+        "-qAt",
+        "--set",
+        "ON_ERROR_STOP=1"
+      ],
+      "exit": 0,
+      "elapsed": 2.03,
+      "stdout": "{\n  \"output\": \"{\\\"postmasterStart\\\" : \\\"2026-10-11T11:00:15.342646+00:00\\\", \\\"marker\\\" : \\\"QA103_00fba6\\\", \\\"rowCount\\\" : 1}\\n\"\n}",
+      "stderr": ""
+    }
+  },
+  "native_restart": {
+    "at": "2026-10-11T11:00:44.382812+00:00",
+    "state": "exact owned ID intent persisted",
+    "result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "restart",
+        "dpg-db5mnp09n5bc73aqiipg",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.325,
+      "stdout": "\"dpg-db5mnp09n5bc73aqiipg restarted successfully\"",
+      "stderr": ""
+    }
+  },
+  "restart_observations": [
+    {
+      "at": "2026-10-11T11:00:45.243021+00:00",
+      "status": "config_restart",
+      "metadata_result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db5mnp09n5bc73aqiipg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.314,
+        "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-11T10:58:44Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db5mnp09n5bc73aqiipg\",\n    \"databaseName\": \"qa_restart_00fba6\",\n    \"databaseUser\": \"qa_user_00fba6\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db5mnp09n5bc73aqiipg\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-20261011-00fba6-pglocal\",\n    \"owner\": {\n      \"email\": \"puncsky@gmail.com\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"config_restart\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-11T11:00:44.680556291Z\",\n    \"version\": \"18\",\n    \"projectId\": null\n  }\n}",
+        "stderr": ""
+      },
+      "sql_result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db5mnp09n5bc73aqiipg",
+          "--command",
+          "SELECT json_build_object('postmasterStart',pg_postmaster_start_time(),'marker',(SELECT marker FROM qa_restart_probe),'rowCount',(SELECT count(*) FROM qa_restart_probe));",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-qAt",
+          "--set",
+          "ON_ERROR_STOP=1"
+        ],
+        "exit": 0,
+        "elapsed": 2.146,
+        "stdout": "{\n  \"output\": \"{\\\"postmasterStart\\\" : \\\"2026-10-11T11:00:15.342646+00:00\\\", \\\"marker\\\" : \\\"QA103_00fba6\\\", \\\"rowCount\\\" : 1}\\n\"\n}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-11T11:01:37.678500+00:00",
+      "status": "available",
+      "metadata_result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db5mnp09n5bc73aqiipg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.308,
+        "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-11T10:58:44Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db5mnp09n5bc73aqiipg\",\n    \"databaseName\": \"qa_restart_00fba6\",\n    \"databaseUser\": \"qa_user_00fba6\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db5mnp09n5bc73aqiipg\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-20261011-00fba6-pglocal\",\n    \"owner\": {\n      \"email\": \"puncsky@gmail.com\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"available\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-11T11:01:07Z\",\n    \"version\": \"18\",\n    \"projectId\": null\n  }\n}",
+        "stderr": ""
+      },
+      "sql_result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db5mnp09n5bc73aqiipg",
+          "--command",
+          "SELECT json_build_object('postmasterStart',pg_postmaster_start_time(),'marker',(SELECT marker FROM qa_restart_probe),'rowCount',(SELECT count(*) FROM qa_restart_probe));",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-qAt",
+          "--set",
+          "ON_ERROR_STOP=1"
+        ],
+        "exit": 0,
+        "elapsed": 1.957,
+        "stdout": "{\n  \"output\": \"{\\\"postmasterStart\\\" : \\\"2026-10-11T11:01:00.567446+00:00\\\", \\\"marker\\\" : \\\"QA103_00fba6\\\", \\\"rowCount\\\" : 1}\\n\"\n}",
+        "stderr": ""
+      }
+    }
+  ]
+}

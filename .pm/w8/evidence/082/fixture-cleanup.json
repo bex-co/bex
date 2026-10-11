@@ -1,0 +1,233 @@
+{
+  "id": "srv-db5dpgel97ls73au609g",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "name": "qa-20261011-b2102d-timeform",
+  "nonce": "b2102d",
+  "type": "web_service",
+  "time": "2026-10-11T00:48:00.749326+00:00",
+  "role": "interactive log filter retains the exact fractional timestamp window",
+  "command": [
+    "bex",
+    "services",
+    "create",
+    "--name",
+    "qa-20261011-b2102d-timeform",
+    "--type",
+    "web_service",
+    "--runtime",
+    "node",
+    "--repo",
+    "https://github.com/bex-co/bex",
+    "--branch",
+    "main",
+    "--root-directory",
+    "examples/hello-node",
+    "--build-command",
+    "node --version",
+    "--start-command",
+    "node -e 'console.log(\"QA86_FORM_b2102d\");const http=require(\"node:http\");http.createServer((req,res)=>{const u=new URL(req.url,\"http://fixture\");const path=decodeURIComponent(u.pathname);const ok=req.url===\"/\"||req.url===\"/healthz\"||(path===\"/qa/\u2713+ready\"&&u.searchParams.get(\"mode\")===\"blue sky\"&&u.searchParams.get(\"mark\")===\"qa86-b2102d\");const code=ok?200:404;console.log(\"QA86_REQUEST \"+JSON.stringify({raw:req.url,host:req.headers.host,ua:req.headers[\"user-agent\"],code}));res.writeHead(code,{\"Content-Type\":\"text/plain\"});res.end(\"qa86-b2102d\\n\");}).listen(Number(process.env.PORT),\"0.0.0.0\")'",
+    "--health-check-path",
+    "/healthz",
+    "--plan",
+    "free",
+    "--region",
+    "frankfurt",
+    "--auto-deploy=false",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+  "form_target_log": {
+    "id": "srv-db5dpgel97ls73au609g-36pd2em5vv0sffjs5bvf-2026-10-11T00:50:00.857576125Z-c456870e",
+    "labels": [
+      {
+        "name": "type",
+        "value": "app"
+      },
+      {
+        "name": "resource",
+        "value": "srv-db5dpgel97ls73au609g"
+      },
+      {
+        "name": "instance",
+        "value": "srv-db5dpgel97ls73au609g-36pd2em5vv0sffjs5bvf"
+      },
+      {
+        "name": "container",
+        "value": "app"
+      },
+      {
+        "name": "level",
+        "value": "unknown"
+      }
+    ],
+    "message": "QA86_FORM_b2102d",
+    "timestamp": "2026-10-11T00:50:00.857576125Z"
+  },
+  "deploy_children": [
+    {
+      "commit": {
+        "id": "014810e45037ee446612fa752481c7eddf579fd8",
+        "message": "fix(operator): send the service hostname as Host on HTTP health probes (w4/m190)\n\nKubelet sent the pod IP as Host, so an app that allowlists its own\nhostnames answered its health path 421 and an HTTP-health deploy could\nnever become Live. HTTP probes now keep connecting to the pod (HTTPGet.Host\nempty) but carry Render's Host header: first verified custom domain\n(spec.host, then spec.hosts; redirect sources skipped), else the canonical\nplatform hostname. Private/worker/TCP probes are unchanged.\n\nThe Host is chosen once per release and retained from the live template\nwhile it carries the same release label, so domain-only edits (operational,\nno deploy row) and the operator upgrade itself do not roll pods. New\nreleases, Restart and rollback select from current domains; cancel and\nfailed-rollout restoration keep the served template verbatim. ADR004 and\nthe ADR018 parity row record the rule and the unverified Render timing."
+      },
+      "createdAt": "2026-10-11T00:48:01.692846Z",
+      "finishedAt": "2026-10-11T00:50:16.686531Z",
+      "id": "dep-db5dpgel97ls73au60a0",
+      "startedAt": "2026-10-11T00:48:59.044742Z",
+      "status": "live",
+      "trigger": "other",
+      "updatedAt": "2026-10-11T00:50:16.686533Z"
+    }
+  ],
+  "runtime_checks": [
+    {
+      "at": "2026-10-11T00:49:13.304627+00:00",
+      "kind": "root",
+      "path": "/",
+      "exit": 0,
+      "status": "404",
+      "body": "404 page not found\n",
+      "marker_matches": false
+    },
+    {
+      "at": "2026-10-11T00:49:13.856224+00:00",
+      "kind": "encoded",
+      "path": "/qa/%E2%9C%93%2Bready?mode=blue+sky&mark=qa86-b2102d",
+      "exit": 0,
+      "status": "404",
+      "body": "404 page not found\n",
+      "marker_matches": false
+    },
+    {
+      "at": "2026-10-11T00:50:05.611560+00:00",
+      "kind": "root",
+      "path": "/",
+      "exit": 0,
+      "status": "503",
+      "body": "service unavailable\n",
+      "marker_matches": false
+    },
+    {
+      "at": "2026-10-11T00:50:06.235041+00:00",
+      "kind": "encoded",
+      "path": "/qa/%E2%9C%93%2Bready?mode=blue+sky&mark=qa86-b2102d",
+      "exit": 0,
+      "status": "503",
+      "body": "service unavailable\n",
+      "marker_matches": false
+    },
+    {
+      "at": "2026-10-11T00:50:46.431017+00:00",
+      "kind": "root",
+      "path": "/",
+      "exit": 0,
+      "status": "200",
+      "body": "qa86-b2102d\n",
+      "marker_matches": true
+    },
+    {
+      "at": "2026-10-11T00:50:46.984734+00:00",
+      "kind": "encoded",
+      "path": "/qa/%E2%9C%93%2Bready?mode=blue+sky&mark=qa86-b2102d",
+      "exit": 0,
+      "status": "200",
+      "body": "qa86-b2102d\n",
+      "marker_matches": true
+    }
+  ],
+  "workspace_after_delete_ids": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3v694dm7c7390q930",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0"
+  ],
+  "runtime_after_delete_checks": [
+    {
+      "exit": 0,
+      "stdout": "404 page not found\n\n404",
+      "stderr": ""
+    }
+  ],
+  "quota_after_delete": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.354,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48c2eddd92e456e-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "create_result": {
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261011-b2102d-timeform",
+      "--type",
+      "web_service",
+      "--runtime",
+      "node",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/hello-node",
+      "--build-command",
+      "node --version",
+      "--start-command",
+      "node -e 'console.log(\"QA86_FORM_b2102d\");const http=require(\"node:http\");http.createServer((req,res)=>{const u=new URL(req.url,\"http://fixture\");const path=decodeURIComponent(u.pathname);const ok=req.url===\"/\"||req.url===\"/healthz\"||(path===\"/qa/\u2713+ready\"&&u.searchParams.get(\"mode\")===\"blue sky\"&&u.searchParams.get(\"mark\")===\"qa86-b2102d\");const code=ok?200:404;console.log(\"QA86_REQUEST \"+JSON.stringify({raw:req.url,host:req.headers.host,ua:req.headers[\"user-agent\"],code}));res.writeHead(code,{\"Content-Type\":\"text/plain\"});res.end(\"qa86-b2102d\\n\");}).listen(Number(process.env.PORT),\"0.0.0.0\")'",
+      "--health-check-path",
+      "/healthz",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.223,
+    "stderr": ""
+  },
+  "delete_result": {
+    "command": [
+      "bex",
+      "services",
+      "delete",
+      "srv-db5dpgel97ls73au609g",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.468,
+    "stderr": ""
+  },
+  "detail_after_delete": {
+    "method": "GET",
+    "path": "/v1/services/srv-db5dpgel97ls73au609g",
+    "body": null,
+    "status": "404",
+    "elapsed": 0.236,
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a48c2ed33d2391f0-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "scope": "Selected nonsecret fixture/cleanup proof; native create/delete wire was not intercepted."
+}

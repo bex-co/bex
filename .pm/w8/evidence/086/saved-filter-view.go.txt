@@ -1,0 +1,89 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/render-oss/cli/pkg/config"
+	"github.com/render-oss/cli/pkg/tui"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+
+	"github.com/render-oss/cli/pkg/client"
+	"github.com/render-oss/cli/pkg/resource"
+	"github.com/render-oss/cli/pkg/tui/views"
+)
+
+func main() {
+	var mu sync.Mutex
+	requests := []map[string]string{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		requests = append(requests, map[string]string{"method": r.Method, "path": r.URL.Path, "query": r.URL.RawQuery})
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/v1/projects/prj-00000000000000000002" {
+			fmt.Fprint(w, `{"id":"prj-00000000000000000002","name":"QA110 saved default","environmentIds":["evm-00000000000000000002"]}`)
+			return
+		}
+		if r.URL.Path == "/v1/services" && r.URL.Query().Get("environmentId") == "" {
+			fmt.Fprint(w, `[{"service":{"id":"srv-00000000000000000001","name":"QA109 workspace service","type":"web_service"},"cursor":"local-cursor"}]`)
+		} else {
+			fmt.Fprint(w, `[]`)
+		}
+	}))
+	defer server.Close()
+	dir, err := os.MkdirTemp(".", "isolated-probe-config-")
+	if err != nil {
+		panic(err)
+	}
+	defer os.RemoveAll(dir)
+	for k, v := range map[string]string{"RENDER_HOST": server.URL + "/v1/", "RENDER_API_KEY": "qa-local-probe", "RENDER_WORKSPACE": "tea-00000000000000000000", "RENDER_CLI_CONFIG_PATH": filepath.Join(dir, "cli.yaml"), "RENDER_CLI_CONFIG_DIR": dir} {
+		os.Setenv(k, v)
+	}
+	if err := config.SetProjectFilter("prj-00000000000000000002", "QA110 saved default"); err != nil {
+		panic(err)
+	}
+	modelCases := []struct {
+		Name  string
+		Input views.ListResourceInput
+		Want  string
+	}{
+		{"explicit-empty-project-with-saved-default", views.ListResourceInput{Project: &client.Project{Id: "prj-00000000000000000001", Name: "QA110 explicit empty", EnvironmentIds: []string{}}, EnvironmentIDs: []string{}}, "QA110 explicit empty"},
+		{"explicit-environment-with-saved-default", views.ListResourceInput{Project: &client.Project{Id: "prj-00000000000000000001", Name: "QA110 explicit populated", EnvironmentIds: []string{"evm-00000000000000000001"}}, EnvironmentIDs: []string{"evm-00000000000000000001"}}, "QA110 explicit populated"},
+		{"no-explicit-scope-uses-saved-default", views.ListResourceInput{}, "QA110 saved default"},
+		{"explicit-empty-project-with-no-default", views.ListResourceInput{Project: &client.Project{Id: "prj-00000000000000000001", Name: "QA110 explicit empty", EnvironmentIds: []string{}}, EnvironmentIDs: []string{}}, "QA110 explicit empty"},
+	}
+	modelRows := []map[string]any{}
+	for i, c := range modelCases {
+		mu.Lock()
+		requests = nil
+		mu.Unlock()
+		if i == 3 {
+			if err := config.ClearProjectFilter(); err != nil {
+				panic(err)
+			}
+		}
+		load := func(_ context.Context, _ views.ListResourceInput) ([]resource.Resource, error) { return nil, nil }
+		v := views.NewResourceView(context.Background(), c.Input, load, func(resource.Resource) tea.Cmd { return nil })
+		v.Update(tui.StackSizeMsg{Width: 100, Height: 24})
+		screen := v.View()
+		mu.Lock()
+		calls := append([]map[string]string(nil), requests...)
+		mu.Unlock()
+		modelRows = append(modelRows, map[string]any{"case": c.Name, "expected_project_header": c.Want, "expected_header_present": strings.Contains(screen, "Project: "+c.Want), "saved_default_header_present": strings.Contains(screen, "Project: QA110 saved default"), "view": screen, "requests": calls})
+	}
+	b, err := json.MarshalIndent(modelRows, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	os.WriteFile("view-results.json", append(b, '\n'), 0600)
+	for _, r := range modelRows {
+		fmt.Println(r["case"], r["expected_header_present"])
+	}
+}
