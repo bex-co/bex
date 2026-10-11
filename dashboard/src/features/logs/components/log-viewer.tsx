@@ -24,6 +24,7 @@ import {
   LOG_PAGE_SIZE,
   LOG_TEXT_MODE_DISPLAY,
   hasActiveLogFilters,
+  storeOnlyFilterKey,
   usesStoreOnlyFilters,
   type LogFilters,
 } from "../types";
@@ -152,6 +153,10 @@ export function LogViewer({
     text: debouncedText,
     textMode: LOG_TEXT_MODE_DISPLAY,
     instance: queryFilters.instance,
+    // The store-only filters disable the tail instead of narrowing it, so they
+    // join its reader identity: toggling one clears lines streamed for the old
+    // query, while a plain Live pause keeps them on screen (w4/m192).
+    readerKey: storeOnlyFilterKey(queryFilters),
     // Follow the pod from the selected window's edge, not kubelet offset 0, so a
     // narrow range no longer surfaces lines older than it on first connect
     // (w6/m111). The tail freezes this per-subscription — the sliding window
@@ -160,13 +165,17 @@ export function LogViewer({
     createEventSource,
   });
 
-  // Live lines append after the historical page, deduped against it.
-  const lines = useMemo(() => {
-    const lower = Date.parse(historyWindow.startTime);
-    return mergeLogLines(history.lines, stream.lines).filter(
-      (line) => !(Date.parse(line.timestamp) < lower),
-    );
-  }, [history.lines, stream.lines, historyWindow.startTime]);
+  // History and live tail merged into one chronological reader, deduped — the
+  // tail's in-window replay can predate the historical head (w4/m192).
+  const lines = useMemo(
+    () =>
+      mergeLogLines(
+        history.lines,
+        stream.lines,
+        Date.parse(historyWindow.startTime),
+      ),
+    [history.lines, stream.lines, historyWindow.startTime],
+  );
 
   const filtered = hasActiveLogFilters(queryFilters);
 

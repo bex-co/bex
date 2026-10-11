@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { LogViewer } from "../log-viewer";
 import type { UseLogHistoryResult } from "../../hooks/use-log-history";
 import { RANGE_PRESETS } from "@/features/metrics/lib/range";
-import { EMPTY_LOG_FILTERS } from "../../types";
+import { EMPTY_LOG_FILTERS, type LogLine } from "../../types";
 import { setupVirtualGeometry } from "@/test/virtual-geometry";
 
 // Drive the viewer's states by stubbing its data layer, mirroring the
@@ -26,10 +26,11 @@ vi.mock("../../hooks/use-log-history", () => ({
   },
 }));
 const useLiveLogsSpy = vi.fn();
+const liveState: { lines: LogLine[] } = { lines: [] };
 vi.mock("../../hooks/use-live-logs", () => ({
   useLiveLogs: (...args: unknown[]) => {
     useLiveLogsSpy(...args);
-    return { lines: [], status: "idle" };
+    return { lines: liveState.lines, status: "idle" };
   },
 }));
 vi.mock("../../hooks/use-log-label-values", () => ({
@@ -50,6 +51,7 @@ beforeEach(() => {
   historyState.hasMore = false;
   historyState.loadingOlder = false;
   historyState.loadOlder = () => undefined;
+  liveState.lines = [];
   useHistorySpy.mockReset();
   useLiveLogsSpy.mockReset();
 });
@@ -437,4 +439,56 @@ describe("LogViewer populated background failures", () => {
       expect(screen.getByRole("alert")).toBeInTheDocument();
     },
   );
+});
+
+describe("LogViewer combined live reader (w4/m192)", () => {
+  const row = (message: string, msAgo: number): LogLine => {
+    const timestamp = new Date(Date.now() - msAgo).toISOString();
+    return {
+      key: `${timestamp}|pod|${message}`,
+      timestamp,
+      time: "12:00:00",
+      instance: "pod",
+      message,
+      type: "app",
+      level: "",
+      method: "",
+      statusCode: "",
+      spans: null,
+    };
+  };
+
+  it("reads older live replay above newer history, newest at the bottom", () => {
+    historyState.lines = [row("QA n=369", 60_000)];
+    liveState.lines = [
+      row("QA START", 600_000),
+      row("QA n=369", 60_000),
+      row("QA n=370", 30_000),
+    ];
+    render(<LogViewer resource="web" />);
+    const shown = screen.getAllByText(/^QA /).map((node) => node.textContent);
+    expect(shown).toEqual(["QA START", "QA n=369", "QA n=370"]);
+  });
+
+  it("keys the tail's reader identity on store-only filters, not on Live", () => {
+    const { rerender } = render(<LogViewer resource="web" />);
+    const readerKey = () =>
+      (useLiveLogsSpy.mock.calls.at(-1)?.[0] as { readerKey: string })
+        .readerKey;
+    const unfiltered = readerKey();
+    fireEvent.click(screen.getByRole("switch", { name: /live/i }));
+    expect(readerKey()).toBe(unfiltered);
+    expect(useLiveLogsSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+      enabled: false,
+    });
+
+    rerender(
+      <LogViewer
+        key="filtered"
+        resource="web"
+        initialFilters={{ ...EMPTY_LOG_FILTERS, level: "error" }}
+      />,
+    );
+    expect(readerKey()).not.toBe(unfiltered);
+  });
 });

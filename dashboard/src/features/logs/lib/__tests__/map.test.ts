@@ -170,6 +170,84 @@ describe("mergeLogLines", () => {
     spans: null,
   });
 
+  // Stamp-bearing variant: key + RFC3339 timestamp + message.
+  const at = (message: string, timestamp: string): LogLine => ({
+    ...line(message),
+    key: `${timestamp}|${message}`,
+    timestamp,
+  });
+  const messages = (lines: LogLine[]) => lines.map((l) => l.message);
+
+  // w4/m192: the live tail replays in-window output older than the historical
+  // head (a new instance's START); it must read above newer history, not below.
+  it("orders older live replay before newer history", () => {
+    const history = [
+      at("n=368", "2026-10-10T06:42:03.861865198Z"),
+      at("n=369", "2026-10-10T06:42:05.862437817Z"),
+    ];
+    const live = [
+      at("START", "2026-10-10T06:29:49.234399544Z"),
+      at("n=1", "2026-10-10T06:29:51.236Z"),
+      at("n=369", "2026-10-10T06:42:05.862437817Z"),
+      at("n=370", "2026-10-10T06:42:07.864176178Z"),
+    ];
+    const historyCopy = [...history];
+    const liveCopy = [...live];
+    expect(messages(mergeLogLines(history, live))).toEqual([
+      "START",
+      "n=1",
+      "n=368",
+      "n=369",
+      "n=370",
+    ]);
+    // Neither source array is mutated.
+    expect(history).toEqual(historyCopy);
+    expect(live).toEqual(liveCopy);
+  });
+
+  it("orders by real time, not by string, across precisions and zones", () => {
+    const merged = mergeLogLines(
+      [
+        at("half", "2026-10-10T06:00:00.5Z"),
+        at("whole", "2026-10-10T06:00:01Z"),
+      ],
+      [
+        at("49", "2026-10-10T06:00:00.49Z"),
+        at("offset", "2026-10-10T08:00:00.7+02:00"),
+      ],
+    );
+    expect(messages(merged)).toEqual(["49", "half", "offset", "whole"]);
+  });
+
+  it("keeps sub-millisecond order inside one millisecond", () => {
+    const merged = mergeLogLines(
+      [at("late", "2026-10-10T06:00:00.123900Z")],
+      [
+        at("early", "2026-10-10T06:00:00.1230001Z"),
+        at("mid", "2026-10-10T06:00:00.12345Z"),
+      ],
+    );
+    expect(messages(merged)).toEqual(["early", "mid", "late"]);
+  });
+
+  it("keeps source order for equal stamps and pins stampless lines to their neighbor", () => {
+    const ts = "2026-10-10T06:00:01Z";
+    const merged = mergeLogLines(
+      [at("h1", ts), at("h-stampless", ""), at("h2", "2026-10-10T06:00:03Z")],
+      [at("l1", ts), at("l0", "2026-10-10T06:00:00Z")],
+    );
+    expect(messages(merged)).toEqual(["l0", "h1", "h-stampless", "l1", "h2"]);
+  });
+
+  it("drops stamped lines before the window start but keeps stampless ones", () => {
+    const merged = mergeLogLines(
+      [at("old", "2026-10-10T05:00:00Z"), at("stampless", "")],
+      [at("in", "2026-10-10T06:00:00Z")],
+      Date.parse("2026-10-10T05:30:00Z"),
+    );
+    expect(messages(merged)).toEqual(["stampless", "in"]);
+  });
+
   it("appends live lines after history, in order", () => {
     const merged = mergeLogLines(
       [line("a"), line("b")],

@@ -94,7 +94,11 @@ export function DeployDetailPage({
         }
       />
       <DeployTimeline serviceId={serviceId} deploy={deploy} />
+      {/* Keyed per deploy: the live build tail keeps its rows through a pause
+          (w4/m192), so a same-service deploy switch must start a fresh reader
+          rather than carry the previous build's streamed lines. */}
       <DeployLogPanel
+        key={deployId}
         resource={serviceId}
         startTime={window ? window.start : (deploy?.createdAt ?? undefined)}
         endTime={window ? window.end : (deploy?.finishedAt ?? undefined)}

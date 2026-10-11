@@ -54,11 +54,22 @@ vi.mock("../deploy-actions", () => ({
 vi.mock("../deploy-timeline", () => ({
   DeployTimeline: () => <div data-testid="deploy-timeline" />,
 }));
-vi.mock("../deploy-log-panel", () => ({
-  DeployLogPanel: ({ followBuild }: { followBuild: boolean }) => (
-    <div data-testid="build-log" data-follow-build={String(followBuild)} />
-  ),
-}));
+let panelMounts = 0;
+vi.mock("../deploy-log-panel", async () => {
+  const { useState } = await import("react");
+  return {
+    DeployLogPanel: ({ followBuild }: { followBuild: boolean }) => {
+      const [mount] = useState(() => ++panelMounts);
+      return (
+        <div
+          data-testid="build-log"
+          data-follow-build={String(followBuild)}
+          data-mount={mount}
+        />
+      );
+    },
+  };
+});
 
 beforeEach(() => {
   deployState.deploy = {
@@ -84,6 +95,19 @@ describe("DeployDetailPage", () => {
       "data-follow-build",
       "false",
     );
+  });
+
+  // w4/m192: the build tail keeps streamed rows through a pause, so another
+  // deploy of the same service must get a fresh panel, not the old build's rows.
+  it("starts a fresh log panel when navigating to another deploy", () => {
+    const { rerender } = render(
+      <DeployDetailPage serviceId="web" deployId="dep-1" />,
+    );
+    const first = screen.getByTestId("build-log").dataset.mount;
+    rerender(<DeployDetailPage serviceId="web" deployId="dep-1" />);
+    expect(screen.getByTestId("build-log").dataset.mount).toBe(first);
+    rerender(<DeployDetailPage serviceId="web" deployId="dep-2" />);
+    expect(screen.getByTestId("build-log").dataset.mount).not.toBe(first);
   });
 
   it("switches the build pane to SSE only during build_in_progress", () => {

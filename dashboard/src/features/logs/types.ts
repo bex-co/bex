@@ -132,6 +132,13 @@ export function usesStoreOnlyFilters(f: LogFilters): boolean {
   );
 }
 
+// The store-only filter values as one identity string — the live tail's
+// readerKey: these disable the tail rather than narrow it, so a change must
+// clear lines streamed for the previous query (w4/m192).
+export function storeOnlyFilterKey(f: LogFilters): string {
+  return STORE_ONLY_STRUCTURED_KEYS.map((key) => f[key]).join("|");
+}
+
 // Whether any filter narrows the visible log set — drives the filtered vs
 // genuinely-empty copy in log-viewer.
 export function hasActiveLogFilters(f: LogFilters): boolean {

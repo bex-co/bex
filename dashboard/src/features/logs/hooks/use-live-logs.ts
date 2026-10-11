@@ -74,7 +74,12 @@ function subscribeUrl(
 
 export interface UseLiveLogsOptions {
   resource: string;
-  /** Live toggle — off closes the stream (pause); on (re)opens it (resume). */
+  /**
+   * Live toggle — off closes the stream (pause); on (re)opens it (resume). A
+   * pause KEEPS the lines already received (w4/m192): the reader is unchanged,
+   * so rows the user just saw must not vanish, and the resumed stream's replay
+   * dedupes against them. Only a reader change (below) clears the buffer.
+   */
   enabled: boolean;
   type: LogTypeFilter;
   text: string;
@@ -82,6 +87,13 @@ export interface UseLiveLogsOptions {
   textMode?: LogTextMode;
   /** Replica filter — the one structured filter the tail honors (a pod name). */
   instance: string;
+  /**
+   * Extra reader identity beyond the stream's own filters — e.g. the viewer's
+   * store-only filters, which disable the tail rather than narrow it. A change
+   * resets the buffer exactly like a filter change, so lines streamed for the
+   * old reader are never shown as matching the new query (w4/m192).
+   */
+  readerKey?: string;
   /**
    * Lower bound for the tail — the selected history window's start (ISO), sent
    * as `startTime` so kubelet follows the pod from the window edge, not offset 0,
@@ -124,7 +136,8 @@ const FLUSH_MS = 100;
 /**
  * Subscribes to bex-api's SSE log stream for one App and accumulates new lines
  * into a capped, deduped ring buffer. Reopening on any filter change (fresh
- * buffer) keeps the live view consistent with the historical query beside it.
+ * buffer) keeps the live view consistent with the historical query beside it;
+ * a pause/resume of the same reader keeps the buffer (w4/m192).
  */
 export function useLiveLogs({
   resource,
@@ -133,6 +146,7 @@ export function useLiveLogs({
   text,
   textMode,
   instance,
+  readerKey = "",
   startTime = "",
   maxLines = DEFAULT_MAX_LINES,
   retryDelayMs = 0,
@@ -146,19 +160,25 @@ export function useLiveLogs({
   // survives and dedupe absorbs any replayed lines.
   const [attempt, setAttempt] = useState(0);
 
-  // Reset the tail the instant the subscription identity changes (or it
-  // pauses) — during render, React's sanctioned "adjust state when a prop
-  // changes" pattern, so a stale filter's lines never flash before the effect
-  // reconnects, and setState stays out of the effect body. The buffer carries
-  // its subKey so a stale effect's final flush (cleanup ordering: the reset
-  // lands first) can tell it no longer owns the buffer and drop its batch.
-  const subKey = `${resource}|${enabled}|${type}|${text}|${textMode}|${instance}`;
+  // Reset the tail the instant the reader identity changes — during render,
+  // React's sanctioned "adjust state when a prop changes" pattern, so a stale
+  // filter's lines never flash before the effect reconnects, and setState
+  // stays out of the effect body. The buffer carries its subKey so a stale
+  // effect's final flush (cleanup ordering: the reset lands first) can tell it
+  // no longer owns the buffer and drop its batch. `enabled` is deliberately
+  // NOT part of the identity: a user pause keeps the rows already received
+  // (w4/m192) — only the status resets, below.
+  const subKey = `${resource}|${type}|${text}|${textMode}|${instance}|${readerKey}`;
   const [buffer, setBuffer] = useState<{ key: string; lines: LogLine[] }>({
     key: subKey,
     lines: [],
   });
-  if (buffer.key !== subKey) {
-    setBuffer({ key: subKey, lines: [] });
+  // Status follows the stream itself: a reader change or a pause/resume both
+  // restart it from idle/connecting.
+  const [prevEnabled, setPrevEnabled] = useState(enabled);
+  if (buffer.key !== subKey || prevEnabled !== enabled) {
+    if (buffer.key !== subKey) setBuffer({ key: subKey, lines: [] });
+    setPrevEnabled(enabled);
     setStatus(pendingStatus);
   }
 
@@ -167,14 +187,15 @@ export function useLiveLogs({
   // cap's evictions delete their keys (see flushPending), so a replayed
   // evicted line re-appends exactly as the old scan semantics allowed. It is
   // tagged with the subscription epoch below rather than subKey itself: a
-  // disable/enable round trip reproduces the same subKey string while the
-  // buffer was reset in between, and the set must reset with it.
+  // reader round trip (A → B → A) reproduces the same subKey string while the
+  // buffer was reset in between, and the set must reset with it. A pause
+  // keeps the epoch, so the resumed replay dedupes against retained rows.
   const keysRef = useRef<{ epoch: number; set: Set<string> }>({
     epoch: 0,
     set: new Set(),
   });
-  // Bumped after every subscription-identity change (a retry bumps `attempt`,
-  // not subKey, so a retried stream correctly keeps its dedupe set).
+  // Bumped after every reader-identity change (a retry bumps `attempt` and a
+  // pause flips `enabled`, neither touches subKey, so both keep the set).
   const epochRef = useRef(0);
   useEffect(() => {
     epochRef.current += 1;
@@ -283,8 +304,8 @@ export function useLiveLogs({
     return () => {
       if (retryTimer !== undefined) clearTimeout(retryTimer);
       if (flushTimer !== undefined) clearTimeout(flushTimer);
-      // Don't lose the trailing batch: on a retry it belongs to the same
-      // subscription and must land; on a filter switch flushPending's stale
+      // Don't lose the trailing batch: on a retry or pause it belongs to the
+      // same reader and must land; on a filter switch flushPending's stale
       // guard drops it (the buffer was already reset during render).
       flushPending();
       es.close();
@@ -296,8 +317,8 @@ export function useLiveLogs({
     text,
     textMode,
     instance,
-    // Derived from the six above — listed for exhaustive-deps; it changes
-    // exactly when they do.
+    // Derived from the filters above plus readerKey — a readerKey change
+    // reopens the stream from the current window edge like a filter change.
     subKey,
     maxLines,
     retryDelayMs,
