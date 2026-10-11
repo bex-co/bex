@@ -43,6 +43,11 @@ const deployState: {
 vi.mock("../../hooks/use-deploy", () => ({
   useDeploy: () => deployState,
 }));
+// The canceled-step window has its own real-Apollo suite
+// (deploy-detail-canceled-step.test.tsx); these deploys never need it.
+vi.mock("../../hooks/use-canceled-step-end", () => ({
+  useCanceledStepEnd: () => ({ status: "none" }),
+}));
 vi.mock("../deploy-header", () => ({
   DeployHeader: ({ actions }: { actions?: ReactNode }) => (
     <div data-testid="deploy-header">{actions}</div>

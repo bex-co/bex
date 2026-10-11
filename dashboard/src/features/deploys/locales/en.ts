@@ -175,6 +175,18 @@ const enDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy detail page: accurate explanation of a storeless build-log response",
   },
+  "deploys.logStepEndMissing": {
+    message:
+      "This deploy was canceled before its pre-deploy step finished, and the step's completion time wasn't recorded, so its later output may fall outside this window. Choose a wider range in Log options to see it.",
+    description:
+      "Deploy log viewer: a canceled deploy's continued pre-deploy step has no recorded end, so the deploy window may omit its later output",
+  },
+  "deploys.logStepEndUnavailable": {
+    message:
+      "Couldn't check when this deploy's pre-deploy step finished, so later step output may fall outside this window. Try again, or choose a wider range in Log options.",
+    description:
+      "Deploy log viewer: reading a canceled deploy's continued pre-deploy step end failed; offers a retry",
+  },
   "deploys.timelineTitle": {
     message: "Status timeline",
     description: "Deploy detail page: status-timeline card title",

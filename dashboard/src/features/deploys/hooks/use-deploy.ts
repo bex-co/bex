@@ -8,6 +8,15 @@ import { isTerminalDeployStatus } from "@/features/deploys/lib/deploy-status";
 /** How often to re-poll a non-terminal deploy (build/update in flight). */
 const POLL_INTERVAL_MS = 3000;
 
+/**
+ * How long after a cancellation to keep polling for the verdict of a
+ * pre-deploy step that may still be running (w4/m198): the step's Job has a
+ * 10-minute deadline (operator internal/predeploy), plus reconcile slack. A
+ * step that was actually stopped keeps reading "canceled", so this bound — not
+ * the verdict — is what ends the poll for it.
+ */
+const STEP_SETTLE_MS = 12 * 60 * 1000;
+
 export interface DeployView {
   id: string;
   status: string;
@@ -49,8 +58,9 @@ export interface UseDeployResult {
 /**
  * Reads bex-api's `deploy(serviceId, deployId)` (w9/m1/t001) — the deploy
  * detail page's header data. Polls every 3s while the deploy is non-terminal
- * so the header/log window follows each observed phase, and stops the moment
- * it reaches any terminal status.
+ * so the header/log window follows each observed phase, and stops once it is
+ * terminal — except a canceled deploy whose pre-deploy step may still settle
+ * its verdict, which is read for that step's bounded lifetime (w4/m198).
  */
 export function useDeploy(
   serviceId: string,
@@ -70,9 +80,21 @@ export function useDeploy(
   const deploy = toDeployView(data?.deploy ?? previousData?.deploy ?? null);
   const notFound = resourceNotFound(deploy, loading, error);
 
+  const status = deploy?.status ?? "";
+  const preDeployStatus = deploy?.preDeployStatus ?? "";
+  const finishedAt = deploy?.finishedAt ?? null;
   useEffect(() => {
-    if (deploy && isTerminalDeployStatus(deploy.status)) stopPolling();
-  }, [deploy, stopPolling]);
+    if (!isTerminalDeployStatus(status)) return;
+    // Keep reading it even when this deploy is no longer the service's latest.
+    if (status === "canceled" && preDeployStatus === "canceled" && finishedAt) {
+      const remaining = Date.parse(finishedAt) + STEP_SETTLE_MS - Date.now();
+      if (remaining > 0) {
+        const timer = setTimeout(stopPolling, remaining);
+        return () => clearTimeout(timer);
+      }
+    }
+    stopPolling();
+  }, [status, preDeployStatus, finishedAt, stopPolling]);
 
   return {
     deploy,

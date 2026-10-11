@@ -139,4 +139,50 @@ describe("useDeploy", () => {
     expect(result.current.loading).toBe(true);
     expect(result.current.notFound).toBe(false);
   });
+
+  // w4/m198: a canceled deploy's already-running step can still settle its
+  // own verdict; keep reading it for the step's bounded lifetime only.
+  it("keeps polling a canceled deploy whose step may still be running, then stops", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-11T04:10:00Z"));
+    try {
+      mockUseQuery.mockReturnValue({
+        data: {
+          deploy: deploy({
+            status: "canceled",
+            preDeployStatus: "canceled",
+            finishedAt: "2026-10-11T04:09:01Z",
+          }),
+        },
+        loading: false,
+        error: undefined,
+        previousData: undefined,
+        stopPolling,
+      });
+      renderHook(() => useDeploy("web", "dep-1"));
+      expect(stopPolling).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(12 * 60 * 1000);
+      expect(stopPolling).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("stops at once for a canceled deploy whose step has its verdict", () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        deploy: deploy({
+          status: "canceled",
+          preDeployStatus: "succeeded",
+          finishedAt: new Date().toISOString(),
+        }),
+      },
+      loading: false,
+      error: undefined,
+      previousData: undefined,
+      stopPolling,
+    });
+    renderHook(() => useDeploy("web", "dep-1"));
+    expect(stopPolling).toHaveBeenCalledTimes(1);
+  });
 });
