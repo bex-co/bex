@@ -29,7 +29,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 - [ ] **m191** — [Track TCP and HTTP root health changes as different releases](m191/README.md) (7 tasks) ← live qa-find-bugs 2026-10-09–10 cycle33; a healthy mode change rolls an instance under the old revision and falsely cancels its deployment.
 - [ ] **m190** — [Send service hostnames in HTTP health probes](m190/README.md) (7 tasks) ← live qa-find-bugs 2026-10-09 cycle32; pod-IP Host prevents a publicly healthy hostname-restricted web app from completing HTTP-health deployment.
 
-- [ ] **m189** — [Search the visible service log message](m189/README.md) (8 tasks) ← live qa-find-bugs 2026-10-09 cycle31; colored visible text is searchable in deploy logs but yields a false empty in service Logs.
+- [x] **m189** — [Search the visible service log message](done/m189/README.md) (8 tasks) — **DONE 2026-10-10**: opt-in `textMode=display` shipped (`8a60d3cff`, `e83b90014`); live service Logs finds `QA_M189_ANSI_red_end` with Live off/on, raw API defaults unchanged.
 
 - [x] **m188** — [Translate hosting times and cron previews](done/m188/README.md) (7 tasks) — **DONE 2026-10-10**: live zh Events read 刚刚 / 2分钟 / 82天后 with exact API instants; both cron forms preview 每 5 分钟 / 每周一 00:00 · 使用 UTC; English unchanged.
 
