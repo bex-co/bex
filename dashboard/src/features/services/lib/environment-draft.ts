@@ -332,20 +332,24 @@ function patchRows<R extends { deleted: boolean }>(
   rows: readonly R[],
   lens: RowLens<R>,
 ): RowPatch[] {
+  // A value the dashboard does not own contributes nothing — not a set, not
+  // a delete, not the delete half of a rename. This is the enforcement the
+  // hidden controls are only the visible half of (w4/m120).
+  const owned = rows.filter((row) => !lens.readOnly(row));
+  // Removed rows go first, whatever their stored order, so a name the draft
+  // deletes is free before an opaque rename moves another value into it: the
+  // API refuses a rename onto a still-occupied name (w4/m195).
   const patch: RowPatch[] = [];
-  for (const row of rows) {
-    // A value the dashboard does not own contributes nothing — not a set, not
-    // a delete, not the delete half of a rename. This is the enforcement the
-    // hidden controls are only the visible half of (w4/m120).
-    if (lens.readOnly(row)) continue;
+  for (const row of owned) {
+    const original = lens.original(row);
+    if (row.deleted && original) patch.push({ name: original, delete: true });
+  }
+  for (const row of owned) {
+    if (row.deleted) continue;
     const original = lens.original(row);
     const name = lens.name(row).trim();
     const value = lens.value(row) ?? "";
     const generateValue = lens.generated(row);
-    if (row.deleted) {
-      if (original) patch.push({ name: original, delete: true });
-      continue;
-    }
 
     // Keep an existing value opaque, moving it server-side only on rename.
     if (original && !lens.changed(row) && !generateValue) {

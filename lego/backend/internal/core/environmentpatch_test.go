@@ -159,3 +159,102 @@ func TestStoredOverLongNamesStayRemovable(t *testing.T) {
 		t.Fatalf("deleting an over-long name that is not stored = %v, want 400", err)
 	}
 }
+
+// w4/m195: an opaque rename may refill a name the same batch explicitly
+// deleted. The source's exact bytes replace the deleted destination's and the
+// source disappears, for variables and files alike.
+func TestOpaqueRenameRefillsAnExplicitlyDeletedName(t *testing.T) {
+	env := map[string]string{"NEW": "left value\n", "RIGHT": `right\nvalue`, "KEEP": "k"}
+	if err := ApplyEnvVarPatch(env, []EnvVarPatch{{Key: "RIGHT", Delete: true}, {Key: "RIGHT", FromKey: "NEW"}}); err != nil {
+		t.Fatalf("delete-then-rename variables = %v", err)
+	}
+	if len(env) != 2 || env["RIGHT"] != "left value\n" || env["KEEP"] != "k" {
+		t.Fatalf("env = %#v, want RIGHT carrying NEW's bytes and KEEP untouched", env)
+	}
+
+	files := map[string]string{"new": "left-file\n", "right": "right-file\n"}
+	if err := ApplySecretFilePatch(files, []SecretFilePatch{{Name: "right", Delete: true}, {Name: "right", FromName: "new"}}); err != nil {
+		t.Fatalf("delete-then-rename files = %v", err)
+	}
+	if len(files) != 1 || files["right"] != "left-file\n" {
+		t.Fatalf("files = %#v, want right carrying new's bytes", files)
+	}
+}
+
+// Everything around the one admitted sequence keeps its refusal, and a refused
+// batch is reported before a caller could commit it.
+func TestDeletedNameRefillKeepsItsRefusals(t *testing.T) {
+	stored := func() map[string]string {
+		return map[string]string{"A": "a", "B": "b", "C": "c"}
+	}
+	for _, test := range []struct {
+		name   string
+		writes []EnvVarPatch
+		want   error
+		reason string
+	}{
+		{
+			name:   "rename first into an occupied name",
+			writes: []EnvVarPatch{{Key: "B", FromKey: "A"}, {Key: "B", Delete: true}},
+			want:   ErrBadRequest, reason: "already exists",
+		},
+		{
+			name:   "cycle of occupied names",
+			writes: []EnvVarPatch{{Key: "B", FromKey: "A"}, {Key: "A", FromKey: "B"}},
+			want:   ErrBadRequest, reason: "already exists",
+		},
+		{
+			name:   "second rename into the refilled name",
+			writes: []EnvVarPatch{{Key: "B", Delete: true}, {Key: "B", FromKey: "A"}, {Key: "B", FromKey: "C"}},
+			want:   ErrBadRequest, reason: "duplicate",
+		},
+		{
+			name:   "delete then recreate with a value",
+			writes: []EnvVarPatch{{Key: "B", Delete: true}, {Key: "B", Value: "fresh"}},
+			want:   ErrBadRequest, reason: "duplicate",
+		},
+		{
+			name:   "duplicate delete",
+			writes: []EnvVarPatch{{Key: "B", Delete: true}, {Key: "B", Delete: true}},
+			want:   ErrBadRequest, reason: "duplicate",
+		},
+		{
+			name:   "rename from the deleted name",
+			writes: []EnvVarPatch{{Key: "B", Delete: true}, {Key: "D", FromKey: "B"}},
+			want:   ErrBadRequest, reason: "conflicting",
+		},
+		{
+			name:   "rename of the deleted name onto itself",
+			writes: []EnvVarPatch{{Key: "B", Delete: true}, {Key: "B", FromKey: "B"}},
+			want:   ErrBadRequest, reason: "duplicate",
+		},
+		{
+			name:   "repeated source",
+			writes: []EnvVarPatch{{Key: "B", Delete: true}, {Key: "B", FromKey: "A"}, {Key: "D", FromKey: "A"}},
+			want:   ErrBadRequest, reason: "conflicting",
+		},
+		{
+			name:   "missing source",
+			writes: []EnvVarPatch{{Key: "B", Delete: true}, {Key: "B", FromKey: "MISSING"}},
+			want:   ErrNotFound, reason: "MISSING",
+		},
+		{
+			name:   "rename into the deleted name with a value",
+			writes: []EnvVarPatch{{Key: "B", Delete: true}, {Key: "B", FromKey: "A", Value: "x", ValueSet: true}},
+			want:   ErrBadRequest, reason: "cannot combine",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			err := ApplyEnvVarPatch(stored(), test.writes)
+			if !errors.Is(err, test.want) || !strings.Contains(err.Error(), test.reason) {
+				t.Fatalf("error = %v, want %v mentioning %q", err, test.want, test.reason)
+			}
+		})
+	}
+
+	files := map[string]string{"a": "a", "b": "b"}
+	err := ApplySecretFilePatch(files, []SecretFilePatch{{Name: "b", Delete: true}, {Name: "b", Content: "fresh"}})
+	if !errors.Is(err, ErrBadRequest) || !strings.Contains(err.Error(), "duplicate secret file operation") {
+		t.Fatalf("file delete then recreate = %v", err)
+	}
+}

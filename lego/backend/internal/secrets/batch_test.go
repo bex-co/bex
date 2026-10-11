@@ -236,6 +236,51 @@ func TestPatchEnvironmentMixedSaveOnlyPreservesOmittedSecrets(t *testing.T) {
 	}
 }
 
+// w4/m195: a staged editor that deletes RIGHT and renames NEW into it sends
+// the deletion first; one save-only batch moves NEW's exact bytes to RIGHT for
+// variables and files. The rename-first form keeps its occupied-destination
+// refusal and leaves both maps untouched.
+func TestPatchEnvironmentRenameRefillsAnExplicitlyDeletedName(t *testing.T) {
+	store := newFakeSecretStore()
+	store.m[envPath("web")] = map[string]string{"NEW": "left value\n", "RIGHT": `right\nvalue`}
+	store.m[filesPath("web")] = map[string]string{"new": "left-file\n", "right": "right-file\n"}
+	svc := newService(store, sampleApp("web"))
+
+	_, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
+		SaveMode:    SaveModeOnly,
+		EnvVars:     []EnvVarPatch{{Key: "RIGHT", FromKey: "NEW"}, {Key: "RIGHT", Delete: true}},
+		SecretFiles: []SecretFilePatch{{Name: "right", FromName: "new"}, {Name: "right", Delete: true}},
+	})
+	if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "already exists") {
+		t.Fatalf("rename-first = %v, want the occupied-destination refusal", err)
+	}
+	if store.m[envPath("web")]["RIGHT"] != `right\nvalue` || store.m[filesPath("web")]["right"] != "right-file\n" {
+		t.Fatalf("refused batch changed the store: %#v", store.m)
+	}
+
+	result, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
+		SaveMode:    SaveModeOnly,
+		EnvVars:     []EnvVarPatch{{Key: "RIGHT", Delete: true}, {Key: "RIGHT", FromKey: "NEW"}},
+		SecretFiles: []SecretFilePatch{{Name: "right", Delete: true}, {Name: "right", FromName: "new"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.RolledOut || !slices.Equal(result.EnvVarKeys, []string{"RIGHT"}) || !slices.Equal(result.SecretFileNames, []string{"right"}) {
+		t.Fatalf("result = %#v", result)
+	}
+	if !maps.Equal(store.m[envPath("web")], map[string]string{"RIGHT": "left value\n"}) ||
+		!maps.Equal(store.m[filesPath("web")], map[string]string{"right": "left-file\n"}) {
+		t.Fatalf("store = %#v, want NEW's exact bytes under RIGHT only", store.m)
+	}
+	if app := getApp(t, svc.Client, "web"); app.Spec.RestartedAt != "" || app.Spec.EnvFromSecret != "" {
+		t.Fatalf("save_only changed rollout-bearing spec: %#v", app.Spec)
+	}
+	if string(getSecret(t, svc.Client, "web-files").Data["right"]) != "left-file\n" {
+		t.Fatal("projected files Secret lacks the moved bytes")
+	}
+}
+
 // Emptying the files map clears a mount a save-only write staged, through the
 // single-key delete and a deploying batch alike, so the next release mounts no
 // empty /etc/secrets (w5/106).
