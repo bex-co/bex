@@ -709,6 +709,7 @@ export type EnvGroupEnvironmentPatchResult = {
   affectedServiceIds: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   envVarKeys: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   failedServiceIds: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+  pendingServiceIds: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   revision: Maybe<Scalars['String']['output']>;
   rolledOut: Maybe<Scalars['Boolean']['output']>;
   secretFileNames: Maybe<Array<Maybe<Scalars['String']['output']>>>;

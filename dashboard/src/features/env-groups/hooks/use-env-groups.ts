@@ -1,3 +1,4 @@
+import { nonNull } from "@/common/lib/non-null";
 import { useCallback, useRef, useState } from "react";
 import { useApolloClient, useMutation, useQuery } from "@apollo/client/react";
 import { toast } from "sonner";
@@ -450,15 +451,21 @@ export function useEnvGroupEnvironmentPatch(groupId: string, refetch: Refetch) {
       }
       committedRevision.current = saved.revision;
       await bestEffortRefetch(refetch);
-      return {
-        ...saved,
-        affectedServiceIds: (saved.affectedServiceIds ?? []).filter(
-          (id): id is string => id != null,
-        ),
-        failedServiceIds: (saved.failedServiceIds ?? []).filter(
-          (id): id is string => id != null,
-        ),
-      };
+      const failedServiceIds = (saved.failedServiceIds ?? []).filter(nonNull);
+      let affectedServiceIds = (saved.affectedServiceIds ?? []).filter(nonNull);
+      // The editor reads affected as "services a deploy started for", but the
+      // API's set also names Auto-Deploy-off services the fan-out skipped (w4/224).
+      if (saveMode === "deploy") {
+        const notStarted = new Set([
+          ...(saved.pendingServiceIds ?? []).filter(nonNull),
+          ...failedServiceIds,
+        ]);
+        affectedServiceIds =
+          saved.rolledOut === false
+            ? []
+            : affectedServiceIds.filter((id) => !notStarted.has(id));
+      }
+      return { ...saved, affectedServiceIds, failedServiceIds };
     },
     [groupId, mutate, refetch],
   );

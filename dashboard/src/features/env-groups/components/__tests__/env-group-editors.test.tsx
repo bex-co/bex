@@ -21,6 +21,7 @@ const revealFile = vi.fn();
 // tests see the exact variables a save would put on the wire (w4/m161).
 const mutate = vi.fn();
 const toastError = vi.fn();
+const toastSuccess = vi.fn();
 
 vi.mock("@apollo/client/react", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@apollo/client/react")>()),
@@ -29,7 +30,7 @@ vi.mock("@apollo/client/react", async (importOriginal) => ({
 
 vi.mock("sonner", () => ({
   toast: {
-    success: vi.fn(),
+    success: (...args: unknown[]) => toastSuccess(...args),
     warning: vi.fn(),
     error: (...args: unknown[]) => toastError(...args),
   },
@@ -103,6 +104,7 @@ beforeEach(() => {
   revealFile.mockReset().mockResolvedValue("file");
   mutate.mockReset();
   toastError.mockReset();
+  toastSuccess.mockReset();
   refetch.mockReset().mockResolvedValue(null);
 });
 
@@ -443,5 +445,68 @@ describe("EnvGroupEditors draft base revision (w4/m161)", () => {
     mutate.mockResolvedValueOnce(accepted("egr1_C"));
     await saveOnly(user);
     await waitFor(() => expect(sentRevisions()).toEqual(["egr1_B"]));
+  });
+});
+
+// w4/224: Save and deploy on a group whose only linked service has Auto-Deploy
+// off saves the value but deliberately starts no release. The API still names
+// that service as affected (its copy of the group did change) and reports it in
+// pendingServiceIds; the toast must not claim a deployment started.
+describe("EnvGroupEditors deploy feedback with Auto-Deploy-off links (w4/224)", () => {
+  const DEPLOYED = "Environment saved and deployment started";
+  const NOT_DEPLOYED =
+    "Environment saved without a deploy. Use a standard deploy to apply any pending changes.";
+
+  const result = (
+    affected: string[] | null,
+    pending: string[] | null,
+    failed: string[] | null = [],
+  ) => ({
+    data: {
+      patchEnvGroupEnvironment: {
+        envVarKeys: ["FOO"],
+        secretFileNames: [],
+        revision: "egr1_next",
+        affectedServiceIds: affected,
+        failedServiceIds: failed,
+        pendingServiceIds: pending,
+        rolledOut: true,
+      },
+    },
+  });
+
+  async function saveAndDeploy() {
+    const user = userEvent.setup();
+    renderEditors({ ...GROUP, revision: "egr1_A" });
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Value for FOO" }),
+      "changed",
+    );
+    await user.click(screen.getByRole("button", { name: "Save and deploy" }));
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledTimes(1));
+  }
+
+  beforeEach(() => {
+    sessionStorage.clear();
+  });
+
+  it("does not announce a deployment when every linked service was skipped", async () => {
+    mutate.mockResolvedValueOnce(result(["off"], ["off"]));
+    await saveAndDeploy();
+    expect(toastSuccess).toHaveBeenCalledWith(NOT_DEPLOYED);
+    expect(screen.queryByRole("button", { name: "Retry rollout" })).toBeNull();
+  });
+
+  it("still announces the deployment when an Auto-Deploy-on service rolled", async () => {
+    mutate.mockResolvedValueOnce(result(["on", "off"], ["off"]));
+    await saveAndDeploy();
+    expect(toastSuccess).toHaveBeenCalledWith(DEPLOYED);
+  });
+
+  it("treats null result lists as no linked services", async () => {
+    mutate.mockResolvedValueOnce(result(null, null, null));
+    await saveAndDeploy();
+    expect(toastSuccess).toHaveBeenCalledWith(NOT_DEPLOYED);
   });
 });
