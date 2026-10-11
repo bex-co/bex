@@ -42,8 +42,13 @@ export function offeredInstanceTypes<T extends { id: string }>(
   serviceType: string | null,
   instanceTypes: T[],
 ): T[] {
-  if (serviceType === null || !PAID_ONLY_SERVICE_TYPES.has(serviceType)) {
+  if (serviceType === null || offersFreeTier(serviceType)) {
     return instanceTypes;
   }
   return instanceTypes.filter((it) => it.id !== "free");
+}
+
+/** Whether a service of this (known) type may be offered the Free tier. */
+export function offersFreeTier(serviceType: string): boolean {
+  return !PAID_ONLY_SERVICE_TYPES.has(serviceType);
 }

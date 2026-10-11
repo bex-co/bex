@@ -1,16 +1,28 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Card, CardContent, CardHeader } from "@/common/components/ui/card";
-import { Skeleton } from "@/common/components/ui/skeleton";
-import { PlanPickerGridSkeleton } from "@/common/components/detail-skeletons";
+import { createFileRoute, getRouteApi } from "@tanstack/react-router";
 import { InstanceTypePicker } from "@/features/services/components/instance-type-picker";
+import { useCachedServiceType } from "@/features/services/hooks/use-cached-service-type";
 import { NonStaticRoute } from "@/features/services/components/non-static-route";
 import { useServer } from "@/features/services/hooks/use-server";
 import { ServicePlanSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/plan")({
   component: ServicePlanPage,
-  pendingComponent: ServicePlanSkeleton,
+  pendingComponent: ServicePlanPending,
 });
+
+function ServicePlanPending() {
+  const parent = getRouteApi("/services/$serviceId").useLoaderData();
+  return (
+    <ServicePlanSkeleton
+      serviceType={parent?.state === "ready" ? parent.resource.type : null}
+    />
+  );
+}
+
+/** Mounted only while the server read is missing; the list cache may know the type. */
+function CachedServicePlanSkeleton({ serviceId }: { serviceId: string }) {
+  return <ServicePlanSkeleton serviceType={useCachedServiceType(serviceId)} />;
+}
 
 /**
  * The plan-picker page (w5/m7), reached from the Settings tab's Instance
@@ -25,24 +37,8 @@ export const Route = createFileRoute("/services/$serviceId/plan")({
 function ServicePlanPage() {
   const { serviceId } = Route.useParams();
   const { service, loading } = useServer(serviceId, { poll: false });
-
   if (!service && loading) {
-    // Mirror InstanceTypePicker's outer shape — titled card, tier grid, footer
-    // actions — so the pre-query load reads as the picker it becomes.
-    return (
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-5 w-48" />
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <PlanPickerGridSkeleton />
-          <div className="flex justify-end gap-2 border-t pt-4">
-            <Skeleton className="h-9 w-20" />
-            <Skeleton className="h-9 w-20" />
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <CachedServicePlanSkeleton serviceId={serviceId} />;
   }
 
   return (

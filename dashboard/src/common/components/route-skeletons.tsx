@@ -13,7 +13,6 @@ import {
   FieldRowSkeleton,
   FieldRowsSkeleton,
   MetadataListSkeleton,
-  PlanPickerGridSkeleton,
 } from "@/common/components/detail-skeletons";
 import { CREATE_PLAN_CARD_GRID_CLASS } from "@/common/components/plan-card-grid";
 import {
@@ -26,6 +25,7 @@ import {
   SERVICE_TYPES,
 } from "@/features/services/lib/create-context";
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
+import { InstanceTypePickerCardSkeleton } from "@/features/services/components/instance-type-groups";
 import {
   autoSleepEligibleType,
   planSleeps,
@@ -1862,22 +1862,16 @@ export function ServiceScalingSkeleton() {
   );
 }
 
-export function ServicePlanSkeleton() {
+/** `serviceType` shapes the Free/Paid groups; null/omitted = still undecided. */
+export function ServicePlanSkeleton({
+  serviceType = null,
+}: {
+  serviceType?: string | null;
+}) {
   return (
     <PendingFrame route="service-plan">
       <Region name="plan-picker">
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-5 w-48" />
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <PlanPickerGridSkeleton />
-            <div className="flex justify-end gap-2 border-t pt-4">
-              <Skeleton className="h-9 w-20" />
-              <Skeleton className="h-9 w-20" />
-            </div>
-          </CardContent>
-        </Card>
+        <InstanceTypePickerCardSkeleton serviceType={serviceType} />
       </Region>
     </PendingFrame>
   );
@@ -2280,8 +2274,11 @@ const SERVICE_ROUTE_SKELETON_BY_ID = {
 /** Select the tab frame that a service/static parent loader is blocking. */
 export function ServiceRouteContentSkeleton({
   base,
+  serviceType = null,
 }: {
   base: "/services" | "/static";
+  /** The service's type when already known (cache), for type-shaped tabs. */
+  serviceType?: string | null;
 }) {
   const routeId = useRouterState({
     select: (state) => state.matches.at(-1)?.routeId,
@@ -2308,7 +2305,7 @@ export function ServiceRouteContentSkeleton({
     case "metrics":
       return <ServiceMetricsSkeleton staticSite={base === "/static"} />;
     case "plan":
-      return <ServicePlanSkeleton />;
+      return <ServicePlanSkeleton serviceType={serviceType} />;
     case "rules":
       return <StaticEdgeRulesSkeleton />;
     case "scaling":

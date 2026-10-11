@@ -200,18 +200,3 @@ export function FieldRowSkeleton({
     </div>
   );
 }
-
-/**
- * The instance-type picker's card grid, as a skeleton — a 3-column grid of tier
- * cards. Shared by the plan page's initial load and the picker's own loading
- * state so the two agree (instance-type-picker.tsx).
- */
-export function PlanPickerGridSkeleton() {
-  return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <Skeleton key={i} className="h-24 w-full" />
-      ))}
-    </div>
-  );
-}
