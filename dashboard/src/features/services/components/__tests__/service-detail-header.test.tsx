@@ -524,7 +524,7 @@ describe("ServiceDetailHeader", () => {
       }),
     );
 
-    expect(await screen.findByText("Last run:")).toBeInTheDocument();
+    expect(await screen.findByText("Last successful run:")).toBeInTheDocument();
     expect(screen.getByText("Next run:")).toBeInTheDocument();
     expect(screen.getByText(/^in \d+m$/)).toBeInTheDocument();
   });
@@ -547,7 +547,7 @@ describe("ServiceDetailHeader", () => {
     });
     const view = renderHeader(service);
     try {
-      await screen.findByText("Last run:");
+      await screen.findByText("Last successful run:");
       const created = view.container.querySelector(
         `time[datetime="${createdAt}"]`,
       );
@@ -597,7 +597,7 @@ describe("ServiceDetailHeader", () => {
       }),
     );
 
-    await screen.findByText("Last run:");
+    await screen.findByText("Last successful run:");
     const instants = Array.from(container.querySelectorAll("time")).map((el) =>
       el.getAttribute("dateTime"),
     );
@@ -618,7 +618,7 @@ describe("ServiceDetailHeader", () => {
     );
 
     expect(await screen.findByText("Cron Job")).toBeInTheDocument();
-    expect(screen.queryByText("Last run:")).not.toBeInTheDocument();
+    expect(screen.queryByText("Last successful run:")).not.toBeInTheDocument();
     expect(screen.queryByText("Next run:")).not.toBeInTheDocument();
   });
 
