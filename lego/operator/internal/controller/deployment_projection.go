@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"slices"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -163,6 +164,9 @@ type deploymentParams struct {
 	// (BEX_TENANT_SIGNING_KEY_SECRET).
 	verifyImage bool
 	pullSecrets []corev1.LocalObjectReference
+	// baseDomain is the reconciler's platform domain: the probe Host's
+	// fallback (healthProbeHost).
+	baseDomain string
 }
 
 // appPodLabels builds the pod template's label set.
@@ -199,7 +203,8 @@ const appContainerName = "app"
 const servingPortName = "bex-http"
 
 // appContainer projects the App onto its single "app" container.
-func appContainer(app *appv1alpha1.App, p deploymentParams) corev1.Container {
+// probeHost is the Host header its HTTP health probes send ("" for none).
+func appContainer(app *appv1alpha1.App, p deploymentParams, probeHost string) corev1.Container {
 	var ports []corev1.ContainerPort
 	if !p.worker {
 		ports = []corev1.ContainerPort{{Name: servingPortName, ContainerPort: int32(p.port)}}
@@ -260,7 +265,7 @@ func appContainer(app *appv1alpha1.App, p deploymentParams) corev1.Container {
 	// mode does not have, at the price of a mode distinction Render users
 	// never have to learn.
 	if !p.worker {
-		handler := healthCheckHandler(app.Spec.HealthCheckPath, p.port)
+		handler := healthCheckHandler(app.Spec.HealthCheckPath, p.port, probeHost)
 		container.StartupProbe = &corev1.Probe{
 			ProbeHandler:     handler,
 			TimeoutSeconds:   healthCheckTimeoutSeconds,
@@ -295,15 +300,84 @@ func appContainer(app *appv1alpha1.App, p deploymentParams) corev1.Container {
 // 200 <= code < 400, so a service whose root is a legitimate 404 — an API with
 // no root route — could never become Ready, and could never deploy, while the
 // same service deploys on Render untouched.
-func healthCheckHandler(path string, port int) corev1.ProbeHandler {
+//
+// host is the Host header an HTTP probe sends (healthProbeHost); TCP mode has no
+// header to carry it. It deliberately never becomes HTTPGetAction.Host: that
+// field moves the connection itself, so the probe would test the public route
+// (and the release already serving it) instead of this pod.
+func healthCheckHandler(path string, port int, host string) corev1.ProbeHandler {
 	if path == "" {
 		return corev1.ProbeHandler{
 			TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt(port)},
 		}
 	}
-	return corev1.ProbeHandler{
-		HTTPGet: &corev1.HTTPGetAction{Path: path, Port: intstr.FromInt(port)},
+	get := &corev1.HTTPGetAction{Path: path, Port: intstr.FromInt(port)}
+	if host != "" {
+		get.HTTPHeaders = []corev1.HTTPHeader{{Name: probeHostHeader, Value: host}}
 	}
+	return corev1.ProbeHandler{HTTPGet: get}
+}
+
+const probeHostHeader = "Host"
+
+// healthProbeHost is Render's probe Host: a verified custom domain, else the
+// platform hostname. Without one kubelet sends the pod IP, which an app that
+// allowlists its own hostnames rejects, so it could never deploy.
+//
+// Custom-first, unlike EffectiveHosts' public-URL order. bex-api admits only
+// verified claims into spec.host/hosts, so a pending domain is never chosen; a
+// redirect source is skipped because the edge never forwards it to the app.
+// Types with no public route (private service, worker) keep the pod-IP Host.
+func healthProbeHost(app *appv1alpha1.App, baseDomain string) string {
+	hosts := effectiveHosts(app, baseDomain)
+	if len(hosts) == 0 {
+		return "" // not publicly routable, so a stray spec.host is not served
+	}
+	redirects := effectiveHostRedirects(app, hosts)
+	custom := func(h string) bool {
+		_, redirect := redirects[h]
+		return h != "" && !redirect
+	}
+	if custom(app.Spec.Host) {
+		return app.Spec.Host
+	}
+	for _, h := range app.Spec.Hosts {
+		if custom(h) {
+			return h
+		}
+	}
+	// Only the platform host can remain unclaimed by the custom fields.
+	for _, h := range hosts {
+		if h != app.Spec.Host && !slices.Contains(app.Spec.Hosts, h) {
+			return h
+		}
+	}
+	return ""
+}
+
+// retainedProbeHost is the probe Host the stored template already sends for this
+// same release. Domains are operational (AppSpecIdentityClasses): editing one
+// opens no deploy, so it must not roll pods either; the freeze also keeps an
+// operator upgrade from adding the header to running releases. ok is false for
+// a new release or Deployment, which select from current domains.
+func retainedProbeHost(stored corev1.PodTemplateSpec, app *appv1alpha1.App) (host string, ok bool) {
+	if stored.Labels[labelRevision] != releaseRevision(app) {
+		return "", false
+	}
+	for _, c := range stored.Spec.Containers {
+		if c.Name != appContainerName {
+			continue
+		}
+		if c.StartupProbe != nil && c.StartupProbe.HTTPGet != nil {
+			for _, h := range c.StartupProbe.HTTPGet.HTTPHeaders {
+				if h.Name == probeHostHeader {
+					return h.Value, true
+				}
+			}
+		}
+		return "", true
+	}
+	return "", false
 }
 
 // drainSeconds is how long a traffic-serving tenant pod keeps serving after it
@@ -382,19 +456,23 @@ func terminationGracePeriodSeconds(seconds *int32, drain int64) *int64 {
 // outrun the tenant headroom and mint nodes (ADR004 § Rollout headroom). A new
 // Deployment, or one already drained, always gets it.
 func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymentParams) {
+	probeHost, retained := retainedProbeHost(dep.Spec.Template, app)
+	if !retained {
+		probeHost = healthProbeHost(app, p.baseDomain)
+	}
 	drain := drainSecondsFor(app, p)
 	if stored := dep.Spec.Template; drain > 0 && len(stored.Spec.Containers) > 0 && !podDrains(stored.Spec) {
 		undrained := dep.DeepCopy()
-		projectDeployment(undrained, app, p, 0)
+		projectDeployment(undrained, app, p, 0, probeHost)
 		if apiequality.Semantic.DeepEqual(undrained.Spec.Template, stored) {
 			drain = 0
 		}
 	}
-	projectDeployment(dep, app, p, drain)
+	projectDeployment(dep, app, p, drain, probeHost)
 }
 
-// projectDeployment is applyDeploymentSpec with the drain decided.
-func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymentParams, drain int64) {
+// projectDeployment is applyDeploymentSpec with the drain and probe Host decided.
+func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymentParams, drain int64, probeHost string) {
 	replicas := clampReplicas(app, p.replicas)
 	dep.Spec.Replicas = &replicas
 	dep.Spec.Selector = &metav1.LabelSelector{MatchLabels: map[string]string{labelApp: app.Name}}
@@ -414,7 +492,7 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 		dep.Spec.Template.Annotations["app.bex.co/restarted-at"] = app.Spec.RestartedAt
 	}
 
-	container := appContainer(app, p)
+	container := appContainer(app, p, probeHost)
 	// Secret files: one projected /etc/secrets volume (the service's own
 	// "<name>-files" + each linked env group's files).
 	dep.Spec.Template.Spec.Volumes = nil

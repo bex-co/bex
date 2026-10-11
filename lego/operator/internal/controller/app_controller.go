@@ -2464,6 +2464,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		replicas:    replicas,
 		worker:      worker,
 		verifyImage: r.TenantSignKeySecret != "",
+		baseDomain:  r.BaseDomain,
 		// Authenticate kubelet pulls against the auth-enabled registry
 		// (w7/m8). nil when no pull secret is configured or the image isn't
 		// registry-hosted, so a prebuilt public image is left untouched.

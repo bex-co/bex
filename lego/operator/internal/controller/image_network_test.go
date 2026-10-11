@@ -81,7 +81,7 @@ func TestImageNetworkUsesVerifiedBuildMetadata(t *testing.T) {
 	if image != "registry.test/clickhouse@"+digest || port != 8123 {
 		t.Fatalf("image=%q port=%d", image, port)
 	}
-	container := appContainer(app, deploymentParams{image: image, port: port, replicas: 1})
+	container := appContainer(app, deploymentParams{image: image, port: port, replicas: 1}, "")
 	if len(container.Ports) != 3 || container.StartupProbe.TCPSocket == nil || container.StartupProbe.TCPSocket.Port.IntVal != 8123 {
 		t.Fatalf("wrong listener/probe projection: %+v", container)
 	}
@@ -360,7 +360,7 @@ func TestConfiguredPortServiceTargetsEachPodsOwnListener(t *testing.T) {
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = appv1alpha1.AddToScheme(scheme)
 	app := projectionApp(func(a *appv1alpha1.App) { a.Labels = map[string]string{labelAppID: "srv-hello"} })
-	if c := appContainer(app, deploymentParams{port: 3001}); len(c.Ports) != 1 || c.Ports[0].Name != servingPortName || c.Ports[0].ContainerPort != 3001 {
+	if c := appContainer(app, deploymentParams{port: 3001}, ""); len(c.Ports) != 1 || c.Ports[0].Name != servingPortName || c.Ports[0].ContainerPort != 3001 {
 		t.Fatalf("container ports = %+v, want one %q port 3001", c.Ports, servingPortName)
 	}
 	pod := func(name string, ports ...corev1.ContainerPort) *corev1.Pod {

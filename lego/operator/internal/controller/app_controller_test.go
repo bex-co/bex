@@ -183,7 +183,7 @@ var _ = Describe("App Controller", func() {
 	Context("health-check gating: spec.healthCheckPath → ReadinessProbe (kubernetes runtime)", func() {
 		ctx := context.Background()
 		reconcileN := func(nn types.NamespacedName) {
-			r := &AppReconciler{Client: k8sClient, Scheme: k8sClient.Scheme(), Mode: ModeKubernetes}
+			r := &AppReconciler{Client: k8sClient, Scheme: k8sClient.Scheme(), Mode: ModeKubernetes, BaseDomain: "probe.test"}
 			for range 3 {
 				_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
 				Expect(err).NotTo(HaveOccurred())
@@ -301,6 +301,20 @@ var _ = Describe("App Controller", func() {
 				"Render restarts after 60 seconds of consecutive failures")
 			Expect(c.StartupProbe).NotTo(BeNil(),
 				"liveness without a startup probe would kill a slow boot")
+		})
+
+		// w4/m190: Render sends the service's hostname as Host. The connection
+		// still targets the pod (HTTPGet.Host empty); only the header changes.
+		It("sends the platform hostname as Host on every HTTP probe of an exposed web service", func() {
+			c := appContainer("host-probe-app", appv1alpha1.AppSpec{
+				Image: "traefik/whoami", Port: 3000, HealthCheckPath: "/cgi-bin/health",
+				Expose: true, Subdomain: "host-probe-x1",
+			})
+			for _, p := range []*corev1.Probe{c.StartupProbe, c.ReadinessProbe, c.LivenessProbe} {
+				Expect(p).NotTo(BeNil())
+				Expect(p.HTTPGet.Host).To(BeEmpty(), "the probe must still connect to the pod")
+				Expect(p.HTTPGet.HTTPHeaders).To(Equal([]corev1.HTTPHeader{{Name: "Host", Value: "host-probe-x1.probe.test"}}))
+			}
 		})
 
 		It("maps maxShutdownDelaySeconds onto the pod grace period for every long-running type", func() {
