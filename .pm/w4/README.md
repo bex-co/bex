@@ -249,7 +249,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
-- [ ] **260** — [Environment action menus close during background refresh](260.md) (60m) ← functional QA 2026-10-11 a209/a216; fresh desktop/mobile Export and Add variable loss through a transient tooltip remount; Copy/Download/import controls and owned fixture/session cleanup verified.
+- [ ] **260** — [Environment action menus close during background refresh](260.md) (60m) ← functional QA 2026-10-11 a209/a216/a225; fresh desktop/mobile Export, Add variable and Save options loss through a transient tooltip remount; Copy/Download/import/upload/Save only controls and owned fixture/session cleanup verified.
 
 - [ ] **259** — [Cron start events omit the required run ID](259.md) (55m) ← functional QA 2026-10-11 a206; fresh scheduled/manual REST/GraphQL starts omit the matching run ID while completion controls pass; owned cron deleted and session revoked.
 
