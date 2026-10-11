@@ -434,7 +434,7 @@ const zhServices: Record<string, TranslationEntry> = {
       "Service-detail header metadata label for a cron job's schedule",
   },
   "services.headerLastRun": {
-    message: "上次运行：",
+    message: "上次成功运行：",
     description:
       "Service-detail header metadata label for a cron job's last successful run",
   },

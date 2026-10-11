@@ -443,7 +443,7 @@ const enServices: Record<string, TranslationEntry> = {
       "Service-detail header metadata label for a cron job's schedule",
   },
   "services.headerLastRun": {
-    message: "Last run:",
+    message: "Last successful run:",
     description:
       "Service-detail header metadata label for a cron job's last successful run",
   },
