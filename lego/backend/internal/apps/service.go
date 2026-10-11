@@ -1102,7 +1102,7 @@ func view(a *appv1alpha1.App) AppView {
 		Replicas:             a.Spec.Replicas,
 		Suspended:            a.Spec.Suspended,
 		Schedule:             a.Spec.Schedule,
-		Command:              a.Spec.Command,
+		Command:              cronCommand(a.Spec),
 		Runs:                 cronRunViews(a.Status.Runs),
 		LastSuccessfulRunAt:  lastSuccessfulCronRunAt(a.Status.Runs),
 		Plan:                 plan,
@@ -4065,11 +4065,7 @@ func (s *Service) SetCommands(ctx context.Context, name string, buildCommand, st
 			a.Spec.BuildCommand = strings.TrimSpace(*buildCommand)
 		}
 		if startCommand != nil {
-			if a.Spec.Type == appv1alpha1.TypeCronJob {
-				a.Spec.Command = strings.TrimSpace(*startCommand)
-			} else {
-				a.Spec.StartCommand = strings.TrimSpace(*startCommand)
-			}
+			setStartCommand(&a.Spec, *startCommand)
 		}
 	})
 }
@@ -4299,7 +4295,8 @@ func (s *Service) recordBranchChangedFact(ctx context.Context, a *appv1alpha1.Ap
 // spec.command). Rejected for a non-cron service. Both args are optional — nil
 // means "keep existing," which lets REST PATCH update one field without
 // re-reading the other. A non-nil schedule must be a non-empty 5-field crontab;
-// a non-nil command of "" clears the entrypoint override. Direct CR patch, not
+// a non-nil command of "" clears the entrypoint override, including a legacy
+// startCommand fallback (setCronCommand). Direct CR patch, not
 // projection-owned (mirrors Builder/RootDir).
 func (s *Service) SetCronJob(ctx context.Context, name string, schedule, command *string) (AppView, error) {
 	// SECURITY (codex round-5 F2): the command IS the code the cron runs, so
@@ -4318,7 +4315,7 @@ func (s *Service) SetCronJob(ctx context.Context, name string, schedule, command
 			a.Spec.Schedule = strings.TrimSpace(*schedule)
 		}
 		if command != nil {
-			a.Spec.Command = strings.TrimSpace(*command)
+			setCronCommand(&a.Spec, *command)
 		}
 	})
 }
