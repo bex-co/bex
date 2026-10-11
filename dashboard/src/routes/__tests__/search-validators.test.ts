@@ -24,6 +24,12 @@ const NO_RANGE = {
   rangeStart: undefined,
   rangeEnd: undefined,
 };
+// The datastore Logs tab's own keys (w4/228): range + text + instance only.
+const NO_DATASTORE_LOG_FILTERS = {
+  ...NO_RANGE,
+  text: undefined,
+  instance: undefined,
+};
 const NO_LOG_FILTERS = {
   t: undefined,
   r: undefined,
@@ -66,14 +72,14 @@ describe.each([
   [
     "/keyvalue/$keyValueId",
     KeyValueRoute,
-    { tab: "bogus", range: "12y" },
-    { tab: undefined, ...NO_RANGE },
+    { tab: "bogus", range: "12y", text: "", instance: true },
+    { tab: undefined, ...NO_DATASTORE_LOG_FILTERS },
   ],
   [
     "/databases/$databaseId",
     DatabaseRoute,
-    { tab: "metrics", range: "custom", rangeStart: "x" },
-    { tab: undefined, ...NO_RANGE },
+    { tab: "metrics", range: "custom", rangeStart: "x", text: 404 },
+    { tab: undefined, ...NO_DATASTORE_LOG_FILTERS, text: "404" },
   ],
   ["/", IndexRoute, { new: "bogus" }, { new: undefined }],
   [
