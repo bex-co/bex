@@ -1,17 +1,17 @@
 # w4 · m200 — Preserve logical records in mixed stdout/stderr pod logs
 
-**Worker:** worker4 **Goal:** complete stdout and stderr records survive live/fallback pod-log reads without joining or splitting their message bytes. **Status:** todo
+**Worker:** worker4 **Goal:** complete stdout and stderr records survive live/fallback pod-log reads without joining or splitting their message bytes. **Status:** blocked
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Prove complete-record framing at the Kubernetes log producer | 50m | — |
+| t001 | Prove complete-record framing at the Kubernetes log producer — **DONE** | 50m | — |
 | t002 | Build and pin the proved producer artifact through the worker-image workflow | 55m | w4/m200/t001 |
-| t003 | Audit and verify the global producer consumers and temporal options | 50m | w4/m200/t001 |
+| t003 | Audit and verify the global producer consumers and temporal options — **DONE** | 50m | w4/m200/t001 |
 | t004 | Verify the producer artifact through the real pod API and live dashboard | 45m | w4/m200/t002, w4/m200/t003 |
 | t005 | Render parity | 20m | w4/m200/t004 |
-| t006 | Simplify | 15m | w4/m200/t005 |
+| t006 | Simplify — **DONE** | 15m | w4/m200/t005 |
 | t007 | Test coverage | 50m | w4/m200/t005 |
 | t008 | Closeout | 20m | w4/m200/t006, w4/m200/t007, w4/m199/t006 |
 
@@ -35,3 +35,5 @@
 - **Dependencies:** m199 retains ownership of first/final CRI timestamps and gates this milestone's combined identity closeout. w4/256 owns cap alignment independently. Blocked m174's fast-exit ingestion loss remains open.
 - **Render parity:** included because message integrity/identity affects user log surfaces. Preserve the existing Render-shaped envelopes and supported/refused transports rather than inventing a new public record format.
 - **Unverified:** live node version, the proposed producer patch/artifact, non-web resources, WebSocket/CLI/MCP, node rollover, and the original Cron controls. Concrete verification work is assigned, not claimed complete.
+
+**Blocked 2026-10-11:** the patched kubelet is built, reproducible, published (`bex-kubelet/v1.34.9-cri-records.1`, sha256 `0857047b…`), wired into the Packer bake and guarded, and is proven on a real kubelet's pod API. Commits: 1f3d18dd3 and 7a93270cf. Production nodes still run the stock reader. The next step needs the user: approve the `production-snapshot` environment for a `snapshot.yml` bake, then canary and roll the nodes (`infra/packer/README.md`). After that come t002 steps 3–4, the t004 live replay, t005, the t007 zero-Loki check and t008. Evidence is in [verification.md](verification.md).
