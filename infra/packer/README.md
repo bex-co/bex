@@ -8,6 +8,16 @@
 
 What stays in cloud-init (the `KubeadmConfigTemplate`/`KubeadmControlPlane` `files:` + `preKubeadmCommands` in [`../clusterapi/overlays/hetzner-caph/cluster.yaml`](../clusterapi/overlays/hetzner-caph/cluster.yaml)): containerd's service unit + `config.toml`, the tenant-only zot `certs.d`, sysctls/modules, and `systemctl enable kubelet`. The image is **just binaries + packages**, so one versioned snapshot serves control-plane, tenant, and platform nodes while pool-specific runtime configuration remains in CAPI.
 
+## Patched kubelet (w4/m200)
+
+The bake replaces the pkgs.k8s.io `kubelet` binary with the same release built with [`log-record-framing/kubelet-cri-records.patch`](log-record-framing/kubelet-cri-records.patch). The stock reader joined a long stdout record to any stderr line written between its CRI partial chunks, which corrupted `kubectl logs` and bex's Live tail. The patched reader writes each stream's record whole, stamped with its first chunk.
+
+- **Build:** [`log-record-framing/Dockerfile`](log-record-framing/Dockerfile) pins the upstream commit and runs the patch's tests. It is reproducible: two clean builds give identical bytes.
+- **Publish:** `.github/workflows/kubelet-artifact.yml` publishes the binary as the `bex-kubelet/v<version>-cri-records.N` release asset. It refuses any bytes other than the `kubelet_amd64_sha256` pin in `bex-worker.pkr.hcl`.
+- **Version:** `kubelet --version` still reports the release (`v1.34.9`), so bootstrap's version pin holds. `--version=raw` shows `GitTreeState:"dirty"`, and the snapshot's `bex.co/kubelet` label carries the binary's sha256 prefix.
+- **Kubernetes bump:** rebuild and re-pin the patch with it. `scripts/clusterapi-validate.sh` fails if the patch, its version or the pinned install step drifts.
+- **Rollback:** re-label the previous snapshot (see below).
+
 ## How CAPH picks the image
 
 CAPH resolves `HCloudMachineTemplate.spec.template.spec.imageName` against a snapshot **label** `caph-image-name`, not the description, and requires that selector to match exactly one image. The reviewed `infra/packer/release.conf` selects a versioned label such as `bex-worker-k8s-1-34`; `snapshot.yml` immediately retires that label from every older match. `cluster.yaml` uses that exact selector for control-plane and worker templates. Snapshot descriptions include the Kubernetes/containerd/runc tuple, and corresponding labels make the artifact auditable while retired snapshots remain available for an explicit rollback.

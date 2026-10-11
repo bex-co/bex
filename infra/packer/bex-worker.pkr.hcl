@@ -73,6 +73,18 @@ variable "containerd_amd64_sha256" {
   default = "ebf6e710056312628eaf6fb4a1c32f0a4ae5f812568321be4029389d66fc7c7c"
 }
 
+# Patched kubelet (w4/m200, README "Patched kubelet"): bump the tag with any
+# new sha256; kubelet-artifact.yml publishes only these exact bytes.
+variable "kubelet_release_tag" {
+  type    = string
+  default = "bex-kubelet/v1.34.9-cri-records.1"
+}
+
+variable "kubelet_amd64_sha256" {
+  type    = string
+  default = "0857047b00faf0c9c56d19450f181c5d387d2a6e02f12d852a50fa56ced13809"
+}
+
 variable "kubernetes_release_key_sha256" {
   type    = string
   default = "7627818cf7bae52f9008c93e8b1f961f53dea11d40891778de216fb1b43be54d"
@@ -119,13 +131,14 @@ source "hcloud" "worker" {
   ssh_username = "root"
   # Snapshot descriptions are unique in Hetzner. Include the full runtime tuple
   # so a containerd/runc-only upgrade does not collide with the previous bake.
-  snapshot_name = "${var.image_name}-k8s-${var.kubernetes_version}-containerd-${var.containerd_version}-runc-${var.runc_version}"
+  snapshot_name = "${var.image_name}-k8s-${var.kubernetes_version}-containerd-${var.containerd_version}-runc-${var.runc_version}-kubelet-${substr(var.kubelet_amd64_sha256, 0, 12)}"
   snapshot_labels = {
     caph-image-name     = var.image_name
     "bex.co/role"       = "node"
     "bex.co/k8s"        = var.kubernetes_version
     "bex.co/containerd" = var.containerd_version
     "bex.co/runc"       = var.runc_version
+    "bex.co/kubelet"    = substr(var.kubelet_amd64_sha256, 0, 12)
   }
 }
 
@@ -144,6 +157,8 @@ build {
       "CONTAINERD_AMD64_SHA256=${var.containerd_amd64_sha256}",
       "RUNC_AMD64_SHA256=${var.runc_amd64_sha256}",
       "KUBERNETES_RELEASE_KEY_SHA256=${var.kubernetes_release_key_sha256}",
+      "KUBELET_RELEASE_TAG=${var.kubelet_release_tag}",
+      "KUBELET_AMD64_SHA256=${var.kubelet_amd64_sha256}",
     ]
     inline = [
       "set -euxo pipefail",
@@ -180,6 +195,13 @@ build {
       "apt-get update",
       "apt-get install -y kubelet=\"$KUBERNETES_VERSION-*\" kubeadm=\"$KUBERNETES_VERSION-*\" kubectl=\"$KUBERNETES_VERSION-*\"",
       "apt-mark hold kubelet kubeadm kubectl",
+      # Patched kubelet over the package's binary (held above, so apt never
+      # restores it); same release, verified against the reviewed pin.
+      "wget -q -O /tmp/kubelet https://github.com/bex-co/bex/releases/download/$KUBELET_RELEASE_TAG/kubelet-linux-$ARCH",
+      "echo \"$KUBELET_AMD64_SHA256  /tmp/kubelet\" | sha256sum --check -",
+      "install -m 0755 /tmp/kubelet /usr/bin/kubelet",
+      "rm -f /tmp/kubelet",
+      "kubelet --version | grep -qx \"Kubernetes v$KUBERNETES_VERSION\"",
       "apt-get -y autoremove && apt-get -y clean",
       # Re-arm cloud-init so CAPH's per-machine bootstrap runs fresh on every new
       # worker minted from this snapshot (without this the snapshot keeps the

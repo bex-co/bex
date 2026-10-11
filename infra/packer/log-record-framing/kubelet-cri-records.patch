@@ -1,0 +1,242 @@
+diff --git a/staging/src/k8s.io/cri-client/pkg/logs/logs.go b/staging/src/k8s.io/cri-client/pkg/logs/logs.go
+index bbfc2b60..499fece8 100644
+--- a/staging/src/k8s.io/cri-client/pkg/logs/logs.go
++++ b/staging/src/k8s.io/cri-client/pkg/logs/logs.go
+@@ -325,16 +325,16 @@ func ReadLogs(ctx context.Context, logger *klog.Logger, path, containerID string
+ 	var watcher *fsnotify.Watcher
+ 	var parse parseFunc
+ 	var stop bool
+-	isNewLine := true
+ 	found := true
+ 	writer := newLogWriter(stdout, stderr, opts)
++	records := newRecordAssembler(writer)
+ 	msg := &logMessage{}
+ 	baseName := filepath.Base(path)
+ 	dir := filepath.Dir(path)
+ 	for {
+ 		if stop || (limitedMode && limitedNum == 0) {
+ 			internal.Log(logger, 2, "Finished parsing log file", "path", path)
+-			return nil
++			return records.flush()
+ 		}
+ 		l, err := r.ReadBytes(eol[0])
+ 		if err != nil {
+@@ -344,7 +344,7 @@ func ReadLogs(ctx context.Context, logger *klog.Logger, path, containerID string
+ 			if opts.follow {
+ 				// The container is not running, we got to the end of the log.
+ 				if !found {
+-					return nil
++					return records.flush()
+ 				}
+ 				// Reset seek so that if this is an incomplete line,
+ 				// it will be read again.
+@@ -407,7 +407,7 @@ func ReadLogs(ctx context.Context, logger *klog.Logger, path, containerID string
+ 			continue
+ 		}
+ 		// Write the log line into the stream.
+-		if err := writer.write(msg, isNewLine); err != nil {
++		if err := records.write(msg); err != nil {
+ 			if err == errMaximumWrite {
+ 				internal.Log(logger, 2, "Finished parsing log file, hit bytes limit", "path", path, "limit", opts.bytes)
+ 				return nil
+@@ -418,12 +418,81 @@ func ReadLogs(ctx context.Context, logger *klog.Logger, path, containerID string
+ 		if limitedMode {
+ 			limitedNum--
+ 		}
+-		if len(msg.log) > 0 {
+-			isNewLine = msg.log[len(msg.log)-1] == eol[0]
+-		} else {
+-			isNewLine = true
++	}
++}
++
++// maxPendingRecordBytes bounds the partial chunks held per stream. A longer
++// record is written as it arrives, as before, once this much is pending.
++const maxPendingRecordBytes = 1 << 20
++
++// pendingRecord is one stream's logical record still awaiting its final chunk.
++type pendingRecord struct {
++	timestamp time.Time
++	log       []byte
++	open      bool
++	// streaming: an over-budget record was partly written; its remaining
++	// chunks follow unprefixed until it completes.
++	streaming bool
++}
++
++// recordAssembler writes each logical record whole, stamped with its first
++// chunk's time. The runtime splits a long line into partial chunks and a line
++// on the other stream can land between them; writing chunks as they came
++// joined the two records whenever stdout and stderr shared one writer.
++type recordAssembler struct {
++	writer  *logWriter
++	pending map[runtimeapi.LogStreamType]*pendingRecord
++}
++
++func newRecordAssembler(writer *logWriter) *recordAssembler {
++	return &recordAssembler{writer: writer, pending: map[runtimeapi.LogStreamType]*pendingRecord{}}
++}
++
++func (a *recordAssembler) write(msg *logMessage) error {
++	complete := len(msg.log) > 0 && msg.log[len(msg.log)-1] == eol[0]
++	p := a.pending[msg.stream]
++	if p == nil {
++		p = &pendingRecord{}
++		a.pending[msg.stream] = p
++	}
++	if p.streaming {
++		p.streaming = !complete
++		// The record's first-chunk time decides the since filter, as for its head.
++		return a.writer.write(&logMessage{timestamp: p.timestamp, stream: msg.stream, log: msg.log}, false)
++	}
++	if !p.open {
++		if complete {
++			return a.writer.write(msg, true)
+ 		}
++		p.timestamp, p.open = msg.timestamp, true
+ 	}
++	p.log = append(p.log, msg.log...)
++	if !complete && len(p.log) < maxPendingRecordBytes {
++		return nil
++	}
++	p.streaming = !complete
++	return a.emit(msg.stream, p)
++}
++
++// flush writes every record still incomplete when reading stops.
++func (a *recordAssembler) flush() error {
++	for _, stream := range []runtimeapi.LogStreamType{runtimeapi.Stdout, runtimeapi.Stderr} {
++		if p := a.pending[stream]; p != nil && p.open {
++			if err := a.emit(stream, p); err != nil {
++				if err == errMaximumWrite {
++					return nil
++				}
++				return err
++			}
++		}
++	}
++	return nil
++}
++
++func (a *recordAssembler) emit(stream runtimeapi.LogStreamType, p *pendingRecord) error {
++	record := &logMessage{timestamp: p.timestamp, stream: stream, log: p.log}
++	p.log, p.open = nil, false
++	return a.writer.write(record, true)
+ }
+ 
+ func isContainerRunning(ctx context.Context, logger *klog.Logger, id string, r internalapi.RuntimeService) (bool, error) {
+diff --git a/staging/src/k8s.io/cri-client/pkg/logs/logs_test.go b/staging/src/k8s.io/cri-client/pkg/logs/logs_test.go
+index 8f4b13c2..67538c56 100644
+--- a/staging/src/k8s.io/cri-client/pkg/logs/logs_test.go
++++ b/staging/src/k8s.io/cri-client/pkg/logs/logs_test.go
+@@ -25,6 +25,7 @@ import (
+ 	"io"
+ 	"os"
+ 	"path/filepath"
++	"strings"
+ 	"testing"
+ 	"time"
+ 
+@@ -596,3 +597,102 @@ func TestOnlyStdoutStream(t *testing.T) {
+ 		})
+ 	}
+ }
++
++// bex w4/m200: containerd splits a long line into partial (P) chunks, and a
++// line on the other stream can land between them. Each logical record must
++// reach a shared writer whole, stamped with its first chunk's time.
++func TestReadLogsKeepsInterleavedPartialRecordsWhole(t *testing.T) {
++	head := strings.Repeat("a", 16384)
++	lines := []string{
++		"2026-10-11T10:00:00.100000001Z stdout F short-out\n",
++		"2026-10-11T10:00:00.200000002Z stdout P {\"case\":\"mixed\",\"v\":\"" + head + "\n",
++		"2026-10-11T10:00:00.200000003Z stdout P " + head + "\n",
++		"2026-10-11T10:00:00.250000004Z stderr F {\"case\":\"mixed-err\"}\n",
++		"2026-10-11T10:00:00.380000005Z stdout F tail\"}\n",
++		"2026-10-11T10:00:01.000000006Z stderr P err-a-\n",
++		"2026-10-11T10:00:01.100000007Z stdout F 2026-10-11T10:00:00Z looks-like-a-stamp\n",
++		"2026-10-11T10:00:01.200000008Z stderr F err-b\n",
++		"2026-10-11T10:00:01.300000009Z stdout F \n",
++	}
++	path := filepath.Join(t.TempDir(), "0.log")
++	require.NoError(t, os.WriteFile(path, []byte(strings.Join(lines, "")), 0o600))
++
++	want := strings.Join([]string{
++		"2026-10-11T10:00:00.100000001Z short-out\n",
++		"2026-10-11T10:00:00.250000004Z {\"case\":\"mixed-err\"}\n",
++		"2026-10-11T10:00:00.200000002Z {\"case\":\"mixed\",\"v\":\"" + head + head + "tail\"}\n",
++		"2026-10-11T10:00:01.100000007Z 2026-10-11T10:00:00Z looks-like-a-stamp\n",
++		"2026-10-11T10:00:01.000000006Z err-a-err-b\n",
++		"2026-10-11T10:00:01.300000009Z \n",
++	}, "")
++	for _, follow := range []bool{false, true} {
++		t.Run(fmt.Sprintf("follow=%v", follow), func(t *testing.T) {
++			runtime := &apitesting.FakeRuntimeService{Containers: map[string]*apitesting.FakeContainer{
++				"c": {ContainerStatus: runtimeapi.ContainerStatus{State: runtimeapi.ContainerState_CONTAINER_EXITED}},
++			}}
++			var buf bytes.Buffer
++			opts := NewLogOptions(&v1.PodLogOptions{Timestamps: true, Follow: follow}, time.Now())
++			require.NoError(t, ReadLogs(context.Background(), nil, path, "c", opts, runtime, &buf, &buf))
++			assert.Equal(t, want, buf.String())
++		})
++	}
++
++	t.Run("split streams", func(t *testing.T) {
++		var out, errOut bytes.Buffer
++		opts := NewLogOptions(&v1.PodLogOptions{Timestamps: true}, time.Now())
++		require.NoError(t, ReadLogs(context.Background(), nil, path, "", opts, nil, &out, nil))
++		require.NoError(t, ReadLogs(context.Background(), nil, path, "", opts, nil, nil, &errOut))
++		assert.Equal(t, "2026-10-11T10:00:00.100000001Z short-out\n"+
++			"2026-10-11T10:00:00.200000002Z {\"case\":\"mixed\",\"v\":\""+head+head+"tail\"}\n"+
++			"2026-10-11T10:00:01.100000007Z 2026-10-11T10:00:00Z looks-like-a-stamp\n"+
++			"2026-10-11T10:00:01.300000009Z \n", out.String())
++		assert.Equal(t, "2026-10-11T10:00:00.250000004Z {\"case\":\"mixed-err\"}\n"+
++			"2026-10-11T10:00:01.000000006Z err-a-err-b\n", errOut.String())
++	})
++
++	t.Run("an empty first chunk still owns the record's time", func(t *testing.T) {
++		path := filepath.Join(t.TempDir(), "0.log")
++		require.NoError(t, os.WriteFile(path, []byte("2026-10-11T10:00:00.1Z stdout P \n2026-10-11T10:00:00.2Z stdout P a\n2026-10-11T10:00:00.3Z stdout F b\n"), 0o600))
++		var buf bytes.Buffer
++		require.NoError(t, ReadLogs(context.Background(), nil, path, "", NewLogOptions(&v1.PodLogOptions{Timestamps: true}, time.Now()), nil, &buf, &buf))
++		assert.Equal(t, "2026-10-11T10:00:00.100000000Z ab\n", buf.String())
++	})
++
++	t.Run("since uses the first chunk", func(t *testing.T) {
++		var buf bytes.Buffer
++		opts := NewLogOptions(&v1.PodLogOptions{Timestamps: true, SinceTime: &metav1.Time{Time: time.Date(2026, 10, 11, 10, 0, 0, 200000003, time.UTC)}}, time.Now())
++		require.NoError(t, ReadLogs(context.Background(), nil, path, "", opts, nil, &buf, &buf))
++		assert.NotContains(t, buf.String(), "tail\"}")
++		assert.Contains(t, buf.String(), "2026-10-11T10:00:00.250000004Z {\"case\":\"mixed-err\"}\n")
++	})
++}
++
++// bex w4/m200: an unterminated record is flushed at EOF, and a record above
++// the pending budget streams on instead of growing without bound.
++func TestReadLogsPendingRecordBounds(t *testing.T) {
++	path := filepath.Join(t.TempDir(), "0.log")
++	chunk := strings.Repeat("b", 16384)
++	var b strings.Builder
++	for i := 0; i < maxPendingRecordBytes/len(chunk)+2; i++ {
++		b.WriteString("2026-10-11T10:00:00.000000001Z stdout P " + chunk + "\n")
++	}
++	b.WriteString("2026-10-11T10:00:00.000000002Z stdout F end\n")
++	b.WriteString("2026-10-11T10:00:00.000000003Z stderr P unterminated\n")
++	require.NoError(t, os.WriteFile(path, []byte(b.String()), 0o600))
++
++	var out, errOut bytes.Buffer
++	opts := NewLogOptions(&v1.PodLogOptions{}, time.Now())
++	require.NoError(t, ReadLogs(context.Background(), nil, path, "", opts, nil, &out, &errOut))
++	n := maxPendingRecordBytes/len(chunk) + 2
++	assert.Equal(t, strings.Repeat(chunk, n)+"end\n", out.String())
++	assert.Equal(t, "unterminated", errOut.String())
++
++	// A streamed over-budget record is filtered by its first chunk too: no
++	// orphan tail when that chunk is older than since.
++	out.Reset()
++	errOut.Reset()
++	since := NewLogOptions(&v1.PodLogOptions{SinceTime: &metav1.Time{Time: time.Date(2026, 10, 11, 10, 0, 0, 2, time.UTC)}}, time.Now())
++	require.NoError(t, ReadLogs(context.Background(), nil, path, "", since, nil, &out, &errOut))
++	assert.Empty(t, out.String())
++	assert.Equal(t, "unterminated", errOut.String())
++}

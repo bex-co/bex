@@ -1,0 +1,73 @@
+name: kubelet artifact (build + verify)
+
+# Builds the node kubelet with the carried CRI record patch
+# (infra/packer/log-record-framing/, w4/m200) and publishes it as a release
+# asset the Packer bake downloads. The build is reproducible: the job fails
+# unless the binary's sha256 equals the reviewed pin in
+# infra/packer/bex-worker.pkr.hcl, so the asset can only ever be the reviewed
+# bytes. Publishing changes no node; a node gets it only through a reviewed
+# snapshot bake + roll (infra/packer/README.md).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/packer/log-record-framing/**"
+      - "infra/packer/bex-worker.pkr.hcl"
+      - ".github/workflows/kubelet-artifact.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kubelet-artifact
+  cancel-in-progress: false
+
+jobs:
+  build:
+    permissions:
+      contents: write
+    # Ref guard: only reviewed main may publish a node artifact.
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: build kubelet (runs the patched reader's tests first)
+        run: |
+          docker buildx build --platform linux/amd64 \
+            --output type=local,dest="$RUNNER_TEMP/out" infra/packer/log-record-framing
+
+      - name: verify the reviewed pin, then publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pk_var() { grep -A4 "variable \"$1\"" infra/packer/bex-worker.pkr.hcl | grep -m1 -oE 'default[[:space:]]*=[[:space:]]*"[^"]+"' | grep -oE '"[^"]+"' | tr -d '"'; }
+          pinned=$(pk_var kubelet_amd64_sha256)
+          tag=$(pk_var kubelet_release_tag)
+          cd "$RUNNER_TEMP/out"
+          actual=$(sha256sum kubelet | cut -d' ' -f1)
+          if [ "$actual" != "$pinned" ]; then
+            echo "::error::built kubelet $actual differs from the reviewed pin $pinned"
+            exit 1
+          fi
+          # A published tag is immutable: new bytes need a new kubelet_release_tag.
+          if gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release download "$tag" -p kubelet-linux-amd64.sha256 -R "$GITHUB_REPOSITORY"
+            grep -q "^$pinned " kubelet-linux-amd64.sha256 \
+              || { echo "::error::$tag already holds other bytes; bump kubelet_release_tag"; exit 1; }
+            echo "$tag already published ($pinned)" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          mv kubelet kubelet-linux-amd64
+          echo "$actual  kubelet-linux-amd64" > kubelet-linux-amd64.sha256
+          # --latest=false: the bex CLI updater and installer follow
+          # releases/latest, which must stay a bex-cli/v* release.
+          gh release create "$tag" kubelet-linux-amd64 kubelet-linux-amd64.sha256 -R "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --title "kubelet $tag" --latest=false \
+            --notes "kubelet ${tag#bex-kubelet/} + infra/packer/log-record-framing/kubelet-cri-records.patch (w4/m200). sha256 $actual."
+          echo "Published $tag kubelet-linux-amd64 ($actual)" >> "$GITHUB_STEP_SUMMARY"
