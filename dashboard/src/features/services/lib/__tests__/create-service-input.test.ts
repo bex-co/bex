@@ -91,6 +91,53 @@ describe("buildCreateServiceInput", () => {
     expect(native.registryCredentialId).toBeUndefined();
   });
 
+  // w4/226: a Root Directory typed on a Git tab stays in the draft after
+  // switching to Existing Image, where no control shows it; the image create
+  // must not send it (the API refuses rootDirectory on a prebuilt image).
+  it.each([
+    "web_service",
+    "private_service",
+    "background_worker",
+    "cron_job",
+  ] as const)(
+    "omits a hidden Git Root Directory from a %s image create",
+    (serviceType) => {
+      const input = buildCreateServiceInput(
+        form({
+          serviceType,
+          tab: "image",
+          image: "docker.io/library/busybox:1.37",
+          imageCommand: "httpd -f",
+          rootDir: "examples/hello-go",
+          schedule: serviceType === "cron_job" ? "*/5 * * * *" : "",
+        }),
+      );
+      const wire = JSON.parse(JSON.stringify(input));
+      expect(wire).not.toHaveProperty("rootDir");
+      expect(wire).toMatchObject({
+        image: "docker.io/library/busybox:1.37",
+        runtime: "image",
+      });
+      if (serviceType !== "cron_job") {
+        expect(wire.startCommand).toBe("httpd -f");
+      }
+    },
+  );
+
+  it.each([
+    ["git native", { tab: "git" as const }],
+    ["github docker", { tab: "github" as const, runtime: "docker" as const }],
+    [
+      "git static",
+      { tab: "git" as const, serviceType: "static_site" as const },
+    ],
+  ])("keeps Root Directory for a %s build", (_name, overrides) => {
+    expect(
+      buildCreateServiceInput(form({ ...overrides, rootDir: "apps/api" }))
+        .rootDir,
+    ).toBe("apps/api");
+  });
+
   it("carries the image source with no git fields and no autoDeploy", () => {
     const input = buildCreateServiceInput(
       form({ tab: "image", image: " nginx:1 " }),
