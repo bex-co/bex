@@ -592,6 +592,9 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	// generation or a rejected redeploy remains queued until its timeout. This is
 	// still only an in-memory status mutation on the success path — the normal
 	// runtime/status write persists it later in the reconcile.
+	if err := r.adoptLegacyReleaseIdentity(ctx, &app); err != nil {
+		return ctrl.Result{}, err
+	}
 	releaseDecision := prepareAppReleaseDecision(&app)
 
 	// codex F1: refuse to build any workload for an App that references an
