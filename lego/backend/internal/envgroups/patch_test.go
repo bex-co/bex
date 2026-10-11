@@ -138,6 +138,69 @@ func TestPatchEnvironmentRenameRefillsAnExplicitlyDeletedName(t *testing.T) {
 	}
 }
 
+// w4/234: the captured save — move the stored file away, upload a
+// replacement at its old name plus two more files — is one Save only that
+// advances the revision once and leaves exactly the named final map. A true
+// conflict in the same shape is refused without a new revision.
+func TestPatchEnvironmentWriteRefillsARenamedAwayName(t *testing.T) {
+	ctx := context.Background()
+	svc := newService(newFakeStore())
+	original := "qa-a49 initial file\nopaque original snow 雪\n"
+	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
+		Name:        "move-and-refill",
+		SecretFiles: []SecretFileView{{Name: "qa-a49-original.txt", Content: original}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	conflict := []SecretFilePatch{
+		{Name: "qa-a49-renamed.txt", FromName: "qa-a49-original.txt"},
+		{Name: "qa-a49-original.txt", Content: "one"},
+		{Name: "qa-a49-original.txt", Content: "two"},
+	}
+	if _, err := svc.PatchEnvironment(ctx, group.ID, EnvironmentPatch{
+		ExpectedRevision: &group.Revision, SaveMode: SaveModeOnly, SecretFiles: conflict,
+	}); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("double refill = %v, want 400", err)
+	}
+	if refreshed, err := svc.GetEnvGroup(ctx, group.ID); err != nil || refreshed.Revision != group.Revision {
+		t.Fatalf("refused batch changed the group: %+v err=%v", refreshed, err)
+	}
+
+	want := map[string]string{
+		"qa-a49-renamed.txt":  original,
+		"qa-a49-original.txt": "qa-a49 uploaded replacement\r\nUnicode 雪\r\n\r\n",
+		"qa-a49-empty.txt":    "",
+		"qa-a49-unicode.txt":  "qa-a49 Unicode 雪, café and 🙂\nlast line without newline",
+	}
+	result, err := svc.PatchEnvironment(ctx, group.ID, EnvironmentPatch{
+		ExpectedRevision: &group.Revision,
+		SaveMode:         SaveModeOnly,
+		SecretFiles: []SecretFilePatch{
+			{Name: "qa-a49-renamed.txt", FromName: "qa-a49-original.txt"},
+			{Name: "qa-a49-original.txt", Content: want["qa-a49-original.txt"]},
+			{Name: "qa-a49-empty.txt", Content: ""},
+			{Name: "qa-a49-unicode.txt", Content: want["qa-a49-unicode.txt"]},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.SecretFileNames) != len(want) || result.RolledOut || len(result.AffectedServiceIDs) != 0 {
+		t.Fatalf("result = %+v", result)
+	}
+	before, _ := decodeEnvGroupRevision(group.Revision)
+	after, _ := decodeEnvGroupRevision(result.Revision)
+	if after != before+1 {
+		t.Fatalf("revision %d -> %d, want one advance", before, after)
+	}
+	for name, content := range want {
+		if got, err := svc.GetEnvGroupFile(ctx, group.ID, name); err != nil || got.Content != content {
+			t.Fatalf("%s = %+v err=%v, want %q", name, got, err, content)
+		}
+	}
+}
+
 func TestPatchEnvironmentRejectsStaleRevisionWithoutLostUpdate(t *testing.T) {
 	ctx := context.Background()
 	svc := newService(newFakeStore())
