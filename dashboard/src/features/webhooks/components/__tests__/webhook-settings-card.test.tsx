@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -10,6 +11,10 @@ import {
 } from "@tanstack/react-router";
 import { WebhookSettingsCard } from "@/features/webhooks/components/webhook-settings-card";
 import type { WebhookEndpointView } from "@/features/webhooks/types";
+import type {
+  AcceptedWebhookFields,
+  WebhookUpdate,
+} from "@/features/webhooks/hooks/use-update-webhook";
 
 const update = vi.fn();
 let canManage = true;
@@ -60,12 +65,36 @@ const ENDPOINT: WebhookEndpointView = {
   createdBy: "user@example.com",
 };
 
+// Stands in for the Apollo cache: an accepted update re-renders the card with
+// the stored row, as the mutation's selection set does in the app.
+let server: WebhookEndpointView = ENDPOINT;
+let publishEndpoint: (endpoint: WebhookEndpointView) => void = () => {};
+
+function CachedCard({ initial }: { initial: WebhookEndpointView }) {
+  const [endpoint, setEndpoint] = useState(initial);
+  publishEndpoint = setEndpoint;
+  return <WebhookSettingsCard endpoint={endpoint} />;
+}
+
+/** service.Update: merge the patch, trim Name/URL, return what was stored. */
+function storeAccepted(patch: WebhookUpdate) {
+  server = {
+    ...server,
+    ...patch,
+    name: (patch.name ?? server.name).trim(),
+    url: (patch.url ?? server.url).trim(),
+  };
+  publishEndpoint(server);
+  return { name: server.name, url: server.url };
+}
+
 function renderCard(endpoint: WebhookEndpointView = ENDPOINT) {
+  server = endpoint;
   const rootRoute = createRootRoute();
   const route = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
-    component: () => <WebhookSettingsCard endpoint={endpoint} />,
+    component: () => <CachedCard initial={endpoint} />,
   });
   const listRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -83,7 +112,9 @@ function renderCard(endpoint: WebhookEndpointView = ENDPOINT) {
 beforeEach(() => {
   canManage = true;
   update.mockReset();
-  update.mockResolvedValue(true);
+  update.mockImplementation(async (_id: string, patch: WebhookUpdate) =>
+    storeAccepted(patch),
+  );
   setEnabled.mockReset();
   remove.mockReset();
   remove.mockResolvedValue(true);
@@ -222,5 +253,98 @@ describe("WebhookSettingsCard (w1/m49/t005)", () => {
     expect(
       screen.queryByRole("button", { name: "Delete" }),
     ).not.toBeInTheDocument();
+  });
+});
+
+// w4/271: the form shows the Name/URL the server stored (trimmed) once a save
+// is accepted, without overwriting later edits.
+describe("WebhookSettingsCard — accepted save (w4/271)", () => {
+  type Accepted = AcceptedWebhookFields | null;
+  function deferredUpdate() {
+    let settle: (accepted: Accepted) => void = () => {};
+    update.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          settle = resolve;
+        }),
+    );
+    return (respond: () => Accepted) => act(async () => settle(respond()));
+  }
+
+  it("shows the trimmed accepted Name/URL and goes clean after a padded save", async () => {
+    const user = userEvent.setup();
+    renderCard();
+    const save = await screen.findByRole("button", { name: "Save changes" });
+    const name = screen.getByLabelText("Name");
+    const url = screen.getByLabelText("Destination URL");
+
+    await user.clear(name);
+    await user.type(name, "  renamed  ");
+    await user.clear(url);
+    await user.type(url, "  https://example.com/trimmed  ");
+    await user.click(save);
+
+    expect(update).toHaveBeenCalledWith("whk-1", {
+      name: "renamed",
+      url: "https://example.com/trimmed",
+    });
+    expect(name).toHaveValue("renamed");
+    expect(url).toHaveValue("https://example.com/trimmed");
+    expect(save).toBeDisabled();
+    await user.click(save);
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps an edit typed while the save was in flight, adopting only the untouched field", async () => {
+    const user = userEvent.setup();
+    const settle = deferredUpdate();
+    renderCard();
+    const save = await screen.findByRole("button", { name: "Save changes" });
+    const name = screen.getByLabelText("Name");
+    const url = screen.getByLabelText("Destination URL");
+
+    await user.type(name, "  ");
+    await user.type(url, "  ");
+    await user.click(save);
+    await user.type(name, "-next");
+    await settle(() =>
+      storeAccepted({ name: "slack-bot  ", url: `${ENDPOINT.url}  ` }),
+    );
+
+    expect(name).toHaveValue("slack-bot  -next");
+    expect(url).toHaveValue(ENDPOINT.url);
+    expect(save).toBeEnabled();
+  });
+
+  it("a failed save keeps both padded drafts", async () => {
+    const user = userEvent.setup();
+    const settle = deferredUpdate();
+    renderCard();
+    const save = await screen.findByRole("button", { name: "Save changes" });
+    const name = screen.getByLabelText("Name");
+    const url = screen.getByLabelText("Destination URL");
+
+    await user.type(name, "  ");
+    await user.type(url, "  ");
+    await user.click(save);
+    await settle(() => null);
+
+    expect(name).toHaveValue("slack-bot  ");
+    expect(url).toHaveValue(`${ENDPOINT.url}  `);
+    expect(save).toBeEnabled();
+  });
+
+  it("an event-only save leaves Name/URL as they were and goes clean", async () => {
+    const user = userEvent.setup();
+    renderCard();
+    const save = await screen.findByRole("button", { name: "Save changes" });
+    await user.click(screen.getByRole("checkbox", { name: "All events" }));
+    await user.click(save);
+
+    expect(update).toHaveBeenCalledWith("whk-1", { eventTypes: [] });
+    expect(screen.getByLabelText("Name")).toHaveValue("slack-bot");
+    expect(screen.getByLabelText("Destination URL")).toHaveValue(ENDPOINT.url);
+    expect(screen.getByRole("checkbox", { name: "All events" })).toBeChecked();
+    expect(save).toBeDisabled();
   });
 });
