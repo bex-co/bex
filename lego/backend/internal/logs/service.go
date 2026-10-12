@@ -467,6 +467,18 @@ func (q LogQuery) displaySearch() bool {
 	return len(q.Search) > 0 && q.TextMode == TextModeDisplay
 }
 
+// localTextSearch reports whether Loki must return raw candidate lines and let
+// Go apply the final text matcher. Loki's regexp simplifier can turn some
+// case-insensitive Unicode literals into byte contains filters that are not a
+// superset of Go's strings.ToLower + literal contains contract (for example
+// Greek iota folds through U+0345). Running the same matcher for raw and display
+// history keeps the REST/GraphQL/MCP/CLI contract exact; scanLokiWindow still
+// bounds the work and returns an honest partial page when it cannot cover the
+// whole window.
+func (q LogQuery) localTextSearch() bool {
+	return len(q.Search) > 0
+}
+
 // matchesText reports whether message contains any normalized Search term, in
 // the query's TextMode. No terms matches everything.
 func (q LogQuery) matchesText(message string) bool {
