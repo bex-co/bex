@@ -20,7 +20,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [ ] **m58** — [Preserve Unicode matches in log history](m58/README.md) (6 tasks) ← CLI sweep 94: both native clients lose stored Unicode matches, including ASCII searches; local Loki causes and safe candidate prefilter isolated; all fixtures cleaned.
 - [ ] **m59** — [Return static sites to direct publication after clearing their build command](m59/README.md) (6 tasks, 2h15) ← CLI QA sweep 99: Bex and actual pinned Render accept the clear command, but create-time native Builder prevents no-build publication; passing direct-created control, four owned fixtures cleaned.
 
-- [ ] **m57** — [Preserve literal string lists in interactive CLI forms](m57/README.md) (7 tasks; 2h35m) ← functional CLI QA, 2026-10-11; both native clients broaden one comma-containing log term into two after unchanged Apply; upstream shared form correction.
+- [ ] **m57** — [Preserve literal string lists in interactive CLI forms](blocked/m57/README.md) — **BLOCKED (2026-10-12: t001/t002 prepared and tested with `blocked/m57/evidence/upstream-lossless-string-list.patch` + caller audit; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release, and native Bex/Render receipts; no fork/backend workaround per scope/DO_NOT_DO)**
 
 - [x] **m56** — [Publish complete service settings before rolling a release](done/m56/README.md) (7 tasks; 4h15m) ← functional CLI QA, 2026-10-10; both clients execute a cleared pre-deploy command during a successful compound save.
 

@@ -1,0 +1,247 @@
+diff --git a/pkg/command/form.go b/pkg/command/form.go
+index 081a574..9fbd697 100644
+--- a/pkg/command/form.go
++++ b/pkg/command/form.go
+@@ -33,12 +33,18 @@ func NewStringFormValue(s string) *stringFormValue {
+ type stringSliceFormValue []string
+ 
+ func NewStringSliceFormValue(s string) *stringSliceFormValue {
+-	slice := strings.Split(s, ",")
++	slice, err := arrayFromString(s)
++	if err != nil {
++		slice = strings.Split(s, ",")
++	}
+ 	return (*stringSliceFormValue)(&slice)
+ }
+ 
+ func (s *stringSliceFormValue) String() string {
+-	str := strings.Join(*s, ",")
++	str, err := stringArrayToString(*s)
++	if err != nil {
++		return strings.Join(*s, ",")
++	}
+ 	return str
+ }
+ 
+@@ -93,7 +99,12 @@ func FormValuesFromStruct(v any) FormValues {
+ 			switch field.Type.Elem().Kind() {
+ 			case reflect.String:
+ 				val := elemField.Interface().([]string)
+-				formValues[cliTag] = NewStringFormValue(strings.Join(val, ","))
++				str, err := stringArrayToString(val)
++				if err != nil {
++					formValues[cliTag] = NewStringFormValue(strings.Join(val, ","))
++					continue
++				}
++				formValues[cliTag] = NewStringFormValue(str)
+ 			case reflect.Int:
+ 				val := elemField.Interface().([]int)
+ 				var strs []string
+@@ -141,12 +152,76 @@ func FormValuesFromStruct(v any) FormValues {
+ 	return formValues
+ }
+ 
+-func arrayFromString(str string) []string {
++func stringArrayToString(values []string) (string, error) {
++	if len(values) == 0 {
++		return "", nil
++	}
++
++	encoded := make([]string, 0, len(values))
++	for _, value := range values {
++		if value == "" || strings.ContainsAny(value, ",\"\r\n") {
++			encoded = append(encoded, `"`+strings.ReplaceAll(value, `"`, `""`)+`"`)
++			continue
++		}
++		encoded = append(encoded, value)
++	}
++	return strings.Join(encoded, ","), nil
++}
++
++func arrayFromString(str string) ([]string, error) {
+ 	if str == "" {
+-		return []string{}
++		return []string{}, nil
+ 	}
+ 
+-	return strings.Split(str, ",")
++	var values []string
++	var current strings.Builder
++	inQuotes := false
++	quotedField := false
++	fieldStart := true
++
++	for i := 0; i < len(str); i++ {
++		ch := str[i]
++		if inQuotes {
++			switch ch {
++			case '"':
++				if i+1 < len(str) && str[i+1] == '"' {
++					current.WriteByte('"')
++					i++
++					continue
++				}
++				inQuotes = false
++			default:
++				current.WriteByte(ch)
++			}
++			continue
++		}
++
++		switch ch {
++		case ',':
++			values = append(values, current.String())
++			current.Reset()
++			quotedField = false
++			fieldStart = true
++		case '"':
++			if !fieldStart {
++				return nil, fmt.Errorf("parse comma-separated list: quote in unquoted field")
++			}
++			inQuotes = true
++			quotedField = true
++			fieldStart = false
++		default:
++			if quotedField {
++				return nil, fmt.Errorf("parse comma-separated list: data after closing quote")
++			}
++			current.WriteByte(ch)
++			fieldStart = false
++		}
++	}
++	if inQuotes {
++		return nil, fmt.Errorf("parse comma-separated list: unterminated quoted field")
++	}
++	values = append(values, current.String())
++	return values, nil
+ }
+ 
+ func StructFromFormValues(formValues FormValues, v any) error {
+@@ -230,14 +305,22 @@ func StructFromFormValues(formValues FormValues, v any) error {
+ 				if !ok {
+ 					continue
+ 				}
+-				elemField.Set(reflect.ValueOf(arrayFromString(val.String())))
++				values, err := arrayFromString(val.String())
++				if err != nil {
++					return err
++				}
++				elemField.Set(reflect.ValueOf(values))
+ 			case reflect.Int:
+ 				val, ok := formValues[cliTag]
+ 				if !ok {
+ 					continue
+ 				}
+ 				var intVals []int
+-				for _, v := range arrayFromString(val.String()) {
++				values, err := arrayFromString(val.String())
++				if err != nil {
++					return err
++				}
++				for _, v := range values {
+ 					intVal, err := strconv.Atoi(v)
+ 					if err != nil {
+ 						return err
+@@ -251,7 +334,11 @@ func StructFromFormValues(formValues FormValues, v any) error {
+ 					continue
+ 				}
+ 				var floatVals []float64
+-				for _, v := range arrayFromString(val.String()) {
++				values, err := arrayFromString(val.String())
++				if err != nil {
++					return err
++				}
++				for _, v := range values {
+ 					floatVal, err := strconv.ParseFloat(v, 64)
+ 					if err != nil {
+ 						return err
+@@ -265,7 +352,11 @@ func StructFromFormValues(formValues FormValues, v any) error {
+ 					continue
+ 				}
+ 				var boolVals []bool
+-				for _, v := range arrayFromString(val.String()) {
++				values, err := arrayFromString(val.String())
++				if err != nil {
++					return err
++				}
++				for _, v := range values {
+ 					boolVal, err := strconv.ParseBool(v)
+ 					if err != nil {
+ 						return err
+diff --git a/./pkg/command/form_string_slice_test.go b/pkg/command/form_string_slice_test.go
+new file mode 100644
+index 0000000..0e16d41
+--- /dev/null
++++ b/pkg/command/form_string_slice_test.go
+@@ -0,0 +1,71 @@
++package command
++
++import (
++	"reflect"
++	"testing"
++)
++
++type formStringSliceProbe struct {
++	Values []string `cli:"values"`
++}
++
++func TestStringSliceFormRoundTripPreservesLiteralElements(t *testing.T) {
++	cases := []struct {
++		name string
++		in   []string
++	}{
++		{name: "literal comma", in: []string{"LEFT,RIGHT"}},
++		{name: "comma plus another element", in: []string{"LEFT,RIGHT", "other"}},
++		{name: "embedded quotes", in: []string{`say "hello"`, "other"}},
++		{name: "unicode comma", in: []string{"左，右", "other"}},
++		{name: "single empty", in: []string{""}},
++		{name: "crlf", in: []string{"line1\r\nline2", "other"}},
++		{name: "plain multi term", in: []string{"left", "right"}},
++	}
++
++	for _, tc := range cases {
++		t.Run(tc.name, func(t *testing.T) {
++			encoded, err := stringArrayToString(tc.in)
++			if err != nil {
++				t.Fatalf("encode: %v", err)
++			}
++			got, err := arrayFromString(encoded)
++			if err != nil {
++				t.Fatalf("decode %q: %v", encoded, err)
++			}
++			if !reflect.DeepEqual(got, tc.in) {
++				t.Fatalf("decoded %q = %#v, want %#v", encoded, got, tc.in)
++			}
++
++			probe := &formStringSliceProbe{Values: tc.in}
++			values := FormValuesFromStruct(probe)
++			var decoded formStringSliceProbe
++			if err := StructFromFormValues(values, &decoded); err != nil {
++				t.Fatalf("StructFromFormValues: %v", err)
++			}
++			if !reflect.DeepEqual(decoded.Values, tc.in) {
++				t.Fatalf("struct round trip = %#v, want %#v", decoded.Values, tc.in)
++			}
++		})
++	}
++}
++
++func TestArrayFromStringKeepsEditableCommaSeparatedInput(t *testing.T) {
++	got, err := arrayFromString("left,right")
++	if err != nil {
++		t.Fatalf("decode: %v", err)
++	}
++	want := []string{"left", "right"}
++	if !reflect.DeepEqual(got, want) {
++		t.Fatalf("arrayFromString = %#v, want %#v", got, want)
++	}
++}
++
++func TestArrayFromStringRejectsMalformedQuotedInput(t *testing.T) {
++	if _, err := arrayFromString(`"unterminated`); err == nil {
++		t.Fatal("expected unterminated quote error")
++	}
++	if _, err := arrayFromString(`"left"right`); err == nil {
++		t.Fatal("expected data-after-quote error")
++	}
++}

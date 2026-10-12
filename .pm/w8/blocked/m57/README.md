@@ -1,14 +1,14 @@
 # w8 · m57 — Preserve literal string lists in interactive CLI forms
 
-**Worker:** worker8 **Goal:** applying unchanged log filters preserves their literal terms and selected result set. **Status:** todo
+**Worker:** worker8 **Goal:** applying unchanged log filters preserves their literal terms and selected result set. **Status:** blocked — t001/t002 prepared and tested; t003–t007 need separately authorized upstream submission, upstream acceptance/release, Bex pin/release and native receipts.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Prepare an upstream lossless string-list form correction | 40m | — |
-| t002 | Verify shared form callers and neighboring value types | 20m | t001 |
-| t003 | Adopt the accepted upstream correction through the CLI pin | 30m | t002 |
+| t001 | Prepare an upstream lossless string-list form correction — **DONE 2026-10-12** | 40m | — |
+| t002 | Verify shared form callers and neighboring value types — **DONE 2026-10-12** | 20m | t001 |
+| t003 | Adopt the accepted upstream correction through the CLI pin — **BLOCKED: needs separately authorized external upstream submission, upstream acceptance/release, then Bex pin/release** | 30m | t002 |
 | t004 | Render parity | 20m | t003 |
 | t005 | Simplify | 10m | t004 |
 | t006 | Test coverage | 25m | t004 |
@@ -31,6 +31,11 @@
 - **Why now:** both released Bex and the exact pinned upstream binary reproduce this on a healthy owned service; four normal noninteractive controls prove the server handles both query shapes correctly.
 - **Render parity included:** the user-facing CLI changes; verify the actual upstream contract and unchanged REST/GraphQL/MCP/dashboard semantics. No Render production account was tested.
 - **Scope:** researched filing only, seven tasks / 2h35m. No Bex fork/vendor patch, backend workaround, external message, product fix, commit or push is authorized by this QA filing.
+
+## Progress / block
+
+- **2026-10-12:** prepared `evidence/upstream-lossless-string-list.patch` against the pinned upstream module and `evidence/upstream-prep-audit.md`; `go test ./pkg/command ./pkg/tui/views` passed in a temporary upstream checkout. Tasks t001 and t002 are done.
+- **Blocked:** t003–t007 require the user to authorize external submission to `render-oss/cli` after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release, and native Bex/Render receipts. No Bex fork/vendor patch or backend workaround was applied, honoring the milestone scope and DO_NOT_DO no-fork rule.
 
 ## Unverified
 
