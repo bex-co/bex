@@ -225,6 +225,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
             // and native-runtime web/private/worker services (w5/m51). A
             // Dockerfile build shows Dockerfile Path instead.
             showBuildCommand={!cron && !isDockerBuild(service)}
+            staticSite={staticSite}
           />
         );
       case "static-site":
