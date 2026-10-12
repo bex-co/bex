@@ -249,6 +249,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **269** — [Try again cannot recover dashboard routes after a bundle update](269.md) (55m) ← functional QA a269; two retries and a repeated project navigation retain a failed old chunk, while a fresh tab and same-URL reload recover the saved project; native MIME controls retained; owned project deleted and session revoked.
+
 - [ ] **268** — [Untouched static-rule editors become dirty on refresh and can overwrite newer saved rules](268.md) (55m) ← functional QA a267; fresh desktop/mobile Headers and sibling Routes replays retain stale untouched rows after correct refreshes, explicit Header Save rolls back the served value; Cancel/dirty-draft controls pass; owned static site deleted and session revoked.
 
 - [ ] **267** — [Generate Blueprint accepts selection changes while returning the previous selection's manifest](267.md) (55m) ← functional QA a262; three pending-checkbox replays, including two fresh page loads, return the older group selection while Back retains the edit; normal and service-only controls pass; owned service/group deleted and session revoked.
