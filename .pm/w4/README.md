@@ -280,7 +280,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **257** — [Linked environment-group rows show a false legacy-scope warning while loading](257.md) (45m) ← functional QA 2026-10-11 a180; natural fresh mobile/desktop reloads warn for a valid same-environment link until the scope index settles; owned fixture/session cleanup verified.
 
-- [ ] **256** — [Historical and live logs use different message-size boundaries](256.md) (55m) ← functional QA 2026-10-11 a176; a same-millisecond 70,065-byte record renders twice on desktop/fresh mobile while the 50,065-byte control renders once; complete compressed JSON proof and owned fixture/session cleanup verified.
+- [x] **256** — [Historical and live logs use different message-size boundaries](done/256.md) (55m) — **DONE 2026-10-12** (`3f4f01efe`, live-verified: history and SSE return one identical capped record; one row at desktop and 390) ← functional QA 2026-10-11 a176; a same-millisecond 70,065-byte record renders twice on desktop/fresh mobile while the 50,065-byte control renders once; complete compressed JSON proof and owned fixture/session cleanup verified.
 
 - [x] **255** — [Postgres Insights duplicates table rows when dotted names collide](done/255.md) (55m) — **DONE 2026-10-12** (`999ed94cb`, live-verified: 7 API tables → 7 rows through desktop growth, mobile truncate and an in-page scan reorder) ← functional QA 2026-10-11 a174; desktop and fresh-mobile reorders render eight rows for seven API tables; owned fixture/session cleanup verified.
 
