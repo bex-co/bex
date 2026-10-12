@@ -187,6 +187,111 @@ describe("environment draft", () => {
     },
   );
 
+  // w4/243: Delete a stored row, then Add one under the same name. The final
+  // draft names it once, so the save is one write — the API refuses a write
+  // after an explicit delete of its name, which stranded every such draft.
+  it.each([
+    {
+      kind: "generated secret",
+      replace: (draft: EnvironmentDraft) => {
+        addVar(draft, "QA_A118_RENAMED", "");
+        Object.assign(draft.envVars.at(-1)!, {
+          value: null,
+          generateValue: true,
+        });
+      },
+      envVars: [{ key: "QA_A118_RENAMED", generateValue: true }],
+    },
+    {
+      kind: "literal",
+      replace: (draft: EnvironmentDraft) =>
+        addVar(draft, "QA_A118_RENAMED", "qa-a118-readd-literal"),
+      envVars: [{ key: "QA_A118_RENAMED", value: "qa-a118-readd-literal" }],
+    },
+    {
+      kind: "empty literal",
+      replace: (draft: EnvironmentDraft) =>
+        addVar(draft, "QA_A118_RENAMED", ""),
+      envVars: [{ key: "QA_A118_RENAMED", value: "" }],
+    },
+  ])(
+    "re-adding a deleted variable sends one write ($kind)",
+    ({ replace, envVars }) => {
+      const draft = createEnvironmentDraft(["QA_A118_RENAMED", "KEEP"], []);
+      draft.envVars[0].deleted = true;
+      replace(draft);
+      expect(isDraftValid(validateEnvironmentDraft(draft))).toBe(true);
+      expect(environmentDraftPatch(draft)).toEqual({
+        envVars,
+        secretFiles: [],
+      });
+    },
+  );
+
+  it.each([
+    { kind: "empty", content: "" },
+    { kind: "nonempty", content: "qa-a165-file-v2\nnew β\n" },
+  ])(
+    "re-adding a deleted secret file sends one write ($kind)",
+    ({ content }) => {
+      const draft = createEnvironmentDraft([], ["qa-a165-renamed.txt"]);
+      draft.secretFiles[0].deleted = true;
+      addFile(draft, "qa-a165-renamed.txt", content);
+      expect(isDraftValid(validateEnvironmentDraft(draft))).toBe(true);
+      expect(environmentDraftPatch(draft)).toEqual({
+        envVars: [],
+        secretFiles: [{ name: "qa-a165-renamed.txt", content }],
+      });
+    },
+  );
+
+  it("keeps unrelated deletions and renames while coalescing re-added names", () => {
+    const draft = createEnvironmentDraft(
+      ["A", "B", "GONE", "MOVE"],
+      ["a.pem", "b.pem", "gone.pem"],
+    );
+    for (const row of [...draft.envVars.slice(0, 3), ...draft.secretFiles]) {
+      row.deleted = true;
+    }
+    draft.envVars[3].key = "MOVED";
+    addVar(draft, "B", "b2");
+    addVar(draft, "A", "a2");
+    addFile(draft, "a.pem", "a2");
+    addFile(draft, "b.pem", "");
+    expect(isDraftValid(validateEnvironmentDraft(draft))).toBe(true);
+    expect(environmentDraftPatch(draft)).toEqual({
+      envVars: [
+        { key: "GONE", delete: true },
+        { key: "MOVED", fromKey: "MOVE" },
+        { key: "B", value: "b2" },
+        { key: "A", value: "a2" },
+      ],
+      secretFiles: [
+        { name: "gone.pem", delete: true },
+        { name: "a.pem", content: "a2" },
+        { name: "b.pem", content: "" },
+      ],
+    });
+  });
+
+  // A renamed row whose value changed still removes its old name — unless a
+  // new row writes that old name, which then replaces it in place.
+  it("drops a replaced row's old-name removal only when that name is rewritten", () => {
+    const draft = createEnvironmentDraft(["OLD"], []);
+    draft.envVars[0].key = "NEW";
+    draft.envVars[0].value = "v2";
+    draft.envVars[0].valueChanged = true;
+    expect(environmentDraftPatch(draft).envVars).toEqual([
+      { key: "OLD", delete: true },
+      { key: "NEW", value: "v2" },
+    ]);
+    addVar(draft, "OLD", "fresh");
+    expect(environmentDraftPatch(draft).envVars).toEqual([
+      { key: "NEW", value: "v2" },
+      { key: "OLD", value: "fresh" },
+    ]);
+  });
+
   // w4/234: moving a stored value away and uploading a new one at its old
   // name sends the move before the write, even when the new row is listed
   // first, so the name is vacant when the write lands.
