@@ -249,6 +249,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **272** — [Static sites ignore saved ETags during browser revalidation](272.md) (55m) ← functional QA a277; ordinary Chromium repeat fetches send the saved validator but re-download the file, two native rounds ignore matching/mismatching preconditions; shared static response handler traced; own fixture deleted, seven inventories restored and session revoked.
+
 - [ ] **271** — [Webhook Settings stays dirty after an accepted trimmed save](271.md) (55m) ← functional QA a273; combined and separate fresh-load Name/URL saves retain padded drafts and repeat the same accepted patch; ordinary save, search and event-selection controls pass; owned disabled endpoint deleted and session revoked.
 
 - [ ] **270** — [Long environment scopes hide group-dialog titles and actions](270.md) (55m) ← functional QA a270; fresh mobile/desktop Clone and sibling Move overflow their frames, Create's picker/menu also clip; exact clone data and Workspace controls pass; owned project/environment/groups deleted and session revoked.
