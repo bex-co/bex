@@ -1,0 +1,24 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-p",
+    "1",
+    "-count=1",
+    "-overlay",
+    "<QA_TMP>/apply-overlay.json",
+    "./internal/envgroups",
+    "-run",
+    "^TestQA155EmptyLiteralApplyDiagnostic$",
+    "-v"
+  ],
+  "environment": {
+    "GOWORK": "off",
+    "GOTOOLCHAIN": "go1.27.0",
+    "GOMAXPROCS": "4"
+  },
+  "exit": 0,
+  "reported_package_seconds": 0.826,
+  "scope": "Actual unchanged ApplyEnvGroup with existing package fake SecretKV and fake Kubernetes client; no platform request, source fix or full-suite run",
+  "test_pass_qualification": "Diagnostic completes successfully while recording two incorrect missing-key outcomes; PASS does not mean those outcomes satisfy desired behavior"
+}

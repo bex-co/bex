@@ -1,0 +1,198 @@
+{
+  "name": "qa-20261011-0f49ee-envgroup",
+  "id": "evg-db60vpptodic73duuuhg",
+  "cases": [
+    {
+      "container": "root",
+      "variant": "exact",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa-20261011-0f49ee-envgroup",
+            "envVars": []
+          }
+        ]
+      }
+    },
+    {
+      "container": "root",
+      "variant": "leading-space",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "  qa-20261011-0f49ee-envgroup",
+            "envVars": []
+          }
+        ]
+      }
+    },
+    {
+      "container": "root",
+      "variant": "trailing-space",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa-20261011-0f49ee-envgroup  ",
+            "envVars": []
+          }
+        ]
+      }
+    },
+    {
+      "container": "root",
+      "variant": "unicode-space",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": " qa-20261011-0f49ee-envgroup ",
+            "envVars": []
+          }
+        ]
+      }
+    },
+    {
+      "container": "ungrouped",
+      "variant": "exact",
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "qa-20261011-0f49ee-envgroup",
+              "envVars": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "container": "ungrouped",
+      "variant": "leading-space",
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "  qa-20261011-0f49ee-envgroup",
+              "envVars": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "container": "ungrouped",
+      "variant": "trailing-space",
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "qa-20261011-0f49ee-envgroup  ",
+              "envVars": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "container": "ungrouped",
+      "variant": "unicode-space",
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": " qa-20261011-0f49ee-envgroup ",
+              "envVars": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "container": "project",
+      "variant": "exact",
+      "document": {
+        "projects": [
+          {
+            "name": "qa153-0f49ee-project",
+            "environments": [
+              {
+                "name": "qa153-0f49ee-env",
+                "envVarGroups": [
+                  {
+                    "name": "qa-20261011-0f49ee-envgroup",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "container": "project",
+      "variant": "leading-space",
+      "document": {
+        "projects": [
+          {
+            "name": "qa153-0f49ee-project",
+            "environments": [
+              {
+                "name": "qa153-0f49ee-env",
+                "envVarGroups": [
+                  {
+                    "name": "  qa-20261011-0f49ee-envgroup",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "container": "project",
+      "variant": "trailing-space",
+      "document": {
+        "projects": [
+          {
+            "name": "qa153-0f49ee-project",
+            "environments": [
+              {
+                "name": "qa153-0f49ee-env",
+                "envVarGroups": [
+                  {
+                    "name": "qa-20261011-0f49ee-envgroup  ",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "container": "project",
+      "variant": "unicode-space",
+      "document": {
+        "projects": [
+          {
+            "name": "qa153-0f49ee-project",
+            "environments": [
+              {
+                "name": "qa153-0f49ee-env",
+                "envVarGroups": [
+                  {
+                    "name": " qa-20261011-0f49ee-envgroup ",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

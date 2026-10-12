@@ -1,0 +1,482 @@
+{
+  "resources": [
+    {
+      "sweep": 151,
+      "type": "project",
+      "role": "alpha",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "nonce": "a19393",
+      "name": "qa-20261011-a19393-alpha",
+      "time": "2026-10-11T22:22:11.879143+00:00",
+      "state": "deleted: empty own project API204/detail404",
+      "command": {
+        "method": "POST",
+        "path": "/v1/projects",
+        "body": {
+          "name": "qa-20261011-a19393-alpha",
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "environments": [
+            {
+              "name": "qa-20261011-a19393-shared"
+            }
+          ]
+        }
+      },
+      "baseline_project_ids": [],
+      "dependency_ids": [
+        "evm-db60o51todic73duuu1g"
+      ],
+      "create_result": {
+        "method": "POST",
+        "path": "/v1/projects",
+        "body": "{\"name\": \"qa-20261011-a19393-alpha\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"environments\": [{\"name\": \"qa-20261011-a19393-shared\"}]}",
+        "status": "201",
+        "elapsed": 0.342,
+        "response": "{\"id\":\"prj-db60o51todic73duuu10\",\"name\":\"qa-20261011-a19393-alpha\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL>\",\"type\":\"team\"},\"environmentIds\":[\"evm-db60o51todic73duuu1g\"],\"createdAt\":\"2026-10-11T22:22:12.239666Z\",\"updatedAt\":\"2026-10-11T22:22:12.239666Z\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a491431d6a62945e-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "id": "prj-db60o51todic73duuu10",
+      "create_response": {
+        "id": "prj-db60o51todic73duuu10",
+        "name": "qa-20261011-a19393-alpha",
+        "owner": {
+          "id": "tea-daif693dqjvc73e7as3g",
+          "name": "bex-canary",
+          "email": "<QA_EMAIL>",
+          "type": "team"
+        },
+        "environmentIds": [
+          "evm-db60o51todic73duuu1g"
+        ],
+        "createdAt": "2026-10-11T22:22:12.239666Z",
+        "updatedAt": "2026-10-11T22:22:12.239666Z"
+      },
+      "dependent_inventory": {
+        "method": "POST",
+        "path": "/graphql",
+        "body": "{\"query\": \"query($id:String!){project(id:$id){id ownerId serviceIds databaseIds keyValueIds}}\", \"variables\": {\"id\": \"prj-db60o51todic73duuu10\"}}",
+        "status": "200",
+        "elapsed": 0.263,
+        "response": "{\"data\":{\"project\":{\"databaseIds\":[],\"id\":\"prj-db60o51todic73duuu10\",\"keyValueIds\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"serviceIds\":[]}}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4914329a881230c-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "dependent_inventory_before_delete": {
+        "method": "POST",
+        "path": "/graphql",
+        "body": "{\"query\": \"query($id:String!){project(id:$id){id ownerId serviceIds databaseIds keyValueIds}}\", \"variables\": {\"id\": \"prj-db60o51todic73duuu10\"}}",
+        "status": "200",
+        "elapsed": 0.305,
+        "response": "{\"data\":{\"project\":{\"databaseIds\":[],\"id\":\"prj-db60o51todic73duuu10\",\"keyValueIds\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"serviceIds\":[]}}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a49145e1bc22ed3d-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "empty_environment_inventory_before_delete": {
+        "method": "GET",
+        "path": "/v1/projects/prj-db60o51todic73duuu10",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.366,
+        "response": "{\"id\":\"prj-db60o51todic73duuu10\",\"name\":\"qa-20261011-a19393-alpha\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL>\",\"type\":\"team\"},\"environmentIds\":[],\"createdAt\":\"2026-10-11T22:22:12.239666Z\",\"updatedAt\":\"2026-10-11T22:22:12.239666Z\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a49145e72f7fb828-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "delete_intent": {
+        "at": "2026-10-11T22:24:06.645753+00:00",
+        "id": "prj-db60o51todic73duuu10"
+      },
+      "delete_result": {
+        "method": "DELETE",
+        "path": "/v1/projects/prj-db60o51todic73duuu10",
+        "body": null,
+        "status": "204",
+        "elapsed": 0.388,
+        "response": "",
+        "headers": {
+          "cf-ray": "a49145eb1a92eb30-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "detail_after_delete": {
+        "method": "GET",
+        "path": "/v1/projects/prj-db60o51todic73duuu10",
+        "body": null,
+        "status": "404",
+        "elapsed": 0.334,
+        "response": "{\"code\":\"NOT_FOUND\",\"error\":\"project not found\",\"id\":\"not_found\",\"message\":\"project not found\",\"params\":null}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a49145ee7a02545f-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "sweep": 151,
+      "type": "environment",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "id": "evm-db60o51todic73duuu1g",
+      "nonce": "a19393",
+      "name": "qa-20261011-a19393-unique-alpha",
+      "time": "2026-10-11T22:22:12.514451+00:00",
+      "state": "deleted: empty own environment API204/detail404",
+      "parent_id": "prj-db60o51todic73duuu10",
+      "create_proof": {
+        "method": "POST",
+        "path": "/v1/projects",
+        "status": "201",
+        "parent_id": "prj-db60o51todic73duuu10",
+        "returned_environment_ids": [
+          "evm-db60o51todic73duuu1g"
+        ]
+      },
+      "dependency_ids": [],
+      "readback_proof": {
+        "method": "GET",
+        "path": "/v1/environments/evm-db60o51todic73duuu1g",
+        "body": null,
+        "status": "200",
+        "elapsed": 1.201,
+        "response": "{\"id\":\"evm-db60o51todic73duuu1g\",\"projectId\":\"prj-db60o51todic73duuu10\",\"name\":\"qa-20261011-a19393-shared\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4914321ddb8c528-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "dependent_inventory_before_delete": {
+        "method": "GET",
+        "path": "/v1/environments/evm-db60o51todic73duuu1g",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.657,
+        "response": "{\"id\":\"evm-db60o51todic73duuu1g\",\"projectId\":\"prj-db60o51todic73duuu10\",\"name\":\"qa-20261011-a19393-unique-alpha\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a49145d0ceb07d12-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "delete_intent": {
+        "at": "2026-10-11T22:24:03.437944+00:00",
+        "id": "evm-db60o51todic73duuu1g"
+      },
+      "delete_result": {
+        "method": "DELETE",
+        "path": "/v1/environments/evm-db60o51todic73duuu1g",
+        "body": null,
+        "status": "204",
+        "elapsed": 0.959,
+        "response": "",
+        "headers": {
+          "cf-ray": "a49145d6fa4914c7-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "detail_after_delete": {
+        "method": "GET",
+        "path": "/v1/environments/evm-db60o51todic73duuu1g",
+        "body": null,
+        "status": "404",
+        "elapsed": 0.286,
+        "response": "{\"code\":\"NOT_FOUND\",\"error\":\"environment not found\",\"id\":\"not_found\",\"message\":\"environment not found\",\"params\":null}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a49145ddf97670f0-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "sweep": 151,
+      "type": "project",
+      "role": "beta",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "nonce": "a19393",
+      "name": "qa-20261011-a19393-beta",
+      "time": "2026-10-11T22:22:14.335313+00:00",
+      "state": "deleted: empty own project API204/detail404",
+      "command": {
+        "method": "POST",
+        "path": "/v1/projects",
+        "body": {
+          "name": "qa-20261011-a19393-beta",
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "environments": [
+            {
+              "name": "qa-20261011-a19393-shared"
+            }
+          ]
+        }
+      },
+      "baseline_project_ids": [],
+      "dependency_ids": [
+        "evm-db60o5noikms739hpjng"
+      ],
+      "create_result": {
+        "method": "POST",
+        "path": "/v1/projects",
+        "body": "{\"name\": \"qa-20261011-a19393-beta\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"environments\": [{\"name\": \"qa-20261011-a19393-shared\"}]}",
+        "status": "201",
+        "elapsed": 0.28,
+        "response": "{\"id\":\"prj-db60o5noikms739hpjn0\",\"name\":\"qa-20261011-a19393-beta\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL>\",\"type\":\"team\"},\"environmentIds\":[\"evm-db60o5noikms739hpjng\"],\"createdAt\":\"2026-10-11T22:22:14.648124Z\",\"updatedAt\":\"2026-10-11T22:22:14.648124Z\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a491432cddb4eb2e-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "id": "prj-db60o5noikms739hpjn0",
+      "create_response": {
+        "id": "prj-db60o5noikms739hpjn0",
+        "name": "qa-20261011-a19393-beta",
+        "owner": {
+          "id": "tea-daif693dqjvc73e7as3g",
+          "name": "bex-canary",
+          "email": "<QA_EMAIL>",
+          "type": "team"
+        },
+        "environmentIds": [
+          "evm-db60o5noikms739hpjng"
+        ],
+        "createdAt": "2026-10-11T22:22:14.648124Z",
+        "updatedAt": "2026-10-11T22:22:14.648124Z"
+      },
+      "dependent_inventory": {
+        "method": "POST",
+        "path": "/graphql",
+        "body": "{\"query\": \"query($id:String!){project(id:$id){id ownerId serviceIds databaseIds keyValueIds}}\", \"variables\": {\"id\": \"prj-db60o5noikms739hpjn0\"}}",
+        "status": "200",
+        "elapsed": 0.298,
+        "response": "{\"data\":{\"project\":{\"databaseIds\":[],\"id\":\"prj-db60o5noikms739hpjn0\",\"keyValueIds\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"serviceIds\":[]}}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a49143364b9b15f7-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "dependent_inventory_before_delete": {
+        "method": "POST",
+        "path": "/graphql",
+        "body": "{\"query\": \"query($id:String!){project(id:$id){id ownerId serviceIds databaseIds keyValueIds}}\", \"variables\": {\"id\": \"prj-db60o5noikms739hpjn0\"}}",
+        "status": "200",
+        "elapsed": 0.305,
+        "response": "{\"data\":{\"project\":{\"databaseIds\":[],\"id\":\"prj-db60o5noikms739hpjn0\",\"keyValueIds\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"serviceIds\":[]}}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a49146081bd72344-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "empty_environment_inventory_before_delete": {
+        "method": "GET",
+        "path": "/v1/projects/prj-db60o5noikms739hpjn0",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.274,
+        "response": "{\"id\":\"prj-db60o5noikms739hpjn0\",\"name\":\"qa-20261011-a19393-beta\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL>\",\"type\":\"team\"},\"environmentIds\":[],\"createdAt\":\"2026-10-11T22:22:14.648124Z\",\"updatedAt\":\"2026-10-11T22:22:14.648124Z\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a491460afed48e1f-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "delete_intent": {
+        "at": "2026-10-11T22:24:12.314963+00:00",
+        "id": "prj-db60o5noikms739hpjn0"
+      },
+      "delete_result": {
+        "method": "DELETE",
+        "path": "/v1/projects/prj-db60o5noikms739hpjn0",
+        "body": null,
+        "status": "204",
+        "elapsed": 0.379,
+        "response": "",
+        "headers": {
+          "cf-ray": "a491460e3ea7e8d9-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "detail_after_delete": {
+        "method": "GET",
+        "path": "/v1/projects/prj-db60o5noikms739hpjn0",
+        "body": null,
+        "status": "404",
+        "elapsed": 0.243,
+        "response": "{\"code\":\"NOT_FOUND\",\"error\":\"project not found\",\"id\":\"not_found\",\"message\":\"project not found\",\"params\":null}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a49146118c9f174b-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "sweep": 151,
+      "type": "environment",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "id": "evm-db60o5noikms739hpjng",
+      "nonce": "a19393",
+      "name": "qa-20261011-a19393-shared",
+      "time": "2026-10-11T22:22:14.926539+00:00",
+      "state": "deleted: empty own environment API204/detail404",
+      "parent_id": "prj-db60o5noikms739hpjn0",
+      "create_proof": {
+        "method": "POST",
+        "path": "/v1/projects",
+        "status": "201",
+        "parent_id": "prj-db60o5noikms739hpjn0",
+        "returned_environment_ids": [
+          "evm-db60o5noikms739hpjng"
+        ]
+      },
+      "dependency_ids": [],
+      "readback_proof": {
+        "method": "GET",
+        "path": "/v1/environments/evm-db60o5noikms739hpjng",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.689,
+        "response": "{\"id\":\"evm-db60o5noikms739hpjng\",\"projectId\":\"prj-db60o5noikms739hpjn0\",\"name\":\"qa-20261011-a19393-shared\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a49143306f1fcc7e-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "dependent_inventory_before_delete": {
+        "method": "GET",
+        "path": "/v1/environments/evm-db60o5noikms739hpjng",
+        "body": null,
+        "status": "200",
+        "elapsed": 1.025,
+        "response": "{\"id\":\"evm-db60o5noikms739hpjng\",\"projectId\":\"prj-db60o5noikms739hpjn0\",\"name\":\"qa-20261011-a19393-shared\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a49145f1da6ff017-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "delete_intent": {
+        "at": "2026-10-11T22:24:09.042352+00:00",
+        "id": "evm-db60o5noikms739hpjng"
+      },
+      "delete_result": {
+        "method": "DELETE",
+        "path": "/v1/environments/evm-db60o5noikms739hpjng",
+        "body": null,
+        "status": "204",
+        "elapsed": 1.636,
+        "response": "",
+        "headers": {
+          "cf-ray": "a49145f99c2bebe4-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "detail_after_delete": {
+        "method": "GET",
+        "path": "/v1/environments/evm-db60o5noikms739hpjng",
+        "body": null,
+        "status": "404",
+        "elapsed": 0.306,
+        "response": "{\"code\":\"NOT_FOUND\",\"error\":\"environment not found\",\"id\":\"not_found\",\"message\":\"environment not found\",\"params\":null}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4914604dc6f8486-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    }
+  ],
+  "native_projects_after_delete": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "projects",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.422,
+    "stdout": "null",
+    "stderr": ""
+  },
+  "baseline_services_after_delete": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.612,
+    "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-11T22:24:06Z\",\n        \"nextRunAt\": \"2026-10-11T22:25:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-11T22:24:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-11T22:24:05Z\",\n        \"nextRunAt\": \"2026-10-11T22:25:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-11T22:24:05Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-11T22:24:04Z\",\n        \"nextRunAt\": \"2026-10-11T22:25:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-11T22:24:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-11T22:15:12Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-11T19:57:48Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-11T19:57:12Z\"\n    }\n  }\n]",
+    "stderr": ""
+  },
+  "limits_after_delete": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.366,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a491461d5fba34bd-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "copied_render_config_removed": true,
+  "cleanup": "complete: own project and own empty environment API204/detail404; native project IDs absent; six baseline services unchanged; quota/termination baseline; per-case copied configs and child recorder removed",
+  "workspace_transport_read_after_cleanup": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.284,
+    "response": "{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL>\",\"type\":\"team\"}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49146eaabd81fa8-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  }
+}

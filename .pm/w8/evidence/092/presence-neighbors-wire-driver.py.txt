@@ -1,0 +1,14 @@
+import pathlib,json,subprocess,time,secrets,datetime
+p=pathlib.Path(__file__).parent;cfg=json.loads(subprocess.check_output(['yq','-o=json','.',str(p/'config/cli.yaml')],text=True));token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token
+ws=(p/'workspace.txt').read_text().strip();ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';private_headers='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n';results=[]
+for kind,prop in [('service','generated-plus-empty'),('service','generated-plus-space'),('environment-group','generated-plus-empty'),('environment-group','generated-plus-space')]:
+ manifest=p/('sweep152-'+kind+'-'+prop+'.yaml');boundary='qa152-'+secrets.token_hex(16);content=manifest.read_bytes();body=('--'+boundary+'\r\nContent-Disposition: form-data; name="ownerId"\r\n\r\n'+ws+'\r\n--'+boundary+'\r\nContent-Disposition: form-data; name="file"; filename="'+manifest.name+'"\r\nContent-Type: application/octet-stream\r\n\r\n').encode()+content+('\r\n--'+boundary+'--\r\n').encode();request=p/('sweep152-multipart-'+kind+'-'+prop+'.bin');request.write_bytes(body);request.chmod(0o600);headers=p/('sweep152-api-'+kind+'-'+prop+'-headers.txt');response=p/('sweep152-api-'+kind+'-'+prop+'-body.txt')
+ for f in [headers,response]:f.unlink(missing_ok=True)
+ args=['curl','-sS','--max-time','35','--config','-','-X','POST','-H','Content-Type: multipart/form-data; boundary='+boundary,'--data-binary','@'+str(request),'-D',str(headers),'-o',str(response),'-w','%{http_code}','https://api.bex.co/v1/blueprints/validate'];start=time.monotonic();r=subprocess.run(args,input=private_headers,text=True,capture_output=True);safe_headers={}
+ for f in [headers,response]:
+  if f.exists():f.chmod(0o600)
+ for line in headers.read_text().splitlines() if headers.exists() else []:
+  if ':' in line:
+   k,v=line.split(':',1)
+   if k.lower() in ['content-type','cf-ray','x-bex-version','x-bex-revision','x-request-id']:safe_headers[k]=v.strip()
+ raw=response.read_text() if response.exists() else '';z={'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'case':kind+'-'+prop,'api_only':True,'native_wire':'not intercepted','request':{'method':'POST','path':'/v1/blueprints/validate','content_type':'multipart/form-data; boundary='+boundary,'user_agent':ua,'workspace_header':ws,'authorization':'[REDACTED]','multipart_body':body.decode()},'status':r.stdout,'elapsed':round(time.monotonic()-start,3),'curl_exit':r.returncode,'stderr':r.stderr,'response_headers':safe_headers,'response':raw};results.append(z);f=p/'sweep152-api-results.json';f.write_text(json.dumps(results,indent=2));f.chmod(0o600);v=json.loads(raw) if raw else {};print(json.dumps({'case':z['case'],'status':r.stdout,'valid':v.get('valid'),'errors':v.get('errors')}),flush=True)

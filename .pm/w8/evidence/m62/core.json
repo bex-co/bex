@@ -1,0 +1,37 @@
+[
+  {
+    "label": "nul",
+    "input": "qa171-before\u0000after",
+    "error": "",
+    "stored": "qa171-before\u0000after",
+    "nul_count": 1
+  },
+  {
+    "label": "newline",
+    "input": "qa171-before\nafter",
+    "error": "",
+    "stored": "qa171-before\nafter",
+    "nul_count": 0
+  },
+  {
+    "label": "empty",
+    "input": "",
+    "error": "",
+    "stored": "",
+    "nul_count": 0
+  },
+  {
+    "label": "unicode",
+    "input": "qa171-雪☃",
+    "error": "",
+    "stored": "qa171-雪☃",
+    "nul_count": 0
+  },
+  {
+    "label": "numeric-string",
+    "input": "0",
+    "error": "",
+    "stored": "0",
+    "nul_count": 0
+  }
+]

@@ -1,0 +1,125 @@
+{
+  "dockerfile": "# syntax=docker/dockerfile:1.7\nFROM python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4\nWORKDIR /opt/render/project/src\nCOPY . .\nCOPY <<'BEX_LOAD_ENV' /opt/bex/load-env\n: bex-native-env-rev=none\nwhile IFS= read -r record; do\n  [ -n \"$record\" ] || continue\n  key=${record%%=*}\n  encoded=${record#*=}\n  value=\"$(printf '%s' \"$encoded\" | base64 -d 2>/dev/null && printf '.')\" || exit 1\n  export \"$key=${value%.}\"\ndone < /run/secrets/render-env\nBEX_LOAD_ENV\nRUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\n/usr/local/bin/python3 -c 'import os,json;print(json.dumps({\\\"PATH\\\":os.getenv(\\\"PATH\\\"),\\\"QA_NOTE\\\":os.getenv(\\\"QA_NOTE\\\"),\\\"command_ran\\\":True}))'\"]\nENV PORT=10000\nCMD [\"/bin/bash\",\"-c\",\"node dist/server.js --flag='quoted'\"]\n",
+  "literal_preparer": {
+    "name": "prepare-native-build",
+    "image": "busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e",
+    "command": [
+      "sh",
+      "-eu",
+      "-c"
+    ],
+    "args": [
+      "umask 077\nprintf '%s' \"$BEX_NATIVE_DOCKERFILE\" > /native/Dockerfile\n: > /native/render-env\nif [ -d /runtime-env ]; then\n  for path in /runtime-env/*; do\n    [ -f \"$path\" ] || continue\n    key=\"$(basename \"$path\")\"\n    encoded=\"$(base64 < \"$path\" | tr -d '\\n')\"\n    printf '%s=%s\\n' \"$key\" \"$encoded\" >> /native/render-env\n  done\nfi\nfor key in $BEX_NATIVE_LITERAL_KEYS; do\n  # The sentinel guards value newlines through command substitution; %?. then\n  # drops it together with printenv's own final terminator, nothing else.\n  value=\"$(printenv \"$key\"; printf '.')\"\n  encoded=\"$(printf '%s' \"${value%?.}\" | base64 | tr -d '\\n')\"\n  printf '%s=%s\\n' \"$key\" \"$encoded\" >> /native/render-env\ndone\nmkdir /native/files\n# Names are validated to the Secret-key charset, so word splitting is exact.\nfor name in $BEX_NATIVE_FILES; do\n  cp \"/native-files/$name\" \"/native/files/$name\"\ndone"
+    ],
+    "env": [
+      {
+        "name": "PATH",
+        "value": "/usr/local/bin"
+      },
+      {
+        "name": "QA_NOTE",
+        "value": "qa163-note"
+      },
+      {
+        "name": "BEX_NATIVE_DOCKERFILE",
+        "value": "# syntax=docker/dockerfile:1.7\nFROM python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4\nWORKDIR /opt/render/project/src\nCOPY . .\nCOPY <<'BEX_LOAD_ENV' /opt/bex/load-env\n: bex-native-env-rev=none\nwhile IFS= read -r record; do\n  [ -n \"$record\" ] || continue\n  key=${record%%=*}\n  encoded=${record#*=}\n  value=\"$(printf '%s' \"$encoded\" | base64 -d 2>/dev/null && printf '.')\" || exit 1\n  export \"$key=${value%.}\"\ndone < /run/secrets/render-env\nBEX_LOAD_ENV\nRUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\n/usr/local/bin/python3 -c 'import os,json;print(json.dumps({\\\"PATH\\\":os.getenv(\\\"PATH\\\"),\\\"QA_NOTE\\\":os.getenv(\\\"QA_NOTE\\\"),\\\"command_ran\\\":True}))'\"]\nENV PORT=10000\nCMD [\"/bin/bash\",\"-c\",\"node dist/server.js --flag='quoted'\"]\n"
+      },
+      {
+        "name": "BEX_NATIVE_LITERAL_KEYS",
+        "value": "PATH\nQA_NOTE"
+      },
+      {
+        "name": "BEX_NATIVE_FILES"
+      }
+    ],
+    "resources": {
+      "limits": {
+        "cpu": "100m",
+        "memory": "64Mi"
+      },
+      "requests": {
+        "cpu": "10m",
+        "memory": "16Mi"
+      }
+    },
+    "volumeMounts": [
+      {
+        "name": "native-build",
+        "mountPath": "/native"
+      },
+      {
+        "name": "runtime-env",
+        "readOnly": true,
+        "mountPath": "/runtime-env"
+      }
+    ],
+    "securityContext": {
+      "capabilities": {
+        "drop": [
+          "ALL"
+        ]
+      },
+      "runAsUser": 65532,
+      "runAsGroup": 65532,
+      "runAsNonRoot": true,
+      "allowPrivilegeEscalation": false
+    }
+  },
+  "preparer": {
+    "name": "prepare-native-build",
+    "image": "busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e",
+    "command": [
+      "sh",
+      "-eu",
+      "-c"
+    ],
+    "args": [
+      "umask 077\nprintf '%s' \"$BEX_NATIVE_DOCKERFILE\" > /native/Dockerfile\n: > /native/render-env\nif [ -d /runtime-env ]; then\n  for path in /runtime-env/*; do\n    [ -f \"$path\" ] || continue\n    key=\"$(basename \"$path\")\"\n    encoded=\"$(base64 < \"$path\" | tr -d '\\n')\"\n    printf '%s=%s\\n' \"$key\" \"$encoded\" >> /native/render-env\n  done\nfi\nfor key in $BEX_NATIVE_LITERAL_KEYS; do\n  # The sentinel guards value newlines through command substitution; %?. then\n  # drops it together with printenv's own final terminator, nothing else.\n  value=\"$(printenv \"$key\"; printf '.')\"\n  encoded=\"$(printf '%s' \"${value%?.}\" | base64 | tr -d '\\n')\"\n  printf '%s=%s\\n' \"$key\" \"$encoded\" >> /native/render-env\ndone\nmkdir /native/files\n# Names are validated to the Secret-key charset, so word splitting is exact.\nfor name in $BEX_NATIVE_FILES; do\n  cp \"/native-files/$name\" \"/native/files/$name\"\ndone"
+    ],
+    "env": [
+      {
+        "name": "BEX_NATIVE_DOCKERFILE",
+        "value": "# syntax=docker/dockerfile:1.7\nFROM python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4\nWORKDIR /opt/render/project/src\nCOPY . .\nCOPY <<'BEX_LOAD_ENV' /opt/bex/load-env\n: bex-native-env-rev=none\nwhile IFS= read -r record; do\n  [ -n \"$record\" ] || continue\n  key=${record%%=*}\n  encoded=${record#*=}\n  value=\"$(printf '%s' \"$encoded\" | base64 -d 2>/dev/null && printf '.')\" || exit 1\n  export \"$key=${value%.}\"\ndone < /run/secrets/render-env\nBEX_LOAD_ENV\nRUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\n/usr/local/bin/python3 -c 'import os,json;print(json.dumps({\\\"PATH\\\":os.getenv(\\\"PATH\\\"),\\\"QA_NOTE\\\":os.getenv(\\\"QA_NOTE\\\"),\\\"command_ran\\\":True}))'\"]\nENV PORT=10000\nCMD [\"/bin/bash\",\"-c\",\"node dist/server.js --flag='quoted'\"]\n"
+      },
+      {
+        "name": "BEX_NATIVE_LITERAL_KEYS"
+      },
+      {
+        "name": "BEX_NATIVE_FILES"
+      }
+    ],
+    "resources": {
+      "limits": {
+        "cpu": "100m",
+        "memory": "64Mi"
+      },
+      "requests": {
+        "cpu": "10m",
+        "memory": "16Mi"
+      }
+    },
+    "volumeMounts": [
+      {
+        "name": "native-build",
+        "mountPath": "/native"
+      },
+      {
+        "name": "runtime-env",
+        "readOnly": true,
+        "mountPath": "/runtime-env"
+      }
+    ],
+    "securityContext": {
+      "capabilities": {
+        "drop": [
+          "ALL"
+        ]
+      },
+      "runAsUser": 65532,
+      "runAsGroup": 65532,
+      "runAsNonRoot": true,
+      "allowPrivilegeEscalation": false
+    }
+  },
+  "qualification": "Actual unmodified functions from checkout; source diagnostic only"
+}

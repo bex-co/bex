@@ -1,0 +1,18 @@
+{
+  "render_docs": "https://render.com/docs/blueprint-spec#referencing-service-properties",
+  "render_validation_contract": "HTTP 200 contains valid true or false; a failed CLI validation exits nonzero.",
+  "kubernetes_primary_source": "https://raw.githubusercontent.com/kubernetes/kubernetes/v1.35.0/pkg/apis/core/validation/validation.go",
+  "kubernetes_consumer": "validateSecretKeySelector at 2816 rejects key length zero; nonempty keys use IsConfigMapKey.",
+  "actual_helper_exercised": "k8s.io/apimachinery v0.35.0 util/validation.IsConfigMapKey rejects both actual empty resolver keys. This helper diagnostic is not full Pod admission.",
+  "reviewed_schema_sha256": "a0d4e8a3eb119a1b63657741757e3c25c091b3ce463c4be8c90e8026678d8163",
+  "inference": "The accepted Key Value envVarKey shape must be refused with a located validation error because the Bex resolver has no env-var-copy semantics for a Key Value target. Exact Render-production rejection of this shape is unmeasured.",
+  "render_production_tested": false,
+  "native_wire_capture": null,
+  "dedupe": [
+    "w2/done/m41 adds Key Value property references; this finding rejects a separate envVarKey-only shape.",
+    "w8/096 compares a supplied type with its actual target; here both match Key Value.",
+    "w8/done/081 guards App addressability; the Key Value branch bypasses it.",
+    "w8/m62 rejects NUL literal values; no literal NUL is involved."
+  ],
+  "history": "git log -S for the unchecked kvPropertyKey lookup traces to 2035521b2; recent deploy.go commits do not add a Key Value envVarKey guard."
+}

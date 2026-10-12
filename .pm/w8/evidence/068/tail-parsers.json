@@ -1,0 +1,147 @@
+{
+  "PyYAML_version": "6.0.3",
+  "strict_parser": "gopkg.in/yaml.v3 v3.0.1",
+  "reports": [
+    {
+      "client": "bex",
+      "format": "yaml",
+      "permissive_document_count": 1,
+      "permissive_kept_message": "QA139_9f1a1a-yaml-B: value=two,three",
+      "expected_messages": [
+        "QA139_9f1a1a-yaml-A: \"雪\" [first]",
+        "QA139_9f1a1a-yaml-B: value=two,three"
+      ],
+      "missing_document_separator": true
+    },
+    {
+      "client": "render",
+      "format": "yaml",
+      "permissive_document_count": 1,
+      "permissive_kept_message": "QA139_9f1a1a-yaml-B: value=two,three",
+      "expected_messages": [
+        "QA139_9f1a1a-yaml-A: \"雪\" [first]",
+        "QA139_9f1a1a-yaml-B: value=two,three"
+      ],
+      "missing_document_separator": true
+    },
+    {
+      "client": "bex",
+      "format": "json",
+      "decoded_count": 2,
+      "rows": [
+        {
+          "id": "srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr-2026-10-11T20:31:33.423853965Z-fec985cd",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db5v2g4hj6ks739l0p10"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            }
+          ],
+          "message": "QA139_9f1a1a-json-A: \"雪\" [first]",
+          "timestamp": "2026-10-11T20:31:33.423853965Z"
+        },
+        {
+          "id": "srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr-2026-10-11T20:31:33.423999086Z-782eec76",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db5v2g4hj6ks739l0p10"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            }
+          ],
+          "message": "QA139_9f1a1a-json-B: value=two,three",
+          "timestamp": "2026-10-11T20:31:33.423999086Z"
+        }
+      ]
+    },
+    {
+      "client": "render",
+      "format": "json",
+      "decoded_count": 2,
+      "rows": [
+        {
+          "id": "srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr-2026-10-11T20:31:33.423853965Z-fec985cd",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db5v2g4hj6ks739l0p10"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            }
+          ],
+          "message": "QA139_9f1a1a-json-A: \"雪\" [first]",
+          "timestamp": "2026-10-11T20:31:33.423853965Z"
+        },
+        {
+          "id": "srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr-2026-10-11T20:31:33.423999086Z-782eec76",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db5v2g4hj6ks739l0p10"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            }
+          ],
+          "message": "QA139_9f1a1a-json-B: value=two,three",
+          "timestamp": "2026-10-11T20:31:33.423999086Z"
+        }
+      ]
+    }
+  ],
+  "strict": [
+    {
+      "documents": [],
+      "error": "yaml: unmarshal errors:\n  line 13: mapping key \"id\" already defined at line 1\n  line 14: mapping key \"labels\" already defined at line 2\n  line 23: mapping key \"message\" already defined at line 11\n  line 24: mapping key \"timestamp\" already defined at line 12",
+      "file": "sweep139-bex-tail.yaml"
+    },
+    {
+      "documents": [],
+      "error": "yaml: unmarshal errors:\n  line 13: mapping key \"id\" already defined at line 1\n  line 14: mapping key \"labels\" already defined at line 2\n  line 23: mapping key \"message\" already defined at line 11\n  line 24: mapping key \"timestamp\" already defined at line 12",
+      "file": "sweep139-render-tail.yaml"
+    }
+  ],
+  "both_clients_byte_identical_per_format": true
+}

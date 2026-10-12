@@ -1,0 +1,11 @@
+# Literal alert/emergency severity: CLI and collector evidence
+
+[Hosted fixture and full native receipts](hosted.json): one fresh Free Node service prints 13 exact harmless messages. Both Bex v0.3.2 and unmodified same-pin Render show all 13 with identical IDs, messages and labels. Twenty native level queries include ten passing controls and ten queries missing the same six severity records. The [programme](program.js.txt) and [tested driver](native-driver.py.txt) are retained.
+
+- [Equivalent owned-resource HTTP diagnostics](wire.json): full filtered headers/status/body. `level=alert` returns only two existing error-bucket rows; `level=unknown` returns the six misplaced records plus the plain control. Native HTTP traffic was not intercepted.
+- [Actual rendered app pipeline](local-app.json) in cached upstream Alloy1.11.2 reproduces all 13 classifications and six missing aliases. Its platform framing trial is excluded; both containers are deleted.
+- [Corrected raw-message platform pipeline](local-platform.json) in the same cached engine reproduces the four JSON cases. Platform logfmt support was not asserted. [App driver](local-app-driver.py.txt), [platform driver](local-platform-driver.py.txt), [cached image identities](cached-image-identities.json).
+- [Excluded exact collector-image pull](excluded-pinned-image-pull.json): creation timed out during image pull; exact name was inspected and absent. The locally cached upstream collector is an alternate diagnostic, not the exact patched production collector image.
+- [Source](source.txt), [counted consumers/contract/dedupe](callers-contract.json), [metadata and cleanup](metadata-cleanup.json).
+
+The service's native deletion acknowledged, detail/list/public absence passed, all six baseline services remain and service quota reconciled to six/zero terminating. Its one deploy is enumerated. Three returned local container IDs were deleted and confirmed absent; the timed-out intent produced no observed container. Cached images are preserved. Kubernetes descendants were not directly inspected. Paths use `<QA_TMP>`/`<REPO>` placeholders; authenticate independently when adapting historical drivers. No product code was changed or shipped.

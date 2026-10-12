@@ -1,0 +1,14 @@
+{
+  "render_docs": "https://render.com/docs/blueprint-spec#referencing-service-properties",
+  "reviewed_schema_sha256": "a0d4e8a3eb119a1b63657741757e3c25c091b3ce463c4be8c90e8026678d8163",
+  "observed_documentation": "fromService.type describes the referenced service and is required. Host/port/hostport properties are available for web/private services.",
+  "inference": "A supplied reference type that differs from the declared target type should receive a field error instead of being ignored.",
+  "render_production_tested": false,
+  "native_wire_capture": null,
+  "dedupe": [
+    "w8/done/081 guards actual target network addressability, not a mismatching supplied type.",
+    "w8/done/026 and done/051 guard target existence and aggregate missing references.",
+    "w4/done/m102 guards malformed schema and error attribution, not a well-formed but mismatching reference type."
+  ],
+  "source_history": "Recent addressability/numeric/existence changes and targeted ref.Type/type-mismatch history do not add a target-type comparison."
+}

@@ -1,0 +1,17 @@
+# Custom application PATH: native build evidence
+
+Two fresh native CLI creates failed at build time. Changing only PATH and deploying the same resolved commit recovered each service. Exact argv, statuses and timings are in [native.json](native.json); the non-secret programmes and byte inputs are in [fixtures.json](fixtures.json).
+
+- [Wire diagnostics](wire.json): complete filtered request/response records for saved PATH, the path-only API setup, service readback and failed deploy details. Native traffic was not intercepted.
+- [Runtime controls](runtime.json): initial 404, then Live HTTP 200 with matching build/runtime hashes and exact full PATH.
+- [Native build logs](native-build-logs.json): full JSON stream captures, plus selected failure messages. JSON is a stream of objects; the initial array assumption was corrected in the harness.
+- [Ownership and cleanup](ownership-cleanup.json): two native creation proofs, four child deploys, exact-ID deletes, API/list/public absence and final baseline/quota reconciliation.
+- [Local generated-loader executions](local-loader.json): three passing controls bracket one exit-1 failure before the absolute Python command runs; generated loader was not changed. The reversed-record-order case is a diagnostic control, not the actual preparer's ordering.
+- [Local generated-preparer executions](local-preparer.json): normal PATH succeeds; literal custom PATH prevents relative shell lookup; using an absolute shell still fails to find codec tools. Both generated command and script come from the actual source. All local containers are absent.
+- [Source extraction](source-extraction.json), [virtual test](source-probe_test.go.txt), [overlay](source-overlay.json), [execution record](source-execution.json): source diagnostics, not a product fix or full suite.
+- [Producer and consumer source](source.txt), [caller census](callers.json), [contract research](contract-research.json).
+- Tested drivers: [native](native-driver.py.txt), [loader](local-loader-driver.py.txt), [preparer](local-preparer-driver.py.txt). Paths use `<QA_TMP>` / `<REPO>` placeholders. Authenticate independently; no credential is included.
+
+Published Bex v0.3.2 and unmodified Render v2.27.0 at a764810a7682 both target Bex production under the isolated QA human grant. Hosting fixtures are Free Python web services. Source diagnosis is at 35e6d3b42; deployed revision remains unobserved. Literal/Blueprint preparation was executed locally only. Render production, Elixir/Go/Ruby/Rust, other App kinds, dashboard/GraphQL/MCP apply, replicas and Kubernetes descendant teardown were not tested. The initial controls recovered through configuration changes; no product fix was implemented.
+
+Sweep166 adds a Free Node control through published Bex: PATH alone reaches Live, adding a later variable makes a same-commit deploy fail while the prior instance stays healthy, and changing only PATH recovers a new Live instance. [Full hosted ownership, native receipts, API setup and runtime snapshots](node-hosted.json), [native failed-build log stream](node-native-build-logs.json), [tested Node driver](node-driver.py.txt) and [unchanged source proof](node-source-proof.json). The Node fixture's three deploys are enumerated and its API/list/public absence and baseline/quota reconciliation passed. Node was not repeated through Render, and generated literal/Blueprint preparation remains local only. These controls recover through configuration; they do not show a product fix.

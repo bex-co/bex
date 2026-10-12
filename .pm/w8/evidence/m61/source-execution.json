@@ -1,0 +1,11 @@
+{
+  "head": "35e6d3b42b56d42fe031bc945748ebbbf91588bf",
+  "first_source_head": "55d03259b2db37b6934886a3ed6edf3686ada291",
+  "native_go_unchanged_between_heads": true,
+  "native_go_sha256": "a2f5782a85f8662b2284a0a15a043a8a889617743aa609d5bb1e85b39906a078",
+  "command": "GOWORK=off GOTOOLCHAIN=go1.26.5 QA163_SOURCE_OUTPUT=<QA_TMP>/sweep163-native-source.json go test -overlay=<QA_TMP>/sweep163-native-source-overlay.json ./internal/build -run ^TestQANativePATHSource$ -count=1 -v",
+  "working_directory": "<REPO>/lego/operator",
+  "exit": 0,
+  "stdout": "=== RUN   TestQANativePATHSource\n--- PASS: TestQANativePATHSource (0.00s)\nPASS\nok  github.com/bex-co/bex/lego/operator/internal/build 0.528s\n",
+  "qualification": "Actual unmodified nativeDockerfile and nativeBuildPreparer functions; the virtual diagnostic only extracts generated artifacts. PASS is not a fixed regression suite or a product fix. Local Docker observations separately execute the generated loader and preparation command."
+}

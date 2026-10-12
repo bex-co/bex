@@ -1,0 +1,122 @@
+{
+  "GetProject": [
+    {
+      "path": "cmd/environment.go",
+      "line": 65,
+      "source": "proj, err := projectRepo.GetProject(cmd.Context(), input.ProjectID)"
+    },
+    {
+      "path": "pkg/keyvalue/resolve.go",
+      "line": 69,
+      "source": "project, err := s.projectRepo.GetProject(ctx, resolved.Environment.ProjectId)"
+    },
+    {
+      "path": "pkg/postgres/resolve.go",
+      "line": 65,
+      "source": "project, err := s.projectRepo.GetProject(ctx, resolved.Environment.ProjectId)"
+    },
+    {
+      "path": "pkg/resolve/resolve.go",
+      "line": 231,
+      "source": "project, err := r.projectRepo.GetProject(ctx, env.ProjectId)"
+    },
+    {
+      "path": "pkg/resolve/resolve.go",
+      "line": 277,
+      "source": "project, err = r.projectRepo.GetProject(ctx, env.ProjectId)"
+    },
+    {
+      "path": "pkg/resolve/resolve.go",
+      "line": 317,
+      "source": "proj, err := r.projectRepo.GetProject(ctx, idOrName)"
+    },
+    {
+      "path": "pkg/tui/views/resourcelist.go",
+      "line": 99,
+      "source": "p, err := projectRepo.GetProject(ctx, projectID)"
+    }
+  ],
+  "GetEnvironment": [
+    {
+      "path": "pkg/keyvalue/service.go",
+      "line": 171,
+      "source": "env, err := s.environmentRepo.GetEnvironment(ctx, *kv.EnvironmentId)"
+    },
+    {
+      "path": "pkg/postgres/service.go",
+      "line": 147,
+      "source": "env, err = s.environmentRepo.GetEnvironment(ctx, *environmentID)"
+    },
+    {
+      "path": "pkg/postgres/service.go",
+      "line": 248,
+      "source": "env, err := s.environmentRepo.GetEnvironment(ctx, *pg.EnvironmentId)"
+    },
+    {
+      "path": "pkg/resolve/resolve.go",
+      "line": 227,
+      "source": "env, err := r.environmentRepo.GetEnvironment(ctx, envIDOrName)"
+    }
+  ],
+  "ResolveScope": [
+    {
+      "path": "pkg/keyvalue/create.go",
+      "line": 50,
+      "source": "scope, err := s.resolver.ResolveScope(ctx, resolve.ScopeInput{"
+    },
+    {
+      "path": "pkg/postgres/service.go",
+      "line": 129,
+      "source": "scope, err := s.resolver.ResolveScope(ctx, resolve.ScopeInput{"
+    },
+    {
+      "path": "pkg/resolve/resolve.go",
+      "line": 142,
+      "source": "scope, err := r.ResolveScope(ctx, ScopeInput{EnvironmentIDOrName: &envIDOrName})"
+    },
+    {
+      "path": "pkg/resolve/resolve.go",
+      "line": 158,
+      "source": "return r.ResolveScope(ctx, ScopeInput{"
+    },
+    {
+      "path": "pkg/tui/views/kvcreate.go",
+      "line": 137,
+      "source": "scope, err := repos.resolver.ResolveScope(ctx, resolve.ScopeInput{"
+    }
+  ],
+  "ResolveScopeInActiveWorkspace": [
+    {
+      "path": "cmd/kvlist.go",
+      "line": 101,
+      "source": "scope, err := deps.Resolver().ResolveScopeInActiveWorkspace(ctx, resolve.ActiveWorkspaceScopeInput{"
+    },
+    {
+      "path": "pkg/keyvalue/resolve.go",
+      "line": 27,
+      "source": "resolved, err := s.resolver.ResolveScopeInActiveWorkspace(ctx, resolve.ActiveWorkspaceScopeInput{"
+    },
+    {
+      "path": "pkg/postgres/resolve.go",
+      "line": 79,
+      "source": "resolved, err := s.resolver.ResolveScopeInActiveWorkspace(ctx, resolve.ActiveWorkspaceScopeInput{"
+    },
+    {
+      "path": "pkg/postgres/service.go",
+      "line": 222,
+      "source": "scope, err := s.resolver.ResolveScopeInActiveWorkspace(ctx, resolve.ActiveWorkspaceScopeInput{"
+    }
+  ],
+  "ResolveEnvironmentID": [
+    {
+      "path": "pkg/keyvalue/create.go",
+      "line": 61,
+      "source": "environmentID, err = s.resolver.ResolveEnvironmentID(ctx, scope.Project, nil, scope.WorkspaceID)"
+    },
+    {
+      "path": "pkg/postgres/service.go",
+      "line": 140,
+      "source": "environmentID, err = s.resolver.ResolveEnvironmentID(ctx, scope.Project, nil, scope.WorkspaceID)"
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+import pathlib,json,os,sys,subprocess,threading,http.server,urllib.parse,pty,fcntl,termios,struct,select,time,errno,re,shutil
+p=pathlib.Path(__file__).parent;sid='srv-12345678901234567890';i1=sid+'-first111';i2=sid+'-second22';ws='tea-12345678901234567890';name='local-qa-instance-picker';requests=[]
+service={'id':sid,'name':name,'type':'web_service','suspended':'not_suspended','serviceDetails':{'runtime':'python','plan':'starter','sshAddress':sid+'@ssh.example.invalid'}}
+instances=[{'id':i1,'createdAt':'2026-10-11T20:00:00Z'},{'id':i2,'createdAt':'2026-10-11T19:59:00Z'}]
+fixtures={'/v1/projects':[],'/v1/users':{'id':'usr-local-fixture','name':'Local fixture','email':'qa@example.invalid'},'/v1/services/'+sid+'/instances':instances,'/v1/services/'+sid:service,'/v1/services/'+sid+'/deploys':[{'deploy':{'id':'dep-12345678901234567890','status':'live'}}],'/v1/services':[{'service':service}],'/v1/owners':[{'owner':{'id':ws,'name':'local-qa','type':'team'}}]}
+class Handler(http.server.BaseHTTPRequestHandler):
+ def log_message(self,*a):pass
+ def do_GET(self):
+  path=urllib.parse.urlsplit(self.path).path;body=fixtures.get(path);status=200 if body is not None else 404;payload=json.dumps(body if body is not None else {'message':'unexpected local fixture route'}).encode();requests.append({'method':'GET','path':self.path,'status':status,'response':json.loads(payload)});self.send_response(status);self.send_header('Content-Type','application/json');self.end_headers();self.wfile.write(payload)
+server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler);thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start();origin='http://127.0.0.1:'+str(server.server_port)+'/v1/';bin=p/'sweep137-ssh-recorder';bin.mkdir(mode=0o700);stub=bin/'ssh';stub.write_text('#!/usr/bin/env python3\nimport os,sys,pathlib,json\nf=pathlib.Path(os.environ["QA_LOCAL_SSH_CAPTURE"]);f.write_text(json.dumps({"argv":sys.argv[1:],"stdin_is_tty":sys.stdin.isatty()}));f.chmod(0o600)\n');stub.chmod(0o700)
+results=[]
+def run(role,case):
+ cfgdir=p/('sweep137-'+role+'-'+case+'-config');assert not cfgdir.exists();cfgdir.mkdir(mode=0o700);cfg=cfgdir/'cli.yaml';cfg.write_text('version: 1\napi:\n  key: local-fixture-key\n');cfg.chmod(0o600);capture=p/('sweep137-'+role+'-'+case+'-ssh.json');assert not capture.exists();prefix='BEX' if role=='bex' else 'RENDER';env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_'))};env.update({prefix+'_HOST':origin,prefix+'_CLI_CONFIG_DIR':str(cfgdir),prefix+'_CLI_CONFIG_PATH':str(cfg),prefix+'_WORKSPACE':ws,prefix+'_NO_UPDATE_NOTIFIER':'1','DO_NOT_TRACK':'1','BEX_CLI_DISABLE_ANALYTICS':'1','TERM':'xterm-256color','PATH':str(bin)+os.pathsep+os.environ['PATH'],'QA_LOCAL_SSH_CAPTURE':str(capture)})
+ target=i1 if case=='direct' else None if case=='empty' else sid;args=['ssh',*([target] if target else []),'-o','interactive'];m,s=pty.openpty();fcntl.ioctl(s,termios.TIOCSWINSZ,struct.pack('HHHH',28,150,0,0));data=b'';stage=0;events=[];start=time.monotonic();proc=None;before=len(requests);timeout=False
+ def setup():os.setsid();fcntl.ioctl(s,termios.TIOCSCTTY,0)
+ try:
+  proc=subprocess.Popen([str(p/('release/bex' if role=='bex' else 'render-pin')),*args],env=env,stdin=s,stdout=s,stderr=s,preexec_fn=setup);os.close(s);s=None
+  while time.monotonic()-start<12:
+   ready,_,_=select.select([m],[],[],.1)
+   if ready:
+    try:z=os.read(m,65536)
+    except OSError as e:
+     if e.errno==errno.EIO:break
+     raise
+    if not z:break
+    data+=z
+    if b'\x1b[6n' in z:os.write(m,b'\x1b[1;1R')
+    if b'\x1b]11;?' in z:os.write(m,b'\x1b]11;rgb:0000/0000/0000\x07')
+   if proc.poll() is not None:break
+   if case=='empty' and stage==0 and name.encode() in data and b'Any instance' not in data:
+    os.write(m,b'\r');stage=10;events.append({'action':'Enter sole local service row'})
+   if case!='direct' and stage in (0,10) and i1.encode() in data and i2.encode() in data and b'Any instance' in data:
+    downs={'first':1,'second':2,'any':0,'empty':1}[case]
+    for _ in range(downs):os.write(m,b'\x1b[B');time.sleep(.12)
+    os.write(m,b'\r');stage=1;events.append({'action':'Down '+str(downs)+' then Enter','expected_selected':{'first':i1,'second':i2,'any':'','empty':i1}[case]})
+   if capture.exists() and stage!=2:
+    if proc.poll() is None:time.sleep(.6);os.write(m,b'\x03')
+    stage=2
+  if proc.poll() is None:
+   timeout=not capture.exists()
+   try:os.write(m,b'\x03');proc.wait(timeout=2)
+   except (OSError,subprocess.TimeoutExpired):proc.kill();proc.wait(timeout=2)
+ finally:
+  if s is not None:os.close(s)
+  if proc is not None and proc.poll() is None:proc.kill();proc.wait(timeout=2)
+  os.close(m);shutil.rmtree(cfgdir)
+ text=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',data.decode(errors='replace'));r={'client':role,'case':case,'command':[role,*args],'exit':proc.returncode,'timeout':timeout,'elapsed':round(time.monotonic()-start,3),'events':events,'terminal_output':text,'ssh_child':json.loads(capture.read_text()) if capture.exists() else None,'wire':requests[before:],'qualification':'Actual unmodified native binary against loopback schema fixtures and PATH-local ssh argv recorder. Dummy local key only; no production API request, hosting fixture, paid resource or SSH connection.'};results.append(r);(p/'sweep137-local-ssh-results.json').write_text(json.dumps(results,indent=2));print(role,case,'exit',r['exit'],'timeout',timeout,'child',r['ssh_child'],flush=True)
+try:
+ for role in ['bex','render']:
+  for case in ['first','second','any','direct','empty']:run(role,case)
+finally:server.shutdown();server.server_close();thread.join(timeout=2);shutil.rmtree(bin)
+(p/'sweep137-local-ssh-fixtures.json').write_text(json.dumps({'fixtures':fixtures,'origin':'loopback random port','server_requests':requests},indent=2))

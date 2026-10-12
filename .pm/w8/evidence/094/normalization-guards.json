@@ -1,0 +1,1798 @@
+{
+  "sweep": 155,
+  "source_head": "69a676d1409cd64f50e115f8ac64fb887c227b27",
+  "nonce": "e80aff",
+  "mutation": "validation only; no group or workload created",
+  "results": [
+    {
+      "client": "bex",
+      "container": "root",
+      "variant": "exact-duplicate",
+      "expected_valid": false,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa155-e80aff-group",
+            "envVars": []
+          },
+          {
+            "name": "qa155-e80aff-group",
+            "envVars": []
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-root-exact-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.729,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"duplicate name \\\"qa155-e80aff-group\\\" for env_var_group (first declared at #/envVarGroups/0)\",\n      \"line\": 7,\n      \"path\": \"envVarGroups[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "duplicate name \"qa155-e80aff-group\" for env_var_group (first declared at #/envVarGroups/0)",
+            "line": 7,
+            "path": "envVarGroups[1]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "root",
+      "variant": "leading-normalized-duplicate",
+      "expected_valid": false,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa155-e80aff-group",
+            "envVars": []
+          },
+          {
+            "name": "  qa155-e80aff-group",
+            "envVars": []
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-root-leading-normalized-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.595,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"duplicate env group name \\\"qa155-e80aff-group\\\"\",\n      \"path\": \"envVarGroups[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "duplicate env group name \"qa155-e80aff-group\"",
+            "path": "envVarGroups[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "root",
+      "variant": "trailing-normalized-duplicate",
+      "expected_valid": false,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa155-e80aff-group",
+            "envVars": []
+          },
+          {
+            "name": "qa155-e80aff-group  ",
+            "envVars": []
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-root-trailing-normalized-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.331,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"duplicate env group name \\\"qa155-e80aff-group\\\"\",\n      \"path\": \"envVarGroups[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "duplicate env group name \"qa155-e80aff-group\"",
+            "path": "envVarGroups[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "root",
+      "variant": "unicode-normalized-duplicate",
+      "expected_valid": false,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa155-e80aff-group",
+            "envVars": []
+          },
+          {
+            "name": " qa155-e80aff-group ",
+            "envVars": []
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-root-unicode-normalized-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.307,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"duplicate env group name \\\"qa155-e80aff-group\\\"\",\n      \"path\": \"envVarGroups[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "duplicate env group name \"qa155-e80aff-group\"",
+            "path": "envVarGroups[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "root",
+      "variant": "whitespace-only",
+      "expected_valid": false,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "    ",
+            "envVars": []
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-root-whitespace-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.37,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"an envVarGroups entry is missing its name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "an envVarGroups entry is missing its name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "root",
+      "variant": "distinct-interior-spaces",
+      "expected_valid": true,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa155-e80aff-group middle",
+            "envVars": []
+          },
+          {
+            "name": "qa155-e80aff-group  middle",
+            "envVars": []
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-root-distinct-interior-spaces.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.568,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa155-e80aff-group middle\",\n      \"qa155-e80aff-group  middle\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa155-e80aff-group middle",
+            "qa155-e80aff-group  middle"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "ungrouped",
+      "variant": "exact-duplicate",
+      "expected_valid": false,
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "qa155-e80aff-group",
+              "envVars": []
+            },
+            {
+              "name": "qa155-e80aff-group",
+              "envVars": []
+            }
+          ]
+        }
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-ungrouped-exact-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.287,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 7,\n      \"error\": \"duplicate name \\\"qa155-e80aff-group\\\" for env_var_group (first declared at #/ungrouped/envVarGroups/0)\",\n      \"line\": 8,\n      \"path\": \"ungrouped.envVarGroups[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 7,
+            "error": "duplicate name \"qa155-e80aff-group\" for env_var_group (first declared at #/ungrouped/envVarGroups/0)",
+            "line": 8,
+            "path": "ungrouped.envVarGroups[1]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "ungrouped",
+      "variant": "leading-normalized-duplicate",
+      "expected_valid": false,
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "qa155-e80aff-group",
+              "envVars": []
+            },
+            {
+              "name": "  qa155-e80aff-group",
+              "envVars": []
+            }
+          ]
+        }
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-ungrouped-leading-normalized-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.297,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"duplicate env group name \\\"qa155-e80aff-group\\\"\",\n      \"path\": \"ungrouped.envVarGroups[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "duplicate env group name \"qa155-e80aff-group\"",
+            "path": "ungrouped.envVarGroups[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "ungrouped",
+      "variant": "trailing-normalized-duplicate",
+      "expected_valid": false,
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "qa155-e80aff-group",
+              "envVars": []
+            },
+            {
+              "name": "qa155-e80aff-group  ",
+              "envVars": []
+            }
+          ]
+        }
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-ungrouped-trailing-normalized-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.383,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"duplicate env group name \\\"qa155-e80aff-group\\\"\",\n      \"path\": \"ungrouped.envVarGroups[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "duplicate env group name \"qa155-e80aff-group\"",
+            "path": "ungrouped.envVarGroups[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "ungrouped",
+      "variant": "unicode-normalized-duplicate",
+      "expected_valid": false,
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "qa155-e80aff-group",
+              "envVars": []
+            },
+            {
+              "name": " qa155-e80aff-group ",
+              "envVars": []
+            }
+          ]
+        }
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-ungrouped-unicode-normalized-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.297,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"duplicate env group name \\\"qa155-e80aff-group\\\"\",\n      \"path\": \"ungrouped.envVarGroups[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "duplicate env group name \"qa155-e80aff-group\"",
+            "path": "ungrouped.envVarGroups[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "ungrouped",
+      "variant": "whitespace-only",
+      "expected_valid": false,
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "    ",
+              "envVars": []
+            }
+          ]
+        }
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-ungrouped-whitespace-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.294,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"an envVarGroups entry is missing its name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "an envVarGroups entry is missing its name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "ungrouped",
+      "variant": "distinct-interior-spaces",
+      "expected_valid": true,
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "qa155-e80aff-group middle",
+              "envVars": []
+            },
+            {
+              "name": "qa155-e80aff-group  middle",
+              "envVars": []
+            }
+          ]
+        }
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-ungrouped-distinct-interior-spaces.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.577,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa155-e80aff-group middle\",\n      \"qa155-e80aff-group  middle\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa155-e80aff-group middle",
+            "qa155-e80aff-group  middle"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "project-environment",
+      "variant": "exact-duplicate",
+      "expected_valid": false,
+      "document": {
+        "projects": [
+          {
+            "name": "qa155-e80aff-project",
+            "environments": [
+              {
+                "name": "qa155-e80aff-environment",
+                "envVarGroups": [
+                  {
+                    "name": "qa155-e80aff-group",
+                    "envVars": []
+                  },
+                  {
+                    "name": "qa155-e80aff-group",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-project-environment-exact-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.418,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"duplicate name \\\"qa155-e80aff-group\\\" for env_var_group (first declared at #/projects/0/environments/0/envVarGroups/0)\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].envVarGroups[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "duplicate name \"qa155-e80aff-group\" for env_var_group (first declared at #/projects/0/environments/0/envVarGroups/0)",
+            "line": 13,
+            "path": "projects[0].environments[0].envVarGroups[1]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "project-environment",
+      "variant": "leading-normalized-duplicate",
+      "expected_valid": false,
+      "document": {
+        "projects": [
+          {
+            "name": "qa155-e80aff-project",
+            "environments": [
+              {
+                "name": "qa155-e80aff-environment",
+                "envVarGroups": [
+                  {
+                    "name": "qa155-e80aff-group",
+                    "envVars": []
+                  },
+                  {
+                    "name": "  qa155-e80aff-group",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-project-environment-leading-normalized-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.276,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"duplicate env group name \\\"qa155-e80aff-group\\\"\",\n      \"path\": \"projects[0].environments[0].envVarGroups[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "duplicate env group name \"qa155-e80aff-group\"",
+            "path": "projects[0].environments[0].envVarGroups[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "project-environment",
+      "variant": "trailing-normalized-duplicate",
+      "expected_valid": false,
+      "document": {
+        "projects": [
+          {
+            "name": "qa155-e80aff-project",
+            "environments": [
+              {
+                "name": "qa155-e80aff-environment",
+                "envVarGroups": [
+                  {
+                    "name": "qa155-e80aff-group",
+                    "envVars": []
+                  },
+                  {
+                    "name": "qa155-e80aff-group  ",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-project-environment-trailing-normalized-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.3,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"duplicate env group name \\\"qa155-e80aff-group\\\"\",\n      \"path\": \"projects[0].environments[0].envVarGroups[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "duplicate env group name \"qa155-e80aff-group\"",
+            "path": "projects[0].environments[0].envVarGroups[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "project-environment",
+      "variant": "unicode-normalized-duplicate",
+      "expected_valid": false,
+      "document": {
+        "projects": [
+          {
+            "name": "qa155-e80aff-project",
+            "environments": [
+              {
+                "name": "qa155-e80aff-environment",
+                "envVarGroups": [
+                  {
+                    "name": "qa155-e80aff-group",
+                    "envVars": []
+                  },
+                  {
+                    "name": " qa155-e80aff-group ",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-project-environment-unicode-normalized-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.301,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"duplicate env group name \\\"qa155-e80aff-group\\\"\",\n      \"path\": \"projects[0].environments[0].envVarGroups[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "duplicate env group name \"qa155-e80aff-group\"",
+            "path": "projects[0].environments[0].envVarGroups[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "project-environment",
+      "variant": "whitespace-only",
+      "expected_valid": false,
+      "document": {
+        "projects": [
+          {
+            "name": "qa155-e80aff-project",
+            "environments": [
+              {
+                "name": "qa155-e80aff-environment",
+                "envVarGroups": [
+                  {
+                    "name": "    ",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-project-environment-whitespace-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.309,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"an envVarGroups entry is missing its name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "an envVarGroups entry is missing its name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "project-environment",
+      "variant": "distinct-interior-spaces",
+      "expected_valid": true,
+      "document": {
+        "projects": [
+          {
+            "name": "qa155-e80aff-project",
+            "environments": [
+              {
+                "name": "qa155-e80aff-environment",
+                "envVarGroups": [
+                  {
+                    "name": "qa155-e80aff-group middle",
+                    "envVars": []
+                  },
+                  {
+                    "name": "qa155-e80aff-group  middle",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-project-environment-distinct-interior-spaces.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.657,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa155-e80aff-group middle\",\n      \"qa155-e80aff-group  middle\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa155-e80aff-group middle",
+            "qa155-e80aff-group  middle"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "variant": "exact-duplicate",
+      "expected_valid": false,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa155-e80aff-group",
+            "envVars": []
+          },
+          {
+            "name": "qa155-e80aff-group",
+            "envVars": []
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-root-exact-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.381,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"duplicate name \\\"qa155-e80aff-group\\\" for env_var_group (first declared at #/envVarGroups/0)\",\n      \"line\": 7,\n      \"path\": \"envVarGroups[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "duplicate name \"qa155-e80aff-group\" for env_var_group (first declared at #/envVarGroups/0)",
+            "line": 7,
+            "path": "envVarGroups[1]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "variant": "leading-normalized-duplicate",
+      "expected_valid": false,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa155-e80aff-group",
+            "envVars": []
+          },
+          {
+            "name": "  qa155-e80aff-group",
+            "envVars": []
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-root-leading-normalized-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.378,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"duplicate env group name \\\"qa155-e80aff-group\\\"\",\n      \"path\": \"envVarGroups[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "duplicate env group name \"qa155-e80aff-group\"",
+            "path": "envVarGroups[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "variant": "trailing-normalized-duplicate",
+      "expected_valid": false,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa155-e80aff-group",
+            "envVars": []
+          },
+          {
+            "name": "qa155-e80aff-group  ",
+            "envVars": []
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-root-trailing-normalized-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.281,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"duplicate env group name \\\"qa155-e80aff-group\\\"\",\n      \"path\": \"envVarGroups[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "duplicate env group name \"qa155-e80aff-group\"",
+            "path": "envVarGroups[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "variant": "unicode-normalized-duplicate",
+      "expected_valid": false,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa155-e80aff-group",
+            "envVars": []
+          },
+          {
+            "name": " qa155-e80aff-group ",
+            "envVars": []
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-root-unicode-normalized-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.277,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"duplicate env group name \\\"qa155-e80aff-group\\\"\",\n      \"path\": \"envVarGroups[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "duplicate env group name \"qa155-e80aff-group\"",
+            "path": "envVarGroups[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "variant": "whitespace-only",
+      "expected_valid": false,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "    ",
+            "envVars": []
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-root-whitespace-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.304,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"an envVarGroups entry is missing its name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "an envVarGroups entry is missing its name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "variant": "distinct-interior-spaces",
+      "expected_valid": true,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa155-e80aff-group middle",
+            "envVars": []
+          },
+          {
+            "name": "qa155-e80aff-group  middle",
+            "envVars": []
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-root-distinct-interior-spaces.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.872,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa155-e80aff-group middle\",\n      \"qa155-e80aff-group  middle\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa155-e80aff-group middle",
+            "qa155-e80aff-group  middle"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "ungrouped",
+      "variant": "exact-duplicate",
+      "expected_valid": false,
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "qa155-e80aff-group",
+              "envVars": []
+            },
+            {
+              "name": "qa155-e80aff-group",
+              "envVars": []
+            }
+          ]
+        }
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-ungrouped-exact-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.326,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 7,\n      \"error\": \"duplicate name \\\"qa155-e80aff-group\\\" for env_var_group (first declared at #/ungrouped/envVarGroups/0)\",\n      \"line\": 8,\n      \"path\": \"ungrouped.envVarGroups[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 7,
+            "error": "duplicate name \"qa155-e80aff-group\" for env_var_group (first declared at #/ungrouped/envVarGroups/0)",
+            "line": 8,
+            "path": "ungrouped.envVarGroups[1]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "ungrouped",
+      "variant": "leading-normalized-duplicate",
+      "expected_valid": false,
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "qa155-e80aff-group",
+              "envVars": []
+            },
+            {
+              "name": "  qa155-e80aff-group",
+              "envVars": []
+            }
+          ]
+        }
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-ungrouped-leading-normalized-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.286,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"duplicate env group name \\\"qa155-e80aff-group\\\"\",\n      \"path\": \"ungrouped.envVarGroups[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "duplicate env group name \"qa155-e80aff-group\"",
+            "path": "ungrouped.envVarGroups[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "ungrouped",
+      "variant": "trailing-normalized-duplicate",
+      "expected_valid": false,
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "qa155-e80aff-group",
+              "envVars": []
+            },
+            {
+              "name": "qa155-e80aff-group  ",
+              "envVars": []
+            }
+          ]
+        }
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-ungrouped-trailing-normalized-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.292,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"duplicate env group name \\\"qa155-e80aff-group\\\"\",\n      \"path\": \"ungrouped.envVarGroups[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "duplicate env group name \"qa155-e80aff-group\"",
+            "path": "ungrouped.envVarGroups[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "ungrouped",
+      "variant": "unicode-normalized-duplicate",
+      "expected_valid": false,
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "qa155-e80aff-group",
+              "envVars": []
+            },
+            {
+              "name": " qa155-e80aff-group ",
+              "envVars": []
+            }
+          ]
+        }
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-ungrouped-unicode-normalized-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.302,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"duplicate env group name \\\"qa155-e80aff-group\\\"\",\n      \"path\": \"ungrouped.envVarGroups[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "duplicate env group name \"qa155-e80aff-group\"",
+            "path": "ungrouped.envVarGroups[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "ungrouped",
+      "variant": "whitespace-only",
+      "expected_valid": false,
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "    ",
+              "envVars": []
+            }
+          ]
+        }
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-ungrouped-whitespace-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.359,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"an envVarGroups entry is missing its name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "an envVarGroups entry is missing its name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "ungrouped",
+      "variant": "distinct-interior-spaces",
+      "expected_valid": true,
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "qa155-e80aff-group middle",
+              "envVars": []
+            },
+            {
+              "name": "qa155-e80aff-group  middle",
+              "envVars": []
+            }
+          ]
+        }
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-ungrouped-distinct-interior-spaces.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.871,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa155-e80aff-group middle\",\n      \"qa155-e80aff-group  middle\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa155-e80aff-group middle",
+            "qa155-e80aff-group  middle"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "project-environment",
+      "variant": "exact-duplicate",
+      "expected_valid": false,
+      "document": {
+        "projects": [
+          {
+            "name": "qa155-e80aff-project",
+            "environments": [
+              {
+                "name": "qa155-e80aff-environment",
+                "envVarGroups": [
+                  {
+                    "name": "qa155-e80aff-group",
+                    "envVars": []
+                  },
+                  {
+                    "name": "qa155-e80aff-group",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-project-environment-exact-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.369,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"duplicate name \\\"qa155-e80aff-group\\\" for env_var_group (first declared at #/projects/0/environments/0/envVarGroups/0)\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].envVarGroups[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "duplicate name \"qa155-e80aff-group\" for env_var_group (first declared at #/projects/0/environments/0/envVarGroups/0)",
+            "line": 13,
+            "path": "projects[0].environments[0].envVarGroups[1]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "project-environment",
+      "variant": "leading-normalized-duplicate",
+      "expected_valid": false,
+      "document": {
+        "projects": [
+          {
+            "name": "qa155-e80aff-project",
+            "environments": [
+              {
+                "name": "qa155-e80aff-environment",
+                "envVarGroups": [
+                  {
+                    "name": "qa155-e80aff-group",
+                    "envVars": []
+                  },
+                  {
+                    "name": "  qa155-e80aff-group",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-project-environment-leading-normalized-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.289,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"duplicate env group name \\\"qa155-e80aff-group\\\"\",\n      \"path\": \"projects[0].environments[0].envVarGroups[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "duplicate env group name \"qa155-e80aff-group\"",
+            "path": "projects[0].environments[0].envVarGroups[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "project-environment",
+      "variant": "trailing-normalized-duplicate",
+      "expected_valid": false,
+      "document": {
+        "projects": [
+          {
+            "name": "qa155-e80aff-project",
+            "environments": [
+              {
+                "name": "qa155-e80aff-environment",
+                "envVarGroups": [
+                  {
+                    "name": "qa155-e80aff-group",
+                    "envVars": []
+                  },
+                  {
+                    "name": "qa155-e80aff-group  ",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-project-environment-trailing-normalized-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.286,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"duplicate env group name \\\"qa155-e80aff-group\\\"\",\n      \"path\": \"projects[0].environments[0].envVarGroups[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "duplicate env group name \"qa155-e80aff-group\"",
+            "path": "projects[0].environments[0].envVarGroups[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "project-environment",
+      "variant": "unicode-normalized-duplicate",
+      "expected_valid": false,
+      "document": {
+        "projects": [
+          {
+            "name": "qa155-e80aff-project",
+            "environments": [
+              {
+                "name": "qa155-e80aff-environment",
+                "envVarGroups": [
+                  {
+                    "name": "qa155-e80aff-group",
+                    "envVars": []
+                  },
+                  {
+                    "name": " qa155-e80aff-group ",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-project-environment-unicode-normalized-duplicate.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.381,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"duplicate env group name \\\"qa155-e80aff-group\\\"\",\n      \"path\": \"projects[0].environments[0].envVarGroups[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "duplicate env group name \"qa155-e80aff-group\"",
+            "path": "projects[0].environments[0].envVarGroups[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "project-environment",
+      "variant": "whitespace-only",
+      "expected_valid": false,
+      "document": {
+        "projects": [
+          {
+            "name": "qa155-e80aff-project",
+            "environments": [
+              {
+                "name": "qa155-e80aff-environment",
+                "envVarGroups": [
+                  {
+                    "name": "    ",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-project-environment-whitespace-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.296,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"an envVarGroups entry is missing its name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "an envVarGroups entry is missing its name"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "project-environment",
+      "variant": "distinct-interior-spaces",
+      "expected_valid": true,
+      "document": {
+        "projects": [
+          {
+            "name": "qa155-e80aff-project",
+            "environments": [
+              {
+                "name": "qa155-e80aff-environment",
+                "envVarGroups": [
+                  {
+                    "name": "qa155-e80aff-group middle",
+                    "envVars": []
+                  },
+                  {
+                    "name": "qa155-e80aff-group  middle",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155-project-environment-distinct-interior-spaces.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.812,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa155-e80aff-group middle\",\n      \"qa155-e80aff-group  middle\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa155-e80aff-group middle",
+            "qa155-e80aff-group  middle"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    }
+  ],
+  "limitations": "fromGroup resolution deliberately deferred by current contract; no native apply exposed; padded references and missing-empty apply leads are source-only and not new live failures",
+  "copied_render_config_removed": true
+}

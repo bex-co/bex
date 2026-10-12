@@ -1,0 +1,20 @@
+{
+  "services": [
+    {
+      "name": "qa171-e47724-web",
+      "type": "web",
+      "runtime": "image",
+      "image": {
+        "url": "nginx:1"
+      },
+      "plan": "free",
+      "envVars": [
+        {
+          "key": "QA_LITERAL",
+          "value": "QA171_e47724\nafter",
+          "sync": false
+        }
+      ]
+    }
+  ]
+}

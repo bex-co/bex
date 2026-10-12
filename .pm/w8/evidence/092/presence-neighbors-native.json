@@ -1,0 +1,1163 @@
+{
+  "sweep": 152,
+  "source_head": "396cc2027215cc4ee98a8f40d0a048f79d2de6f4",
+  "nonce": "10e6aa",
+  "mutation": "validation only; no generated runtime values or resources",
+  "results": [
+    {
+      "client": "bex",
+      "container": "service",
+      "variant": "literal-empty",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa152-10e6aa-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep152-service-literal-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.962,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa152-10e6aa-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa152-10e6aa-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "service",
+      "variant": "generated-only",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa152-10e6aa-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "VALUE",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep152-service-generated-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.463,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa152-10e6aa-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa152-10e6aa-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "service",
+      "variant": "generated-plus-empty",
+      "expected_by_existing_semantic_checks": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa152-10e6aa-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep152-service-generated-plus-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.383,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa152-10e6aa-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa152-10e6aa-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": false
+    },
+    {
+      "client": "bex",
+      "container": "service",
+      "variant": "generated-plus-space",
+      "expected_by_existing_semantic_checks": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa152-10e6aa-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": " ",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep152-service-generated-plus-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.344,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa152-10e6aa-web env \\\"VALUE\\\": sets both value and generateValue — pick one\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa152-10e6aa-web env \"VALUE\": sets both value and generateValue — pick one",
+            "line": 11,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "service",
+      "variant": "disabled-generation-empty",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa152-10e6aa-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "",
+                "generateValue": false
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep152-service-disabled-generation-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.394,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa152-10e6aa-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa152-10e6aa-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "environment-group",
+      "variant": "literal-empty",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa152-10e6aa-group",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": ""
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa152-10e6aa-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep152-environment-group-literal-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.814,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa152-10e6aa-group\"\n    ],\n    \"services\": [\n      \"qa152-10e6aa-web\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa152-10e6aa-group"
+          ],
+          "services": [
+            "qa152-10e6aa-web"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "environment-group",
+      "variant": "generated-only",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa152-10e6aa-group",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa152-10e6aa-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep152-environment-group-generated-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.226,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa152-10e6aa-group\"\n    ],\n    \"services\": [\n      \"qa152-10e6aa-web\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa152-10e6aa-group"
+          ],
+          "services": [
+            "qa152-10e6aa-web"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "environment-group",
+      "variant": "generated-plus-empty",
+      "expected_by_existing_semantic_checks": false,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa152-10e6aa-group",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa152-10e6aa-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep152-environment-group-generated-plus-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.057,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa152-10e6aa-group\"\n    ],\n    \"services\": [\n      \"qa152-10e6aa-web\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa152-10e6aa-group"
+          ],
+          "services": [
+            "qa152-10e6aa-web"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": false
+    },
+    {
+      "client": "bex",
+      "container": "environment-group",
+      "variant": "generated-plus-space",
+      "expected_by_existing_semantic_checks": false,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa152-10e6aa-group",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": " ",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa152-10e6aa-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep152-environment-group-generated-plus-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.368,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"env group \\\"qa152-10e6aa-group\\\" var \\\"VALUE\\\" sets both value and generateValue\",\n      \"line\": 3,\n      \"path\": \"envVarGroups[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "env group \"qa152-10e6aa-group\" var \"VALUE\" sets both value and generateValue",
+            "line": 3,
+            "path": "envVarGroups[0]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "environment-group",
+      "variant": "disabled-generation-empty",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa152-10e6aa-group",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "",
+                "generateValue": false
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa152-10e6aa-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep152-environment-group-disabled-generation-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.677,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa152-10e6aa-group\"\n    ],\n    \"services\": [\n      \"qa152-10e6aa-web\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa152-10e6aa-group"
+          ],
+          "services": [
+            "qa152-10e6aa-web"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "service",
+      "variant": "literal-empty",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa152-10e6aa-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep152-service-literal-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.428,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa152-10e6aa-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa152-10e6aa-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "service",
+      "variant": "generated-only",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa152-10e6aa-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "VALUE",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep152-service-generated-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.524,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa152-10e6aa-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa152-10e6aa-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "service",
+      "variant": "generated-plus-empty",
+      "expected_by_existing_semantic_checks": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa152-10e6aa-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep152-service-generated-plus-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.565,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa152-10e6aa-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa152-10e6aa-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": false
+    },
+    {
+      "client": "render",
+      "container": "service",
+      "variant": "generated-plus-space",
+      "expected_by_existing_semantic_checks": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa152-10e6aa-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": " ",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep152-service-generated-plus-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.293,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa152-10e6aa-web env \\\"VALUE\\\": sets both value and generateValue — pick one\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa152-10e6aa-web env \"VALUE\": sets both value and generateValue — pick one",
+            "line": 11,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "service",
+      "variant": "disabled-generation-empty",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa152-10e6aa-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "",
+                "generateValue": false
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep152-service-disabled-generation-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.455,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa152-10e6aa-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa152-10e6aa-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "environment-group",
+      "variant": "literal-empty",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa152-10e6aa-group",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": ""
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa152-10e6aa-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep152-environment-group-literal-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.284,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa152-10e6aa-group\"\n    ],\n    \"services\": [\n      \"qa152-10e6aa-web\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa152-10e6aa-group"
+          ],
+          "services": [
+            "qa152-10e6aa-web"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "environment-group",
+      "variant": "generated-only",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa152-10e6aa-group",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa152-10e6aa-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep152-environment-group-generated-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.845,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa152-10e6aa-group\"\n    ],\n    \"services\": [\n      \"qa152-10e6aa-web\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa152-10e6aa-group"
+          ],
+          "services": [
+            "qa152-10e6aa-web"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "environment-group",
+      "variant": "generated-plus-empty",
+      "expected_by_existing_semantic_checks": false,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa152-10e6aa-group",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa152-10e6aa-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep152-environment-group-generated-plus-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.816,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa152-10e6aa-group\"\n    ],\n    \"services\": [\n      \"qa152-10e6aa-web\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa152-10e6aa-group"
+          ],
+          "services": [
+            "qa152-10e6aa-web"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": false
+    },
+    {
+      "client": "render",
+      "container": "environment-group",
+      "variant": "generated-plus-space",
+      "expected_by_existing_semantic_checks": false,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa152-10e6aa-group",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": " ",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa152-10e6aa-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep152-environment-group-generated-plus-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.384,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"env group \\\"qa152-10e6aa-group\\\" var \\\"VALUE\\\" sets both value and generateValue\",\n      \"line\": 3,\n      \"path\": \"envVarGroups[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "env group \"qa152-10e6aa-group\" var \"VALUE\" sets both value and generateValue",
+            "line": 3,
+            "path": "envVarGroups[0]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "environment-group",
+      "variant": "disabled-generation-empty",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa152-10e6aa-group",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "",
+                "generateValue": false
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa152-10e6aa-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep152-environment-group-disabled-generation-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.116,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa152-10e6aa-group\"\n    ],\n    \"services\": [\n      \"qa152-10e6aa-web\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa152-10e6aa-group"
+          ],
+          "services": [
+            "qa152-10e6aa-web"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    }
+  ],
+  "copied_render_config_removed": true
+}

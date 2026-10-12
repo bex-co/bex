@@ -1,0 +1,40 @@
+{
+  "source_head": "35e6d3b42b56d42fe031bc945748ebbbf91588bf",
+  "counts": {
+    "nativeDockerfile_production_callers": 1,
+    "nativeBuildPreparer_production_callers": 1,
+    "projectNativeBuildInputs_production_callers": 1,
+    "nativeBuildLiterals_production_callers": 1,
+    "buildEnv_production_callers": 2
+  },
+  "sites": [
+    "lego/operator/internal/build/native.go:299",
+    "lego/operator/internal/build/build.go:1126",
+    "lego/operator/internal/controller/app_controller.go:993",
+    "lego/operator/internal/controller/app_controller.go:1575",
+    "lego/operator/internal/controller/app_controller.go:989",
+    "lego/operator/internal/controller/release_identity.go:164"
+  ],
+  "native_runtimes": [
+    "elixir",
+    "go",
+    "node",
+    "python",
+    "ruby",
+    "rust"
+  ],
+  "app_kinds": [
+    "web",
+    "private",
+    "worker",
+    "cron",
+    "static (native Node default)"
+  ],
+  "excluded_builders": [
+    "Dockerfile",
+    "kpack/buildpack"
+  ],
+  "datastores": "Postgres and Key Value do not enter this native App builder",
+  "mutable_create_vs_blueprint_literal": "Native create literals are moved to the mutable env store; Blueprint-owned literals remain on spec.Env. Both reach a PATH-sensitive helper, at different stages. Literal startup/codec failure executed locally only; hosted Blueprint apply unverified.",
+  "qualification": "Source census is not hosted coverage of every runtime, App kind or API/UI surface."
+}

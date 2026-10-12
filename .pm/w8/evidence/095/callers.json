@@ -1,0 +1,23 @@
+{
+  "ApplyEnvGroup": [
+    "lego/backend/internal/envgroups/service.go:1509:func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[string]string, generates []string) error {",
+    "lego/backend/internal/apps/deploy.go:163:\tApplyEnvGroup(ctx context.Context, name string, literals map[string]string, generates []string) error",
+    "lego/backend/internal/apps/deploy.go:842:\t\tif err := s.EnvGroups.ApplyEnvGroup(ctx, g.name, g.literals, g.generates); err != nil {"
+  ],
+  "applyStackEnvGroups": [
+    "lego/backend/internal/apps/deploy.go:772:\tif err := s.applyStackEnvGroups(ctx, st.envGroups, assignments, &res); err != nil {",
+    "lego/backend/internal/apps/deploy.go:834:func (s *Service) applyStackEnvGroups(ctx context.Context, envGroups []parsedEnvGroup, assignments map[string]core.EnvironmentAssignment, res *StackResult) error {"
+  ],
+  "deployParsedStack": [
+    "lego/backend/internal/apps/blueprint.go:1093:\t_, applyErr := s.deployParsedStack(ctx, prepareReq, parsed, snap)",
+    "lego/backend/internal/apps/blueprint.go:1427:\t\tstack, applyErr = s.deployParsedStack(ctx, deployReq, *prepared, snap)",
+    "lego/backend/internal/apps/deploy.go:671:\treturn s.deployParsedStack(ctx, req, st, snap)",
+    "lego/backend/internal/apps/deploy.go:713:func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st parsedStack, snap *workspaceSnapshot) (StackResult, error) {"
+  ],
+  "DeployStack": [
+    "lego/backend/internal/apps/deploy.go:652:func (s *Service) DeployStack(ctx context.Context, req DeployRequest) (StackResult, error) {",
+    "lego/backend/internal/apps/mcp.go:772:\t\tres, err := s.DeployStack(ctx, DeployRequest{Repo: in.Repo, Branch: in.Branch, Manifest: in.BexYAML, Confirm: in.Confirm})",
+    "lego/backend/internal/apps/rest.go:1364:\t\treturn s.DeployStack(r.Context(), DeployRequest{"
+  ],
+  "qualification": "Exact symbol matches include definitions/interfaces; counts stated in note distinguish them. Direct ApplyEnvGroup production caller one; its orchestration caller one; deployParsedStack production calls three."
+}

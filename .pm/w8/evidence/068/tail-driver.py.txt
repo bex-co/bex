@@ -1,0 +1,45 @@
+import pathlib,json,subprocess,datetime,os,shutil,time,select,signal
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');state=json.loads(cp.read_text());sid=(p/'sweep139-id.txt').read_text();x=next(z for z in state['resources'] if z.get('id')==sid);assert x['sweep']==139 and x['create_result']['exit']==0 and x['id'] not in {z if isinstance(z,str) else z.get('service',z)['id'] for z in state['baseline']['services']};assert x['runtime_observations'][-1]['marker_exact'] and x['runtime_observations'][-1]['status']=='200'
+def save():state['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(state,indent=2));cp.chmod(0o600)
+results=[]
+for mode in ['yaml','json']:
+ tag=x['marker']+'-'+mode;expected=[tag+'-A: "雪" [first]',tag+'-B: value=two,three'];clients=[];emission=None;start=time.monotonic();observed=False
+ try:
+  for role in ['bex','render']:
+   cfgdir=p/f'sweep139-{role}-{mode}-config';assert not cfgdir.exists();cfgdir.mkdir(mode=0o700);cfg=cfgdir/'cli.yaml';shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600);prefix='BEX' if role=='bex' else 'RENDER';env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_'))};env.update({prefix+'_HOST':'https://api.bex.co/v1/',prefix+'_CLI_CONFIG_DIR':str(cfgdir),prefix+'_CLI_CONFIG_PATH':str(cfg),prefix+'_WORKSPACE':'tea-daif693dqjvc73e7as3g',prefix+'_NO_UPDATE_NOTIFIER':'1',prefix+'_CLI_DISABLE_ANALYTICS':'1','DO_NOT_TRACK':'1'})
+   args=['logs','--resources',sid,'--type','app','--text',tag,'--tail','--confirm','-o',mode];child=subprocess.Popen([str(p/('release/bex' if role=='bex' else 'render-pin')),*args],env=env,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE);item={'role':role,'process':child,'args':args,'config_dir':cfgdir,'stdout':b'','stderr':b'','started':time.monotonic()};clients.append(item);x.setdefault('tail_processes',[]).append({'role':role,'mode':mode,'pid':child.pid,'command':[role,*args],'state':'started bounded own-fixture native tail'});save()
+  while time.monotonic()-start<40:
+   pipes={stream:(item,key) for item in clients for key,stream in [('stdout',item['process'].stdout),('stderr',item['process'].stderr)] if not stream.closed};ready,_,_=select.select(list(pipes),[],[],.15)
+   for stream in ready:
+    item,key=pipes[stream];chunk=os.read(stream.fileno(),65536)
+    if chunk:item[key]+=chunk
+    else:stream.close()
+   if emission is None and time.monotonic()-start>4:
+    assert all(z['process'].poll() is None for z in clients),'Native tail ended before emission; inspect saved output'
+    for z in clients:z['pre_emission_stdout']=z['stdout'].decode(errors='replace')
+    f=p/f'sweep139-{mode}-emit-body.txt';r=subprocess.run(['curl','-sS','--max-time','15','-o',str(f),'-w','%{http_code}',x['create_response']['serviceDetails']['url']+'/emit/'+mode],text=True,capture_output=True);emission={'status':r.stdout,'exit':r.returncode,'body':f.read_text() if f.exists() else None,'stderr':r.stderr};x.setdefault('tail_emissions',[]).append({'mode':mode,**emission});save();assert r.returncode==0 and r.stdout=='200' and emission['body']==tag+'-emitted'
+   if emission is not None and all(all(v in z['stdout'].decode(errors='replace') for v in [tag+'-A',tag+'-B']) for z in clients):observed=True;break
+   if any(z['process'].poll() is not None for z in clients):break
+ finally:
+  for item in clients:
+   proc=item['process'];item['sent_interrupt']=proc.poll() is None
+   if proc.poll() is None:proc.send_signal(signal.SIGINT)
+  finish=time.monotonic()+3
+  while time.monotonic()<finish and any(z['process'].poll() is None for z in clients):
+   pipes={stream:(item,key) for item in clients for key,stream in [('stdout',item['process'].stdout),('stderr',item['process'].stderr)] if not stream.closed};ready,_,_=select.select(list(pipes),[],[],.1)
+   for stream in ready:
+    item,key=pipes[stream];chunk=os.read(stream.fileno(),65536)
+    if chunk:item[key]+=chunk
+    else:stream.close()
+  for item in clients:
+   proc=item['process'];forced=proc.poll() is None
+   if forced:proc.kill()
+   proc.wait(timeout=2)
+   for key in ['stdout','stderr']:
+    stream=getattr(proc,key)
+    if not stream.closed:item[key]+=stream.read();stream.close()
+   cfgdir=item['config_dir'];shutil.rmtree(cfgdir);record={'client':item['role'],'command':[item['role'],*item['args']],'mode':mode,'exit':proc.returncode,'elapsed':round(time.monotonic()-item['started'],3),'sent_interrupt':item['sent_interrupt'],'forced_kill':forced,'both_messages_observed':all(v in item['stdout'].decode(errors='replace') for v in [tag+'-A',tag+'-B']),'stdout':item['stdout'].decode(errors='replace'),'stderr':item['stderr'].decode(errors='replace'),'expected_messages':expected,'pre_emission_stdout':item.get('pre_emission_stdout'),'emission':emission,'qualification':'Actual unchanged native non-TTY WebSocket tail of this own Free web fixture. Parent sends SIGINT after both messages; native HTTP/WebSocket wire not intercepted.'};results.append(record);x.setdefault('native_tail_cases',[]).append(record)
+   for t in x['tail_processes']:
+    if t['pid']==proc.pid:t.update(state='reaped; copied config removed',exit=proc.returncode,forced_kill=forced)
+   save();(p/'sweep139-native-tail.json').write_text(json.dumps(results,indent=2));print(item['role'],mode,'exit',proc.returncode,'forced',forced,'both markers',record['both_messages_observed'],'stdout bytes',len(item['stdout']),flush=True)
+ assert observed and all(r['both_messages_observed'] and not r['forced_kill'] for r in results if r['mode']==mode)

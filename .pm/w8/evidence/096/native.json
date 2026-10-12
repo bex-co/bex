@@ -1,0 +1,2910 @@
+{
+  "sweep": 173,
+  "source_head": "abc9ca2bab94c3d8f04dc195832a574aa7673ca5",
+  "nonce": "4b9e73",
+  "mutation": "Blueprint validation only; no group/workload/database created",
+  "results": [
+    {
+      "client": "bex",
+      "label": "copy-web",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa173-4b9e73-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-web.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-web.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.417,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "port-web",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa173-4b9e73-source",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-port-web.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-port-web.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.445,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "copy-pserv",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "pserv",
+                  "name": "qa173-4b9e73-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-pserv.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-pserv.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.554,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "port-pserv",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "pserv",
+                  "name": "qa173-4b9e73-source",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-port-pserv.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-port-pserv.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.553,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "copy-worker",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "worker",
+                  "name": "qa173-4b9e73-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-worker.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-worker.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.484,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "port-worker",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "worker",
+                  "name": "qa173-4b9e73-source",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-port-worker.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-port-worker.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.556,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "copy-cron",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "cron",
+                  "name": "qa173-4b9e73-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-cron.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-cron.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.485,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "port-cron",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "cron",
+                  "name": "qa173-4b9e73-source",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-port-cron.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-port-cron.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.754,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "copy-extra-empty-value",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "value": "",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa173-4b9e73-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-extra-empty-value.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-extra-empty-value.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.362,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"at '/services/1/envVars/0': additional properties 'value' not allowed\",\n      \"line\": 29,\n      \"path\": \"services[1].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 20,
+            "error": "at '/services/1/envVars/0': additional properties 'value' not allowed",
+            "line": 29,
+            "path": "services[1].envVars[0].value"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "copy-extra-value",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "value": "literal-173",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa173-4b9e73-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-extra-value.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-extra-value.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.493,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"at '/services/1/envVars/0': additional properties 'value' not allowed\",\n      \"line\": 29,\n      \"path\": \"services[1].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 20,
+            "error": "at '/services/1/envVars/0': additional properties 'value' not allowed",
+            "line": 29,
+            "path": "services[1].envVars[0].value"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "copy-wrong-keyvalue",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa173-4b9e73-source",
+                  "property": "host"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-wrong-keyvalue.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-wrong-keyvalue.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.75,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"fromService references unknown Key Value \\\"qa173-4b9e73-source\\\" in this workspace\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "fromService references unknown Key Value \"qa173-4b9e73-source\" in this workspace",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "copy-web",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa173-4b9e73-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-web.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-web.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.182,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "port-web",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa173-4b9e73-source",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-port-web.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-port-web.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.891,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "copy-pserv",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "pserv",
+                  "name": "qa173-4b9e73-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-pserv.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-pserv.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.817,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "port-pserv",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "pserv",
+                  "name": "qa173-4b9e73-source",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-port-pserv.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-port-pserv.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.622,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "copy-worker",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "worker",
+                  "name": "qa173-4b9e73-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-worker.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-worker.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.46,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "port-worker",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "worker",
+                  "name": "qa173-4b9e73-source",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-port-worker.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-port-worker.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.521,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "copy-cron",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "cron",
+                  "name": "qa173-4b9e73-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-cron.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-cron.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.386,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "port-cron",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "cron",
+                  "name": "qa173-4b9e73-source",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-port-cron.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-port-cron.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.479,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "copy-extra-empty-value",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "value": "",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa173-4b9e73-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-extra-empty-value.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-extra-empty-value.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.312,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"at '/services/1/envVars/0': additional properties 'value' not allowed\",\n      \"line\": 29,\n      \"path\": \"services[1].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 20,
+            "error": "at '/services/1/envVars/0': additional properties 'value' not allowed",
+            "line": 29,
+            "path": "services[1].envVars[0].value"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "copy-extra-value",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "value": "literal-173",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa173-4b9e73-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-extra-value.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-extra-value.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.363,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"at '/services/1/envVars/0': additional properties 'value' not allowed\",\n      \"line\": 29,\n      \"path\": \"services[1].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 20,
+            "error": "at '/services/1/envVars/0': additional properties 'value' not allowed",
+            "line": 29,
+            "path": "services[1].envVars[0].value"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "copy-wrong-keyvalue",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa173-4b9e73-source",
+                  "property": "host"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-wrong-keyvalue.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-wrong-keyvalue.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.37,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"fromService references unknown Key Value \\\"qa173-4b9e73-source\\\" in this workspace\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "fromService references unknown Key Value \"qa173-4b9e73-source\" in this workspace",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "copy-matching-worker",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa173-4b9e73-source",
+                  "type": "worker",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-matching-worker.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "neighbor validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-matching-worker.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.004,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 15,\n      \"error\": \"service \\\"qa173-4b9e73-source\\\": a background_worker requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra\",\n      \"line\": 10,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 15,
+            "error": "service \"qa173-4b9e73-source\": a background_worker requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra",
+            "line": 10,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "copy-worker-target-misdeclared-web",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa173-4b9e73-source",
+                  "type": "web",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-worker-target-misdeclared-web.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "neighbor validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-worker-target-misdeclared-web.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.248,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 15,\n      \"error\": \"service \\\"qa173-4b9e73-source\\\": a background_worker requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra\",\n      \"line\": 10,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 15,
+            "error": "service \"qa173-4b9e73-source\": a background_worker requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra",
+            "line": 10,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "port-worker-target-as-web",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa173-4b9e73-source",
+                  "type": "web",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-port-worker-target-as-web.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "neighbor validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-port-worker-target-as-web.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.655,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa173-4b9e73-target\\\": envVars[\\\"QA_TARGET\\\"] fromService port references \\\"qa173-4b9e73-source\\\" which has no network address (only web/private services are addressable)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa173-4b9e73-target\": envVars[\"QA_TARGET\"] fromService port references \"qa173-4b9e73-source\" which has no network address (only web/private services are addressable)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "copy-matching-cron",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "cron",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ],
+            "schedule": "0 0 1 1 *"
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa173-4b9e73-source",
+                  "type": "cron",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-matching-cron.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "neighbor validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-matching-cron.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.419,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "copy-matching-worker",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa173-4b9e73-source",
+                  "type": "worker",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-matching-worker.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "neighbor validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-matching-worker.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.469,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 15,\n      \"error\": \"service \\\"qa173-4b9e73-source\\\": a background_worker requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra\",\n      \"line\": 10,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 15,
+            "error": "service \"qa173-4b9e73-source\": a background_worker requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra",
+            "line": 10,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "copy-worker-target-misdeclared-web",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa173-4b9e73-source",
+                  "type": "web",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-worker-target-misdeclared-web.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "neighbor validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-worker-target-misdeclared-web.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.36,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 15,\n      \"error\": \"service \\\"qa173-4b9e73-source\\\": a background_worker requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra\",\n      \"line\": 10,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 15,
+            "error": "service \"qa173-4b9e73-source\": a background_worker requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra",
+            "line": 10,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "port-worker-target-as-web",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa173-4b9e73-source",
+                  "type": "web",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-port-worker-target-as-web.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "neighbor validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-port-worker-target-as-web.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.359,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa173-4b9e73-target\\\": envVars[\\\"QA_TARGET\\\"] fromService port references \\\"qa173-4b9e73-source\\\" which has no network address (only web/private services are addressable)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa173-4b9e73-target\": envVars[\"QA_TARGET\"] fromService port references \"qa173-4b9e73-source\" which has no network address (only web/private services are addressable)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "copy-matching-cron",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "cron",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ],
+            "schedule": "0 0 1 1 *"
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa173-4b9e73-source",
+                  "type": "cron",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-matching-cron.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "neighbor validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-matching-cron.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.525,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "copy-matching-worker-plan-control",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "starter",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa173-4b9e73-source",
+                  "type": "worker",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-matching-worker-plan-control.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "neighbor validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-matching-worker-plan-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.762,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "copy-worker-target-misdeclared-web-plan-control",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "starter",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa173-4b9e73-source",
+                  "type": "web",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-worker-target-misdeclared-web-plan-control.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "neighbor validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-worker-target-misdeclared-web-plan-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.59,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "port-worker-target-as-web-plan-control",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "starter",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa173-4b9e73-source",
+                  "type": "web",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-port-worker-target-as-web-plan-control.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "neighbor validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-port-worker-target-as-web-plan-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.343,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa173-4b9e73-target\\\": envVars[\\\"QA_TARGET\\\"] fromService port references \\\"qa173-4b9e73-source\\\" which has no network address (only web/private services are addressable)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa173-4b9e73-target\": envVars[\"QA_TARGET\"] fromService port references \"qa173-4b9e73-source\" which has no network address (only web/private services are addressable)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "copy-matching-worker-plan-control",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "starter",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa173-4b9e73-source",
+                  "type": "worker",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-matching-worker-plan-control.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "neighbor validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-matching-worker-plan-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.458,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "copy-worker-target-misdeclared-web-plan-control",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "starter",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa173-4b9e73-source",
+                  "type": "web",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-copy-worker-target-misdeclared-web-plan-control.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "neighbor validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-copy-worker-target-misdeclared-web-plan-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.365,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa173-4b9e73-source\",\n      \"qa173-4b9e73-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa173-4b9e73-source",
+            "qa173-4b9e73-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "port-worker-target-as-web-plan-control",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa173-4b9e73-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "starter",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa173-4b9e73-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa173-4b9e73-source",
+                  "type": "web",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep173-port-worker-target-as-web-plan-control.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "neighbor validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep173-port-worker-target-as-web-plan-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.357,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa173-4b9e73-target\\\": envVars[\\\"QA_TARGET\\\"] fromService port references \\\"qa173-4b9e73-source\\\" which has no network address (only web/private services are addressable)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa173-4b9e73-target\": envVars[\"QA_TARGET\"] fromService port references \"qa173-4b9e73-source\" which has no network address (only web/private services are addressable)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    }
+  ],
+  "question": "Does fromService.type have to match the actual same-file target type, and are contradictory literal/reference fields refused?",
+  "copied_render_config_removed": true
+}

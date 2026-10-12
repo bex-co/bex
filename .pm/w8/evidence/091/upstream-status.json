@@ -1,0 +1,23 @@
+{
+  "upstream_main_sha": "c4d106cfdaf8eec6d23475155e43f4baeeed2013",
+  "source_url": "https://github.com/render-oss/cli/blob/c4d106cfdaf8eec6d23475155e43f4baeeed2013/cmd/ssh.go",
+  "entire_cmd_ssh_identical_to_pin": true,
+  "filter_routes_to_direct_view": true,
+  "queries": [
+    {
+      "query": "repo:render-oss/cli \"ssh\" \"project filter\"",
+      "count": 0,
+      "results": []
+    },
+    {
+      "query": "repo:render-oss/cli \"ssh\" \"empty name\"",
+      "count": 0,
+      "results": []
+    },
+    {
+      "query": "repo:render-oss/cli \"getSSHTableOptions\"",
+      "count": 0,
+      "results": []
+    }
+  ]
+}

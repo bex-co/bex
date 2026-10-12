@@ -1,0 +1,156 @@
+{
+  "lines": {
+    "punct": "QA176_3ff02e PUNCT 100%_literal [a]+.(b)?^$",
+    "decoy": "QA176_3ff02e DECOY 100XXliteral aabZ",
+    "quoted": "QA176_3ff02e QUOTE q\"u\\v",
+    "comma": "QA176_3ff02e COMMA a,b",
+    "space": "QA176_3ff02e SPACE a b",
+    "upper": "QA176_3ff02e UPPER CAFÉ Ελληνικά",
+    "lower": "QA176_3ff02e LOWER café ελληνικά",
+    "dotted": "QA176_3ff02e DOTTED İ",
+    "ascii-i": "QA176_3ff02e ASCII i",
+    "long-s": "QA176_3ff02e LONG ſ",
+    "ascii-s": "QA176_3ff02e ASCII S",
+    "snow": "QA176_3ff02e SNOW 雪😀",
+    "tab": "QA176_3ff02e TAB a\tb",
+    "literal-tab": "QA176_3ff02e LITERAL a\\tb",
+    "plain": "QA176_3ff02e PLAIN ordinary"
+  },
+  "cases": [
+    {
+      "label": "punct",
+      "terms": [
+        "QA176_3ff02e PUNCT 100%_literal [a]+.(b)?^$"
+      ],
+      "want_labels": [
+        "punct"
+      ]
+    },
+    {
+      "label": "quote",
+      "terms": [
+        "QA176_3ff02e QUOTE q\"u\\v"
+      ],
+      "want_labels": [
+        "quoted"
+      ]
+    },
+    {
+      "label": "comma",
+      "terms": [
+        "QA176_3ff02e COMMA a,b"
+      ],
+      "want_labels": [
+        "comma"
+      ]
+    },
+    {
+      "label": "tab",
+      "terms": [
+        "QA176_3ff02e TAB a\tb"
+      ],
+      "want_labels": [
+        "tab"
+      ]
+    },
+    {
+      "label": "literal-tab",
+      "terms": [
+        "QA176_3ff02e LITERAL a\\tb"
+      ],
+      "want_labels": [
+        "literal-tab"
+      ]
+    },
+    {
+      "label": "snow",
+      "terms": [
+        "QA176_3ff02e SNOW 雪😀"
+      ],
+      "want_labels": [
+        "snow"
+      ]
+    },
+    {
+      "label": "unicode-case",
+      "terms": [
+        "café ελληνικά"
+      ],
+      "want_labels": [
+        "upper",
+        "lower"
+      ]
+    },
+    {
+      "label": "iota",
+      "terms": [
+        "ι"
+      ],
+      "want_labels": [
+        "upper",
+        "lower"
+      ]
+    },
+    {
+      "label": "dotted-i",
+      "terms": [
+        "İ"
+      ],
+      "want_labels": [
+        "punct",
+        "decoy",
+        "dotted",
+        "ascii-i",
+        "ascii-s",
+        "literal-tab",
+        "plain"
+      ]
+    },
+    {
+      "label": "long-s",
+      "terms": [
+        "ſ"
+      ],
+      "want_labels": [
+        "long-s"
+      ]
+    },
+    {
+      "label": "ascii-s",
+      "terms": [
+        "QA176_3ff02e ASCII s"
+      ],
+      "want_labels": [
+        "ascii-s"
+      ]
+    },
+    {
+      "label": "or",
+      "terms": [
+        "QA176_3ff02e COMMA a,b",
+        "QA176_3ff02e SNOW 雪😀"
+      ],
+      "want_labels": [
+        "comma",
+        "snow"
+      ]
+    },
+    {
+      "label": "duplicates",
+      "terms": [
+        "QA176_3ff02e COMMA a,b",
+        "QA176_3ff02e COMMA a,b"
+      ],
+      "want_labels": [
+        "comma"
+      ]
+    },
+    {
+      "label": "missing",
+      "terms": [
+        "QA176_3ff02e ABSENT"
+      ],
+      "want_labels": []
+    }
+  ]
+}

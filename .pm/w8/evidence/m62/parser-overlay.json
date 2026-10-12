@@ -1,0 +1,5 @@
+{
+  "Replace": {
+    "<REPO>/lego/backend/internal/apps/qa171_nul_parser_test.go": "<QA_TMP>/sweep171-parser-probe_test.go"
+  }
+}

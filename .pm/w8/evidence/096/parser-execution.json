@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-12T03:42:58.242344+00:00",
+  "command": [
+    "go",
+    "test",
+    "-overlay=<QA_TMP>/sweep173-parser-overlay.json",
+    "-run",
+    "^TestQAReferenceTypeCurrent173$",
+    "-count=1",
+    "-v",
+    "./internal/apps"
+  ],
+  "toolchain": "Go1.26.8/GOWORKoff",
+  "exit": 0,
+  "stdout": "=== RUN   TestQAReferenceTypeCurrent173\n--- PASS: TestQAReferenceTypeCurrent173 (0.01s)\nPASS\nok  \tgithub.com/bex-co/bex/lego/backend/internal/apps\t0.738s\n",
+  "stderr": "",
+  "qualification": "Current implementation diagnostic, no product fix or full suite"
+}

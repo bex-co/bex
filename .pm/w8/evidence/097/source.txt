@@ -1,0 +1,431 @@
+Source HEAD: aeeba21e7cd5a56a0f59d5a0ffe7d17fa457aff0
+
+deploy/gitops/base/log-shipper.yaml:278
+278:               // `level` on App logs: parsed from the line's own JSON or logfmt
+279:               // severity field, NEVER guessed from substring matching (a line
+280:               // containing the word "error" is not an error). Lines without a
+281:               // recognized structured severity are labelled `unknown`.
+282:               loki.process "app_logs" {
+283:                 // CRI-framed file lines: restore the message, its stream and its
+284:                 // ORIGINAL write timestamp (see build_logs). The kubelet API's
+285:                 // "unable to retrieve container logs" / "failed to try resolving
+286:                 // symlinks" placeholders (w8/050) were answers from the log API
+287:                 // and never appear in the file, so their drops went with it.
+288:                 // Split-line reassembly is capped: see CRI LINE CAP above.
+289:                 stage.cri {
+290:                   max_partial_line_size          = 200000
+291:                   max_partial_line_size_truncate = true
+292:                 }
+293:                 // The file source labels each entry with its node path, and
+294:                 // stage.cri with its stream. Neither is in bex's label vocabulary
+295:                 // (ADR010), and keeping today's stream identity means a line
+296:                 // re-read after a restart is a byte-identical duplicate Loki
+297:                 // discards, not a second stream.
+298:                 stage.label_drop {
+299:                   values = ["filename", "stream"]
+300:                 }
+301: 
+302:                 // Both spellings seen in the wild: `level` (slog/zap/logrus/bunyan
+303:                 // via "level", pino numeric aside) and `severity` (OTel/GCP).
+304:                 stage.json {
+305:                   expressions = {
+306:                     level    = "level",
+307:                     severity = "severity",
+308:                   }
+309:                 }
+310: 
+311:                 // slog's TextHandler and logrus's TextFormatter emit logfmt.
+312:                 // Extract only explicit severity keys, never message substrings.
+313:                 // Gated to non-JSON lines carrying a top-level level=/severity=
+314:                 // token: JSON and quoted plain text are not logfmt, and decoding
+315:                 // them logged "failed to decode logfmt" per line (w7/m155, 8,979
+316:                 // in one production day), burying genuine ingestion errors.
+317:                 stage.match {
+318:                   selector = `{app=~".+"} !~ "^\\s*[{]" |~ "(^|\\s)(level|severity)="`
+319:                   stage.logfmt {
+320:                     mapping = { level = "", severity = "" }
+321:                   }
+322:                 }
+323: 
+324:                 // Normalize the vocabulary to Render's five buckets. Anything not
+325:                 // recognized collapses to `unknown` rather than minting an unbounded
+326:                 // label value per typo — the cardinality budget above holds because
+327:                 // this template can only ever emit those 5 values.
+328:                 stage.template {
+329:                   source   = "level"
+330:                   // Escaped for Helm's tpl pass — see the HELM TPL ESCAPING
+331:                   // note at the top of this file for why.
+332:                   template = "{{ "{{" }} $l := ToLower (or .Value .severity) {{ "}}" }}{{ "{{" }} if or (eq $l \"error\") (eq $l \"err\") (eq $l \"fatal\") (eq $l \"panic\") (eq $l \"critical\") (eq $l \"crit\") {{ "}}" }}error{{ "{{" }} else if or (eq $l \"warn\") (eq $l \"warning\") {{ "}}" }}warning{{ "{{" }} else if or (eq $l \"info\") (eq $l \"notice\") {{ "}}" }}info{{ "{{" }} else if or (eq $l \"debug\") (eq $l \"trace\") {{ "}}" }}debug{{ "{{" }} else {{ "}}" }}unknown{{ "{{" }} end {{ "}}" }}"
+333:                 }
+334: 
+335:                 // The `unknown` bucket, and Render's type vocabulary (app | request
+336:                 // | build) so list_log_label_values(label="type") discovers real
+337:                 // values. These are DEFAULTS: they must precede stage.labels, which
+338:                 // overwrites `level` with the normalized severity. Lines without
+339:                 // a recognized severity retain the honest `unknown` bucket.
+340:                 stage.static_labels {
+341:                   values = {
+342:                     type  = "app",
+343:                     level = "unknown",
+344:                   }
+345:                 }
+346: 
+347:                 stage.labels {
+348:                   values = { level = "level" }
+349:                 }
+350: 
+351:                 forward_to = [loki.write.default.receiver]
+352:               }
+353: 
+
+deploy/gitops/base/log-shipper.yaml:489
+489:               loki.process "platform_logs" {
+490:                 stage.json {
+491:                   expressions = {
+492:                     level    = "level",
+493:                     severity = "severity",
+494:                   }
+495:                 }
+496: 
+497:                 // The operator manager logs zap console lines:
+498:                 // "<ts>\t<LEVEL>\t<msg>\t{json}" (w7/m157).
+499:                 stage.regex {
+500:                   expression = "^\\S+\\t(?P<zap_level>[A-Z]+)\\t"
+501:                 }
+502: 
+503:                 stage.template {
+504:                   source   = "level"
+505:                   template = "{{ "{{" }} $l := ToLower (or .Value .severity .zap_level) {{ "}}" }}{{ "{{" }} if or (eq $l \"error\") (eq $l \"err\") (eq $l \"fatal\") (eq $l \"panic\") (eq $l \"critical\") (eq $l \"crit\") {{ "}}" }}error{{ "{{" }} else if or (eq $l \"warn\") (eq $l \"warning\") {{ "}}" }}warning{{ "{{" }} else if or (eq $l \"info\") (eq $l \"notice\") {{ "}}" }}info{{ "{{" }} else if or (eq $l \"debug\") (eq $l \"trace\") {{ "}}" }}debug{{ "{{" }} else {{ "}}" }}unknown{{ "{{" }} end {{ "}}" }}"
+506:                 }
+507: 
+508:                 stage.static_labels {
+509:                   values = {
+510:                     type  = "platform",
+511:                     level = "unknown",
+512:                   }
+513:                 }
+514: 
+515:                 stage.labels {
+516:                   values = { level = "level" }
+517:                 }
+518: 
+519:                 forward_to = [loki.write.default.receiver]
+520:               }
+521: 
+522:               // --- type=postgres: managed tenant CNPG logs ---
+523: 
+524:               discovery.relabel "database_pods" {
+525:                 targets = discovery.kubernetes.pods.targets
+
+lego/backend/internal/logs/loki.go:430
+430: 		}
+431: 	}
+432: 	// The labels the shipper attaches; `path`/`host` are deliberately absent —
+433: 	// they are line-only (see the cardinality budget in log-shipper.yaml) and are
+434: 	// applied as line filters by lokiQueryFor instead.
+435: 	add := func(label string, values []string) {
+436: 		if m := labelMatcher(label, values); m != "" {
+437: 			matchers = append(matchers, m)
+438: 		}
+439: 	}
+440: 	add(lokiLabelFor(LabelLevel), storedLevels(q.Level))
+441: 	add(lokiLabelFor(LabelInstance), q.Instance)
+442: 	add(lokiLabelFor(LabelMethod), q.Method)
+443: 	// statusCode is the one filter with a class shorthand (`4xx`), expanded here —
+444: 	// at the filter that owns the vocabulary, not inside labelMatcher, which would
+
+lego/backend/internal/logs/loki.go:557
+557: 	return "^(" + strings.Join(alts, "|") + ")$"
+558: }
+559: 
+560: // storedLevels maps Render's level names — the only ones the pinned CLI
+561: // accepts: debug, info, notice, warning, error, critical, alert, emergency —
+562: // onto the buckets the log shipper stores (w8/031). The shipper normalizes
+563: // severities to debug|info|warning|error (warning was stored as `warn` before
+564: // w8/031; both spellings match so older streams stay findable), so an exact
+565: // match on `warning`, `notice` or `critical` used to find nothing.
+566: func storedLevels(values []string) []string {
+567: 	if len(values) == 0 {
+568: 		return values
+569: 	}
+570: 	seen := map[string]bool{}
+571: 	var out []string
+572: 	add := func(vs ...string) {
+573: 		for _, v := range vs {
+574: 			if !seen[v] {
+575: 				seen[v] = true
+576: 				out = append(out, v)
+577: 			}
+578: 		}
+579: 	}
+580: 	for _, v := range values {
+581: 		switch strings.ToLower(v) {
+582: 		case "warning", "warn":
+583: 			add("warning", "warn")
+584: 		case "notice":
+585: 			add("info", "notice")
+586: 		case "critical", "alert", "emergency", "fatal":
+587: 			add("error", strings.ToLower(v))
+588: 		default:
+589: 			add(v)
+590: 		}
+591: 	}
+592: 	return out
+593: }
+594: 
+
+lego/backend/internal/logs/service.go:624
+624: 	}
+625: 	q.App = ""
+626: 	q.Database = database.Name
+627: 	if err := q.validatePostgres(); err != nil {
+628: 		return nil, err
+629: 	}
+630: 	if len(q.Level) > 0 {
+631: 		q.levelFilter, err = regexp.Compile(labelValuePattern(storedLevels(q.Level)))
+632: 		if err != nil {
+633: 			return nil, fmt.Errorf("%w: invalid Postgres level filter: %v", core.ErrBadRequest, err)
+634: 		}
+635: 	}
+636: 	if s.History == nil && s.PodLogs == nil {
+637: 		return nil, core.ErrLogsUnavailable
+638: 	}
+
+scripts/test_log_shipper.py:186
+186:             '{"level":"info","msg":"level=error is only a message"}': "info",
+187:             '{"msg":"level=error is only a message"}': "unknown",
+188:             'level=error msg=logfmt-error': "error",
+189:             'time=2026-09-22T00:41:37.000Z level=ERROR msg="request failed" path=/x': "error",
+190:             'severity=ERROR msg="severity alias"': "error",
+191:             'level="ERROR" msg="quoted severity"': "error",
+192:             'level=info severity=error msg="level takes precedence"': "info",
+193:             'msg="level=error is only a message"': "unknown",
+194:             'level=info msg="error in an info message"': "info",
+195:             'ERROR plaintext error': "unknown",
+196:             'plain text mentioning error': "unknown",
+197:             'msg="no severity"': "unknown",
+198:             'level=custom-value msg="unrecognized severity"': "unknown",
+199:             # w7/m155: quoted text and JSON are not logfmt. Before the logfmt
+200:             # stage was gated these produced Alloy's "failed to decode logfmt"
+201:             # error per line (8,979 in one production day).
+202:             'GET "/healthz" 200 12ms': "unknown",
+203:             '{"level":"warn","msg":"quoted \\"json\\" value"}': "warning",
+204:             '{"level":"error","msg":"truncated json"': "unknown",
+205:             '  {"msg":"indented json without a severity"}': "unknown",
+206:             'ts=2026-09-28T06:09:24Z level=warn msg="spaced \\"escaped\\" quotes"': "warning",
+207:         }
+208:         # Render's level names (w8/031): warnings ship as `warning`, the value
+209:         # the pinned CLI's --level sends.
+210:         for value, expected in {
+211:             "err": "error", "fatal": "error", "panic": "error",
+212:             "critical": "error", "crit": "error", "warn": "warning",
+213:             "WARNING": "warning", "info": "info", "notice": "info",
+214:             "DEBUG": "debug", "trace": "debug",
+215:         }.items():
+216:             for key in ("level", "severity"):
+217:                 cases[f'{key}={value} msg="normalization"'] = expected
+218: 
+219:         # discovery.relabel.app_pods drops every pod without app.bex.co/app,
+220:         # so every production app_logs entry carries these labels.
+221:         actual, output = run_pipeline(self, "app_logs", list(cases), "app", APP_TARGET, cri=True)
+222:         self.assertEqual(set(actual), set(cases), f"missing or changed log lines:\n{output}")
+223:         for line, expected in cases.items():
+224:             with self.subTest(line=line):
+225:                 self.assertEqual(actual[line].get("level"), expected)
+226:         self.assertEqual({labels.get("level") for labels in actual.values()},
+227:                          {"error", "warning", "info", "debug", "unknown"})
+228:         # Every supported format parses without a stage diagnostic: expected
+229:         # mismatches must not bury genuine ingestion errors.
+230:         diagnostics = [line for line in output.splitlines()
+231:                        if '"component_id":"loki.process.app_logs"' in line
+232:                        and re.search(r'"level":"(error|warn)"', line)]
+
+Pinned Render cmd/logs.go:60
+60: 	}
+61: 
+62: 	directionFlag := command.NewEnumInput([]string{"backward", "forward"}, false)
+63: 	levelFlag := command.NewEnumInput([]string{
+64: 		"debug", "info", "notice", "warning", "error", "critical", "alert", "emergency",
+65: 	}, true)
+66: 	logTypeFlag := command.NewEnumInput([]string{"app", "request", "build"}, true)
+67: 	methodTypeFlag := command.NewEnumInput([]string{
+68: 		"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD", "CONNECT", "TRACE",
+69: 	}, true)
+70: 
+71: 	startTimeFlag := command.NewTimeInput()
+72: 	endTimeFlag := command.NewTimeInput()
+73: 
+74: 	logCmd.Flags().StringSliceP("resources", "r", []string{}, "Filter logs by comma-separated resource IDs (Required in non-interactive mode)")
+75: 	logCmd.Flags().Var(startTimeFlag, "start", "Filter logs at or after the specified start time")
+76: 	logCmd.Flags().Var(endTimeFlag, "end", "Filter logs at or before the specified end time")
+77: 	logCmd.Flags().StringSlice("text", []string{}, "Filter logs by comma-separated text values")
+78: 	logCmd.Flags().Var(levelFlag, "level", "Filter logs by comma-separated log levels")
+79: 	logCmd.Flags().Var(logTypeFlag, "type", "Filter logs by comma-separated log types")
+80: 	logCmd.Flags().StringSlice("instance", []string{}, "Filter logs by comma-separated instance IDs")
+
+Pinned Render pkg/tui/views/logloader.go:126
+126: func (l *LogLoader) ToParam(ctx context.Context, in LogInput) (*client.ListLogsParams, error) {
+127: 	var ownerID string
+128: 	if !l.local {
+129: 		var err error
+130: 		ownerID, err = config.WorkspaceID()
+131: 		if err != nil {
+132: 			return nil, fmt.Errorf("error getting workspace ID: %v", err)
+133: 		}
+134: 	}
+135: 
+136: 	if in.Limit == 0 {
+137: 		in.Limit = logs.DefaultLogLimit
+138: 	}
+139: 
+140: 	var startTime *time.Time
+141: 	if in.StartTime != nil {
+142: 		startTime = in.StartTime.T
+143: 	}
+144: 
+145: 	var endTime *time.Time
+146: 	if in.EndTime != nil {
+147: 		endTime = in.EndTime.T
+148: 	}
+149: 
+150: 	resourceIDs, err := l.getResourceIDsFromIDOrNames(ctx, in.ResourceIDs)
+151: 	if err != nil {
+152: 		return nil, err
+153: 	}
+154: 
+155: 	return &client.ListLogsParams{
+156: 		Resource:   resourceIDs,
+157: 		OwnerId:    ownerID,
+158: 		Instance:   pointers.FromArray(in.Instance),
+159: 		Limit:      pointers.From(in.Limit),
+160: 		StartTime:  startTime,
+161: 		EndTime:    endTime,
+162: 		Text:       pointers.FromArray(in.Text),
+163: 		Level:      pointers.FromArray(in.Level),
+164: 		Type:       pointers.FromArray(in.Type),
+165: 		Host:       pointers.FromArray(in.Host),
+166: 		StatusCode: pointers.FromArray(in.StatusCode),
+167: 		Method:     pointers.FromArray(in.Method),
+168: 		Path:       pointers.FromArray(in.Path),
+169: 		Direction:  pointers.From(mapDirection(in.Direction)),
+170: 		Task:       pointers.FromArray(in.TaskID),
+171: 		TaskRun:    pointers.FromArray(in.TaskRunID),
+172: 	}, nil
+173: }
+
+Pinned Render pkg/logs/repo.go:26
+26: func (l *LogRepo) ListLogs(ctx context.Context, params *client.ListLogsParams) (*client.Logs200Response, error) {
+27: 	logs, err := l.c.ListLogsWithResponse(ctx, params)
+28: 	if err != nil {
+29: 		return nil, err
+30: 	}
+31: 
+32: 	if err := client.ErrorFromResponse(logs); err != nil {
+33: 		return nil, err
+34: 	}
+35: 
+36: 	return logs.JSON200, nil
+37: }
+38: 
+39: func (l *LogRepo) TailLogs(ctx context.Context, params *client.ListLogsParams) (<-chan *lclient.Log, error) {
+40: 	subscribeParams := client.SubscribeLogsParams(*params)
+41: 	req, err := client.NewSubscribeLogsRequest(l.apiConfig.Host, &subscribeParams)
+42: 	if err != nil {
+43: 		return nil, err
+44: 	}
+
+Pinned Render pkg/client/client_gen.go:12552
+12552: func NewListLogsRequest(server string, params *ListLogsParams) (*http.Request, error) {
+12553: 	var err error
+12554: 
+12555: 	serverURL, err := url.Parse(server)
+12556: 	if err != nil {
+12557: 		return nil, err
+12558: 	}
+12559: 
+12560: 	operationPath := fmt.Sprintf("/logs")
+12561: 	if operationPath[0] == '/' {
+12562: 		operationPath = "." + operationPath
+12563: 	}
+12564: 
+12565: 	queryURL, err := serverURL.Parse(operationPath)
+12566: 	if err != nil {
+12567: 		return nil, err
+12568: 	}
+12569: 
+12570: 	if params != nil {
+12571: 		// queryValues collects non-styled parameters (passthrough, JSON)
+12572: 		// that are safe to round-trip through url.Values.Encode().
+12573: 		queryValues := queryURL.Query()
+12574: 		// rawQueryFragments collects pre-encoded query fragments from
+12575: 		// styled parameters, preserving literal commas as delimiters
+12576: 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+12577: 		var rawQueryFragments []string
+12578: 
+12579: 		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ownerId", params.OwnerId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+12580: 			return nil, err
+12581: 		} else {
+12582: 			for _, qp := range strings.Split(queryFrag, "&") {
+12583: 				rawQueryFragments = append(rawQueryFragments, qp)
+12584: 			}
+12585: 		}
+12586: 
+12587: 		if params.StartTime != nil {
+12588: 
+12589: 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "startTime", *params.StartTime, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+12590: 				return nil, err
+12591: 			} else {
+12592: 				for _, qp := range strings.Split(queryFrag, "&") {
+12593: 					rawQueryFragments = append(rawQueryFragments, qp)
+12594: 				}
+12595: 			}
+12596: 
+12597: 		}
+12598: 
+12599: 		if params.EndTime != nil {
+12600: 
+12601: 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "endTime", *params.EndTime, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+12602: 				return nil, err
+12603: 			} else {
+12604: 				for _, qp := range strings.Split(queryFrag, "&") {
+12605: 					rawQueryFragments = append(rawQueryFragments, qp)
+12606: 				}
+12607: 			}
+12608: 
+12609: 		}
+12610: 
+12611: 		if params.Direction != nil {
+12612: 
+12613: 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "direction", *params.Direction, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+12614: 				return nil, err
+12615: 			} else {
+12616: 				for _, qp := range strings.Split(queryFrag, "&") {
+12617: 					rawQueryFragments = append(rawQueryFragments, qp)
+12618: 				}
+12619: 			}
+12620: 
+12621: 		}
+12622: 
+12623: 		if params.Resource != nil {
+12624: 
+12625: 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "resource", params.Resource, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+12626: 				return nil, err
+12627: 			} else {
+12628: 				for _, qp := range strings.Split(queryFrag, "&") {
+12629: 					rawQueryFragments = append(rawQueryFragments, qp)
+12630: 				}
+12631: 			}
+12632: 
+12633: 		}
+12634: 
+12635: 		if params.Instance != nil {
+12636: 
+12637: 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "instance", *params.Instance, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+12638: 				return nil, err
+12639: 			} else {
+12640: 				for _, qp := range strings.Split(queryFrag, "&") {
+12641: 					rawQueryFragments = append(rawQueryFragments, qp)
+12642: 				}
+12643: 			}
+12644: 
+12645: 		}

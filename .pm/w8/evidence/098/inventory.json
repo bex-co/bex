@@ -1,0 +1,56 @@
+{
+  "at": "2026-10-12T21:05:13.950531+00:00",
+  "native_metadata_reads": {
+    "services": {
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.007,
+      "ids": [
+        "srv-daif6dsmg29s73d1umvg",
+        "srv-dap3r714dm7c7390q91g",
+        "srv-dap3umrbdpcs73f5eeug",
+        "srv-dap3v694dm7c7390q930",
+        "srv-db09u90ehcmc739j12cg",
+        "srv-db09vbgehcmc739j12i0"
+      ],
+      "count": 6
+    },
+    "postgres": {
+      "command": [
+        "bex",
+        "postgres",
+        "list",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.84,
+      "ids": [],
+      "count": 0
+    },
+    "keyvalue": {
+      "command": [
+        "bex",
+        "keyvalue",
+        "list",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.67,
+      "ids": [],
+      "count": 0
+    }
+  },
+  "created_hosted_resources": 0,
+  "created_local_containers": 0,
+  "qualification": "Validation only; no Kubernetes descendant check. Initial metadata harness attempts encountered parent-command help and envelope parsing errors; their successful reads were reused with the actual list/data shapes and no mutation was sent."
+}

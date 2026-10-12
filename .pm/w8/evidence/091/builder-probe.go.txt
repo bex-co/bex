@@ -1,0 +1,7 @@
+package main
+import("encoding/json";"fmt";"github.com/render-oss/cli/pkg/client")
+func main(){
+ owner:=client.OwnerIdParam{"tea-daif693dqjvc73e7as3g"}; limit:=client.LimitParam(100); empty:=client.NameParam{""}; valid:=client.NameParam{"qa-20261011-7de445-absent"}
+ cases:=[]struct{Name string;Param *client.NameParam}{{"empty selector",&empty},{"absent nonempty name",&valid},{"omitted name",nil}}
+ for _,c:=range cases{r,e:=client.NewListServicesRequest("https://api.bex.co/v1/",&client.ListServicesParams{Name:c.Param,OwnerId:&owner,Limit:&limit});if e!=nil{panic(e)};b,_:=json.Marshal(map[string]any{"case":c.Name,"method":r.Method,"path":r.URL.RequestURI(),"qualification":"Actual pinned generated request builder only; does not send HTTP and is not intercepted native wire."});fmt.Println(string(b))}
+}

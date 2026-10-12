@@ -1,0 +1,88 @@
+{
+  "source_head": "ab2a07ad26f3076d621816da7f1eebf6db08f69f",
+  "toolchain": "go1.27.0",
+  "command": [
+    "go",
+    "test",
+    "-overlay=[private overlay]",
+    "./internal/apps",
+    "-run",
+    "^TestQA143PresenceProbe$",
+    "-count=1",
+    "-v"
+  ],
+  "exit": 0,
+  "results": [
+    {
+      "case": "seed-empty-copy",
+      "compiler_errors": 0,
+      "parse_error": "bad request: service \"qa143-544da4-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa143-544da4-target\", which has no such plainly-defined variable",
+      "parse_failed": true,
+      "source_value_declared": true,
+      "source_value_is_empty_string": true
+    },
+    {
+      "case": "seed-empty-unreferenced",
+      "compiler_errors": 0,
+      "parse_failed": false,
+      "prompt_keys": [
+        "SOURCE_VALUE"
+      ],
+      "seed_literal_present": false,
+      "seed_literal_value": "",
+      "source_value_declared": true,
+      "source_value_is_empty_string": true
+    },
+    {
+      "case": "prompt-unreferenced",
+      "compiler_errors": 0,
+      "parse_failed": false,
+      "prompt_keys": [
+        "SOURCE_VALUE"
+      ],
+      "seed_literal_present": false,
+      "seed_literal_value": "",
+      "source_value_declared": false,
+      "source_value_is_empty_string": false
+    },
+    {
+      "case": "literal-empty-copy",
+      "compiler_errors": 0,
+      "copied_value": "",
+      "copied_value_present": true,
+      "parse_failed": false,
+      "prompt_keys": null,
+      "seed_literal_present": false,
+      "seed_literal_value": "",
+      "source_value_declared": true,
+      "source_value_is_empty_string": true
+    },
+    {
+      "case": "seed-space-copy",
+      "compiler_errors": 0,
+      "copied_value": " ",
+      "copied_value_present": true,
+      "parse_failed": false,
+      "prompt_keys": null,
+      "seed_literal_present": true,
+      "seed_literal_value": " ",
+      "source_value_declared": true,
+      "source_value_is_empty_string": false
+    },
+    {
+      "case": "override-empty-copy",
+      "compiler_errors": 0,
+      "copied_value": "",
+      "copied_value_present": true,
+      "parse_failed": false,
+      "prompt_keys": [
+        "SOURCE_VALUE"
+      ],
+      "seed_literal_present": true,
+      "seed_literal_value": "",
+      "source_value_declared": true,
+      "source_value_is_empty_string": true
+    }
+  ],
+  "qualification": "Actual compiler and parser via added virtual test file; repository source unchanged. Probe asserts observed current behavior and controls; no regression fix or full suite. No HTTP, SQL, cluster mutation or production apply."
+}

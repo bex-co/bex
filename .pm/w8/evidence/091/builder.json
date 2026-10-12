@@ -1,0 +1,20 @@
+[
+  {
+    "case": "empty selector",
+    "method": "GET",
+    "path": "/v1/services?name=&ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+    "qualification": "Actual pinned generated request builder only; does not send HTTP and is not intercepted native wire."
+  },
+  {
+    "case": "absent nonempty name",
+    "method": "GET",
+    "path": "/v1/services?name=qa-20261011-7de445-absent&ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+    "qualification": "Actual pinned generated request builder only; does not send HTTP and is not intercepted native wire."
+  },
+  {
+    "case": "omitted name",
+    "method": "GET",
+    "path": "/v1/services?ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+    "qualification": "Actual pinned generated request builder only; does not send HTTP and is not intercepted native wire."
+  }
+]

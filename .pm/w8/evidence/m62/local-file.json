@@ -1,0 +1,69 @@
+[
+  {
+    "label": "nul-file-control",
+    "name": "qa-cli-w8-171-env-4a105ad9",
+    "nonce": "4a105ad9",
+    "at": "2026-10-12T02:27:20.202258+00:00",
+    "image": "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4",
+    "input_length": 18,
+    "input_sha256": "e28d81fb87d318892b267e70acd31f34fef09683b763b83ed2a9aa59bde0d1a8",
+    "input_nul_count": 1,
+    "name_absence_proof": {
+      "at": "2026-10-12T02:27:20.064310+00:00",
+      "exit": 1,
+      "stdout": "\n",
+      "stderr": "Error response from daemon: No such container: qa-cli-w8-171-env-4a105ad9\n"
+    },
+    "intent": [
+      "docker",
+      "create",
+      "--pull=never",
+      "--name",
+      "qa-cli-w8-171-env-4a105ad9",
+      "--network",
+      "none",
+      "--read-only",
+      "--label",
+      "co.bex.qa.sweep171=4a105ad9",
+      "--mount",
+      "type=bind,src=<QA_TMP>/sweep171-local-nul-file-control.env,dst=/etc/secrets/qa-bytes,readonly",
+      "--entrypoint",
+      "/usr/local/bin/python3",
+      "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4",
+      "-c",
+      "import pathlib,json,hashlib; v=pathlib.Path(\"/etc/secrets/qa-bytes\").read_bytes(); print(json.dumps({\"length\":len(v),\"sha256\":hashlib.sha256(v).hexdigest(),\"nul_count\":v.count(bytes([0]))}))"
+    ],
+    "state": "local container deleted",
+    "create_result": {
+      "at": "2026-10-12T02:27:20.202686+00:00",
+      "exit": 0,
+      "stdout": "c246ede490856c3f899c91c92d2a669bf79659bf7aa2a549873e5fd3e393037b\n",
+      "stderr": ""
+    },
+    "id": "c246ede490856c3f899c91c92d2a669bf79659bf7aa2a549873e5fd3e393037b",
+    "start_result": {
+      "at": "2026-10-12T02:27:20.302900+00:00",
+      "exit": 0,
+      "stdout": "{\"length\": 18, \"sha256\": \"e28d81fb87d318892b267e70acd31f34fef09683b763b83ed2a9aa59bde0d1a8\", \"nul_count\": 1}\n",
+      "stderr": ""
+    },
+    "container_state": {
+      "at": "2026-10-12T02:27:20.592526+00:00",
+      "exit": 0,
+      "stdout": "{\"Status\":\"exited\",\"Running\":false,\"Paused\":false,\"Restarting\":false,\"OOMKilled\":false,\"Dead\":false,\"Pid\":0,\"ExitCode\":0,\"Error\":\"\",\"StartedAt\":\"2026-10-12T02:27:20.358600083Z\",\"FinishedAt\":\"2026-10-12T02:27:20.553266Z\"}\n",
+      "stderr": ""
+    },
+    "cleanup_result": {
+      "at": "2026-10-12T02:27:20.616153+00:00",
+      "exit": 0,
+      "stdout": "c246ede490856c3f899c91c92d2a669bf79659bf7aa2a549873e5fd3e393037b\n",
+      "stderr": ""
+    },
+    "after_cleanup": {
+      "at": "2026-10-12T02:27:20.685519+00:00",
+      "exit": 1,
+      "stdout": "\n",
+      "stderr": "Error response from daemon: No such container: c246ede490856c3f899c91c92d2a669bf79659bf7aa2a549873e5fd3e393037b\n"
+    }
+  }
+]

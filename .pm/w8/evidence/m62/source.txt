@@ -1,0 +1,896 @@
+Source HEAD: 97ce481c8eabb13025c118ea9fa96d0aa83832d3
+
+lego/backend/internal/apps/blueprint.go:630
+630: // Blueprint it acts in that Blueprint's own workspace (blueprintScope, w4/m172)
+631: // unless ownerID names one; for a new manifest, in the named or default one.
+632: func (s *Service) blueprintRequestScope(ctx context.Context, relation, bpID, ownerID string) (context.Context, error) {
+633: 	if bpID != "" {
+634: 		return s.blueprintScope(ctx, relation, bpID, ownerID)
+635: 	}
+636: 	if ownerID != "" {
+637: 		ctx = core.WithWorkspace(ctx, ownerID)
+638: 	}
+639: 	return ctx, s.Authorize(ctx, relation)
+640: }
+641: 
+642: // blueprintValidationFor is the read-only dry-run core shared by
+643: // ValidateBlueprint and PreviewBlueprint. repo/branch feed the same parse a
+644: // create would run; both empty for a manifest-only validate.
+645: func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexYAML, blueprintID string) (BlueprintValidation, error) {
+646: 	// One memo for the whole validation: it writes nothing, so every check of
+647: 	// the platform's host claims (domains, maintenance URIs) reads one index.
+648: 	ctx = withRequestMemo(ctx)
+649: 	if blueprintID != "" {
+650: 		if s.Blueprints == nil {
+651: 			return BlueprintValidation{}, ErrBlueprintsUnavailable
+652: 		}
+653: 		if _, err := s.Blueprints.GetBlueprint(ctx, blueprintID, s.resolveTenantID(ctx)); err != nil {
+654: 			return BlueprintValidation{}, store.MapError(err)
+655: 		}
+656: 	}
+657: 	source, ir, problems := CompileBlueprintIR(bexYAML)
+658: 	if len(problems) > 0 {
+659: 		return BlueprintValidation{Errors: blueprintCompilerValidationErrors(problems)}, nil
+660: 	}
+661: 	st, err := parseCompiledStack(blueprintParseOverrides{repo: repo, branch: branch}, source, ir)
+662: 	// The validation writes nothing, so its checks share one workspace snapshot.
+663: 	snap := s.newWorkspaceSnapshot(ctx)
+664: 	var refused blueprintResourceErrors
+665: 	if errors.As(err, &refused) {
+666: 		// Some declarations were refused; the services that parsed still get
+667: 		// their own checks, which do not depend on the refused ones.
+668: 		if svcErr := s.validateBlueprintServices(ctx, st, snap); svcErr != nil {
+669: 			var more blueprintResourceErrors
+670: 			if !errors.As(svcErr, &more) {
+671: 				return BlueprintValidation{}, svcErr
+672: 			}
+673: 			refused = append(refused, more...)
+674: 		}
+675: 		return BlueprintValidation{Errors: blueprintResourceValidationErrors(source, ir, refused)}, nil
+676: 	}
+677: 	if err == nil {
+678: 		err = s.resolveBlueprintRegistryCredentials(ctx, &st)
+679: 	}
+680: 	if err == nil {
+
+lego/backend/internal/apps/deploy.go:455
+455: }
+456: 
+457: // UnmarshalJSON accepts a number for value, which the pinned schema allows
+458: // (envVarFromKeyValue.value is string|number). The compiler has already parsed
+459: // it to an int64/float64, so the process gets Go's JSON text for that number
+460: // (47, 47.5, 1e3 → 1000; magnitudes ≥ 1e21 keep exponent form). Taking the raw
+461: // text means integers never round-trip through float64. Strings, omission and
+462: // null keep the plain string decode.
+463: func (e *bexEnvVar) UnmarshalJSON(data []byte) error {
+464: 	type plain bexEnvVar
+465: 	var raw struct {
+466: 		plain
+467: 		Value json.RawMessage `json:"value"`
+468: 	}
+469: 	if err := json.Unmarshal(data, &raw); err != nil {
+470: 		return err
+471: 	}
+472: 	*e = bexEnvVar(raw.plain)
+473: 	value := bytes.TrimSpace(raw.Value)
+474: 	switch {
+475: 	case len(value) == 0 || bytes.Equal(value, []byte("null")):
+476: 	case value[0] == '-' || (value[0] >= '0' && value[0] <= '9'):
+477: 		e.Value = string(value)
+478: 	default:
+479: 		return json.Unmarshal(value, &e.Value)
+480: 	}
+481: 	return nil
+482: }
+483: 
+484: // bexFromRef is the fromDatabase / fromService target. property is the
+485: // connectionString/host/port/... to pull; envVarKey references another env var
+486: // (fromService only) — resolved by resolveRef, which copies the sibling
+487: // service's declared value at parse time.
+488: type bexFromRef struct {
+489: 	Name      string `json:"name"`
+490: 	Type      string `json:"type"`      // fromService: the referenced service's type
+491: 	Property  string `json:"property"`  // connectionString|host|port|user|password|database|hostport
+492: 	EnvVarKey string `json:"envVarKey"` // fromService alternate: copy another env var
+
+lego/backend/internal/apps/deploy.go:1695
+1695: }
+1696: 
+1697: // validateBlueprintEnvVarValues rejects values that do not name a sync:false
+1698: // prompt before any write. parseService has already attached matching values to
+1699: // its seed-once work; validation deliberately never reports the supplied values.
+1700: func validateBlueprintEnvVarValues(st parsedStack, values map[string]string) error {
+1701: 	if len(values) == 0 {
+1702: 		return nil
+1703: 	}
+1704: 	matched := make(map[string]bool, len(values))
+1705: 	for _, svc := range st.services {
+1706: 		for _, key := range svc.promptKeys {
+1707: 			if _, ok := values[key]; ok {
+1708: 				matched[key] = true
+1709: 			}
+1710: 		}
+1711: 	}
+1712: 	for key := range values {
+1713: 		if !matched[key] {
+1714: 			return fmt.Errorf("%w: envVarValues contains %q, which is not a sync:false Blueprint prompt", core.ErrBadRequest, key)
+1715: 		}
+1716: 	}
+1717: 	return nil
+1718: }
+1719: 
+1720: type blueprintParseOverrides struct {
+1721: 	repo         string
+1722: 	branch       string
+1723: 	envVarValues map[string]string
+1724: }
+1725: 
+1726: // validateUniqueName trims, validates non-empty, and checks for duplicates.
+1727: func validateUniqueName(raw, entityType string, seen map[string]bool) (string, error) {
+1728: 	trimmed := strings.TrimSpace(raw)
+1729: 	if trimmed == "" {
+1730: 		return "", fmt.Errorf("%w: %s is missing its name", core.ErrBadRequest, entityType)
+1731: 	}
+1732: 	if seen[trimmed] {
+1733: 		return "", fmt.Errorf("%w: duplicate %s name %q", core.ErrBadRequest, entityType, trimmed)
+1734: 	}
+1735: 	seen[trimmed] = true
+1736: 	return trimmed, nil
+1737: }
+1738: 
+1739: // poolerRequiredError is the shared wording for a connectionPoolString
+1740: // reference to a database without connectionPool: pgbouncer, so the
+
+lego/backend/internal/apps/deploy.go:2136
+2136: func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
+2137: 	name := strings.TrimSpace(g.Name)
+2138: 	if name == "" {
+2139: 		return parsedEnvGroup{}, fmt.Errorf("%w: an envVarGroups entry is missing its name", core.ErrBadRequest)
+2140: 	}
+2141: 	pg := parsedEnvGroup{name: name, literals: map[string]string{}}
+2142: 	for _, e := range g.EnvVars {
+2143: 		if e.Key == "" {
+2144: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q has an env var without a key", core.ErrBadRequest, name)
+2145: 		}
+2146: 		if !core.ValidEnvKey(e.Key) {
+2147: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: invalid environment variable name (%s)",
+2148: 				core.ErrBadRequest, name, e.Key, core.EnvKeyRule)
+2149: 		}
+2150: 		if core.IsReservedEnvKey(e.Key) {
+2151: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: %s",
+2152: 				core.ErrBadRequest, name, e.Key, core.ReservedEnvKeySentence(e.Key))
+2153: 		}
+2154: 		switch {
+2155: 		case e.FromGroup != "", e.FromDatabase != nil, e.FromService != nil:
+2156: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q var %q: a group cannot reference services or other groups", core.ErrBadRequest, name, e.Key)
+2157: 		case e.Sync != nil && !*e.Sync:
+2158: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q var %q: sync:false is not allowed inside an env group", core.ErrBadRequest, name, e.Key)
+2159: 		case e.GenerateValue:
+2160: 			if e.Value != "" {
+2161: 				return parsedEnvGroup{}, fmt.Errorf("%w: env group %q var %q sets both value and generateValue", core.ErrBadRequest, name, e.Key)
+2162: 			}
+2163: 			pg.generates = append(pg.generates, e.Key)
+2164: 		default:
+2165: 			pg.literals[e.Key] = e.Value
+2166: 		}
+2167: 	}
+2168: 	return pg, nil
+2169: }
+2170: 
+2171: // serviceEnv is the classified env of one service entry: plain literals ride
+2172: // req.Env directly; the rest is deferred to apply time or resolved in pass 2.
+2173: type serviceEnv struct {
+2174: 	refVars       []bexEnvVar       // fromDatabase / fromService — resolved once every name is known
+2175: 	groupLinks    []string          // fromGroup names, linked as a create writes the service or after an update
+2176: 	seedLiterals  map[string]string // sync:false literals, seeded once into the mutable env store
+2177: 	seedGenerates []string          // generateValue keys, minted + seeded once
+2178: 	promptKeys    []string          // sync:false keys with no manifest value
+2179: 	known         map[string]string // this service's parse-time-known env (for a sibling's fromService.envVarKey)
+2180: }
+2181: 
+2182: // parseService maps one services[] entry onto a CreateRequest (with repo/branch
+
+lego/backend/internal/apps/deploy.go:2376
+2376: func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv1alpha1.EnvVar, serviceEnv, error) {
+2377: 	se := serviceEnv{seedLiterals: map[string]string{}, known: map[string]string{}}
+2378: 	literal := make([]appv1alpha1.EnvVar, 0, len(a.EnvVars))
+2379: 	for _, e := range a.EnvVars {
+2380: 		if e.FromGroup != "" {
+2381: 			if err := validateGroupLink(e); err != nil {
+2382: 				return nil, serviceEnv{}, fmt.Errorf("%w: %s: %v", core.ErrBadRequest, a.Name, err)
+2383: 			}
+2384: 			se.groupLinks = append(se.groupLinks, e.FromGroup)
+2385: 			continue
+2386: 		}
+2387: 		if err := validateKeyedEnv(e); err != nil {
+2388: 			return nil, serviceEnv{}, fmt.Errorf("%w: %s env %q: %v", core.ErrBadRequest, a.Name, e.Key, err)
+2389: 		}
+2390: 		// A reserved key is refused here, before any seed or CR write. The
+2391: 		// message carries the location the way every neighbouring Blueprint
+2392: 		// parse error does — the validation surface renders the error string,
+2393: 		// not a code (w2/m95 t003).
+2394: 		if !core.ValidEnvKey(e.Key) {
+2395: 			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: invalid environment variable name (%s)",
+2396: 				core.ErrBadRequest, a.Name, e.Key, core.EnvKeyRule)
+2397: 		}
+2398: 		if core.IsReservedEnvKey(e.Key) {
+2399: 			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: %s",
+2400: 				core.ErrBadRequest, a.Name, e.Key, core.ReservedEnvKeySentence(e.Key))
+2401: 		}
+2402: 		switch {
+2403: 		case e.FromDatabase != nil, e.FromService != nil:
+2404: 			se.refVars = append(se.refVars, e)
+2405: 		case e.GenerateValue:
+2406: 			se.seedGenerates = append(se.seedGenerates, e.Key)
+2407: 		case e.Sync != nil && !*e.Sync:
+2408: 			// A literal seeds immediately; an omitted value is a create-time prompt
+2409: 			// that DeployRequest.EnvVarValues may seed exactly once.
+2410: 			if e.Value != "" {
+2411: 				se.seedLiterals[e.Key] = e.Value
+2412: 				se.known[e.Key] = e.Value
+2413: 			} else {
+2414: 				se.promptKeys = append(se.promptKeys, e.Key)
+2415: 				if value, ok := overrides.envVarValues[e.Key]; ok {
+2416: 					se.seedLiterals[e.Key] = value
+2417: 					se.known[e.Key] = value
+2418: 				}
+2419: 			}
+2420: 		default:
+2421: 			literal = append(literal, appv1alpha1.EnvVar{Name: e.Key, Value: e.Value})
+2422: 			se.known[e.Key] = e.Value
+2423: 		}
+2424: 	}
+2425: 	if len(literal) == 0 {
+2426: 		literal = nil
+2427: 	}
+2428: 	if len(se.seedLiterals) == 0 {
+2429: 		se.seedLiterals = nil
+2430: 	}
+
+lego/backend/internal/core/environmentpatch.go:70
+70: }
+71: 
+72: // ApplyEnvVarPatch applies validated sparse operations to env in request
+73: // order. The caller owns transactionality; this helper owns the shared
+74: // secrecy-preserving rename/delete/generation semantics.
+75: func ApplyEnvVarPatch(env map[string]string, writes []EnvVarPatch) error {
+76: 	ops := make([]mapPatchOp, len(writes))
+77: 	for i, write := range writes {
+78: 		write := write
+79: 		hasValue := write.ValueSet || write.Value != ""
+80: 		ops[i] = mapPatchOp{
+81: 			key:        write.Key,
+82: 			fromKey:    write.FromKey,
+83: 			remove:     write.Delete,
+84: 			hasPayload: write.GenerateValue || hasValue,
+85: 			value: func(key string) (string, error) {
+86: 				if write.GenerateValue == hasValue {
+87: 					return "", InvalidEnvVarValueInput(key)
+88: 				}
+89: 				if write.GenerateValue {
+90: 					return GenerateValue()
+91: 				}
+92: 				return write.Value, nil
+93: 			},
+94: 		}
+95: 	}
+96: 	return applyMapPatch(env, ops, mapPatchWording{
+97: 		key:             envVarKey,
+98: 		renameConflicts: "delete, value, or generateValue",
+99: 		deleteConflicts: "a value or generateValue",
+100: 	})
+101: }
+102: 
+
+lego/backend/internal/core/config.go:180
+180: // wants to set: it must be well-formed and must not be one bex owns. Every
+181: // write path funnels through it so the two refusals cannot drift apart.
+182: func CheckEnvKey(k string) error {
+183: 	if !ValidEnvKey(k) {
+184: 		// Names only in the error — never the value (docs/ADR013-secrets.md).
+185: 		return envVarKey.refuse(k)
+186: 	}
+187: 	if IsReservedEnvKey(k) {
+188: 		return ReservedEnvKeyError(k)
+189: 	}
+190: 	return nil
+191: }
+192: 
+193: // ValidSecretFileName reports whether name is a legal Kubernetes Secret key:
+194: // the file is mounted at /etc/secrets/<name>, so a name outside the rule (a
+195: // path, or "..data", which the kubelet's atomic-writer layout owns) would fail
+196: // the Secret write.
+197: func ValidSecretFileName(name string) bool {
+198: 	return secretFileKey.problem(name) == ""
+199: }
+200: 
+201: // CheckSecretFileName is CheckEnvKey's twin for secret files: the one refusal
+202: // every secret-file write returns for a name ValidSecretFileName rejects.
+203: func CheckSecretFileName(name string) error {
+
+lego/backend/internal/secrets/service.go:474
+474: func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarView) ([]EnvVarView, error) {
+475: 	// One App read: existence check + patch base.
+476: 	a, ctx, service, err := s.scopeForWrite(ctx, core.RelCanCreate, service)
+477: 	if err != nil {
+478: 		return nil, err
+479: 	}
+480: 	keys := make([]string, 0, len(vars))
+481: 	for _, v := range vars {
+482: 		keys = append(keys, v.Key)
+483: 	}
+484: 	if err := refuseManifestKeys(a, keys...); err != nil {
+485: 		return nil, err
+486: 	}
+487: 	env := make(map[string]string, len(vars))
+488: 	for _, v := range vars {
+489: 		key := strings.TrimSpace(v.Key)
+490: 		if err := core.CheckEnvKey(key); err != nil {
+491: 			// Names only in the error — never the value (docs/ADR013-secrets.md, t005).
+492: 			return nil, err
+493: 		}
+494: 		value, err := resolveValue(key, v.Value, v.Generate)
+495: 		if err != nil {
+496: 			return nil, err
+497: 		}
+498: 		env[key] = value
+499: 	}
+500: 	// Round-11 #6: the whole replacement map must fit the aggregate quota
+501: 	// before anything is written.
+502: 	if err := envMapWithinQuota(env); err != nil {
+503: 		return nil, err
+504: 	}
+505: 	// Render's PUT replaces the whole set, last writer wins; the CAS write is
+506: 	// what lets a failed projection's restore tell a later write apart.
+507: 	_, envWrite, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
+508: 		if maps.Equal(current, env) {
+509: 			return false
+510: 		}
+
+lego/backend/internal/secrets/service.go:541
+541: func resolveValue(key, value string, generate bool) (string, error) {
+542: 	if !generate {
+543: 		return value, nil
+544: 	}
+545: 	if value != "" {
+546: 		return "", fmt.Errorf("%w: env var %q sets both value and generateValue — pick one", core.ErrBadRequest, key)
+547: 	}
+548: 	return core.GenerateValue()
+549: }
+550: 
+551: // SetEnvVar adds or updates one variable (Render's PUT .../env-vars/{key}, body
+552: // {value} or {generateValue:true}), merging it into the existing set rather than
+553: // replacing it. Returns the bare {key,value}. Manage-scope verb.
+554: func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvVarWrite) (EnvVarView, error) {
+555: 	a, ctx, service, err := s.scopeForWrite(ctx, core.RelCanCreate, service)
+556: 	if err != nil {
+557: 		return EnvVarView{}, err
+558: 	}
+559: 	key = strings.TrimSpace(key)
+560: 	if err := core.CheckEnvKey(key); err != nil {
+561: 		return EnvVarView{}, err
+562: 	}
+563: 	if err := refuseManifestKeys(a, key); err != nil {
+564: 		return EnvVarView{}, err
+565: 	}
+566: 	value, err := resolveValue(key, write.Value, write.GenerateValue)
+567: 	if err != nil {
+568: 		return EnvVarView{}, err
+569: 	}
+570: 	// Round-11 #6: enforce the aggregate quota inside the CAS mutate so it is
+571: 	// re-checked against the fresh map on every retry; a quota breach mutates
+572: 	// nothing (changed=false) and surfaces after the loop.
+573: 	var quota error
+574: 	env, envWrite, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
+575: 		if v, ok := current[key]; ok && v == value {
+576: 			return false // no change
+577: 		}
+578: 		current[key] = value
+579: 		if err := envMapWithinQuota(current); err != nil {
+580: 			quota = err
+581: 			return false
+582: 		}
+583: 		return true
+584: 	})
+585: 	if err != nil {
+
+lego/backend/internal/secrets/service.go:651
+651: func (s *Service) SeedEnvVars(ctx context.Context, service string, literals map[string]string, generates []string) error {
+652: 	a, ctx, service, err := s.scopeForWrite(ctx, core.RelCanCreate, service)
+653: 	if err != nil {
+654: 		return err
+655: 	}
+656: 	var seedErr, quota error
+657: 	changed := false
+658: 	env, envWrite, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
+659: 		changed, seedErr, quota = false, nil, nil
+660: 		seed := func(key, value string, generate bool) error {
+661: 			key = strings.TrimSpace(key)
+662: 			if err := core.CheckEnvKey(key); err != nil {
+663: 				return err
+664: 			}
+665: 			if _, ok := current[key]; ok {
+666: 				return nil // seed-once: an already-set key keeps its live value
+667: 			}
+668: 			v, err := resolveValue(key, value, generate)
+669: 			if err != nil {
+670: 				return err
+671: 			}
+672: 			current[key] = v
+673: 			changed = true
+674: 			return nil
+675: 		}
+676: 		// Sort keys so a rand.Read failure (or a bad name) is deterministic across runs.
+677: 		for _, key := range core.SortedKeys(literals) {
+678: 			if seedErr = seed(key, literals[key], false); seedErr != nil {
+679: 				return false
+680: 			}
+681: 		}
+682: 		for _, key := range generates {
+683: 			if seedErr = seed(key, "", true); seedErr != nil {
+684: 				return false
+685: 			}
+686: 		}
+687: 		if !changed {
+688: 			return false // every key already seeded — no Secret write, no roll
+689: 		}
+690: 		// Round-11 #6: the merged map must fit the aggregate quota (a
+691: 		// blueprint seeding onto an already-large map is the same
+692: 		// amplification a per-key write is).
+693: 		if quota = envMapWithinQuota(current); quota != nil {
+694: 			return false
+695: 		}
+
+lego/backend/internal/secrets/service.go:827
+827: func envMapWithinQuota(env map[string]string) error {
+828: 	if len(env) > maxEnvKeys {
+829: 		return fmt.Errorf("%w: environment variable limit of %d exceeded", core.ErrBadRequest, maxEnvKeys)
+830: 	}
+831: 	if mapBytes(env) > maxSecretMapBytes {
+832: 		return fmt.Errorf("%w: total environment variable size limit of %d bytes exceeded", core.ErrBadRequest, maxSecretMapBytes)
+833: 	}
+834: 	return nil
+835: }
+836: 
+837: // filesMapWithinQuota is envMapWithinQuota for a service's secret files.
+838: func filesMapWithinQuota(files map[string]string) error {
+839: 	if len(files) > maxSecretFiles {
+840: 		return fmt.Errorf("%w: secret file limit of %d exceeded", core.ErrBadRequest, maxSecretFiles)
+841: 	}
+842: 	if mapBytes(files) > maxSecretMapBytes {
+843: 		return fmt.Errorf("%w: total secret file size limit of %d bytes exceeded", core.ErrBadRequest, maxSecretMapBytes)
+844: 	}
+845: 	return nil
+846: }
+847: 
+848: // ValidateEnvMapQuota and ValidateFilesMapQuota are shared by env-group and
+849: // service creation paths. Keeping the limit in this package prevents a
+850: // blueprint/clone path from silently bypassing the per-service mutation gates.
+851: func ValidateEnvMapQuota(env map[string]string) error { return envMapWithinQuota(env) }
+852: 
+853: func ValidateFilesMapQuota(files map[string]string) error { return filesMapWithinQuota(files) }
+854: 
+855: // ValidatePatchEnvMapQuota and ValidatePatchFilesMapQuota are patchWithinQuota
+856: // for callers outside this package (the env-group batch patch, w2/m94/t004).
+857: // A map that is already over quota can still shrink — a group filled before the
+858: // round-11 cap existed would otherwise be permanently unfixable, since the only
+859: // way down is a write and every write was refused.
+860: func ValidatePatchEnvMapQuota(before, after map[string]string) error {
+861: 	return patchWithinQuota(before, after, envMapWithinQuota)
+862: }
+
+lego/backend/internal/secrets/files.go:480
+480: func (s *Service) checkCreateEnv(env map[string]string) error {
+481: 	if s.Store == nil {
+482: 		return core.ErrSecretsUnavailable
+483: 	}
+484: 	for _, key := range core.SortedKeys(env) {
+485: 		if err := core.CheckEnvKey(key); err != nil {
+486: 			// Names only in the error — never the value (docs/ADR013-secrets.md).
+487: 			return err
+488: 		}
+489: 	}
+490: 	return envMapWithinQuota(env)
+491: }
+492: 
+493: func (s *Service) abortCreateEnvVars(ctx context.Context, service string, a *appv1alpha1.App) error {
+494: 	if s.Store == nil {
+495: 		return core.ErrSecretsUnavailable
+
+lego/backend/internal/envgroups/service.go:560
+560: func prepareCreateEnv(vars []CreateEnvVarInput) (map[string]string, error) {
+561: 	env := make(map[string]string, len(vars))
+562: 	for _, input := range vars {
+563: 		key := strings.TrimSpace(input.Key)
+564: 		if err := core.CheckEnvKey(key); err != nil {
+565: 			return nil, err
+566: 		}
+567: 		hasValue := input.ValueSet || input.Value != ""
+568: 		if input.GenerateValue == hasValue {
+569: 			return nil, core.InvalidEnvVarValueInput(key)
+570: 		}
+571: 		value := input.Value
+572: 		if input.GenerateValue {
+573: 			var err error
+574: 			value, err = core.GenerateValue()
+575: 			if err != nil {
+576: 				return nil, err
+577: 			}
+578: 		}
+579: 		env[key] = value
+580: 	}
+581: 	return env, nil
+582: }
+583: 
+584: // prepareCreateFiles validates every filename without ever including its
+585: // content in an error. Duplicate names use the final supplied content.
+586: func prepareCreateFiles(files []SecretFileView) (map[string]string, error) {
+587: 	out := make(map[string]string, len(files))
+588: 	for _, input := range files {
+589: 		name := strings.TrimSpace(input.Name)
+590: 		if err := core.CheckSecretFileName(name); err != nil {
+591: 			return nil, err
+592: 		}
+593: 		out[name] = input.Content
+594: 	}
+595: 	return out, nil
+596: }
+597: 
+598: // prepareCreateServices resolves every serviceId inside the create workspace
+599: // without calling another public verb (and therefore without a second audit
+
+lego/backend/internal/envgroups/service.go:953
+953: func (s *Service) SetEnvGroupVars(ctx context.Context, gid string, vars []EnvVarView) ([]EnvVarView, error) {
+954: 	m, err := s.authorizeGroup(ctx, core.RelCanCreate, gid)
+955: 	if err != nil {
+956: 		return nil, err
+957: 	}
+958: 	current, err := s.getGroupMap(ctx, m.workspace, envPath(gid))
+959: 	if err != nil {
+960: 		return nil, err
+961: 	}
+962: 	desired := make(map[string]EnvVarView, len(vars))
+963: 	for _, v := range vars {
+964: 		key := strings.TrimSpace(v.Key)
+965: 		if err := core.CheckEnvKey(key); err != nil {
+966: 			return nil, err
+967: 		}
+968: 		v.Key = key
+969: 		desired[key] = v // retain replace-all's historical last-declaration-wins rule
+970: 	}
+971: 	writes := make([]EnvVarPatch, 0, len(current)+len(desired))
+972: 	for _, key := range slices.Sorted(maps.Keys(current)) {
+973: 		if _, keep := desired[key]; !keep {
+974: 			writes = append(writes, EnvVarPatch{Key: key, Delete: true})
+975: 		}
+976: 	}
+977: 	for _, key := range slices.Sorted(maps.Keys(desired)) {
+978: 		v := desired[key]
+979: 		writes = append(writes, EnvVarPatch{Key: key, Value: v.Value, ValueSet: v.ValueSet, GenerateValue: v.GenerateValue})
+980: 	}
+
+lego/backend/internal/envgroups/service.go:1024
+1024: func (s *Service) SetEnvGroupVarInput(ctx context.Context, gid string, input EnvVarView) (EnvVarView, error) {
+1025: 	m, err := s.authorizeGroup(ctx, core.RelCanCreate, gid)
+1026: 	if err != nil {
+1027: 		return EnvVarView{}, err
+1028: 	}
+1029: 	key := strings.TrimSpace(input.Key)
+1030: 	if err := core.CheckEnvKey(key); err != nil {
+1031: 		return EnvVarView{}, err
+1032: 	}
+1033: 	_, err = s.patchEnvironmentAuthorized(ctx, gid, m, EnvironmentPatch{
+1034: 		EnvVars:  []EnvVarPatch{{Key: key, Value: input.Value, ValueSet: input.ValueSet, GenerateValue: input.GenerateValue}},
+1035: 		SaveMode: SaveModeDeploy,
+1036: 	})
+1037: 	if err != nil {
+1038: 		return EnvVarView{}, err
+1039: 	}
+1040: 	return EnvVarView{Key: key}, nil
+1041: }
+1042: 
+1043: // DeleteEnvGroupVar removes one variable and rolls every linked service. Manage
+1044: // scope.
+1045: func (s *Service) DeleteEnvGroupVar(ctx context.Context, gid, key string) error {
+
+lego/backend/internal/envgroups/patch.go:178
+178: 	oldEnv, err := s.getGroupMap(ctx, m.workspace, envPath(gid))
+179: 	if err != nil {
+180: 		return EnvironmentPatchResult{}, err
+181: 	}
+182: 	oldFiles, err := s.getGroupMap(ctx, m.workspace, filesPath(gid))
+183: 	if err != nil {
+184: 		return EnvironmentPatchResult{}, err
+185: 	}
+186: 	env, files := core.CloneStringMap(oldEnv), core.CloneStringMap(oldFiles)
+187: 	if err := core.ApplyEnvVarPatch(env, patch.EnvVars); err != nil {
+188: 		return EnvironmentPatchResult{}, err
+189: 	}
+190: 	if err := core.ApplySecretFilePatch(files, patch.SecretFiles); err != nil {
+191: 		return EnvironmentPatchResult{}, err
+192: 	}
+193: 	// Same rule the service batch patch got in w1/m147: a group already over the
+194: 	// cap can shrink but not grow. Checking the patched map alone refused the
+195: 	// delete-only patch that is the only way back under the cap.
+196: 	if err := secrets.ValidatePatchEnvMapQuota(oldEnv, env); err != nil {
+197: 		return EnvironmentPatchResult{}, err
+198: 	}
+199: 	if err := secrets.ValidatePatchFilesMapQuota(oldFiles, files); err != nil {
+200: 		return EnvironmentPatchResult{}, err
+201: 	}
+
+lego/backend/internal/apps/service.go:2150
+2150: func checkReservedSpecEnv(env []appv1alpha1.EnvVar) error {
+2151: 	for _, item := range env {
+2152: 		// A name every later env write refuses is refused at create too
+2153: 		// (w8/027): stored, it became a var no verb could edit or delete.
+2154: 		if !core.ValidEnvKey(item.Name) {
+2155: 			return core.CheckEnvKey(item.Name)
+2156: 		}
+2157: 		if item.ValueFrom == nil && core.IsReservedEnvKey(item.Name) {
+2158: 			return core.ReservedEnvKeyError(item.Name)
+2159: 		}
+2160: 	}
+2161: 	return nil
+2162: }
+2163: 
+2164: // takeCreateEnvLiterals removes a newborn spec's literal env vars from spec.Env
+2165: // and returns them as the map the create-time seeder writes into the mutable
+2166: // env store. Moving rather than copying is the whole point (w6/m45): the store
+2167: // becomes the single writer, so the Environment tab and the envVars/envVar
+2168: // REST/GraphQL/MCP reads list, reveal, edit, export and delete a var set at
+2169: // creation time exactly like one added later. A copy left on spec.Env would
+2170: // also SHADOW the projected Secret in the running container — Kubernetes `env`
+2171: // beats `envFrom` — so every later edit or delete would be silently ignored by
+2172: // the process.
+2173: //
+2174: // A ValueFrom entry stays exactly where it is: it is a Secret key reference,
+
+lego/operator/internal/build/native.go:215
+215: // The env-decoding loop lives in its own file, written by a COPY heredoc just
+216: // before the RUN, so BuildKit's step line and its "process … did not complete"
+217: // error name only the tenant's command behind one short source line (w8/052)
+218: // instead of bex's plumbing. The loop's sentinel `.` keeps command substitution
+219: // from stripping value newlines. The revision line rides in the helper: a
+220: // changed helper misses the COPY cache and therefore the RUN after it, exactly
+221: // as the RUN-embedded revision did.
+222: const (
+223: 	nativeEnvSecretPath   = "/run/secrets/render-env"
+224: 	nativeEnvLoaderPath   = "/opt/bex/load-env"
+225: 	nativeEnvLoaderEOF    = "BEX_LOAD_ENV"
+226: 	nativeEnvLoaderPrefix = ". " + nativeEnvLoaderPath + "\n"
+227: )
+228: 
+229: func nativeDockerfile(o Options) string {
+230: 	var fileMounts strings.Builder
+231: 	for i, name := range o.NativeFiles {
+232: 		fmt.Fprintf(&fileMounts, " --mount=type=secret,id=%s,target=%s/%s,required=true",
+233: 			nativeFileSecretID(i), nativeSecretFilesDir, name)
+234: 	}
+235: 	loader := fmt.Sprintf(": bex-native-env-rev=%s\n", nativeEnvRevision(o)) + `while IFS= read -r record; do
+236:   [ -n "$record" ] || continue
+237:   key=${record%%=*}
+238:   encoded=${record#*=}
+239:   value="$(printf '%s' "$encoded" | base64 -d 2>/dev/null && printf '.')" || exit 1
+240:   export "$key=${value%.}"
+241: done < ` + nativeEnvSecretPath + "\n"
+242: 	run := shellJSON(nativeEnvLoaderPrefix + o.BuildCommand)
+243: 	base := fmt.Sprintf(`# syntax=docker/dockerfile:1.7
+244: FROM %s
+245: WORKDIR /opt/render/project/src
+
+lego/operator/internal/controller/app_controller.go:4738
+4738: // becomes a corev1 EnvVar.ValueFrom.SecretKeyRef — non-optional, so a service
+4739: // waiting on its Database stays Pending until the CNPG connection Secret exists.
+4740: func appEnv(app *appv1alpha1.App, port int) []corev1.EnvVar {
+4741: 	env := make([]corev1.EnvVar, 0, len(app.Spec.Env)+1)
+4742: 	for _, e := range app.Spec.Env {
+4743: 		if e.Name == portEnvName {
+4744: 			continue // operator-owned; never let a user shadow it
+4745: 		}
+4746: 		ev := corev1.EnvVar{Name: e.Name, Value: e.Value}
+4747: 		if e.ValueFrom != nil && e.ValueFrom.SecretKeyRef != nil {
+4748: 			ev.Value = ""
+4749: 			ev.ValueFrom = &corev1.EnvVarSource{
+4750: 				SecretKeyRef: &corev1.SecretKeySelector{
+4751: 					LocalObjectReference: corev1.LocalObjectReference{Name: e.ValueFrom.SecretKeyRef.Name},
+4752: 					Key:                  e.ValueFrom.SecretKeyRef.Key,
+4753: 				},
+4754: 			}
+4755: 		}
+4756: 		env = append(env, ev)
+4757: 	}
+4758: 	env = append(env, corev1.EnvVar{Name: portEnvName, Value: strconv.Itoa(port)})
+4759: 	return env
+4760: }
+4761: 
+4762: // envFromSources wires the App's secret-backed env into the container: each linked
+4763: // environment group's "<evg-id>-env" Secret (spec.envFromSecrets) FIRST, then the
+4764: // service's own "<name>-env" Secret (active spec reference or save-only pending
+4765: // annotation) LAST. Kubernetes applies
+4766: // envFrom sources in order and the last wins on a key collision, so a service's own
+4767: // variable overrides a linked group's — matching Render (docs/ADR013-secrets.md). The
+4768: // group sources are marked optional so a briefly-absent group Secret can't wedge
+4769: // the pod; the service's own set keeps its original (non-optional) shape. No
+4770: // active or pending service reference => no service envFrom.
+4771: func envFromSources(app *appv1alpha1.App) []corev1.EnvFromSource {
+4772: 	var out []corev1.EnvFromSource
+4773: 	optional := true
+4774: 	// snapshotOrSource substitutes this release's immutable copy when one is active
+4775: 	// (w1/m152). The ORDER is untouched: groups first, the service's own last, so
+4776: 	// the documented precedence stays a property of list position and the existing
+4777: 	// precedence tests keep covering it.
+4778: 	for _, name := range app.Spec.EnvFromSecrets {
+4779: 		if name == "" {
+4780: 			continue
+4781: 		}
+4782: 		out = append(out, corev1.EnvFromSource{
+4783: 			SecretRef: &corev1.SecretEnvSource{
+4784: 				LocalObjectReference: corev1.LocalObjectReference{Name: snapshotOrSource(app, name)},
+4785: 				Optional:             &optional,
+4786: 			},
+4787: 		})
+4788: 	}
+4789: 	if name := runtimeEnvSecret(app); name != "" {
+4790: 		out = append(out, corev1.EnvFromSource{
+4791: 			SecretRef: &corev1.SecretEnvSource{
+4792: 				LocalObjectReference: corev1.LocalObjectReference{Name: snapshotOrSource(app, name)},
+4793: 			},
+4794: 		})
+4795: 	}
+4796: 	return out
+4797: }
+4798: 
+4799: // secretFilesVolumeName is the single projected volume carrying every secret-file
+4800: // source, mounted read-only at secretFilesMountPath.
+4801: const (
+4802: 	secretFilesVolumeName = "bex-secret-files"
+4803: 	secretFilesMountPath  = "/etc/secrets"
+4804: )
+
+Pinned Render: cmd/blueprintvalidate.go:96
+96: 	var body bytes.Buffer
+97: 	writer := multipart.NewWriter(&body)
+98: 
+99: 	if err := writer.WriteField("ownerId", workspaceID); err != nil {
+100: 		return fmt.Errorf("failed to write ownerId field: %w", err)
+101: 	}
+102: 
+103: 	part, err := writer.CreateFormFile("file", filepath.Base(absPath))
+104: 	if err != nil {
+105: 		return fmt.Errorf("failed to create form file: %w", err)
+106: 	}
+107: 	if _, err := part.Write(content); err != nil {
+108: 		return fmt.Errorf("failed to write file content: %w", err)
+109: 	}
+110: 
+111: 	if err := writer.Close(); err != nil {
+112: 		return fmt.Errorf("failed to close multipart writer: %w", err)
+113: 	}
+114: 
+115: 	c, err := client.NewDefaultClient()
+116: 	if err != nil {
+117: 		return fmt.Errorf("failed to create client: %w", err)
+118: 	}
+119: 
+120: 	resp, err := c.ValidateBlueprintWithBodyWithResponse(
+121: 		ctx,
+122: 		writer.FormDataContentType(),
+123: 		&body,
+124: 	)
+125: 	if err != nil {
+126: 		return fmt.Errorf("failed to validate Blueprint: %w", err)
+127: 	}
+128: 
+129: 	if resp.StatusCode() != 200 {
+130: 		return fmt.Errorf("validation request failed with status %d: %s", resp.StatusCode(), string(resp.Body))
+131: 	}
+132: 
+133: 	result := resp.JSON200
+134: 	if result == nil {
+135: 		return fmt.Errorf("unexpected response from server: %s", string(resp.Body))
+136: 	}
+137: 
+138: 	if output.Interactive() {
+139: 		return printValidationResultInteractive(absPath, result)
+140: 	}
+141: 
+142: 	// The API returns 200 for both validation outcomes. Preserve its validation
+143: 	// details on stdout before returning an error for an invalid Blueprint.
+144: 	_, err = command.PrintData(cmd, result, func(r *bptypes.ValidateBlueprintResponse) string {
+145: 		jsonBytes, err := json.MarshalIndent(r, "", "  ")
+146: 		if err != nil {
+147: 			return fmt.Sprintf("{\"error\": \"failed to format result: %v\"}\n", err)
+148: 		}
+149: 		return string(jsonBytes) + "\n"
+150: 	})
+151: 	if err != nil {
+152: 		return err
+153: 	}
+154: 	if result.Valid {
+155: 		return nil
+156: 	}
+157: 
+158: 	// The validation response already describes the failure. Return a non-zero
+159: 	// exit without duplicating it through Cobra's stderr output.
+160: 	cmd.Root().SilenceErrors = true
+161: 	return command.NewExitError(1, nil)
+162: }
+163: 
+164: func formatValidationError(e bptypes.ValidationError) string {
+165: 	var location string
+166: 	if e.Line != nil && *e.Line > 0 {
+167: 		location = fmt.Sprintf("line %d", *e.Line)
+168: 		if e.Column != nil && *e.Column > 0 {
+169: 			location += fmt.Sprintf(", column %d", *e.Column)
+
+Pinned Render: pkg/client/blueprints/blueprints_gen.go:213
+213: // ValidateBlueprintRequest defines model for validateBlueprintRequest.
+214: type ValidateBlueprintRequest struct {
+215: 	// File The render.yaml file to validate, as a binary file.
+216: 	File openapi_types.File `json:"file"`
+217: 
+218: 	// OwnerId The ID of the workspace to validate against. Obtain your workspace ID from its Settings page in the Render Dashboard.
+219: 	//
+220: 	// Example: tea-cjnxpkdhshc73d12t9i0
+221: 	OwnerId string `json:"ownerId"`
+222: }
+223: 
+224: // ValidateBlueprintResponse defines model for validateBlueprintResponse.
+225: type ValidateBlueprintResponse struct {
+226: 	// Errors A list of validation errors. Only present if `valid` is `false`.
+227: 	Errors *[]ValidationError     `json:"errors,omitempty"`
+228: 	Plan   *ValidationPlanSummary `json:"plan,omitempty"`
+229: 
+230: 	// Valid If `true`, the Blueprint validated successfully. If `false`, at least one validation error occurred.
+231: 	Valid bool `json:"valid"`
+232: }
+233: 
+234: // ValidationError defines model for validationError.
+235: type ValidationError struct {
+236: 	// Column The column number in the YAML file (1-indexed)
+237: 	Column *int `json:"column,omitempty"`
+238: 
+239: 	// Error The error message
+240: 	Error string `json:"error"`
+241: 
+242: 	// Line The line number in the YAML file (1-indexed)
+243: 	Line *int `json:"line,omitempty"`
+244: 
+245: 	// Path The path to the field with the error (e.g., `services[0].plan`)
+246: 	Path *string `json:"path,omitempty"`
+247: }
+248: 
+249: // ValidationPlanSummary defines model for validationPlanSummary.
+250: type ValidationPlanSummary struct {
+251: 	// Databases The names of Render Postgres databases that would be created as part of the Blueprint.
+252: 	Databases *[]string `json:"databases,omitempty"`
+253: 
+
+Pinned Render: pkg/client/client_gen.go:10077
+10077: 
+10078: 	serverURL, err := url.Parse(server)
+10079: 	if err != nil {
+10080: 		return nil, err
+10081: 	}
+10082: 
+10083: 	operationPath := fmt.Sprintf("/blueprints/validate")
+10084: 	if operationPath[0] == '/' {
+10085: 		operationPath = "." + operationPath
+10086: 	}
+10087: 
+10088: 	queryURL, err := serverURL.Parse(operationPath)
+10089: 	if err != nil {
+10090: 		return nil, err
+10091: 	}
+10092: 
+10093: 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+10094: 	if err != nil {
+10095: 		return nil, err
+10096: 	}
+10097: 
+10098: 	req.Header.Add("Content-Type", contentType)
+10099: 
+10100: 	return req, nil
+10101: }
+10102: 

@@ -1,0 +1,14 @@
+from pathlib import Path
+import json,subprocess,shutil,datetime,yaml
+p=Path(__file__).parent;cp=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');d=json.loads(cp.read_text());sid=(p/'sweep139-id.txt').read_text();x=next(z for z in d['resources'] if z.get('id')==sid);assert x['sweep']==139 and len(x['native_tail_cases'])==4 and all(t['state'].startswith('reaped') for t in x['tail_processes']);results=[];cfg=p/'render-config/cli.yaml';assert not cfg.exists();cfg.parent.mkdir(mode=0o700,exist_ok=True);shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+def save():d['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(d,indent=2));cp.chmod(0o600)
+def decode_stream(raw):
+ decoder=json.JSONDecoder();rows=[]
+ while raw.strip():row,n=decoder.raw_decode(raw.lstrip());rows.append(row);raw=raw.lstrip()[n:]
+ return rows
+try:
+ for role in ['bex','render']:
+  for batch,mode,limit in [('yaml','json',10),('json','json',10),('yaml','yaml',1)]:
+   tag=x['marker']+'-'+batch;args=['logs','--resources',sid,'--type','app','--text',tag,'--limit',str(limit),'--confirm','-o',mode];r=json.loads(subprocess.check_output(['python3',str(p/('run.py' if role=='bex' else 'run-render.py')),*(['--release'] if role=='bex' else []),*args],text=True));r.update(client=role,batch=batch,format=mode,limit=limit);results.append(r);x.setdefault('native_history_cases',[]).append(r);save();(p/'sweep139-history.json').write_text(json.dumps(results,indent=2));print(role,batch,mode,'exit',r['exit'],'seconds',r['elapsed'],flush=True);assert r['exit']==0
+   rows=decode_stream(r['stdout']) if mode=='json' else list(yaml.safe_load_all(r['stdout']));expected={tag+'-A: "雪" [first]',tag+'-B: value=two,three'};assert len(rows)==(2 if mode=='json' else 1) and all(z['message'] in expected for z in rows)
+finally:cfg.unlink(missing_ok=True);x['history_render_config_removed']=not cfg.exists();save()

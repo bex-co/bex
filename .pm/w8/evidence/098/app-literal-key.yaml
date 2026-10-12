@@ -1,0 +1,38 @@
+{
+  "services": [
+    {
+      "name": "qa175-94d0fe-source",
+      "type": "web",
+      "plan": "free",
+      "runtime": "image",
+      "image": {
+        "url": "nginx:1"
+      },
+      "envVars": [
+        {
+          "key": "QA_SOURCE",
+          "value": "source-175"
+        }
+      ]
+    },
+    {
+      "name": "qa175-94d0fe-target",
+      "type": "web",
+      "runtime": "image",
+      "image": {
+        "url": "nginx:1"
+      },
+      "plan": "free",
+      "envVars": [
+        {
+          "key": "QA_TARGET",
+          "fromService": {
+            "type": "web",
+            "name": "qa175-94d0fe-source",
+            "envVarKey": "QA_SOURCE"
+          }
+        }
+      ]
+    }
+  ]
+}

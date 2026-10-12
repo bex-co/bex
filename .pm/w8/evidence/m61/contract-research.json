@@ -1,0 +1,8 @@
+{
+  "reviewed_at_utc": "2026-10-12",
+  "official_source": "https://render.com/docs/your-first-deploy",
+  "corroboration": "CLI --env-var values are documented as available during build and runtime; the current document does not certify this specific custom-PATH experiment.",
+  "pinned_oracle": "render-oss/cli a764810a768202704e7206eb7b87a47211fcd98e",
+  "render_production_tested": false,
+  "local_contract": "core.ReservedEnvKeys contains only PORT. w8/done/027 records PATH as editable ordinary configuration. Native create accepts PATH in both actual clients."
+}

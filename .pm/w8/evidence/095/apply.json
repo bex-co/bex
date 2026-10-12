@@ -1,0 +1,38 @@
+[
+  {
+    "case": "new-empty",
+    "key_present": true,
+    "synthetic_value": "",
+    "stable_id": true
+  },
+  {
+    "case": "existing-add-empty",
+    "key_present": false,
+    "synthetic_value": "",
+    "stable_id": true
+  },
+  {
+    "case": "existing-add-space",
+    "key_present": true,
+    "synthetic_value": " ",
+    "stable_id": true
+  },
+  {
+    "case": "existing-clear",
+    "key_present": true,
+    "synthetic_value": "",
+    "stable_id": true
+  },
+  {
+    "case": "existing-empty-noop",
+    "key_present": true,
+    "synthetic_value": "",
+    "stable_id": true
+  },
+  {
+    "case": "existing-mixed-add",
+    "key_present": false,
+    "synthetic_value": "",
+    "stable_id": true
+  }
+]

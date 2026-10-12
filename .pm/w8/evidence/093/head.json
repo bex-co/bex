@@ -1,0 +1,145 @@
+{
+  "kind": "actual live current-checkout subprocesses; PM-only dirty working tree, product code unmodified",
+  "build_identity": [
+    "\tpath\tgithub.com/bex-co/bex/lego/cli",
+    "\tmod\tgithub.com/bex-co/bex/lego/cli\t(devel)\t",
+    "\tdep\tgithub.com/render-oss/cli\tv1.1.3-0.20260909214233-a764810a7682\th1:DAlz9Xu4EKRTV/I0LyHxBt8muqsNfo361snKirVVPqE=",
+    "\tbuild\tvcs.revision=3f86c85a8a77e8633f00d5514a343267f6c1c9c2",
+    "\tbuild\tvcs.time=2026-10-11T21:56:05Z",
+    "\tbuild\tvcs.modified=true"
+  ],
+  "cases": [
+    {
+      "case": "project-full-name",
+      "family": "postgres",
+      "command": [
+        "bex-checkout",
+        "postgres",
+        "list",
+        "--project",
+        "prj-00000000000000093206",
+        "--environment",
+        "evm-db60hghtodic73duutk0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "current-checkout selector read intent persisted",
+      "exit": 1,
+      "elapsed": 1.548,
+      "stdout": "",
+      "stderr": "Error: project \"prj-00000000000000093206\" not found: unexpected response: 404 Not Found\n",
+      "observed_expected_pattern": true
+    },
+    {
+      "case": "environment-full-name",
+      "family": "postgres",
+      "command": [
+        "bex-checkout",
+        "postgres",
+        "list",
+        "--project",
+        "prj-db60hghtodic73duutjg",
+        "--environment",
+        "evm-00000000000000093206",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "current-checkout selector read intent persisted",
+      "exit": 1,
+      "elapsed": 0.822,
+      "stdout": "",
+      "stderr": "Error: environment \"evm-00000000000000093206\" not found: unexpected response: 404 Not Found\n",
+      "observed_expected_pattern": true
+    },
+    {
+      "case": "actual-ids",
+      "family": "postgres",
+      "command": [
+        "bex-checkout",
+        "postgres",
+        "list",
+        "--project",
+        "prj-db60hghtodic73duutjg",
+        "--environment",
+        "evm-db60hghtodic73duutk0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "current-checkout selector read intent persisted",
+      "exit": 0,
+      "elapsed": 1.751,
+      "stdout": "{\n  \"data\": []\n}",
+      "stderr": "",
+      "observed_expected_pattern": true
+    },
+    {
+      "case": "project-full-name",
+      "family": "keyvalues",
+      "command": [
+        "bex-checkout",
+        "keyvalues",
+        "list",
+        "--project",
+        "prj-00000000000000093206",
+        "--environment",
+        "evm-db60hghtodic73duutk0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "current-checkout selector read intent persisted",
+      "exit": 1,
+      "elapsed": 0.622,
+      "stdout": "",
+      "stderr": "Error: project \"prj-00000000000000093206\" not found: unexpected response: 404 Not Found\n",
+      "observed_expected_pattern": true
+    },
+    {
+      "case": "environment-full-name",
+      "family": "keyvalues",
+      "command": [
+        "bex-checkout",
+        "keyvalues",
+        "list",
+        "--project",
+        "prj-db60hghtodic73duutjg",
+        "--environment",
+        "evm-00000000000000093206",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "current-checkout selector read intent persisted",
+      "exit": 1,
+      "elapsed": 0.811,
+      "stdout": "",
+      "stderr": "Error: environment \"evm-00000000000000093206\" not found: unexpected response: 404 Not Found\n",
+      "observed_expected_pattern": true
+    },
+    {
+      "case": "actual-ids",
+      "family": "keyvalues",
+      "command": [
+        "bex-checkout",
+        "keyvalues",
+        "list",
+        "--project",
+        "prj-db60hghtodic73duutjg",
+        "--environment",
+        "evm-db60hghtodic73duutk0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "current-checkout selector read intent persisted",
+      "exit": 0,
+      "elapsed": 2.358,
+      "stdout": "{\n  \"data\": []\n}",
+      "stderr": "",
+      "observed_expected_pattern": true
+    }
+  ]
+}

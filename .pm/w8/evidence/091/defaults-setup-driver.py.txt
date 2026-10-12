@@ -1,0 +1,21 @@
+import pathlib,json,subprocess,secrets,datetime,sys
+p=pathlib.Path(__file__).parent
+cp=pathlib.Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json')
+c=json.loads(cp.read_text());ws='tea-daif693dqjvc73e7as3g';mode=sys.argv[1]
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+def wire(method,path,body=None):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),method,path,*([json.dumps(body)] if body is not None else [])],text=True))
+if mode=='setup':
+ assert 'sweep141_projects' not in c
+ r=wire('GET','/v1/projects?ownerId='+ws+'&limit=100');assert r['status']=='200' and not json.loads(r['response'])
+ nonce=secrets.token_hex(3);g={'nonce':nonce,'source_head':c['head'],'cases':[],'setup_inventory':r};c['sweep141_projects']=g;save()
+ for role,withenv in [('selected',True)]:
+  name='qa-20261011-'+nonce+'-'+role;body={'name':name,'ownerId':ws,'environments':[{'name':name+'-empty'}] if withenv else []}
+  x={'sweep':141,'type':'project','role':role,'workspace':ws,'nonce':nonce,'name':name,'time':now(),'state':'API metadata create intent persisted','command':{'method':'POST','path':'/v1/projects','body':body},'baseline_project_ids':[],'dependency_ids':[]};c['resources'].append(x);save()
+  r=wire('POST','/v1/projects',body);x['create_result']=r;save();assert r['status']=='201';v=json.loads(r['response']);assert v['name']==name and len(v['environmentIds'])==int(withenv);x.update(id=v['id'],state='created: metadata-only own project',create_response=v);g[role]={'id':v['id'],'name':name,'environment_ids':v['environmentIds']};save()
+  for eid in v['environmentIds']:
+   child={'sweep':141,'type':'environment','workspace':ws,'id':eid,'nonce':nonce,'name':name+'-empty','time':now(),'state':'created: owned atomic project child','parent_id':v['id'],'create_proof':{'method':'POST','path':'/v1/projects','status':'201','parent_id':v['id'],'returned_environment_ids':v['environmentIds']},'dependency_ids':[]};c['resources'].append(child);x['dependency_ids'].append(eid);save()
+   r=wire('GET','/v1/environments/'+eid);child['readback_proof']=r;save();assert r['status']=='200' and json.loads(r['response'])['projectId']==v['id']
+  r=wire('POST','/graphql',{'query':'query($id:String!){project(id:$id){id ownerId serviceIds databaseIds keyValueIds}}','variables':{'id':v['id']}});x['dependent_inventory']=r;save();z=json.loads(r['response']);assert r['status']=='200' and not z.get('errors');z=z['data']['project'];assert z['ownerId']==ws and not any(z[k] for k in ['serviceIds','databaseIds','keyValueIds'])
+  print(json.dumps({'role':role,**g[role]}),flush=True)
+else:raise ValueError(mode)

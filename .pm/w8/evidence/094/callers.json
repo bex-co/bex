@@ -1,0 +1,55 @@
+{
+  "CompileBlueprintIR": [
+    {
+      "path": "lego/backend/internal/apps/blueprint.go",
+      "line": 657,
+      "source": "source, ir, problems := CompileBlueprintIR(bexYAML)"
+    },
+    {
+      "path": "lego/backend/internal/apps/blueprint.go",
+      "line": 1602,
+      "source": "source, ir, problems := CompileBlueprintIR(manifest)"
+    },
+    {
+      "path": "lego/backend/internal/apps/blueprint.go",
+      "line": 1758,
+      "source": "_, ir, problems := CompileBlueprintIR(b.Manifest)"
+    },
+    {
+      "path": "lego/backend/internal/apps/blueprint_generate.go",
+      "line": 236,
+      "source": "source, ir, problems := CompileBlueprintIR(manifest)"
+    },
+    {
+      "path": "lego/backend/internal/apps/deploy.go",
+      "line": 1683,
+      "source": "source, ir, problems := CompileBlueprintIR(req.Manifest)"
+    }
+  ],
+  "PlanBlueprintIR": [
+    {
+      "path": "lego/backend/internal/apps/blueprint_state_plan.go",
+      "line": 43,
+      "source": "plan, err := PlanBlueprintIR(ctx, ir, resolver)"
+    }
+  ],
+  "blueprintResourceFromMap": [
+    {
+      "path": "lego/backend/internal/apps/blueprint_ir.go",
+      "line": 241,
+      "source": "resource := blueprintResourceFromMap(source, declaration.Kind, entry, path, project, environment, ungrouped)"
+    }
+  ],
+  "newBlueprintActionResolver": [
+    {
+      "path": "lego/backend/internal/apps/blueprint.go",
+      "line": 1419,
+      "source": "return newBlueprintActionResolver(ctx, s, parsedStack{}, snap)"
+    },
+    {
+      "path": "lego/backend/internal/apps/blueprint_state_plan.go",
+      "line": 39,
+      "source": "resolver, err := newBlueprintActionResolver(ctx, s, st, snap)"
+    }
+  ]
+}

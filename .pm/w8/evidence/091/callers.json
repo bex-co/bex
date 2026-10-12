@@ -1,0 +1,87 @@
+[
+  {
+    "file": "cmd/pgcli.go",
+    "line": 48,
+    "source": "flows.WithProjectFilter(ctx, pgcliCmd, \"pgcli\", input, func(ctx context.Context, project *client.Project) tea.Cmd {"
+  },
+  {
+    "file": "cmd/service.go",
+    "line": 174,
+    "source": "return InteractiveSSHView(ctx, &views.SSHInput{ServiceIDOrName: r.ID()}, \"SSH\")"
+  },
+  {
+    "file": "cmd/service.go",
+    "line": 247,
+    "source": "flows.WithProjectFilter(ctx, servicesCmd, \"Project Filter\", &views.ListResourceInput{}, func(ctx context.Context, project *client.Project) tea.Cmd {"
+  },
+  {
+    "file": "cmd/kvcli.go",
+    "line": 47,
+    "source": "flows.WithProjectFilter(ctx, redisCLICmd, \"redisCLI\", input, func(ctx context.Context, project *client.Project) tea.Cmd {"
+  },
+  {
+    "file": "cmd/psql.go",
+    "line": 59,
+    "source": "flows.WithProjectFilter(ctx, psqlCmd, \"psql\", input, func(ctx context.Context, project *client.Project) tea.Cmd {"
+  },
+  {
+    "file": "cmd/ssh.go",
+    "line": 46,
+    "source": "func interactiveSSHView(ctx context.Context, input *views.SSHInput, breadcrumb string) tea.Cmd {"
+  },
+  {
+    "file": "cmd/ssh.go",
+    "line": 51,
+    "source": "return InteractiveSSHView(ctx, input, breadcrumb)"
+  },
+  {
+    "file": "cmd/ssh.go",
+    "line": 63,
+    "source": "return InteractiveSSHView(ctx, input, \"SSH\")"
+  },
+  {
+    "file": "cmd/ssh.go",
+    "line": 73,
+    "source": "return InteractiveSSHView(ctx, input, \"SSH\")"
+  },
+  {
+    "file": "cmd/ssh.go",
+    "line": 80,
+    "source": "return InteractiveSSHView(ctx, input, \"SSH\")"
+  },
+  {
+    "file": "cmd/ssh.go",
+    "line": 90,
+    "source": "return InteractiveSSHView(ctx, input, breadcrumb)"
+  },
+  {
+    "file": "cmd/ssh.go",
+    "line": 95,
+    "source": "return InteractiveSSHView(ctx, input, breadcrumb)"
+  },
+  {
+    "file": "cmd/ssh.go",
+    "line": 119,
+    "source": "flows.WithProjectFilter(ctx, servicesCmd, \"Project Filter\", &views.SSHInput{}, func(ctx context.Context, project *client.Project) tea.Cmd {"
+  },
+  {
+    "file": "cmd/ssh.go",
+    "line": 125,
+    "source": "return InteractiveSSHView(ctx, &input, breadcrumb)"
+  },
+  {
+    "file": "cmd/ssh.go",
+    "line": 153,
+    "source": "interactiveSSHView(ctx, &input, \"SSH\")"
+  },
+  {
+    "file": "pkg/tui/flows/log.go",
+    "line": 94,
+    "source": "WithProjectFilter(ctx, f.deps.LogsCmd(), \"Project Filter\", &views.LogInput{}, func(ctx context.Context, project *client.Project) tea.Cmd {"
+  },
+  {
+    "file": "pkg/tui/flows/options.go",
+    "line": 58,
+    "source": "func WithProjectFilter(ctx context.Context, cmd *cobra.Command, breadcrumb string, in any, h ProjectHandler) tui.CustomOption {"
+  }
+]

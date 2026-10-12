@@ -1,0 +1,48 @@
+[
+  {
+    "client": "bex",
+    "input": "\"qa-input-871442-bex 雪, left=right\"\n\"qa-input-871442-bex say \"\"hello\"\" and apostrophe's\"\n\"qa-input-871442-bex first\nsecond\tthird\"\n\\.\n",
+    "values": [
+      "qa-input-871442-bex 雪, left=right",
+      "qa-input-871442-bex say \"hello\" and apostrophe's",
+      "qa-input-871442-bex first\nsecond\tthird"
+    ],
+    "expected": [
+      {
+        "bytes": 35,
+        "md5": "cb8bec786a6dca28f60c55fbd91ca59d"
+      },
+      {
+        "bytes": 48,
+        "md5": "f63d4b035c6ab895836d8f59ae64c0c9"
+      },
+      {
+        "bytes": 38,
+        "md5": "1c47a1a621b2453cc351a0c617fe17c7"
+      }
+    ]
+  },
+  {
+    "client": "render",
+    "input": "\"qa-input-871442-render 雪, left=right\"\n\"qa-input-871442-render say \"\"hello\"\" and apostrophe's\"\n\"qa-input-871442-render first\nsecond\tthird\"\n\\.\n",
+    "values": [
+      "qa-input-871442-render 雪, left=right",
+      "qa-input-871442-render say \"hello\" and apostrophe's",
+      "qa-input-871442-render first\nsecond\tthird"
+    ],
+    "expected": [
+      {
+        "bytes": 38,
+        "md5": "8b96dd429f9bd9a10a5e8c4b2d32c320"
+      },
+      {
+        "bytes": 51,
+        "md5": "a1fb794e17efa7e566d5d98fb8043a56"
+      },
+      {
+        "bytes": 41,
+        "md5": "6aacd923096f77465868e4869f284607"
+      }
+    ]
+  }
+]

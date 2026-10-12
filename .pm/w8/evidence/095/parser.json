@@ -1,0 +1,50 @@
+[
+  {
+    "container": "root",
+    "generated_keys": null,
+    "key_present": true,
+    "parsed_group_name": "qa155e-3b7e21-group",
+    "synthetic_value": "",
+    "variant": "empty-literal"
+  },
+  {
+    "container": "root",
+    "generated_keys": null,
+    "key_present": true,
+    "parsed_group_name": "qa155e-3b7e21-group",
+    "synthetic_value": " ",
+    "variant": "space-literal"
+  },
+  {
+    "container": "ungrouped",
+    "generated_keys": null,
+    "key_present": true,
+    "parsed_group_name": "qa155e-3b7e21-group",
+    "synthetic_value": "",
+    "variant": "empty-literal"
+  },
+  {
+    "container": "ungrouped",
+    "generated_keys": null,
+    "key_present": true,
+    "parsed_group_name": "qa155e-3b7e21-group",
+    "synthetic_value": " ",
+    "variant": "space-literal"
+  },
+  {
+    "container": "project-environment",
+    "generated_keys": null,
+    "key_present": true,
+    "parsed_group_name": "qa155e-3b7e21-group",
+    "synthetic_value": "",
+    "variant": "empty-literal"
+  },
+  {
+    "container": "project-environment",
+    "generated_keys": null,
+    "key_present": true,
+    "parsed_group_name": "qa155e-3b7e21-group",
+    "synthetic_value": " ",
+    "variant": "space-literal"
+  }
+]

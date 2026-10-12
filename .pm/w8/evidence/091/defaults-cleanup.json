@@ -1,0 +1,157 @@
+{
+  "cleanup_state": "complete: own project and own empty environment API204/detail404; native project IDs absent; six baseline services unchanged; quota/termination baseline; per-case copied configs and child recorder removed",
+  "resources": [
+    {
+      "sweep": 141,
+      "type": "project",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "state": "deleted: empty own project API204/detail404",
+      "id": "prj-db5vam8a604s73e5sak0",
+      "dependent_inventory_before_delete": {
+        "method": "POST",
+        "path": "/graphql",
+        "body": "{\"query\": \"query($id:String!){project(id:$id){id ownerId serviceIds databaseIds keyValueIds}}\", \"variables\": {\"id\": \"prj-db5vam8a604s73e5sak0\"}}",
+        "status": "200",
+        "elapsed": 0.277,
+        "response": "{\"data\": {\"project\": {\"databaseIds\": [], \"id\": \"prj-db5vam8a604s73e5sak0\", \"keyValueIds\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"serviceIds\": []}}}",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a490b8f73fcad438-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "empty_environment_inventory_before_delete": {
+        "method": "GET",
+        "path": "/v1/projects/prj-db5vam8a604s73e5sak0",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.27,
+        "response": "{\"id\": \"prj-db5vam8a604s73e5sak0\", \"name\": \"qa-20261011-d5da84-selected\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"[REDACTED]\", \"type\": \"team\"}, \"environmentIds\": [], \"createdAt\": \"2026-10-11T20:45:13.158084Z\", \"updatedAt\": \"2026-10-11T20:45:13.158084Z\"}",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a490b8f9be88de51-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "delete_result": {
+        "method": "DELETE",
+        "path": "/v1/projects/prj-db5vam8a604s73e5sak0",
+        "body": null,
+        "status": "204",
+        "elapsed": 0.28,
+        "response": "",
+        "headers": {
+          "cf-ray": "a490b8fc9b79eb36-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "detail_after_delete": {
+        "method": "GET",
+        "path": "/v1/projects/prj-db5vam8a604s73e5sak0",
+        "body": null,
+        "status": "404",
+        "elapsed": 0.269,
+        "response": "{\"code\": \"NOT_FOUND\", \"error\": \"project not found\", \"id\": \"not_found\", \"message\": \"project not found\", \"params\": null}",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a490b8ff684c2832-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "sweep": 141,
+      "type": "environment",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "id": "evm-db5vam8a604s73e5sakg",
+      "state": "deleted: empty own environment API204/detail404",
+      "dependent_inventory_before_delete": {
+        "method": "GET",
+        "path": "/v1/environments/evm-db5vam8a604s73e5sakg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.917,
+        "response": "{\"id\": \"evm-db5vam8a604s73e5sakg\", \"projectId\": \"prj-db5vam8a604s73e5sak0\", \"name\": \"qa-20261011-d5da84-selected-empty\", \"serviceIds\": [], \"databaseIds\": [], \"keyValueIds\": [], \"databasesIds\": [], \"redisIds\": [], \"envGroupIds\": [], \"protectedStatus\": \"unprotected\", \"networkIsolationEnabled\": false, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"Allow all (default)\"}, {\"cidrBlock\": \"::/0\", \"description\": \"Allow all (default)\"}]}",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a490b8e86da78fc5-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "delete_result": {
+        "method": "DELETE",
+        "path": "/v1/environments/evm-db5vam8a604s73e5sakg",
+        "body": null,
+        "status": "204",
+        "elapsed": 0.747,
+        "response": "",
+        "headers": {
+          "cf-ray": "a490b8eefe8e208c-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "detail_after_delete": {
+        "method": "GET",
+        "path": "/v1/environments/evm-db5vam8a604s73e5sakg",
+        "body": null,
+        "status": "404",
+        "elapsed": 0.271,
+        "response": "{\"code\": \"NOT_FOUND\", \"error\": \"environment not found\", \"id\": \"not_found\", \"message\": \"environment not found\", \"params\": null}",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a490b8f48f1058f1-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    }
+  ],
+  "projects_after_delete": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "projects",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.381,
+    "stdout": "null",
+    "stderr": ""
+  },
+  "services_after_delete": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.662,
+    "stdout": "[{\"service\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"createdAt\": \"2026-09-22T08:43:05Z\", \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\", \"id\": \"srv-dap3v694dm7c7390q930\", \"imagePath\": \"docker.io/library/busybox:1.37\", \"name\": \"qa-20260922-cd9361-boundary\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"rootDir\": \"\", \"serviceDetails\": {\"command\": \"echo QA_BOUNDARY_CRON\", \"env\": \"image\", \"envSpecificDetails\": {\"startCommand\": \"echo QA_BOUNDARY_CRON\"}, \"lastSuccessfulRunAt\": \"2026-10-11T20:47:06Z\", \"nextRunAt\": \"2026-10-11T20:48:00Z\", \"numInstances\": 1, \"plan\": \"free\", \"region\": \"fsn1\", \"runtime\": \"image\", \"schedule\": \"* * * * *\"}, \"slug\": \"qa-20260922-cd9361-boundary\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"cron_job\", \"updatedAt\": \"2026-10-11T20:47:06Z\"}}, {\"service\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"createdAt\": \"2026-09-22T08:42:03Z\", \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\", \"id\": \"srv-dap3umrbdpcs73f5eeug\", \"imagePath\": \"docker.io/library/busybox:1.37\", \"name\": \"qa-20260922-cd9361-longcronxx\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"rootDir\": \"\", \"serviceDetails\": {\"command\": \"echo QA_LONG_CRON\", \"env\": \"image\", \"envSpecificDetails\": {\"startCommand\": \"echo QA_LONG_CRON\"}, \"lastSuccessfulRunAt\": \"2026-10-11T20:47:05Z\", \"nextRunAt\": \"2026-10-11T20:48:00Z\", \"numInstances\": 1, \"plan\": \"free\", \"region\": \"fsn1\", \"runtime\": \"image\", \"schedule\": \"* * * * *\"}, \"slug\": \"qa-20260922-cd9361-longcronxx\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"cron_job\", \"updatedAt\": \"2026-10-11T20:47:05Z\"}}, {\"service\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"main\", \"createdAt\": \"2026-09-22T08:34:36Z\", \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\", \"id\": \"srv-dap3r714dm7c7390q91g\", \"name\": \"qa-20260922-cd9361-nativecron\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/bex-co/bex\", \"rootDir\": \"examples/hello-go\", \"serviceDetails\": {\"command\": \"echo QA_NATIVE_CRON_cd9361\", \"env\": \"go\", \"envSpecificDetails\": {\"buildCommand\": \"go build -o app .\", \"preDeployCommand\": \"\", \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"}, \"lastSuccessfulRunAt\": \"2026-10-11T20:47:04Z\", \"nextRunAt\": \"2026-10-11T20:48:00Z\", \"numInstances\": 1, \"plan\": \"free\", \"region\": \"fsn1\", \"runtime\": \"go\", \"schedule\": \"* * * * *\"}, \"slug\": \"qa-20260922-cd9361-nativecron\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"cron_job\", \"updatedAt\": \"2026-10-11T20:47:04Z\"}}, {\"service\": {\"autoDeploy\": \"yes\", \"autoDeployTrigger\": \"commit\", \"branch\": \"main\", \"createdAt\": \"2026-09-12T06:37:43Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\", \"id\": \"srv-daif6dsmg29s73d1umvg\", \"name\": \"hello-go\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/bex-co/bex\", \"rootDir\": \"examples/hello-go\", \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/hello-go\", \"dockerfilePath\": \"\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"hello-go:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://hello-go.onbex.co\"}, \"slug\": \"hello-go\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-11T20:45:12Z\"}}, {\"service\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"createdAt\": \"2026-10-03T06:24:46Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\", \"id\": \"srv-db09vbgehcmc739j12i0\", \"imagePath\": \"mendhak/http-https-echo:35\", \"name\": \"qa-20261003-c63833-zero-head\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"rootDir\": \"\", \"serviceDetails\": {\"env\": \"image\", \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"image\", \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"}, \"slug\": \"qa-20261003-c63833-zero-head\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-11T19:57:48Z\"}}, {\"service\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"createdAt\": \"2026-10-03T06:22:29Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\", \"id\": \"srv-db09u90ehcmc739j12cg\", \"imagePath\": \"mendhak/http-https-echo:35\", \"name\": \"qa-20261003-f592c7-zero\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"rootDir\": \"\", \"serviceDetails\": {\"env\": \"image\", \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261003-f592c7-zero:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"image\", \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"}, \"slug\": \"qa-20261003-f592c7-zero\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-11T19:57:12Z\"}}]",
+    "stderr": ""
+  },
+  "quota_after_delete": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.271,
+    "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a490b90a4cb37ac8-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  }
+}

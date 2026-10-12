@@ -1,0 +1,2117 @@
+{
+  "sweep": 166,
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "type": "web_service",
+  "name": "qa-20261011-7b8b2e-nodepath",
+  "nonce": "7b8b2e",
+  "marker": "QA166_7b8b2e",
+  "time": "2026-10-12T01:17:00.790606+00:00",
+  "dependency_ids": [],
+  "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+  "command": [
+    "bex",
+    "services",
+    "create",
+    "--name",
+    "qa-20261011-7b8b2e-nodepath",
+    "--type",
+    "web_service",
+    "--runtime",
+    "node",
+    "--repo",
+    "https://github.com/bex-co/bex",
+    "--branch",
+    "main",
+    "--root-directory",
+    "examples/hello-go",
+    "--build-command",
+    "/usr/local/bin/node -e 'const crypto=require('\"'\"'crypto'\"'\"');function snapshot(){const note=process.env.QA_NOTE||'\"'\"''\"'\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\"'\"'QA_NOTE'\"'\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\"'\"'sha256'\"'\"').update(note).digest('\"'\"'hex'\"'\"')};}\nrequire('\"'\"'fs'\"'\"').writeFileSync('\"'\"'qa-built.json'\"'\"',JSON.stringify({marker:\"QA166_7b8b2e\",snapshot:snapshot(),built_at:Date.now()}));console.log('\"'\"'QA166_USER_BUILD_RAN'\"'\"');'",
+    "--start-command",
+    "/usr/local/bin/node -e 'const crypto=require('\"'\"'crypto'\"'\"');function snapshot(){const note=process.env.QA_NOTE||'\"'\"''\"'\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\"'\"'QA_NOTE'\"'\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\"'\"'sha256'\"'\"').update(note).digest('\"'\"'hex'\"'\"')};}\nconst built=JSON.parse(require('\"'\"'fs'\"'\"').readFileSync('\"'\"'qa-built.json'\"'\"','\"'\"'utf8'\"'\"'));require('\"'\"'http'\"'\"').createServer((req,res)=>{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\"'\"'os'\"'\"').hostname()});res.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"','\"'\"'Content-Length'\"'\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'",
+    "--health-check-path",
+    "/",
+    "--plan",
+    "free",
+    "--region",
+    "frankfurt",
+    "--auto-deploy=false",
+    "--env-var",
+    "PATH=/usr/local/bin",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "capacity_proof": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.396,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a492432e2ef15e55-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "program": "const crypto=require('crypto');function snapshot(){const note=process.env.QA_NOTE||'';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'QA_NOTE'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('sha256').update(note).digest('hex')};}\nconst built=JSON.parse(require('fs').readFileSync('qa-built.json','utf8'));require('http').createServer((req,res)=>{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('os').hostname()});res.writeHead(200,{'Content-Type':'application/json','Content-Length':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'0.0.0.0');",
+  "build_program": "const crypto=require('crypto');function snapshot(){const note=process.env.QA_NOTE||'';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'QA_NOTE'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('sha256').update(note).digest('hex')};}\nrequire('fs').writeFileSync('qa-built.json',JSON.stringify({marker:\"QA166_7b8b2e\",snapshot:snapshot(),built_at:Date.now()}));console.log('QA166_USER_BUILD_RAN');",
+  "source_head": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+  "stages": {
+    "initial": {
+      "at": "2026-10-12T01:17:00.790872+00:00",
+      "before_ids": [],
+      "expected_path": "/usr/local/bin",
+      "expected_note": null,
+      "observations": [
+        {
+          "at": "2026-10-12T01:17:27.568292+00:00",
+          "native_history": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db63a3dqamec73fj0s8g",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.74,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:17:05.491307Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "target": {
+            "commit": {
+              "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+              "message": "docs(pm): file stale Key Value environment move (w4/263)"
+            },
+            "createdAt": "2026-10-12T01:17:01.864196Z",
+            "id": "dep-db63a3dqamec73fj0s90",
+            "status": "queued",
+            "trigger": "other",
+            "updatedAt": "2026-10-12T01:17:05.491307Z"
+          },
+          "runtime": {
+            "at": "2026-10-12T01:17:27.195963+00:00",
+            "exit": 0,
+            "http": "404",
+            "body": null,
+            "raw": "404 page not found\n",
+            "stderr": ""
+          },
+          "detail": {
+            "method": "GET",
+            "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.291,
+            "response": "{\"id\":\"srv-db63a3dqamec73fj0s8g\",\"name\":\"qa-20261011-7b8b2e-nodepath\",\"immutableName\":\"qa-20261011-7b8b2e-nodepath\",\"slug\":\"qa-20261011-7b8b2e-nodepath\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\"createdAt\":\"2026-10-12T01:17:01Z\",\"updatedAt\":\"2026-10-12T01:17:05Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL_REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-7b8b2e-nodepath:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a49243d60a41b828-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-12T01:17:37.091881+00:00",
+          "native_history": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db63a3dqamec73fj0s8g",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.338,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:17:05.491307Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "target": {
+            "commit": {
+              "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+              "message": "docs(pm): file stale Key Value environment move (w4/263)"
+            },
+            "createdAt": "2026-10-12T01:17:01.864196Z",
+            "id": "dep-db63a3dqamec73fj0s90",
+            "status": "queued",
+            "trigger": "other",
+            "updatedAt": "2026-10-12T01:17:05.491307Z"
+          },
+          "runtime": {
+            "at": "2026-10-12T01:17:36.614563+00:00",
+            "exit": 0,
+            "http": "404",
+            "body": null,
+            "raw": "404 page not found\n",
+            "stderr": ""
+          },
+          "detail": {
+            "method": "GET",
+            "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.423,
+            "response": "{\"id\":\"srv-db63a3dqamec73fj0s8g\",\"name\":\"qa-20261011-7b8b2e-nodepath\",\"immutableName\":\"qa-20261011-7b8b2e-nodepath\",\"slug\":\"qa-20261011-7b8b2e-nodepath\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\"createdAt\":\"2026-10-12T01:17:01Z\",\"updatedAt\":\"2026-10-12T01:17:05Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL_REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-7b8b2e-nodepath:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4924410b9cdfb34-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-12T01:17:46.640555+00:00",
+          "native_history": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db63a3dqamec73fj0s8g",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.396,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:17:05.491307Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "target": {
+            "commit": {
+              "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+              "message": "docs(pm): file stale Key Value environment move (w4/263)"
+            },
+            "createdAt": "2026-10-12T01:17:01.864196Z",
+            "id": "dep-db63a3dqamec73fj0s90",
+            "status": "queued",
+            "trigger": "other",
+            "updatedAt": "2026-10-12T01:17:05.491307Z"
+          },
+          "runtime": {
+            "at": "2026-10-12T01:17:46.215765+00:00",
+            "exit": 0,
+            "http": "404",
+            "body": null,
+            "raw": "404 page not found\n",
+            "stderr": ""
+          },
+          "detail": {
+            "method": "GET",
+            "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.372,
+            "response": "{\"id\":\"srv-db63a3dqamec73fj0s8g\",\"name\":\"qa-20261011-7b8b2e-nodepath\",\"immutableName\":\"qa-20261011-7b8b2e-nodepath\",\"slug\":\"qa-20261011-7b8b2e-nodepath\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\"createdAt\":\"2026-10-12T01:17:01Z\",\"updatedAt\":\"2026-10-12T01:17:05Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL_REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-7b8b2e-nodepath:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a492444d48b3053e-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-12T01:17:56.101469+00:00",
+          "native_history": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db63a3dqamec73fj0s8g",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.304,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:17:05.491307Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "target": {
+            "commit": {
+              "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+              "message": "docs(pm): file stale Key Value environment move (w4/263)"
+            },
+            "createdAt": "2026-10-12T01:17:01.864196Z",
+            "id": "dep-db63a3dqamec73fj0s90",
+            "status": "queued",
+            "trigger": "other",
+            "updatedAt": "2026-10-12T01:17:05.491307Z"
+          },
+          "runtime": {
+            "at": "2026-10-12T01:17:55.656976+00:00",
+            "exit": 0,
+            "http": "404",
+            "body": null,
+            "raw": "404 page not found\n",
+            "stderr": ""
+          },
+          "detail": {
+            "method": "GET",
+            "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.386,
+            "response": "{\"id\":\"srv-db63a3dqamec73fj0s8g\",\"name\":\"qa-20261011-7b8b2e-nodepath\",\"immutableName\":\"qa-20261011-7b8b2e-nodepath\",\"slug\":\"qa-20261011-7b8b2e-nodepath\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\"createdAt\":\"2026-10-12T01:17:01Z\",\"updatedAt\":\"2026-10-12T01:17:05Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL_REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-7b8b2e-nodepath:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a49244886f16152b-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-12T01:18:05.490264+00:00",
+          "native_history": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db63a3dqamec73fj0s8g",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.297,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:17:05.491307Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "target": {
+            "commit": {
+              "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+              "message": "docs(pm): file stale Key Value environment move (w4/263)"
+            },
+            "createdAt": "2026-10-12T01:17:01.864196Z",
+            "id": "dep-db63a3dqamec73fj0s90",
+            "status": "queued",
+            "trigger": "other",
+            "updatedAt": "2026-10-12T01:17:05.491307Z"
+          },
+          "runtime": {
+            "at": "2026-10-12T01:18:05.095877+00:00",
+            "exit": 0,
+            "http": "404",
+            "body": null,
+            "raw": "404 page not found\n",
+            "stderr": ""
+          },
+          "detail": {
+            "method": "GET",
+            "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.339,
+            "response": "{\"id\":\"srv-db63a3dqamec73fj0s8g\",\"name\":\"qa-20261011-7b8b2e-nodepath\",\"immutableName\":\"qa-20261011-7b8b2e-nodepath\",\"slug\":\"qa-20261011-7b8b2e-nodepath\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\"createdAt\":\"2026-10-12T01:17:01Z\",\"updatedAt\":\"2026-10-12T01:18:03Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL_REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-7b8b2e-nodepath:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a49244c33ab5eb20-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-12T01:18:52.228670+00:00",
+          "native_history": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db63a3dqamec73fj0s8g",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.814,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:18:04.86876Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "target": {
+            "commit": {
+              "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+              "message": "docs(pm): file stale Key Value environment move (w4/263)"
+            },
+            "createdAt": "2026-10-12T01:17:01.864196Z",
+            "id": "dep-db63a3dqamec73fj0s90",
+            "startedAt": "2026-10-12T01:18:04.868758Z",
+            "status": "build_in_progress",
+            "trigger": "other",
+            "updatedAt": "2026-10-12T01:18:04.86876Z"
+          },
+          "runtime": {
+            "at": "2026-10-12T01:18:51.759153+00:00",
+            "exit": 0,
+            "http": "404",
+            "body": null,
+            "raw": "404 page not found\n",
+            "stderr": ""
+          },
+          "detail": {
+            "method": "GET",
+            "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.39,
+            "response": "{\"id\":\"srv-db63a3dqamec73fj0s8g\",\"name\":\"qa-20261011-7b8b2e-nodepath\",\"immutableName\":\"qa-20261011-7b8b2e-nodepath\",\"slug\":\"qa-20261011-7b8b2e-nodepath\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\"createdAt\":\"2026-10-12T01:17:01Z\",\"updatedAt\":\"2026-10-12T01:18:03Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL_REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-7b8b2e-nodepath:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a49245e718a19100-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-12T01:19:01.617905+00:00",
+          "native_history": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db63a3dqamec73fj0s8g",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.3,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:18:04.86876Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "target": {
+            "commit": {
+              "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+              "message": "docs(pm): file stale Key Value environment move (w4/263)"
+            },
+            "createdAt": "2026-10-12T01:17:01.864196Z",
+            "id": "dep-db63a3dqamec73fj0s90",
+            "startedAt": "2026-10-12T01:18:04.868758Z",
+            "status": "build_in_progress",
+            "trigger": "other",
+            "updatedAt": "2026-10-12T01:18:04.86876Z"
+          },
+          "runtime": {
+            "at": "2026-10-12T01:19:01.218060+00:00",
+            "exit": 0,
+            "http": "503",
+            "body": null,
+            "raw": "service unavailable\n",
+            "stderr": ""
+          },
+          "detail": {
+            "method": "GET",
+            "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.345,
+            "response": "{\"id\":\"srv-db63a3dqamec73fj0s8g\",\"name\":\"qa-20261011-7b8b2e-nodepath\",\"immutableName\":\"qa-20261011-7b8b2e-nodepath\",\"slug\":\"qa-20261011-7b8b2e-nodepath\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\"createdAt\":\"2026-10-12T01:17:01Z\",\"updatedAt\":\"2026-10-12T01:18:59Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL_REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-7b8b2e-nodepath:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Deploying\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4924621f8b4ebf3-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-12T01:19:11.116764+00:00",
+          "native_history": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db63a3dqamec73fj0s8g",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.312,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"update_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:19:04.952514Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "target": {
+            "commit": {
+              "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+              "message": "docs(pm): file stale Key Value environment move (w4/263)"
+            },
+            "createdAt": "2026-10-12T01:17:01.864196Z",
+            "id": "dep-db63a3dqamec73fj0s90",
+            "startedAt": "2026-10-12T01:18:04.868758Z",
+            "status": "update_in_progress",
+            "trigger": "other",
+            "updatedAt": "2026-10-12T01:19:04.952514Z"
+          },
+          "runtime": {
+            "at": "2026-10-12T01:19:10.637773+00:00",
+            "exit": 0,
+            "http": "200",
+            "body": {
+              "marker": "QA166_7b8b2e",
+              "built": {
+                "marker": "QA166_7b8b2e",
+                "snapshot": {
+                  "path": "/usr/local/bin",
+                  "note_present": false,
+                  "note_length": 0,
+                  "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                "built_at": 1791767914725
+              },
+              "runtime": {
+                "path": "/usr/local/bin",
+                "note_present": false,
+                "note_length": 0,
+                "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv"
+            },
+            "raw": "{\"marker\":\"QA166_7b8b2e\",\"built\":{\"marker\":\"QA166_7b8b2e\",\"snapshot\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"built_at\":1791767914725},\"runtime\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv\"}",
+            "stderr": ""
+          },
+          "detail": {
+            "method": "GET",
+            "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.427,
+            "response": "{\"id\":\"srv-db63a3dqamec73fj0s8g\",\"name\":\"qa-20261011-7b8b2e-nodepath\",\"immutableName\":\"qa-20261011-7b8b2e-nodepath\",\"slug\":\"qa-20261011-7b8b2e-nodepath\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\"createdAt\":\"2026-10-12T01:17:01Z\",\"updatedAt\":\"2026-10-12T01:19:09Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL_REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-7b8b2e-nodepath:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a492465d0c7b5a2e-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-12T01:19:21.016110+00:00",
+          "native_history": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db63a3dqamec73fj0s8g",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.65,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"finishedAt\": \"2026-10-12T01:19:17.871783Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:19:17.871784Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "target": {
+            "commit": {
+              "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+              "message": "docs(pm): file stale Key Value environment move (w4/263)"
+            },
+            "createdAt": "2026-10-12T01:17:01.864196Z",
+            "finishedAt": "2026-10-12T01:19:17.871783Z",
+            "id": "dep-db63a3dqamec73fj0s90",
+            "startedAt": "2026-10-12T01:18:04.868758Z",
+            "status": "live",
+            "trigger": "other",
+            "updatedAt": "2026-10-12T01:19:17.871784Z"
+          },
+          "runtime": {
+            "at": "2026-10-12T01:19:20.630036+00:00",
+            "exit": 0,
+            "http": "200",
+            "body": {
+              "marker": "QA166_7b8b2e",
+              "built": {
+                "marker": "QA166_7b8b2e",
+                "snapshot": {
+                  "path": "/usr/local/bin",
+                  "note_present": false,
+                  "note_length": 0,
+                  "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                "built_at": 1791767914725
+              },
+              "runtime": {
+                "path": "/usr/local/bin",
+                "note_present": false,
+                "note_length": 0,
+                "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv"
+            },
+            "raw": "{\"marker\":\"QA166_7b8b2e\",\"built\":{\"marker\":\"QA166_7b8b2e\",\"snapshot\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"built_at\":1791767914725},\"runtime\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv\"}",
+            "stderr": ""
+          },
+          "detail": {
+            "method": "GET",
+            "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.292,
+            "response": "{\"id\":\"srv-db63a3dqamec73fj0s8g\",\"name\":\"qa-20261011-7b8b2e-nodepath\",\"immutableName\":\"qa-20261011-7b8b2e-nodepath\",\"slug\":\"qa-20261011-7b8b2e-nodepath\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\"createdAt\":\"2026-10-12T01:17:01Z\",\"updatedAt\":\"2026-10-12T01:19:09Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL_REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-7b8b2e-nodepath:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a492469b4a1c8b9e-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        }
+      ],
+      "settled": true,
+      "passed": true,
+      "deploy": {
+        "commit": {
+          "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+          "message": "docs(pm): file stale Key Value environment move (w4/263)"
+        },
+        "createdAt": "2026-10-12T01:17:01.864196Z",
+        "finishedAt": "2026-10-12T01:19:17.871783Z",
+        "id": "dep-db63a3dqamec73fj0s90",
+        "startedAt": "2026-10-12T01:18:04.868758Z",
+        "status": "live",
+        "trigger": "other",
+        "updatedAt": "2026-10-12T01:19:17.871784Z"
+      },
+      "runtime": {
+        "at": "2026-10-12T01:19:20.630036+00:00",
+        "exit": 0,
+        "http": "200",
+        "body": {
+          "marker": "QA166_7b8b2e",
+          "built": {
+            "marker": "QA166_7b8b2e",
+            "snapshot": {
+              "path": "/usr/local/bin",
+              "note_present": false,
+              "note_length": 0,
+              "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "built_at": 1791767914725
+          },
+          "runtime": {
+            "path": "/usr/local/bin",
+            "note_present": false,
+            "note_length": 0,
+            "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv"
+        },
+        "raw": "{\"marker\":\"QA166_7b8b2e\",\"built\":{\"marker\":\"QA166_7b8b2e\",\"snapshot\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"built_at\":1791767914725},\"runtime\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv\"}",
+        "stderr": ""
+      },
+      "deploy_detail": {
+        "method": "GET",
+        "path": "/v1/services/srv-db63a3dqamec73fj0s8g/deploys/dep-db63a3dqamec73fj0s90",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.325,
+        "response": "{\"id\":\"dep-db63a3dqamec73fj0s90\",\"serviceId\":\"srv-db63a3dqamec73fj0s8g\",\"status\":\"deactivated\",\"trigger\":\"other\",\"bexTrigger\":\"create\",\"commit\":{\"id\":\"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\"message\":\"docs(pm): file stale Key Value environment move (w4/263)\"},\"createdAt\":\"2026-10-12T01:17:01.864196Z\",\"updatedAt\":\"2026-10-12T01:24:41.415309Z\",\"startedAt\":\"2026-10-12T01:18:04.868758Z\",\"finishedAt\":\"2026-10-12T01:19:17.871783Z\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a492513fa8df67a4-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    "failure": {
+      "at": "2026-10-12T01:19:46.171195+00:00",
+      "before_ids": [
+        "dep-db63a3dqamec73fj0s90"
+      ],
+      "before_history": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db63a3dqamec73fj0s8g",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.359,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"finishedAt\": \"2026-10-12T01:19:17.871783Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:19:17.871784Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "expected_path": "/usr/local/bin",
+      "expected_note": "QA166_7b8b2e_NOTE",
+      "intent": [
+        "bex",
+        "deploys",
+        "create",
+        "srv-db63a3dqamec73fj0s8g",
+        "--commit",
+        "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "create",
+          "srv-db63a3dqamec73fj0s8g",
+          "--commit",
+          "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.824,
+        "stdout": "{\n  \"commit\": {\n    \"createdAt\": \"2026-10-12T01:10:03Z\",\n    \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n    \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n  },\n  \"createdAt\": \"2026-10-12T01:19:47.074313Z\",\n  \"id\": \"dep-db63bcskajsc73bvm3i0\",\n  \"status\": \"created\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-12T01:19:47.074313Z\"\n}",
+        "stderr": ""
+      },
+      "deploy_id": "dep-db63bcskajsc73bvm3i0",
+      "observations": [
+        {
+          "at": "2026-10-12T01:19:51.811293+00:00",
+          "native_history": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db63a3dqamec73fj0s8g",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.372,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:19:47.074313Z\",\n    \"id\": \"dep-db63bcskajsc73bvm3i0\",\n    \"status\": \"queued\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:19:47.789619Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"finishedAt\": \"2026-10-12T01:19:17.871783Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:19:17.871784Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "target": {
+            "commit": {
+              "createdAt": "2026-10-12T01:10:03Z",
+              "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+              "message": "docs(pm): file stale Key Value environment move (w4/263)"
+            },
+            "createdAt": "2026-10-12T01:19:47.074313Z",
+            "id": "dep-db63bcskajsc73bvm3i0",
+            "status": "queued",
+            "trigger": "api",
+            "updatedAt": "2026-10-12T01:19:47.789619Z"
+          },
+          "runtime": {
+            "at": "2026-10-12T01:19:51.424555+00:00",
+            "exit": 0,
+            "http": "200",
+            "body": {
+              "marker": "QA166_7b8b2e",
+              "built": {
+                "marker": "QA166_7b8b2e",
+                "snapshot": {
+                  "path": "/usr/local/bin",
+                  "note_present": false,
+                  "note_length": 0,
+                  "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                "built_at": 1791767914725
+              },
+              "runtime": {
+                "path": "/usr/local/bin",
+                "note_present": false,
+                "note_length": 0,
+                "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv"
+            },
+            "raw": "{\"marker\":\"QA166_7b8b2e\",\"built\":{\"marker\":\"QA166_7b8b2e\",\"snapshot\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"built_at\":1791767914725},\"runtime\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv\"}",
+            "stderr": ""
+          },
+          "detail": {
+            "method": "GET",
+            "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.285,
+            "response": "{\"id\":\"srv-db63a3dqamec73fj0s8g\",\"name\":\"qa-20261011-7b8b2e-nodepath\",\"immutableName\":\"qa-20261011-7b8b2e-nodepath\",\"slug\":\"qa-20261011-7b8b2e-nodepath\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\"createdAt\":\"2026-10-12T01:17:01Z\",\"updatedAt\":\"2026-10-12T01:19:47Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL_REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-7b8b2e-nodepath:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"undeployedChanges\":true,\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a492475baca07ad0-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-12T01:20:01.366266+00:00",
+          "native_history": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db63a3dqamec73fj0s8g",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.382,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:19:47.074313Z\",\n    \"id\": \"dep-db63bcskajsc73bvm3i0\",\n    \"status\": \"queued\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:19:47.789619Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"finishedAt\": \"2026-10-12T01:19:17.871783Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:19:17.871784Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "target": {
+            "commit": {
+              "createdAt": "2026-10-12T01:10:03Z",
+              "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+              "message": "docs(pm): file stale Key Value environment move (w4/263)"
+            },
+            "createdAt": "2026-10-12T01:19:47.074313Z",
+            "id": "dep-db63bcskajsc73bvm3i0",
+            "status": "queued",
+            "trigger": "api",
+            "updatedAt": "2026-10-12T01:19:47.789619Z"
+          },
+          "runtime": {
+            "at": "2026-10-12T01:20:00.952611+00:00",
+            "exit": 0,
+            "http": "200",
+            "body": {
+              "marker": "QA166_7b8b2e",
+              "built": {
+                "marker": "QA166_7b8b2e",
+                "snapshot": {
+                  "path": "/usr/local/bin",
+                  "note_present": false,
+                  "note_length": 0,
+                  "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                "built_at": 1791767914725
+              },
+              "runtime": {
+                "path": "/usr/local/bin",
+                "note_present": false,
+                "note_length": 0,
+                "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv"
+            },
+            "raw": "{\"marker\":\"QA166_7b8b2e\",\"built\":{\"marker\":\"QA166_7b8b2e\",\"snapshot\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"built_at\":1791767914725},\"runtime\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv\"}",
+            "stderr": ""
+          },
+          "detail": {
+            "method": "GET",
+            "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.356,
+            "response": "{\"id\":\"srv-db63a3dqamec73fj0s8g\",\"name\":\"qa-20261011-7b8b2e-nodepath\",\"immutableName\":\"qa-20261011-7b8b2e-nodepath\",\"slug\":\"qa-20261011-7b8b2e-nodepath\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\"createdAt\":\"2026-10-12T01:17:01Z\",\"updatedAt\":\"2026-10-12T01:19:52Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL_REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-7b8b2e-nodepath:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"undeployedChanges\":true,\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a49247977ff9ebe5-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-12T01:20:10.862667+00:00",
+          "native_history": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db63a3dqamec73fj0s8g",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.37,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:19:47.074313Z\",\n    \"id\": \"dep-db63bcskajsc73bvm3i0\",\n    \"startedAt\": \"2026-10-12T01:20:04.945053Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:20:04.945054Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"finishedAt\": \"2026-10-12T01:19:17.871783Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:19:17.871784Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "target": {
+            "commit": {
+              "createdAt": "2026-10-12T01:10:03Z",
+              "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+              "message": "docs(pm): file stale Key Value environment move (w4/263)"
+            },
+            "createdAt": "2026-10-12T01:19:47.074313Z",
+            "id": "dep-db63bcskajsc73bvm3i0",
+            "startedAt": "2026-10-12T01:20:04.945053Z",
+            "status": "build_in_progress",
+            "trigger": "api",
+            "updatedAt": "2026-10-12T01:20:04.945054Z"
+          },
+          "runtime": {
+            "at": "2026-10-12T01:20:10.408367+00:00",
+            "exit": 0,
+            "http": "200",
+            "body": {
+              "marker": "QA166_7b8b2e",
+              "built": {
+                "marker": "QA166_7b8b2e",
+                "snapshot": {
+                  "path": "/usr/local/bin",
+                  "note_present": false,
+                  "note_length": 0,
+                  "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                "built_at": 1791767914725
+              },
+              "runtime": {
+                "path": "/usr/local/bin",
+                "note_present": false,
+                "note_length": 0,
+                "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv"
+            },
+            "raw": "{\"marker\":\"QA166_7b8b2e\",\"built\":{\"marker\":\"QA166_7b8b2e\",\"snapshot\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"built_at\":1791767914725},\"runtime\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv\"}",
+            "stderr": ""
+          },
+          "detail": {
+            "method": "GET",
+            "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.399,
+            "response": "{\"id\":\"srv-db63a3dqamec73fj0s8g\",\"name\":\"qa-20261011-7b8b2e-nodepath\",\"immutableName\":\"qa-20261011-7b8b2e-nodepath\",\"slug\":\"qa-20261011-7b8b2e-nodepath\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\"createdAt\":\"2026-10-12T01:17:01Z\",\"updatedAt\":\"2026-10-12T01:19:52Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL_REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-7b8b2e-nodepath:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"undeployedChanges\":true,\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a49247d29b4f58f1-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-12T01:20:20.268570+00:00",
+          "native_history": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db63a3dqamec73fj0s8g",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.342,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:19:47.074313Z\",\n    \"id\": \"dep-db63bcskajsc73bvm3i0\",\n    \"startedAt\": \"2026-10-12T01:20:04.945053Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:20:04.945054Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"finishedAt\": \"2026-10-12T01:19:17.871783Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:19:17.871784Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "target": {
+            "commit": {
+              "createdAt": "2026-10-12T01:10:03Z",
+              "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+              "message": "docs(pm): file stale Key Value environment move (w4/263)"
+            },
+            "createdAt": "2026-10-12T01:19:47.074313Z",
+            "id": "dep-db63bcskajsc73bvm3i0",
+            "startedAt": "2026-10-12T01:20:04.945053Z",
+            "status": "build_in_progress",
+            "trigger": "api",
+            "updatedAt": "2026-10-12T01:20:04.945054Z"
+          },
+          "runtime": {
+            "at": "2026-10-12T01:20:19.881802+00:00",
+            "exit": 0,
+            "http": "200",
+            "body": {
+              "marker": "QA166_7b8b2e",
+              "built": {
+                "marker": "QA166_7b8b2e",
+                "snapshot": {
+                  "path": "/usr/local/bin",
+                  "note_present": false,
+                  "note_length": 0,
+                  "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                "built_at": 1791767914725
+              },
+              "runtime": {
+                "path": "/usr/local/bin",
+                "note_present": false,
+                "note_length": 0,
+                "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv"
+            },
+            "raw": "{\"marker\":\"QA166_7b8b2e\",\"built\":{\"marker\":\"QA166_7b8b2e\",\"snapshot\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"built_at\":1791767914725},\"runtime\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv\"}",
+            "stderr": ""
+          },
+          "detail": {
+            "method": "GET",
+            "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.333,
+            "response": "{\"id\":\"srv-db63a3dqamec73fj0s8g\",\"name\":\"qa-20261011-7b8b2e-nodepath\",\"immutableName\":\"qa-20261011-7b8b2e-nodepath\",\"slug\":\"qa-20261011-7b8b2e-nodepath\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\"createdAt\":\"2026-10-12T01:17:01Z\",\"updatedAt\":\"2026-10-12T01:19:52Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL_REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-7b8b2e-nodepath:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"undeployedChanges\":true,\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a492480d7a38cf2b-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-12T01:20:29.835323+00:00",
+          "native_history": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db63a3dqamec73fj0s8g",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.512,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:19:47.074313Z\",\n    \"id\": \"dep-db63bcskajsc73bvm3i0\",\n    \"startedAt\": \"2026-10-12T01:20:04.945053Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:20:04.945054Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"finishedAt\": \"2026-10-12T01:19:17.871783Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:19:17.871784Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "target": {
+            "commit": {
+              "createdAt": "2026-10-12T01:10:03Z",
+              "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+              "message": "docs(pm): file stale Key Value environment move (w4/263)"
+            },
+            "createdAt": "2026-10-12T01:19:47.074313Z",
+            "id": "dep-db63bcskajsc73bvm3i0",
+            "startedAt": "2026-10-12T01:20:04.945053Z",
+            "status": "build_in_progress",
+            "trigger": "api",
+            "updatedAt": "2026-10-12T01:20:04.945054Z"
+          },
+          "runtime": {
+            "at": "2026-10-12T01:20:29.457727+00:00",
+            "exit": 0,
+            "http": "200",
+            "body": {
+              "marker": "QA166_7b8b2e",
+              "built": {
+                "marker": "QA166_7b8b2e",
+                "snapshot": {
+                  "path": "/usr/local/bin",
+                  "note_present": false,
+                  "note_length": 0,
+                  "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                "built_at": 1791767914725
+              },
+              "runtime": {
+                "path": "/usr/local/bin",
+                "note_present": false,
+                "note_length": 0,
+                "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv"
+            },
+            "raw": "{\"marker\":\"QA166_7b8b2e\",\"built\":{\"marker\":\"QA166_7b8b2e\",\"snapshot\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"built_at\":1791767914725},\"runtime\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv\"}",
+            "stderr": ""
+          },
+          "detail": {
+            "method": "GET",
+            "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.276,
+            "response": "{\"id\":\"srv-db63a3dqamec73fj0s8g\",\"name\":\"qa-20261011-7b8b2e-nodepath\",\"immutableName\":\"qa-20261011-7b8b2e-nodepath\",\"slug\":\"qa-20261011-7b8b2e-nodepath\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\"createdAt\":\"2026-10-12T01:17:01Z\",\"updatedAt\":\"2026-10-12T01:20:28Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL_REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-7b8b2e-nodepath:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"undeployedChanges\":true,\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a49248495ac715ea-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-12T01:21:59.128146+00:00",
+          "native_history": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db63a3dqamec73fj0s8g",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.42,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:19:47.074313Z\",\n    \"finishedAt\": \"2026-10-12T01:20:34.8758Z\",\n    \"id\": \"dep-db63bcskajsc73bvm3i0\",\n    \"startedAt\": \"2026-10-12T01:20:04.945053Z\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:20:34.875801Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"finishedAt\": \"2026-10-12T01:19:17.871783Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:19:17.871784Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "target": {
+            "commit": {
+              "createdAt": "2026-10-12T01:10:03Z",
+              "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+              "message": "docs(pm): file stale Key Value environment move (w4/263)"
+            },
+            "createdAt": "2026-10-12T01:19:47.074313Z",
+            "finishedAt": "2026-10-12T01:20:34.8758Z",
+            "id": "dep-db63bcskajsc73bvm3i0",
+            "startedAt": "2026-10-12T01:20:04.945053Z",
+            "status": "build_failed",
+            "trigger": "api",
+            "updatedAt": "2026-10-12T01:20:34.875801Z"
+          },
+          "runtime": {
+            "at": "2026-10-12T01:21:58.738901+00:00",
+            "exit": 0,
+            "http": "200",
+            "body": {
+              "marker": "QA166_7b8b2e",
+              "built": {
+                "marker": "QA166_7b8b2e",
+                "snapshot": {
+                  "path": "/usr/local/bin",
+                  "note_present": false,
+                  "note_length": 0,
+                  "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                "built_at": 1791767914725
+              },
+              "runtime": {
+                "path": "/usr/local/bin",
+                "note_present": false,
+                "note_length": 0,
+                "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv"
+            },
+            "raw": "{\"marker\":\"QA166_7b8b2e\",\"built\":{\"marker\":\"QA166_7b8b2e\",\"snapshot\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"built_at\":1791767914725},\"runtime\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv\"}",
+            "stderr": ""
+          },
+          "detail": {
+            "method": "GET",
+            "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.308,
+            "response": "{\"id\":\"srv-db63a3dqamec73fj0s8g\",\"name\":\"qa-20261011-7b8b2e-nodepath\",\"immutableName\":\"qa-20261011-7b8b2e-nodepath\",\"slug\":\"qa-20261011-7b8b2e-nodepath\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\"createdAt\":\"2026-10-12T01:17:01Z\",\"updatedAt\":\"2026-10-12T01:20:28Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL_REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-7b8b2e-nodepath:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"undeployedChanges\":true,\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4924a773c308ac8-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        }
+      ],
+      "settled": true,
+      "passed": true,
+      "deploy": {
+        "commit": {
+          "createdAt": "2026-10-12T01:10:03Z",
+          "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+          "message": "docs(pm): file stale Key Value environment move (w4/263)"
+        },
+        "createdAt": "2026-10-12T01:19:47.074313Z",
+        "finishedAt": "2026-10-12T01:20:34.8758Z",
+        "id": "dep-db63bcskajsc73bvm3i0",
+        "startedAt": "2026-10-12T01:20:04.945053Z",
+        "status": "build_failed",
+        "trigger": "api",
+        "updatedAt": "2026-10-12T01:20:34.875801Z"
+      },
+      "runtime": {
+        "at": "2026-10-12T01:21:58.738901+00:00",
+        "exit": 0,
+        "http": "200",
+        "body": {
+          "marker": "QA166_7b8b2e",
+          "built": {
+            "marker": "QA166_7b8b2e",
+            "snapshot": {
+              "path": "/usr/local/bin",
+              "note_present": false,
+              "note_length": 0,
+              "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "built_at": 1791767914725
+          },
+          "runtime": {
+            "path": "/usr/local/bin",
+            "note_present": false,
+            "note_length": 0,
+            "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv"
+        },
+        "raw": "{\"marker\":\"QA166_7b8b2e\",\"built\":{\"marker\":\"QA166_7b8b2e\",\"snapshot\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"built_at\":1791767914725},\"runtime\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv\"}",
+        "stderr": ""
+      },
+      "deploy_detail": {
+        "method": "GET",
+        "path": "/v1/services/srv-db63a3dqamec73fj0s8g/deploys/dep-db63bcskajsc73bvm3i0",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.358,
+        "response": "{\"id\":\"dep-db63bcskajsc73bvm3i0\",\"serviceId\":\"srv-db63a3dqamec73fj0s8g\",\"status\":\"build_failed\",\"trigger\":\"api\",\"bexTrigger\":\"api\",\"commit\":{\"id\":\"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\"message\":\"docs(pm): file stale Key Value environment move (w4/263)\",\"createdAt\":\"2026-10-12T01:10:03Z\"},\"createdAt\":\"2026-10-12T01:19:47.074313Z\",\"updatedAt\":\"2026-10-12T01:20:34.875801Z\",\"startedAt\":\"2026-10-12T01:20:04.945053Z\",\"finishedAt\":\"2026-10-12T01:20:34.8758Z\",\"failureReason\":\"build failed in the docker build step:\\n------\\nerror: build command '/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'' exited with code 1\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4925142990626d3-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    "recovery": {
+      "at": "2026-10-12T01:23:29.354559+00:00",
+      "before_ids": [
+        "dep-db63bcskajsc73bvm3i0",
+        "dep-db63a3dqamec73fj0s90"
+      ],
+      "before_history": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db63a3dqamec73fj0s8g",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.571,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:19:47.074313Z\",\n    \"finishedAt\": \"2026-10-12T01:20:34.8758Z\",\n    \"id\": \"dep-db63bcskajsc73bvm3i0\",\n    \"startedAt\": \"2026-10-12T01:20:04.945053Z\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:20:34.875801Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"finishedAt\": \"2026-10-12T01:19:17.871783Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:19:17.871784Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "expected_path": "/usr/local/bin:/usr/bin:/bin",
+      "expected_note": "QA166_7b8b2e_NOTE",
+      "intent": [
+        "bex",
+        "deploys",
+        "create",
+        "srv-db63a3dqamec73fj0s8g",
+        "--commit",
+        "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "create",
+          "srv-db63a3dqamec73fj0s8g",
+          "--commit",
+          "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.851,
+        "stdout": "{\n  \"commit\": {\n    \"createdAt\": \"2026-10-12T01:10:03Z\",\n    \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n    \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n  },\n  \"createdAt\": \"2026-10-12T01:23:30.253729Z\",\n  \"id\": \"dep-db63d4icsrmc7381q1s0\",\n  \"status\": \"created\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-12T01:23:30.253729Z\"\n}",
+        "stderr": ""
+      },
+      "deploy_id": "dep-db63d4icsrmc7381q1s0",
+      "observations": [
+        {
+          "at": "2026-10-12T01:23:42.802025+00:00",
+          "native_history": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db63a3dqamec73fj0s8g",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.568,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:23:30.253729Z\",\n    \"id\": \"dep-db63d4icsrmc7381q1s0\",\n    \"startedAt\": \"2026-10-12T01:23:41.423483Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:23:41.423483Z\"\n  },\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:19:47.074313Z\",\n    \"finishedAt\": \"2026-10-12T01:20:34.8758Z\",\n    \"id\": \"dep-db63bcskajsc73bvm3i0\",\n    \"startedAt\": \"2026-10-12T01:20:04.945053Z\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:20:34.875801Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"finishedAt\": \"2026-10-12T01:19:17.871783Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:19:17.871784Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "target": {
+            "commit": {
+              "createdAt": "2026-10-12T01:10:03Z",
+              "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+              "message": "docs(pm): file stale Key Value environment move (w4/263)"
+            },
+            "createdAt": "2026-10-12T01:23:30.253729Z",
+            "id": "dep-db63d4icsrmc7381q1s0",
+            "startedAt": "2026-10-12T01:23:41.423483Z",
+            "status": "build_in_progress",
+            "trigger": "api",
+            "updatedAt": "2026-10-12T01:23:41.423483Z"
+          },
+          "runtime": {
+            "at": "2026-10-12T01:23:42.391182+00:00",
+            "exit": 0,
+            "http": "200",
+            "body": {
+              "marker": "QA166_7b8b2e",
+              "built": {
+                "marker": "QA166_7b8b2e",
+                "snapshot": {
+                  "path": "/usr/local/bin",
+                  "note_present": false,
+                  "note_length": 0,
+                  "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                "built_at": 1791767914725
+              },
+              "runtime": {
+                "path": "/usr/local/bin",
+                "note_present": false,
+                "note_length": 0,
+                "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv"
+            },
+            "raw": "{\"marker\":\"QA166_7b8b2e\",\"built\":{\"marker\":\"QA166_7b8b2e\",\"snapshot\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"built_at\":1791767914725},\"runtime\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv\"}",
+            "stderr": ""
+          },
+          "detail": {
+            "method": "GET",
+            "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.313,
+            "response": "{\"id\":\"srv-db63a3dqamec73fj0s8g\",\"name\":\"qa-20261011-7b8b2e-nodepath\",\"immutableName\":\"qa-20261011-7b8b2e-nodepath\",\"slug\":\"qa-20261011-7b8b2e-nodepath\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\"createdAt\":\"2026-10-12T01:17:01Z\",\"updatedAt\":\"2026-10-12T01:23:35Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL_REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-7b8b2e-nodepath:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"undeployedChanges\":true,\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4924cff3a93586f-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-12T01:23:52.137865+00:00",
+          "native_history": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db63a3dqamec73fj0s8g",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.339,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:23:30.253729Z\",\n    \"id\": \"dep-db63d4icsrmc7381q1s0\",\n    \"startedAt\": \"2026-10-12T01:23:41.423483Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:23:41.423483Z\"\n  },\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:19:47.074313Z\",\n    \"finishedAt\": \"2026-10-12T01:20:34.8758Z\",\n    \"id\": \"dep-db63bcskajsc73bvm3i0\",\n    \"startedAt\": \"2026-10-12T01:20:04.945053Z\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:20:34.875801Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"finishedAt\": \"2026-10-12T01:19:17.871783Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:19:17.871784Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "target": {
+            "commit": {
+              "createdAt": "2026-10-12T01:10:03Z",
+              "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+              "message": "docs(pm): file stale Key Value environment move (w4/263)"
+            },
+            "createdAt": "2026-10-12T01:23:30.253729Z",
+            "id": "dep-db63d4icsrmc7381q1s0",
+            "startedAt": "2026-10-12T01:23:41.423483Z",
+            "status": "build_in_progress",
+            "trigger": "api",
+            "updatedAt": "2026-10-12T01:23:41.423483Z"
+          },
+          "runtime": {
+            "at": "2026-10-12T01:23:51.808696+00:00",
+            "exit": 0,
+            "http": "200",
+            "body": {
+              "marker": "QA166_7b8b2e",
+              "built": {
+                "marker": "QA166_7b8b2e",
+                "snapshot": {
+                  "path": "/usr/local/bin",
+                  "note_present": false,
+                  "note_length": 0,
+                  "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                "built_at": 1791767914725
+              },
+              "runtime": {
+                "path": "/usr/local/bin",
+                "note_present": false,
+                "note_length": 0,
+                "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv"
+            },
+            "raw": "{\"marker\":\"QA166_7b8b2e\",\"built\":{\"marker\":\"QA166_7b8b2e\",\"snapshot\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"built_at\":1791767914725},\"runtime\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv\"}",
+            "stderr": ""
+          },
+          "detail": {
+            "method": "GET",
+            "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.273,
+            "response": "{\"id\":\"srv-db63a3dqamec73fj0s8g\",\"name\":\"qa-20261011-7b8b2e-nodepath\",\"immutableName\":\"qa-20261011-7b8b2e-nodepath\",\"slug\":\"qa-20261011-7b8b2e-nodepath\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\"createdAt\":\"2026-10-12T01:17:01Z\",\"updatedAt\":\"2026-10-12T01:23:35Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL_REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-7b8b2e-nodepath:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"undeployedChanges\":true,\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4924d39be6e23fd-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-12T01:24:01.609379+00:00",
+          "native_history": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db63a3dqamec73fj0s8g",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.337,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:23:30.253729Z\",\n    \"id\": \"dep-db63d4icsrmc7381q1s0\",\n    \"startedAt\": \"2026-10-12T01:23:41.423483Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:23:41.423483Z\"\n  },\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:19:47.074313Z\",\n    \"finishedAt\": \"2026-10-12T01:20:34.8758Z\",\n    \"id\": \"dep-db63bcskajsc73bvm3i0\",\n    \"startedAt\": \"2026-10-12T01:20:04.945053Z\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:20:34.875801Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"finishedAt\": \"2026-10-12T01:19:17.871783Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:19:17.871784Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "target": {
+            "commit": {
+              "createdAt": "2026-10-12T01:10:03Z",
+              "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+              "message": "docs(pm): file stale Key Value environment move (w4/263)"
+            },
+            "createdAt": "2026-10-12T01:23:30.253729Z",
+            "id": "dep-db63d4icsrmc7381q1s0",
+            "startedAt": "2026-10-12T01:23:41.423483Z",
+            "status": "build_in_progress",
+            "trigger": "api",
+            "updatedAt": "2026-10-12T01:23:41.423483Z"
+          },
+          "runtime": {
+            "at": "2026-10-12T01:24:01.239653+00:00",
+            "exit": 0,
+            "http": "200",
+            "body": {
+              "marker": "QA166_7b8b2e",
+              "built": {
+                "marker": "QA166_7b8b2e",
+                "snapshot": {
+                  "path": "/usr/local/bin",
+                  "note_present": false,
+                  "note_length": 0,
+                  "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                "built_at": 1791767914725
+              },
+              "runtime": {
+                "path": "/usr/local/bin",
+                "note_present": false,
+                "note_length": 0,
+                "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv"
+            },
+            "raw": "{\"marker\":\"QA166_7b8b2e\",\"built\":{\"marker\":\"QA166_7b8b2e\",\"snapshot\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"built_at\":1791767914725},\"runtime\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv\"}",
+            "stderr": ""
+          },
+          "detail": {
+            "method": "GET",
+            "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.298,
+            "response": "{\"id\":\"srv-db63a3dqamec73fj0s8g\",\"name\":\"qa-20261011-7b8b2e-nodepath\",\"immutableName\":\"qa-20261011-7b8b2e-nodepath\",\"slug\":\"qa-20261011-7b8b2e-nodepath\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\"createdAt\":\"2026-10-12T01:17:01Z\",\"updatedAt\":\"2026-10-12T01:23:35Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL_REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-7b8b2e-nodepath:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"undeployedChanges\":true,\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4924d74cb46ba62-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-12T01:24:11.073031+00:00",
+          "native_history": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db63a3dqamec73fj0s8g",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.412,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:23:30.253729Z\",\n    \"id\": \"dep-db63d4icsrmc7381q1s0\",\n    \"startedAt\": \"2026-10-12T01:23:41.423483Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:23:41.423483Z\"\n  },\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:19:47.074313Z\",\n    \"finishedAt\": \"2026-10-12T01:20:34.8758Z\",\n    \"id\": \"dep-db63bcskajsc73bvm3i0\",\n    \"startedAt\": \"2026-10-12T01:20:04.945053Z\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:20:34.875801Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"finishedAt\": \"2026-10-12T01:19:17.871783Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:19:17.871784Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "target": {
+            "commit": {
+              "createdAt": "2026-10-12T01:10:03Z",
+              "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+              "message": "docs(pm): file stale Key Value environment move (w4/263)"
+            },
+            "createdAt": "2026-10-12T01:23:30.253729Z",
+            "id": "dep-db63d4icsrmc7381q1s0",
+            "startedAt": "2026-10-12T01:23:41.423483Z",
+            "status": "build_in_progress",
+            "trigger": "api",
+            "updatedAt": "2026-10-12T01:23:41.423483Z"
+          },
+          "runtime": {
+            "at": "2026-10-12T01:24:10.693582+00:00",
+            "exit": 0,
+            "http": "200",
+            "body": {
+              "marker": "QA166_7b8b2e",
+              "built": {
+                "marker": "QA166_7b8b2e",
+                "snapshot": {
+                  "path": "/usr/local/bin",
+                  "note_present": false,
+                  "note_length": 0,
+                  "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                "built_at": 1791767914725
+              },
+              "runtime": {
+                "path": "/usr/local/bin",
+                "note_present": false,
+                "note_length": 0,
+                "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv"
+            },
+            "raw": "{\"marker\":\"QA166_7b8b2e\",\"built\":{\"marker\":\"QA166_7b8b2e\",\"snapshot\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"built_at\":1791767914725},\"runtime\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv\"}",
+            "stderr": ""
+          },
+          "detail": {
+            "method": "GET",
+            "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.322,
+            "response": "{\"id\":\"srv-db63a3dqamec73fj0s8g\",\"name\":\"qa-20261011-7b8b2e-nodepath\",\"immutableName\":\"qa-20261011-7b8b2e-nodepath\",\"slug\":\"qa-20261011-7b8b2e-nodepath\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\"createdAt\":\"2026-10-12T01:17:01Z\",\"updatedAt\":\"2026-10-12T01:23:35Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL_REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-7b8b2e-nodepath:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"undeployedChanges\":true,\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4924dafcd1c0a83-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-12T01:24:20.523937+00:00",
+          "native_history": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db63a3dqamec73fj0s8g",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.393,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:23:30.253729Z\",\n    \"id\": \"dep-db63d4icsrmc7381q1s0\",\n    \"startedAt\": \"2026-10-12T01:23:41.423483Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:23:41.423483Z\"\n  },\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:19:47.074313Z\",\n    \"finishedAt\": \"2026-10-12T01:20:34.8758Z\",\n    \"id\": \"dep-db63bcskajsc73bvm3i0\",\n    \"startedAt\": \"2026-10-12T01:20:04.945053Z\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:20:34.875801Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"finishedAt\": \"2026-10-12T01:19:17.871783Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:19:17.871784Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "target": {
+            "commit": {
+              "createdAt": "2026-10-12T01:10:03Z",
+              "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+              "message": "docs(pm): file stale Key Value environment move (w4/263)"
+            },
+            "createdAt": "2026-10-12T01:23:30.253729Z",
+            "id": "dep-db63d4icsrmc7381q1s0",
+            "startedAt": "2026-10-12T01:23:41.423483Z",
+            "status": "build_in_progress",
+            "trigger": "api",
+            "updatedAt": "2026-10-12T01:23:41.423483Z"
+          },
+          "runtime": {
+            "at": "2026-10-12T01:24:20.131790+00:00",
+            "exit": 0,
+            "http": "200",
+            "body": {
+              "marker": "QA166_7b8b2e",
+              "built": {
+                "marker": "QA166_7b8b2e",
+                "snapshot": {
+                  "path": "/usr/local/bin",
+                  "note_present": false,
+                  "note_length": 0,
+                  "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                "built_at": 1791767914725
+              },
+              "runtime": {
+                "path": "/usr/local/bin",
+                "note_present": false,
+                "note_length": 0,
+                "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv"
+            },
+            "raw": "{\"marker\":\"QA166_7b8b2e\",\"built\":{\"marker\":\"QA166_7b8b2e\",\"snapshot\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"built_at\":1791767914725},\"runtime\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv\"}",
+            "stderr": ""
+          },
+          "detail": {
+            "method": "GET",
+            "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.339,
+            "response": "{\"id\":\"srv-db63a3dqamec73fj0s8g\",\"name\":\"qa-20261011-7b8b2e-nodepath\",\"immutableName\":\"qa-20261011-7b8b2e-nodepath\",\"slug\":\"qa-20261011-7b8b2e-nodepath\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\"createdAt\":\"2026-10-12T01:17:01Z\",\"updatedAt\":\"2026-10-12T01:23:35Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL_REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-7b8b2e-nodepath:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"undeployedChanges\":true,\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4924deabc995c17-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-12T01:25:39.080241+00:00",
+          "native_history": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db63a3dqamec73fj0s8g",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.496,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:23:30.253729Z\",\n    \"finishedAt\": \"2026-10-12T01:24:41.410182Z\",\n    \"id\": \"dep-db63d4icsrmc7381q1s0\",\n    \"startedAt\": \"2026-10-12T01:23:41.423483Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:24:41.410183Z\"\n  },\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:19:47.074313Z\",\n    \"finishedAt\": \"2026-10-12T01:20:34.8758Z\",\n    \"id\": \"dep-db63bcskajsc73bvm3i0\",\n    \"startedAt\": \"2026-10-12T01:20:04.945053Z\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:20:34.875801Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"finishedAt\": \"2026-10-12T01:19:17.871783Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:24:41.415309Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "target": {
+            "commit": {
+              "createdAt": "2026-10-12T01:10:03Z",
+              "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+              "message": "docs(pm): file stale Key Value environment move (w4/263)"
+            },
+            "createdAt": "2026-10-12T01:23:30.253729Z",
+            "finishedAt": "2026-10-12T01:24:41.410182Z",
+            "id": "dep-db63d4icsrmc7381q1s0",
+            "startedAt": "2026-10-12T01:23:41.423483Z",
+            "status": "live",
+            "trigger": "api",
+            "updatedAt": "2026-10-12T01:24:41.410183Z"
+          },
+          "runtime": {
+            "at": "2026-10-12T01:25:38.582580+00:00",
+            "exit": 0,
+            "http": "200",
+            "body": {
+              "marker": "QA166_7b8b2e",
+              "built": {
+                "marker": "QA166_7b8b2e",
+                "snapshot": {
+                  "path": "/usr/local/bin:/usr/bin:/bin",
+                  "note_present": true,
+                  "note_length": 17,
+                  "note_sha256": "63bb908c21289c5a1c519d02dba04d4e2b3e99bbd2b234ca2ec613810fb021ea"
+                },
+                "built_at": 1791768246888
+              },
+              "runtime": {
+                "path": "/usr/local/bin:/usr/bin:/bin",
+                "note_present": true,
+                "note_length": 17,
+                "note_sha256": "63bb908c21289c5a1c519d02dba04d4e2b3e99bbd2b234ca2ec613810fb021ea"
+              },
+              "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-7d684rwg9h"
+            },
+            "raw": "{\"marker\":\"QA166_7b8b2e\",\"built\":{\"marker\":\"QA166_7b8b2e\",\"snapshot\":{\"path\":\"/usr/local/bin:/usr/bin:/bin\",\"note_present\":true,\"note_length\":17,\"note_sha256\":\"63bb908c21289c5a1c519d02dba04d4e2b3e99bbd2b234ca2ec613810fb021ea\"},\"built_at\":1791768246888},\"runtime\":{\"path\":\"/usr/local/bin:/usr/bin:/bin\",\"note_present\":true,\"note_length\":17,\"note_sha256\":\"63bb908c21289c5a1c519d02dba04d4e2b3e99bbd2b234ca2ec613810fb021ea\"},\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-7d684rwg9h\"}",
+            "stderr": ""
+          },
+          "detail": {
+            "method": "GET",
+            "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.408,
+            "response": "{\"id\":\"srv-db63a3dqamec73fj0s8g\",\"name\":\"qa-20261011-7b8b2e-nodepath\",\"immutableName\":\"qa-20261011-7b8b2e-nodepath\",\"slug\":\"qa-20261011-7b8b2e-nodepath\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\"createdAt\":\"2026-10-12T01:17:01Z\",\"updatedAt\":\"2026-10-12T01:24:32Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL_REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-7b8b2e-nodepath:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-3\",\"urls\":[\"https://qa-20261011-7b8b2e-nodepath.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4924fd5bcda78ff-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        }
+      ],
+      "settled": true,
+      "passed": true,
+      "deploy": {
+        "commit": {
+          "createdAt": "2026-10-12T01:10:03Z",
+          "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+          "message": "docs(pm): file stale Key Value environment move (w4/263)"
+        },
+        "createdAt": "2026-10-12T01:23:30.253729Z",
+        "finishedAt": "2026-10-12T01:24:41.410182Z",
+        "id": "dep-db63d4icsrmc7381q1s0",
+        "startedAt": "2026-10-12T01:23:41.423483Z",
+        "status": "live",
+        "trigger": "api",
+        "updatedAt": "2026-10-12T01:24:41.410183Z"
+      },
+      "runtime": {
+        "at": "2026-10-12T01:25:38.582580+00:00",
+        "exit": 0,
+        "http": "200",
+        "body": {
+          "marker": "QA166_7b8b2e",
+          "built": {
+            "marker": "QA166_7b8b2e",
+            "snapshot": {
+              "path": "/usr/local/bin:/usr/bin:/bin",
+              "note_present": true,
+              "note_length": 17,
+              "note_sha256": "63bb908c21289c5a1c519d02dba04d4e2b3e99bbd2b234ca2ec613810fb021ea"
+            },
+            "built_at": 1791768246888
+          },
+          "runtime": {
+            "path": "/usr/local/bin:/usr/bin:/bin",
+            "note_present": true,
+            "note_length": 17,
+            "note_sha256": "63bb908c21289c5a1c519d02dba04d4e2b3e99bbd2b234ca2ec613810fb021ea"
+          },
+          "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-7d684rwg9h"
+        },
+        "raw": "{\"marker\":\"QA166_7b8b2e\",\"built\":{\"marker\":\"QA166_7b8b2e\",\"snapshot\":{\"path\":\"/usr/local/bin:/usr/bin:/bin\",\"note_present\":true,\"note_length\":17,\"note_sha256\":\"63bb908c21289c5a1c519d02dba04d4e2b3e99bbd2b234ca2ec613810fb021ea\"},\"built_at\":1791768246888},\"runtime\":{\"path\":\"/usr/local/bin:/usr/bin:/bin\",\"note_present\":true,\"note_length\":17,\"note_sha256\":\"63bb908c21289c5a1c519d02dba04d4e2b3e99bbd2b234ca2ec613810fb021ea\"},\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-7d684rwg9h\"}",
+        "stderr": ""
+      },
+      "deploy_detail": {
+        "method": "GET",
+        "path": "/v1/services/srv-db63a3dqamec73fj0s8g/deploys/dep-db63d4icsrmc7381q1s0",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.258,
+        "response": "{\"id\":\"dep-db63d4icsrmc7381q1s0\",\"serviceId\":\"srv-db63a3dqamec73fj0s8g\",\"status\":\"live\",\"trigger\":\"api\",\"bexTrigger\":\"api\",\"commit\":{\"id\":\"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\"message\":\"docs(pm): file stale Key Value environment move (w4/263)\",\"createdAt\":\"2026-10-12T01:10:03Z\"},\"createdAt\":\"2026-10-12T01:23:30.253729Z\",\"updatedAt\":\"2026-10-12T01:24:41.410183Z\",\"startedAt\":\"2026-10-12T01:23:41.423483Z\",\"finishedAt\":\"2026-10-12T01:24:41.410182Z\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4925145bf6a2083-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    }
+  },
+  "role": "Node PATH-only positive then additive later variable failure; path-only recovery on same commit",
+  "create_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261011-7b8b2e-nodepath",
+      "--type",
+      "web_service",
+      "--runtime",
+      "node",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/hello-go",
+      "--build-command",
+      "/usr/local/bin/node -e 'const crypto=require('\"'\"'crypto'\"'\"');function snapshot(){const note=process.env.QA_NOTE||'\"'\"''\"'\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\"'\"'QA_NOTE'\"'\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\"'\"'sha256'\"'\"').update(note).digest('\"'\"'hex'\"'\"')};}\nrequire('\"'\"'fs'\"'\"').writeFileSync('\"'\"'qa-built.json'\"'\"',JSON.stringify({marker:\"QA166_7b8b2e\",snapshot:snapshot(),built_at:Date.now()}));console.log('\"'\"'QA166_USER_BUILD_RAN'\"'\"');'",
+      "--start-command",
+      "/usr/local/bin/node -e 'const crypto=require('\"'\"'crypto'\"'\"');function snapshot(){const note=process.env.QA_NOTE||'\"'\"''\"'\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\"'\"'QA_NOTE'\"'\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\"'\"'sha256'\"'\"').update(note).digest('\"'\"'hex'\"'\"')};}\nconst built=JSON.parse(require('\"'\"'fs'\"'\"').readFileSync('\"'\"'qa-built.json'\"'\"','\"'\"'utf8'\"'\"'));require('\"'\"'http'\"'\"').createServer((req,res)=>{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\"'\"'os'\"'\"').hostname()});res.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"','\"'\"'Content-Length'\"'\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'",
+      "--health-check-path",
+      "/",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--env-var",
+      "PATH=/usr/local/bin",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.175,
+    "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-12T01:17:01Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\n  \"id\": \"srv-db63a3dqamec73fj0s8g\",\n  \"name\": \"qa-20261011-7b8b2e-nodepath\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-go\",\n  \"serviceDetails\": {\n    \"env\": \"node\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"\n    },\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261011-7b8b2e-nodepath:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"node\",\n    \"url\": \"https://qa-20261011-7b8b2e-nodepath.onbex.co\"\n  },\n  \"slug\": \"qa-20261011-7b8b2e-nodepath\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-12T01:17:01.887705431Z\"\n}",
+    "stderr": ""
+  },
+  "id": "srv-db63a3dqamec73fj0s8g",
+  "create_response": {
+    "autoDeploy": "no",
+    "autoDeployTrigger": "off",
+    "branch": "main",
+    "createdAt": "2026-10-12T01:17:01Z",
+    "dashboardUrl": "https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g",
+    "id": "srv-db63a3dqamec73fj0s8g",
+    "name": "qa-20261011-7b8b2e-nodepath",
+    "notifyOnFail": "default",
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "repo": "https://github.com/bex-co/bex",
+    "rootDir": "examples/hello-go",
+    "serviceDetails": {
+      "env": "node",
+      "envSpecificDetails": {
+        "buildCommand": "/usr/local/bin/node -e 'const crypto=require('\"'\"'crypto'\"'\"');function snapshot(){const note=process.env.QA_NOTE||'\"'\"''\"'\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\"'\"'QA_NOTE'\"'\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\"'\"'sha256'\"'\"').update(note).digest('\"'\"'hex'\"'\"')};}\nrequire('\"'\"'fs'\"'\"').writeFileSync('\"'\"'qa-built.json'\"'\"',JSON.stringify({marker:\"QA166_7b8b2e\",snapshot:snapshot(),built_at:Date.now()}));console.log('\"'\"'QA166_USER_BUILD_RAN'\"'\"');'",
+        "preDeployCommand": "",
+        "startCommand": "/usr/local/bin/node -e 'const crypto=require('\"'\"'crypto'\"'\"');function snapshot(){const note=process.env.QA_NOTE||'\"'\"''\"'\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\"'\"'QA_NOTE'\"'\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\"'\"'sha256'\"'\"').update(note).digest('\"'\"'hex'\"'\"')};}\nconst built=JSON.parse(require('\"'\"'fs'\"'\"').readFileSync('\"'\"'qa-built.json'\"'\"','\"'\"'utf8'\"'\"'));require('\"'\"'http'\"'\"').createServer((req,res)=>{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\"'\"'os'\"'\"').hostname()});res.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"','\"'\"'Content-Length'\"'\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'"
+      },
+      "healthCheckPath": "/",
+      "internalAddress": "qa-20261011-7b8b2e-nodepath:3000",
+      "maintenanceMode": {
+        "enabled": false,
+        "uri": ""
+      },
+      "maxShutdownDelaySeconds": 30,
+      "numInstances": 1,
+      "plan": "free",
+      "port": 3000,
+      "region": "fsn1",
+      "renderSubdomainPolicy": "enabled",
+      "runtime": "node",
+      "url": "https://qa-20261011-7b8b2e-nodepath.onbex.co"
+    },
+    "slug": "qa-20261011-7b8b2e-nodepath",
+    "suspended": "not_suspended",
+    "suspenders": [],
+    "type": "web_service",
+    "updatedAt": "2026-10-12T01:17:01.887705431Z"
+  },
+  "add_note": {
+    "at": "2026-10-12T01:19:37.296714+00:00",
+    "method": "PATCH",
+    "path": "/v1/services/srv-db63a3dqamec73fj0s8g/environment",
+    "body": {
+      "envVars": [
+        {
+          "key": "QA_NOTE",
+          "value": "QA166_7b8b2e_NOTE"
+        }
+      ],
+      "saveMode": "save_only"
+    },
+    "before_history": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "list",
+        "srv-db63a3dqamec73fj0s8g",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.453,
+      "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"finishedAt\": \"2026-10-12T01:19:17.871783Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:19:17.871784Z\"\n  }\n]",
+      "stderr": ""
+    },
+    "result": {
+      "method": "PATCH",
+      "path": "/v1/services/srv-db63a3dqamec73fj0s8g/environment",
+      "body": "{\"envVars\": [{\"key\": \"QA_NOTE\", \"value\": \"QA166_7b8b2e_NOTE\"}], \"saveMode\": \"save_only\"}",
+      "status": "200",
+      "elapsed": 0.497,
+      "response": "{\"envVarKeys\":[\"PATH\",\"QA_NOTE\"],\"secretFileNames\":null,\"rolledOut\":false,\"revision\":null}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4924704291eed3b-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "after_history": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "list",
+        "srv-db63a3dqamec73fj0s8g",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.355,
+      "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"finishedAt\": \"2026-10-12T01:19:17.871783Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:19:17.871784Z\"\n  }\n]",
+      "stderr": ""
+    },
+    "runtime": {
+      "at": "2026-10-12T01:19:38.980777+00:00",
+      "exit": 0,
+      "http": "200",
+      "body": {
+        "marker": "QA166_7b8b2e",
+        "built": {
+          "marker": "QA166_7b8b2e",
+          "snapshot": {
+            "path": "/usr/local/bin",
+            "note_present": false,
+            "note_length": 0,
+            "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "built_at": 1791767914725
+        },
+        "runtime": {
+          "path": "/usr/local/bin",
+          "note_present": false,
+          "note_length": 0,
+          "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv"
+      },
+      "raw": "{\"marker\":\"QA166_7b8b2e\",\"built\":{\"marker\":\"QA166_7b8b2e\",\"snapshot\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"built_at\":1791767914725},\"runtime\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv\"}",
+      "stderr": ""
+    },
+    "history_unchanged": true
+  },
+  "repair_path": {
+    "at": "2026-10-12T01:23:16.746211+00:00",
+    "method": "PATCH",
+    "path": "/v1/services/srv-db63a3dqamec73fj0s8g/environment",
+    "body": {
+      "envVars": [
+        {
+          "key": "PATH",
+          "value": "/usr/local/bin:/usr/bin:/bin"
+        }
+      ],
+      "saveMode": "save_only"
+    },
+    "before_history": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "list",
+        "srv-db63a3dqamec73fj0s8g",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.412,
+      "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:19:47.074313Z\",\n    \"finishedAt\": \"2026-10-12T01:20:34.8758Z\",\n    \"id\": \"dep-db63bcskajsc73bvm3i0\",\n    \"startedAt\": \"2026-10-12T01:20:04.945053Z\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:20:34.875801Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"finishedAt\": \"2026-10-12T01:19:17.871783Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:19:17.871784Z\"\n  }\n]",
+      "stderr": ""
+    },
+    "result": {
+      "method": "PATCH",
+      "path": "/v1/services/srv-db63a3dqamec73fj0s8g/environment",
+      "body": "{\"envVars\": [{\"key\": \"PATH\", \"value\": \"/usr/local/bin:/usr/bin:/bin\"}], \"saveMode\": \"save_only\"}",
+      "status": "200",
+      "elapsed": 0.412,
+      "response": "{\"envVarKeys\":[\"PATH\",\"QA_NOTE\"],\"secretFileNames\":null,\"rolledOut\":false,\"revision\":null}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4924c5f69747ae5-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "after_history": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "list",
+        "srv-db63a3dqamec73fj0s8g",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.3,
+      "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:19:47.074313Z\",\n    \"finishedAt\": \"2026-10-12T01:20:34.8758Z\",\n    \"id\": \"dep-db63bcskajsc73bvm3i0\",\n    \"startedAt\": \"2026-10-12T01:20:04.945053Z\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:20:34.875801Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"finishedAt\": \"2026-10-12T01:19:17.871783Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:19:17.871784Z\"\n  }\n]",
+      "stderr": ""
+    },
+    "runtime": {
+      "at": "2026-10-12T01:23:18.429375+00:00",
+      "exit": 0,
+      "http": "200",
+      "body": {
+        "marker": "QA166_7b8b2e",
+        "built": {
+          "marker": "QA166_7b8b2e",
+          "snapshot": {
+            "path": "/usr/local/bin",
+            "note_present": false,
+            "note_length": 0,
+            "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "built_at": 1791767914725
+        },
+        "runtime": {
+          "path": "/usr/local/bin",
+          "note_present": false,
+          "note_length": 0,
+          "note_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv"
+      },
+      "raw": "{\"marker\":\"QA166_7b8b2e\",\"built\":{\"marker\":\"QA166_7b8b2e\",\"snapshot\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"built_at\":1791767914725},\"runtime\":{\"path\":\"/usr/local/bin\",\"note_present\":false,\"note_length\":0,\"note_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261011-7b8b2e-nodepath-65b4ftwhsv\"}",
+      "stderr": ""
+    },
+    "history_unchanged": true
+  },
+  "deploy_children": [
+    {
+      "commit": {
+        "createdAt": "2026-10-12T01:10:03Z",
+        "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+        "message": "docs(pm): file stale Key Value environment move (w4/263)"
+      },
+      "createdAt": "2026-10-12T01:23:30.253729Z",
+      "finishedAt": "2026-10-12T01:24:41.410182Z",
+      "id": "dep-db63d4icsrmc7381q1s0",
+      "startedAt": "2026-10-12T01:23:41.423483Z",
+      "status": "live",
+      "trigger": "api",
+      "updatedAt": "2026-10-12T01:24:41.410183Z"
+    },
+    {
+      "commit": {
+        "createdAt": "2026-10-12T01:10:03Z",
+        "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+        "message": "docs(pm): file stale Key Value environment move (w4/263)"
+      },
+      "createdAt": "2026-10-12T01:19:47.074313Z",
+      "finishedAt": "2026-10-12T01:20:34.8758Z",
+      "id": "dep-db63bcskajsc73bvm3i0",
+      "startedAt": "2026-10-12T01:20:04.945053Z",
+      "status": "build_failed",
+      "trigger": "api",
+      "updatedAt": "2026-10-12T01:20:34.875801Z"
+    },
+    {
+      "commit": {
+        "id": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+        "message": "docs(pm): file stale Key Value environment move (w4/263)"
+      },
+      "createdAt": "2026-10-12T01:17:01.864196Z",
+      "finishedAt": "2026-10-12T01:19:17.871783Z",
+      "id": "dep-db63a3dqamec73fj0s90",
+      "startedAt": "2026-10-12T01:18:04.868758Z",
+      "status": "deactivated",
+      "trigger": "other",
+      "updatedAt": "2026-10-12T01:24:41.415309Z"
+    }
+  ],
+  "children_enumeration_evidence": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "deploys",
+      "list",
+      "srv-db63a3dqamec73fj0s8g",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.526,
+    "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:23:30.253729Z\",\n    \"finishedAt\": \"2026-10-12T01:24:41.410182Z\",\n    \"id\": \"dep-db63d4icsrmc7381q1s0\",\n    \"startedAt\": \"2026-10-12T01:23:41.423483Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:24:41.410183Z\"\n  },\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-12T01:10:03Z\",\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:19:47.074313Z\",\n    \"finishedAt\": \"2026-10-12T01:20:34.8758Z\",\n    \"id\": \"dep-db63bcskajsc73bvm3i0\",\n    \"startedAt\": \"2026-10-12T01:20:04.945053Z\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-12T01:20:34.875801Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"a3129af44b6dcbabd88b2aa6a9d59ccfa544464c\",\n      \"message\": \"docs(pm): file stale Key Value environment move (w4/263)\"\n    },\n    \"createdAt\": \"2026-10-12T01:17:01.864196Z\",\n    \"finishedAt\": \"2026-10-12T01:19:17.871783Z\",\n    \"id\": \"dep-db63a3dqamec73fj0s90\",\n    \"startedAt\": \"2026-10-12T01:18:04.868758Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T01:24:41.415309Z\"\n  }\n]",
+    "stderr": ""
+  },
+  "delete_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "delete",
+      "srv-db63a3dqamec73fj0s8g",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.81,
+    "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-12T01:17:01Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db63a3dqamec73fj0s8g\",\n    \"id\": \"srv-db63a3dqamec73fj0s8g\",\n    \"name\": \"qa-20261011-7b8b2e-nodepath\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-go\",\n    \"serviceDetails\": {\n      \"env\": \"node\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nconst built=JSON.parse(require('\\\"'\\\"'fs'\\\"'\\\"').readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));require('\\\"'\\\"'http'\\\"'\\\"').createServer((req,res)=\\u003e{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('\\\"'\\\"'os'\\\"'\\\"').hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261011-7b8b2e-nodepath:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"node\",\n      \"url\": \"https://qa-20261011-7b8b2e-nodepath.onbex.co\"\n    },\n    \"slug\": \"qa-20261011-7b8b2e-nodepath\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-12T01:24:32Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+    "stderr": ""
+  },
+  "detail_after_delete": {
+    "method": "GET",
+    "path": "/v1/services/srv-db63a3dqamec73fj0s8g",
+    "body": null,
+    "status": "404",
+    "elapsed": 0.24,
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49251c7ddec2ed1-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "workspace_after_delete_ids": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3v694dm7c7390q930",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0"
+  ],
+  "runtime_after_delete_checks": [
+    {
+      "exit": 0,
+      "stdout": "404 page not found\n\n404",
+      "stderr": ""
+    }
+  ],
+  "quota_after_delete": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.327,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49251d4edde236e-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  }
+}

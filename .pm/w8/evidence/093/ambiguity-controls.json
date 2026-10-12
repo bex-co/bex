@@ -1,0 +1,1092 @@
+{
+  "sweep": 151,
+  "source_head": "396cc2027215cc4ee98a8f40d0a048f79d2de6f4",
+  "state": "partial: 24 ambiguity/scope/mismatch native checks and 3 fresh-process unique-name recovery checks pass; 1 read hit TLS handshake timeout; remaining 4 Render unique-name reads unexecuted; fixtures cleaned",
+  "cases": [
+    {
+      "stage": "two-matching-names",
+      "client": "bex",
+      "family": "postgres",
+      "case": "ambiguous-name",
+      "command": [
+        "bex",
+        "postgres",
+        "list",
+        "--environment",
+        "qa-20261011-a19393-shared",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 1,
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "list",
+          "--environment",
+          "qa-20261011-a19393-shared",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.365,
+        "stdout": "",
+        "stderr": "Error: multiple environments found with name \"qa-20261011-a19393-shared\" across projects — please use the environment ID instead\n"
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "bex",
+      "family": "postgres",
+      "case": "project-name-disambiguates",
+      "command": [
+        "bex",
+        "postgres",
+        "list",
+        "--project",
+        "qa-20261011-a19393-alpha",
+        "--environment",
+        "qa-20261011-a19393-shared",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 0,
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "list",
+          "--project",
+          "qa-20261011-a19393-alpha",
+          "--environment",
+          "qa-20261011-a19393-shared",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.864,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "bex",
+      "family": "postgres",
+      "case": "project-id-disambiguates",
+      "command": [
+        "bex",
+        "postgres",
+        "list",
+        "--project",
+        "prj-db60o5noikms739hpjn0",
+        "--environment",
+        "qa-20261011-a19393-shared",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 0,
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "list",
+          "--project",
+          "prj-db60o5noikms739hpjn0",
+          "--environment",
+          "qa-20261011-a19393-shared",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.652,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "bex",
+      "family": "postgres",
+      "case": "actual-environment-alpha",
+      "command": [
+        "bex",
+        "postgres",
+        "list",
+        "--environment",
+        "evm-db60o51todic73duuu1g",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 0,
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "list",
+          "--environment",
+          "evm-db60o51todic73duuu1g",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.361,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "bex",
+      "family": "postgres",
+      "case": "actual-environment-beta",
+      "command": [
+        "bex",
+        "postgres",
+        "list",
+        "--environment",
+        "evm-db60o5noikms739hpjng",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 0,
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "list",
+          "--environment",
+          "evm-db60o5noikms739hpjng",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.629,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "bex",
+      "family": "postgres",
+      "case": "project-environment-mismatch",
+      "command": [
+        "bex",
+        "postgres",
+        "list",
+        "--project",
+        "prj-db60o51todic73duuu10",
+        "--environment",
+        "evm-db60o5noikms739hpjng",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 1,
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "list",
+          "--project",
+          "prj-db60o51todic73duuu10",
+          "--environment",
+          "evm-db60o5noikms739hpjng",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.851,
+        "stdout": "",
+        "stderr": "Error: environment \"evm-db60o5noikms739hpjng\" belongs to project \"prj-db60o5noikms739hpjn0\", not project \"prj-db60o51todic73duuu10\"\n"
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "bex",
+      "family": "keyvalues",
+      "case": "ambiguous-name",
+      "command": [
+        "bex",
+        "keyvalues",
+        "list",
+        "--environment",
+        "qa-20261011-a19393-shared",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 1,
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--environment",
+          "qa-20261011-a19393-shared",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.387,
+        "stdout": "",
+        "stderr": "Error: multiple environments found with name \"qa-20261011-a19393-shared\" across projects — please use the environment ID instead\n"
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "bex",
+      "family": "keyvalues",
+      "case": "project-name-disambiguates",
+      "command": [
+        "bex",
+        "keyvalues",
+        "list",
+        "--project",
+        "qa-20261011-a19393-alpha",
+        "--environment",
+        "qa-20261011-a19393-shared",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 0,
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--project",
+          "qa-20261011-a19393-alpha",
+          "--environment",
+          "qa-20261011-a19393-shared",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.573,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "bex",
+      "family": "keyvalues",
+      "case": "project-id-disambiguates",
+      "command": [
+        "bex",
+        "keyvalues",
+        "list",
+        "--project",
+        "prj-db60o5noikms739hpjn0",
+        "--environment",
+        "qa-20261011-a19393-shared",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 0,
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--project",
+          "prj-db60o5noikms739hpjn0",
+          "--environment",
+          "qa-20261011-a19393-shared",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.281,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "bex",
+      "family": "keyvalues",
+      "case": "actual-environment-alpha",
+      "command": [
+        "bex",
+        "keyvalues",
+        "list",
+        "--environment",
+        "evm-db60o51todic73duuu1g",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 0,
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--environment",
+          "evm-db60o51todic73duuu1g",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.013,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "bex",
+      "family": "keyvalues",
+      "case": "actual-environment-beta",
+      "command": [
+        "bex",
+        "keyvalues",
+        "list",
+        "--environment",
+        "evm-db60o5noikms739hpjng",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 0,
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--environment",
+          "evm-db60o5noikms739hpjng",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.653,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "bex",
+      "family": "keyvalues",
+      "case": "project-environment-mismatch",
+      "command": [
+        "bex",
+        "keyvalues",
+        "list",
+        "--project",
+        "prj-db60o51todic73duuu10",
+        "--environment",
+        "evm-db60o5noikms739hpjng",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 1,
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--project",
+          "prj-db60o51todic73duuu10",
+          "--environment",
+          "evm-db60o5noikms739hpjng",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.647,
+        "stdout": "",
+        "stderr": "Error: environment \"evm-db60o5noikms739hpjng\" belongs to project \"prj-db60o5noikms739hpjn0\", not project \"prj-db60o51todic73duuu10\"\n"
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "render",
+      "family": "postgres",
+      "case": "ambiguous-name",
+      "command": [
+        "render",
+        "postgres",
+        "list",
+        "--environment",
+        "qa-20261011-a19393-shared",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 1,
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "postgres",
+          "list",
+          "--environment",
+          "qa-20261011-a19393-shared",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.372,
+        "stdout": "",
+        "stderr": "Error: multiple environments found with name \"qa-20261011-a19393-shared\" across projects — please use the environment ID instead\n"
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "render",
+      "family": "postgres",
+      "case": "project-name-disambiguates",
+      "command": [
+        "render",
+        "postgres",
+        "list",
+        "--project",
+        "qa-20261011-a19393-alpha",
+        "--environment",
+        "qa-20261011-a19393-shared",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 0,
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "postgres",
+          "list",
+          "--project",
+          "qa-20261011-a19393-alpha",
+          "--environment",
+          "qa-20261011-a19393-shared",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.798,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "render",
+      "family": "postgres",
+      "case": "project-id-disambiguates",
+      "command": [
+        "render",
+        "postgres",
+        "list",
+        "--project",
+        "prj-db60o5noikms739hpjn0",
+        "--environment",
+        "qa-20261011-a19393-shared",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 0,
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "postgres",
+          "list",
+          "--project",
+          "prj-db60o5noikms739hpjn0",
+          "--environment",
+          "qa-20261011-a19393-shared",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.995,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "render",
+      "family": "postgres",
+      "case": "actual-environment-alpha",
+      "command": [
+        "render",
+        "postgres",
+        "list",
+        "--environment",
+        "evm-db60o51todic73duuu1g",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 0,
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "postgres",
+          "list",
+          "--environment",
+          "evm-db60o51todic73duuu1g",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.316,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "render",
+      "family": "postgres",
+      "case": "actual-environment-beta",
+      "command": [
+        "render",
+        "postgres",
+        "list",
+        "--environment",
+        "evm-db60o5noikms739hpjng",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 0,
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "postgres",
+          "list",
+          "--environment",
+          "evm-db60o5noikms739hpjng",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.879,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "render",
+      "family": "postgres",
+      "case": "project-environment-mismatch",
+      "command": [
+        "render",
+        "postgres",
+        "list",
+        "--project",
+        "prj-db60o51todic73duuu10",
+        "--environment",
+        "evm-db60o5noikms739hpjng",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 1,
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "postgres",
+          "list",
+          "--project",
+          "prj-db60o51todic73duuu10",
+          "--environment",
+          "evm-db60o5noikms739hpjng",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.266,
+        "stdout": "",
+        "stderr": "Error: environment \"evm-db60o5noikms739hpjng\" belongs to project \"prj-db60o5noikms739hpjn0\", not project \"prj-db60o51todic73duuu10\"\n"
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "render",
+      "family": "keyvalues",
+      "case": "ambiguous-name",
+      "command": [
+        "render",
+        "keyvalues",
+        "list",
+        "--environment",
+        "qa-20261011-a19393-shared",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 1,
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "keyvalues",
+          "list",
+          "--environment",
+          "qa-20261011-a19393-shared",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.356,
+        "stdout": "",
+        "stderr": "Error: multiple environments found with name \"qa-20261011-a19393-shared\" across projects — please use the environment ID instead\n"
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "render",
+      "family": "keyvalues",
+      "case": "project-name-disambiguates",
+      "command": [
+        "render",
+        "keyvalues",
+        "list",
+        "--project",
+        "qa-20261011-a19393-alpha",
+        "--environment",
+        "qa-20261011-a19393-shared",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 0,
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "keyvalues",
+          "list",
+          "--project",
+          "qa-20261011-a19393-alpha",
+          "--environment",
+          "qa-20261011-a19393-shared",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.41,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "render",
+      "family": "keyvalues",
+      "case": "project-id-disambiguates",
+      "command": [
+        "render",
+        "keyvalues",
+        "list",
+        "--project",
+        "prj-db60o5noikms739hpjn0",
+        "--environment",
+        "qa-20261011-a19393-shared",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 0,
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "keyvalues",
+          "list",
+          "--project",
+          "prj-db60o5noikms739hpjn0",
+          "--environment",
+          "qa-20261011-a19393-shared",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.26,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "render",
+      "family": "keyvalues",
+      "case": "actual-environment-alpha",
+      "command": [
+        "render",
+        "keyvalues",
+        "list",
+        "--environment",
+        "evm-db60o51todic73duuu1g",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 0,
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "keyvalues",
+          "list",
+          "--environment",
+          "evm-db60o51todic73duuu1g",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.468,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "render",
+      "family": "keyvalues",
+      "case": "actual-environment-beta",
+      "command": [
+        "render",
+        "keyvalues",
+        "list",
+        "--environment",
+        "evm-db60o5noikms739hpjng",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 0,
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "keyvalues",
+          "list",
+          "--environment",
+          "evm-db60o5noikms739hpjng",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.658,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "two-matching-names",
+      "client": "render",
+      "family": "keyvalues",
+      "case": "project-environment-mismatch",
+      "command": [
+        "render",
+        "keyvalues",
+        "list",
+        "--project",
+        "prj-db60o51todic73duuu10",
+        "--environment",
+        "evm-db60o5noikms739hpjng",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 1,
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "keyvalues",
+          "list",
+          "--project",
+          "prj-db60o51todic73duuu10",
+          "--environment",
+          "evm-db60o5noikms739hpjng",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.344,
+        "stdout": "",
+        "stderr": "Error: environment \"evm-db60o5noikms739hpjng\" belongs to project \"prj-db60o5noikms739hpjn0\", not project \"prj-db60o51todic73duuu10\"\n"
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "one-matching-name",
+      "client": "bex",
+      "family": "postgres",
+      "case": "formerly-ambiguous-now-unique",
+      "command": [
+        "bex",
+        "postgres",
+        "list",
+        "--environment",
+        "qa-20261011-a19393-shared",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 0,
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "list",
+          "--environment",
+          "qa-20261011-a19393-shared",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.928,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "one-matching-name",
+      "client": "bex",
+      "family": "postgres",
+      "case": "renamed-alpha-now-unique",
+      "command": [
+        "bex",
+        "postgres",
+        "list",
+        "--environment",
+        "qa-20261011-a19393-unique-alpha",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 0,
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "list",
+          "--environment",
+          "qa-20261011-a19393-unique-alpha",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.079,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "one-matching-name",
+      "client": "bex",
+      "family": "keyvalues",
+      "case": "formerly-ambiguous-now-unique",
+      "command": [
+        "bex",
+        "keyvalues",
+        "list",
+        "--environment",
+        "qa-20261011-a19393-shared",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 0,
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--environment",
+          "qa-20261011-a19393-shared",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.536,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "one-matching-name",
+      "client": "bex",
+      "family": "keyvalues",
+      "case": "renamed-alpha-now-unique",
+      "command": [
+        "bex",
+        "keyvalues",
+        "list",
+        "--environment",
+        "qa-20261011-a19393-unique-alpha",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_exit": 0,
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--environment",
+          "qa-20261011-a19393-unique-alpha",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 10.079,
+        "stdout": "",
+        "stderr": "Error: workspace \"tea-daif693dqjvc73e7as3g\" not found: Get \"https://api.bex.co/v1/owners/tea-daif693dqjvc73e7as3g\": net/http: TLS handshake timeout\n"
+      },
+      "observed_expected_pattern": false,
+      "qualification": "excluded infrastructure read: TLS handshake timed out during workspace detail before any environment selector response; not a reproduced selector defect"
+    }
+  ],
+  "diagnostic_before_rename": {
+    "method": "GET",
+    "path": "/v1/environments?name=qa-20261011-a19393-shared&projectId=prj-db60o51todic73duuu10%2Cprj-db60o5noikms739hpjn0&limit=100",
+    "body": null,
+    "status": "200",
+    "elapsed": 1.259,
+    "response": "[{\"environment\":{\"id\":\"evm-db60o51todic73duuu1g\",\"projectId\":\"prj-db60o51todic73duuu10\",\"name\":\"qa-20261011-a19393-shared\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]},\"cursor\":\"evm-db60o51todic73duuu1g\"},{\"environment\":{\"id\":\"evm-db60o5noikms739hpjng\",\"projectId\":\"prj-db60o5noikms739hpjn0\",\"name\":\"qa-20261011-a19393-shared\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]},\"cursor\":\"evm-db60o5noikms739hpjng\"}]\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49144183b98e7eb-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "owned_rename": {
+    "method": "PATCH",
+    "path": "/v1/environments/evm-db60o51todic73duuu1g",
+    "body": "{\"name\": \"qa-20261011-a19393-unique-alpha\"}",
+    "status": "200",
+    "elapsed": 0.646,
+    "response": "{\"id\":\"evm-db60o51todic73duuu1g\",\"projectId\":\"prj-db60o51todic73duuu10\",\"name\":\"qa-20261011-a19393-unique-alpha\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a491454bda455e55-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "readback": {
+    "method": "GET",
+    "path": "/v1/environments/evm-db60o51todic73duuu1g",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.585,
+    "response": "{\"id\":\"evm-db60o51todic73duuu1g\",\"projectId\":\"prj-db60o51todic73duuu10\",\"name\":\"qa-20261011-a19393-unique-alpha\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49145509ff9d81b-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "diagnostic_after_rename": {
+    "method": "GET",
+    "path": "/v1/environments?name=qa-20261011-a19393-shared&projectId=prj-db60o51todic73duuu10%2Cprj-db60o5noikms739hpjn0&limit=100",
+    "body": null,
+    "status": "200",
+    "elapsed": 1.586,
+    "response": "[{\"environment\":{\"id\":\"evm-db60o5noikms739hpjng\",\"projectId\":\"prj-db60o5noikms739hpjn0\",\"name\":\"qa-20261011-a19393-shared\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]},\"cursor\":\"evm-db60o5noikms739hpjng\"}]\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4914555bcb20b82-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  }
+}

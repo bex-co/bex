@@ -1,0 +1,150 @@
+[
+  {
+    "actual_label_keys": [
+      "punct"
+    ],
+    "label": "punct",
+    "manual_expected_labels_match": true,
+    "normalized_search_terms": [
+      "qa176_3ff02e punct 100%_literal [a]+.(b)?^$"
+    ]
+  },
+  {
+    "actual_label_keys": [
+      "quoted"
+    ],
+    "label": "quote",
+    "manual_expected_labels_match": true,
+    "normalized_search_terms": [
+      "qa176_3ff02e quote q\"u\\v"
+    ]
+  },
+  {
+    "actual_label_keys": [
+      "comma"
+    ],
+    "label": "comma",
+    "manual_expected_labels_match": true,
+    "normalized_search_terms": [
+      "qa176_3ff02e comma a,b"
+    ]
+  },
+  {
+    "actual_label_keys": [
+      "tab"
+    ],
+    "label": "tab",
+    "manual_expected_labels_match": true,
+    "normalized_search_terms": [
+      "qa176_3ff02e tab a\tb"
+    ]
+  },
+  {
+    "actual_label_keys": [
+      "literal-tab"
+    ],
+    "label": "literal-tab",
+    "manual_expected_labels_match": true,
+    "normalized_search_terms": [
+      "qa176_3ff02e literal a\\tb"
+    ]
+  },
+  {
+    "actual_label_keys": [
+      "snow"
+    ],
+    "label": "snow",
+    "manual_expected_labels_match": true,
+    "normalized_search_terms": [
+      "qa176_3ff02e snow 雪😀"
+    ]
+  },
+  {
+    "actual_label_keys": [
+      "lower",
+      "upper"
+    ],
+    "label": "unicode-case",
+    "manual_expected_labels_match": true,
+    "normalized_search_terms": [
+      "café ελληνικά"
+    ]
+  },
+  {
+    "actual_label_keys": [
+      "lower",
+      "upper"
+    ],
+    "label": "iota",
+    "manual_expected_labels_match": true,
+    "normalized_search_terms": [
+      "ι"
+    ]
+  },
+  {
+    "actual_label_keys": [
+      "ascii-i",
+      "ascii-s",
+      "decoy",
+      "dotted",
+      "literal-tab",
+      "plain",
+      "punct"
+    ],
+    "label": "dotted-i",
+    "manual_expected_labels_match": true,
+    "normalized_search_terms": [
+      "i"
+    ]
+  },
+  {
+    "actual_label_keys": [
+      "long-s"
+    ],
+    "label": "long-s",
+    "manual_expected_labels_match": true,
+    "normalized_search_terms": [
+      "ſ"
+    ]
+  },
+  {
+    "actual_label_keys": [
+      "ascii-s"
+    ],
+    "label": "ascii-s",
+    "manual_expected_labels_match": true,
+    "normalized_search_terms": [
+      "qa176_3ff02e ascii s"
+    ]
+  },
+  {
+    "actual_label_keys": [
+      "comma",
+      "snow"
+    ],
+    "label": "or",
+    "manual_expected_labels_match": true,
+    "normalized_search_terms": [
+      "qa176_3ff02e comma a,b",
+      "qa176_3ff02e snow 雪😀"
+    ]
+  },
+  {
+    "actual_label_keys": [
+      "comma"
+    ],
+    "label": "duplicates",
+    "manual_expected_labels_match": true,
+    "normalized_search_terms": [
+      "qa176_3ff02e comma a,b"
+    ]
+  },
+  {
+    "actual_label_keys": [],
+    "label": "missing",
+    "manual_expected_labels_match": true,
+    "normalized_search_terms": [
+      "qa176_3ff02e absent"
+    ]
+  }
+]

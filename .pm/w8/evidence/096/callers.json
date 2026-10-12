@@ -1,0 +1,22 @@
+{
+  "parseCompiledStack": [
+    "blueprint.go:661 validation",
+    "blueprint.go:1607 plan",
+    "deploy.go:1687 preparation/apply",
+    "blueprint_generate.go:240 generator self-check"
+  ],
+  "classifyRefs": [
+    "deploy.go:1935"
+  ],
+  "resolveRef": [
+    "deploy.go:2071"
+  ],
+  "type_use": "FromService.Type selects the Key Value branch only; non-Key Value types are not matched with target type.",
+  "neighbors_unverified": [
+    "outside-file host target type",
+    "host/hostport production execution",
+    "nested declarations",
+    "legacy alias and static-site reference matrix",
+    "REST/GraphQL/MCP apply"
+  ]
+}

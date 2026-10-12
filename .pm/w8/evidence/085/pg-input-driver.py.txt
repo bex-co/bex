@@ -1,0 +1,66 @@
+import os,sys,pty,subprocess,select,time,pathlib,json,re,fcntl,termios,struct,errno
+p=pathlib.Path(__file__).parent
+env={k:v for k,v in os.environ.items() if not k.startswith(('RENDER_','BEX_','QA_','PG'))}
+env.update(BEX_HOST='https://api.bex.co/v1/',BEX_CLI_CONFIG_DIR=str(p/'config'),BEX_CLI_CONFIG_PATH=str(p/'config/cli.yaml'),BEX_WORKSPACE=(p/'workspace.txt').read_text().strip(),BEX_NO_UPDATE_NOTIFIER='1',BEX_CLI_DISABLE_ANALYTICS='1',TERM='xterm-256color')
+args=sys.argv[1:];is_render=bool(args and args[0]=='--render')
+if is_render:
+    args=args[1:]
+    env.update(RENDER_HOST='https://api.bex.co/v1/',RENDER_CLI_CONFIG_DIR=str(p/'render-config'),RENDER_CLI_CONFIG_PATH=str(p/'render-config/cli.yaml'),RENDER_WORKSPACE=(p/'workspace.txt').read_text().strip(),RENDER_CLI_DISABLE_ANALYTICS='1',DO_NOT_TRACK='1')
+sentinel=p/'sweep136-child-ready.json';sentinel.unlink(missing_ok=True);env['PGCONNECT_TIMEOUT']='5';env['PGHOSTADDR']=(p/'sweep136-endpoint-ipv4.txt').read_text();env['PGSSLROOTCERT']=str(p/'sweep136-own-ca.pem') if is_render else '';env['PATH']=str(p/'sweep136-child-bin')+os.pathsep+os.environ['PATH'];payload=(p/'sweep136-stdin.bin').read_bytes();plan=None;query_sent=False;quit_sent=False;rollback_sent=False;error_screen_seen=False;dismissed_error_screen=False
+if args and args[0]=='pgcli':
+    env['XDG_CONFIG_HOME']=str(p/'pgcli-xdg');env['TMPDIR']=str(p/'pgcli-tmp')
+    if (p/'pgcli-plan.json').exists():plan=json.loads((p/'pgcli-plan.json').read_text())
+master,slave=pty.openpty();fcntl.ioctl(slave,termios.TIOCSWINSZ,struct.pack('HHHH',28,150,0,0))
+def setup():
+    os.setsid();fcntl.ioctl(slave,termios.TIOCSCTTY,0)
+proc=None;data=b'';start=time.monotonic();timed=False;err=None
+try:
+    proc=subprocess.Popen([str(p/('render-pin' if is_render else 'release/bex')),*args],env=env,stdin=slave,stdout=slave,stderr=slave,preexec_fn=setup)
+    os.close(slave);slave=None;(p/'pty-bounded.pid').write_text(str(proc.pid))
+    while time.monotonic()-start<18:
+        ready,_,_=select.select([master],[],[],0.2)
+        if ready:
+            try:chunk=os.read(master,65536)
+            except OSError as e:
+                if e.errno==errno.EIO:break
+                raise
+            if not chunk:break
+            data+=chunk
+            if b'\x1b[6n' in chunk:os.write(master,b'\x1b[1;1R')
+            if b'\x1b]11;?' in chunk:os.write(master,b'\x1b]11;rgb:0000/0000/0000\x07')
+            plain_all=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',data.decode(errors='replace'))
+            if 'An error occurred while running psql' in plain_all and not dismissed_error_screen:
+                error_screen_seen=True;os.write(master,b'\x03');dismissed_error_screen=True
+            if plan:
+                plain=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',data.decode(errors='replace'))
+                if not query_sent and 'qa-pgcli>' in plain:
+                    os.write(master,(plan['query']+'\r').encode());query_sent=True
+                elif query_sent and not quit_sent and all(mark in plain for mark in plan['markers']):
+                    os.write(master,b'\\q\r');quit_sent=True
+                elif quit_sent and not rollback_sent and 'A transaction is ongoing.' in plain:
+                    os.write(master,b'r\r');rollback_sent=True
+        if sentinel.exists() and not query_sent and b'>> ' in data:
+            os.write(master,payload);time.sleep(.1);os.write(master,b'\x04');query_sent=True
+        if proc.poll() is not None:break
+    if proc.poll() is None and time.monotonic()-start<18:
+        try:proc.wait(timeout=1)
+        except subprocess.TimeoutExpired:pass
+    if proc.poll() is None:
+        timed=time.monotonic()-start>=18
+        try:os.write(master,b'\x03')
+        except OSError:pass
+        try:proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:pass
+except Exception as e:err=type(e).__name__
+finally:
+    if slave is not None:os.close(slave)
+    if proc is not None and proc.poll() is None:
+        proc.terminate()
+        try:proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:proc.kill();proc.wait(timeout=2)
+    os.close(master);(p/'pty-bounded.pid').unlink(missing_ok=True)
+out=data.decode(errors='replace');(p/'pty-bounded-capture.txt').write_text(out)
+out=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',out);out=re.sub(r'\x1b\][^\x07]*\x07','',out)
+out=re.sub(r'(?:postgres(?:ql)?|rediss?)://[^\s]+','[CONNECTION URL REDACTED]',out)
+record={'binary':'unmodified Render a764810a7682' if is_render else 'released v0.3.2','command':['render' if is_render else 'bex',*args],'pid':None if proc is None else proc.pid,'exit':None if proc is None else proc.returncode,'elapsed':round(time.monotonic()-start,3),'timeout':timed,'error_screen_seen':error_screen_seen,'dismissed_error_screen':dismissed_error_screen,'harness_error':err,'stdin_payload_sent':query_sent,'child_started':sentinel.exists(),'stdin_bytes':len(payload),'quit_after_expected_row':quit_sent,'rollback_on_exit':rollback_sent,'output':'\n'.join(line.strip() for line in out.splitlines() if line.strip() and 'Loading...' not in line and 'Ctrl+C' not in line)[-2400:]}
+(p/'pty-bounded.jsonl').open('a').write(json.dumps(record)+'\n');print(json.dumps(record))

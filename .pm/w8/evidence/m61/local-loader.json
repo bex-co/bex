@@ -1,0 +1,86 @@
+[
+  {
+    "label": "complete-path-before-note",
+    "container_name": "qa-cli-w8-163-local-a2efe7",
+    "at": "2026-10-12T00:22:54.389221+00:00",
+    "entries": [
+      [
+        "PATH",
+        "/usr/local/bin:/usr/bin:/bin"
+      ],
+      [
+        "QA_NOTE",
+        "qa163-note"
+      ]
+    ],
+    "expected_exit": 0,
+    "state": "completed",
+    "exit": 0,
+    "stdout": "{\"PATH\": \"/usr/local/bin:/usr/bin:/bin\", \"QA_NOTE\": \"qa163-note\", \"command_ran\": true}\n",
+    "stderr": "",
+    "container_absent": true,
+    "expected_observation": true
+  },
+  {
+    "label": "custom-path-before-note",
+    "container_name": "qa-cli-w8-163-local-a9ab60",
+    "at": "2026-10-12T00:22:55.054166+00:00",
+    "entries": [
+      [
+        "PATH",
+        "/usr/local/bin"
+      ],
+      [
+        "QA_NOTE",
+        "qa163-note"
+      ]
+    ],
+    "expected_exit": 1,
+    "state": "completed",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "",
+    "container_absent": true,
+    "expected_observation": true
+  },
+  {
+    "label": "custom-path-only",
+    "container_name": "qa-cli-w8-163-local-4fc728",
+    "at": "2026-10-12T00:22:55.397298+00:00",
+    "entries": [
+      [
+        "PATH",
+        "/usr/local/bin"
+      ]
+    ],
+    "expected_exit": 0,
+    "state": "completed",
+    "exit": 0,
+    "stdout": "{\"PATH\": \"/usr/local/bin\", \"QA_NOTE\": null, \"command_ran\": true}\n",
+    "stderr": "",
+    "container_absent": true,
+    "expected_observation": true
+  },
+  {
+    "label": "custom-path-after-note-diagnostic-order",
+    "container_name": "qa-cli-w8-163-local-474089",
+    "at": "2026-10-12T00:22:55.836867+00:00",
+    "entries": [
+      [
+        "QA_NOTE",
+        "qa163-note"
+      ],
+      [
+        "PATH",
+        "/usr/local/bin"
+      ]
+    ],
+    "expected_exit": 0,
+    "state": "completed",
+    "exit": 0,
+    "stdout": "{\"PATH\": \"/usr/local/bin\", \"QA_NOTE\": \"qa163-note\", \"command_ran\": true}\n",
+    "stderr": "",
+    "container_absent": true,
+    "expected_observation": true
+  }
+]

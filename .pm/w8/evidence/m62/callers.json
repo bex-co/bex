@@ -1,0 +1,49 @@
+{
+  "ApplyEnvVarPatch": [
+    "secrets/batch.go:538",
+    "envgroups/patch.go:187"
+  ],
+  "resolveValue": [
+    "secrets/service.go:494 SetEnvVars",
+    "secrets/service.go:566 SetEnvVar",
+    "secrets/service.go:668 SeedEnvVars"
+  ],
+  "checkCreateEnv": [
+    "secrets/files.go:451",
+    "secrets/files.go:525"
+  ],
+  "prepareCreateEnv": [
+    "envgroups/service.go:523",
+    "envgroups/service.go:1542 ApplyEnvGroup"
+  ],
+  "parseEnvGroup": [
+    "apps/deploy.go:1840"
+  ],
+  "classifyServiceEnv": [
+    "apps/deploy.go:2232"
+  ],
+  "other_admission_boundaries": [
+    "apps/service.go:2150 checkReservedSpecEnv",
+    "apps/deploy.go:1700 validateBlueprintEnvVarValues",
+    "secrets/service.go:827 envMapWithinQuota"
+  ],
+  "runtime_consumers": [
+    "operator/internal/controller/app_controller.go:4740 appEnv",
+    "operator/internal/controller/app_controller.go:4771 envFromSources",
+    "operator/internal/build/native.go:235 nativeDockerfile"
+  ],
+  "confirmed": [
+    "12 production native validation processes",
+    "6 exact parser observations",
+    "actual core patch acceptance",
+    "local OCI refusal",
+    "local generated-loader byte loss"
+  ],
+  "unverified": [
+    "direct live API environment writes",
+    "live Blueprint apply",
+    "production NUL runtime",
+    "full cross-surface census",
+    "all other runtime kinds"
+  ]
+}

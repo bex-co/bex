@@ -15,9 +15,13 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m62** — [Reject unlaunchable environment values](m62/README.md) (6 tasks; 2h35m) ← functional CLI QA sweep171: both native clients validate NUL literals/seeds/groups; actual local runtime refuses them and generated loader drops the byte; file-byte control passes; five local containers cleaned, no hosted apply.
+
+- [ ] **m61** — [Honor application PATH during native builds](m61/README.md) (6 tasks; 2h45m) ← functional CLI QA sweep163: both native clients fail before the absolute Python build command; same-commit PATH-only controls recover; literal preparation also fails locally; two hosted fixtures and seven local containers cleaned.
+
 - [ ] **m60** — [Preserve accepted arguments when copying CLI commands](m60/README.md) (7 tasks; 2h50m) ← functional CLI QA sweep135: both native clients change phrase/literal-comma searches and reject copied relative times; original controls pass; own fixture fully cleaned.
 
-- [ ] **m58** — [Preserve Unicode matches in log history](blocked/m58/README.md) — **BLOCKED (2026-10-12: backend fix/tests complete and shipped locally in the milestone; needs production deployment plus fresh native Bex/Render App/Postgres/Key Value acceptance receipts and cleanup before t003/t006 can close)**
+- [ ] **m58** — [Preserve Unicode matches in log history](blocked/m58/README.md) — **BLOCKED (2026-10-12: backend fix/tests complete; sweep176 partial App live acceptance passes 40 native checks and six raw/display API controls with cleanup; full App matrix, GraphQL and managed Postgres/Key Value native acceptance still needed before t003/t006 close)**
 - [ ] **m59** — [Return static sites to direct publication after clearing their build command](m59/README.md) (6 tasks, 2h15) ← CLI QA sweep 99: Bex and actual pinned Render accept the clear command, but create-time native Builder prevents no-build publication; passing direct-created control, four owned fixtures cleaned.
 
 - [ ] **m57** — [Preserve literal string lists in interactive CLI forms](blocked/m57/README.md) — **BLOCKED (2026-10-12: t001/t002 prepared and tested with `blocked/m57/evidence/upstream-lossless-string-list.patch` + caller audit; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release, and native Bex/Render receipts; no fork/backend workaround per scope/DO_NOT_DO)**
@@ -98,6 +102,21 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [w4/m200 native CLI corroboration](evidence/m200-native-cli/README.md) — sweep111: both clients corrupt the mixed stdout/stderr pair in Live while all five historical messages remain exact; complete native evidence and cleanup retained. Implementation stays with w4/m200.
 
 ## Inbox
+
+- [ ] **098** — [Blueprint validation accepts Key Value envVarKey refs that resolve to an empty key](098.md) (minor; 55m) ← functional CLI sweep175: four false-valid checks across both clients, 16 passing/refusal controls and actual resolver proof; validation only, no resource created.
+
+- [ ] **097** — [Literal alert/emergency severities become unknown and disappear from CLI level filters](097.md) (minor; 55m) ← functional CLI sweep174: both clients omit six stored records from level views; ten passing controls and rendered collector proof; producer gap left by done/031; hosted/local fixtures cleaned.
+
+- [ ] **096** — [Blueprint validation ignores a supplied service-reference type](096.md) (minor; 55m) ← functional CLI sweep173: 14 mismatches pass in both native clients; matching and refusal controls plus actual typed parser proof; validation only, no resource created.
+
+- [ ] **095** — [Blueprint reapply skips a new empty variable in an existing environment group](095.md) (minor; 50m) ← terminal sweep155: native validation passes; actual unchanged backend writer drops absent empty keys; source-confirmed, hosted apply unverified; no platform fixture.
+- [ ] **094** — [Blueprint plans call an existing environment group a create when its name is padded](094.md) (minor; 55m) ← functional terminal sweep153: full-server plans misclassify accepted padded names in three locations; native summaries pass; actual parser/planner proof; own empty group cleaned.
+
+- [ ] **093** — [CLI scope selectors cannot resolve accepted ID-shaped project and environment names](093.md) (minor; 55m) ← functional CLI sweep150: release, same-pin Render and fresh checkout reproduce; 30 native checks, exact name-list controls and caller census; empty metadata fixtures cleaned.
+
+- [ ] **092** — [Blueprint parser loses explicit empty env-value presence](092.md) (minor; 55m) ← functional CLI sweeps143/152: empty seeds fail copies and empty literals bypass generation-conflict checks; both native clients, controls and actual parser proof; validation only, no fixtures.
+
+- [ ] **091** — [SSH project filters start connection preparation before choosing a service](091.md) (minor; 55m) ← functional CLI sweep138: select/clear fail in both native clients; services-filter controls pass; own metadata fixtures cleaned.
 
 - [ ] **090** — [Fresh CLI configs open dashboard resources as filesystem paths](090.md) (minor; 55m) ← functional CLI sweep127: both native clients emit relative opener paths; explicit-origin controls pass; launcher default researched, read-only metadata.
 

@@ -1,0 +1,793 @@
+{
+  "fixture": {
+    "sweep": 142,
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "id": "dpg-db5vgm8a604s73e5saqg",
+    "name": "qa-20261011-87ee0a-pgscope-db",
+    "nonce": "87ee0a",
+    "expected_database": "qa_scope_87ee0a",
+    "expected_user": "qa_user_87ee0a",
+    "project_id": "prj-db5vg88a604s73e5saog",
+    "environment_id": "evm-db5vg88a604s73e5sap0",
+    "capacity_proof": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.361,
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a490c7c38a83de51-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "create_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "postgres",
+        "create",
+        "--name",
+        "qa-20261011-87ee0a-pgscope-db",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--version",
+        "18",
+        "--connection-pool",
+        "none",
+        "--workspace",
+        "tea-daif693dqjvc73e7as3g",
+        "--database-name",
+        "qa_scope_87ee0a",
+        "--database-user",
+        "qa_user_87ee0a",
+        "--project",
+        "qa-20261011-87ee0a-pgscope",
+        "--environment",
+        "qa-20261011-87ee0a-pgscope-A",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.635,
+      "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-11T20:58:01Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db5vgm8a604s73e5saqg\",\n    \"databaseName\": \"qa_scope_87ee0a\",\n    \"databaseUser\": \"qa_user_87ee0a\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"environmentId\": \"evm-db5vg88a604s73e5sap0\",\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db5vgm8a604s73e5saqg\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-20261011-87ee0a-pgscope-db\",\n    \"owner\": {\n      \"email\": \"puncsky@gmail.com\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"creating\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-11T20:58:01.571384771Z\",\n    \"version\": \"18\",\n    \"projectId\": \"prj-db5vg88a604s73e5saog\"\n  }\n}",
+      "stderr": ""
+    },
+    "create_response": {
+      "connectionPool": "none",
+      "createdAt": "2026-10-11T20:58:01Z",
+      "dashboardUrl": "https://dashboard.bex.co/d/dpg-db5vgm8a604s73e5saqg",
+      "databaseName": "qa_scope_87ee0a",
+      "databaseUser": "qa_user_87ee0a",
+      "diskAutoscalingEnabled": false,
+      "diskSizeGB": 1,
+      "environmentId": "evm-db5vg88a604s73e5sap0",
+      "highAvailabilityEnabled": false,
+      "id": "dpg-db5vgm8a604s73e5saqg",
+      "ipAllowList": [
+        {
+          "cidrBlock": "0.0.0.0/0",
+          "description": ""
+        },
+        {
+          "cidrBlock": "::/0",
+          "description": ""
+        }
+      ],
+      "name": "qa-20261011-87ee0a-pgscope-db",
+      "owner": {
+        "email": "puncsky@gmail.com",
+        "id": "tea-daif693dqjvc73e7as3g",
+        "name": "bex-canary",
+        "type": "team"
+      },
+      "plan": "free",
+      "readReplicas": [],
+      "region": "fsn1",
+      "role": "",
+      "status": "creating",
+      "suspended": "not_suspended",
+      "suspenders": null,
+      "updatedAt": "2026-10-11T20:58:01.571384771Z",
+      "version": "18",
+      "projectId": "prj-db5vg88a604s73e5saog"
+    },
+    "last_readback": {
+      "id": "dpg-db5vgm8a604s73e5saqg",
+      "name": "qa-142-87ee0a-render-names",
+      "plan": "free",
+      "version": "18",
+      "status": "available",
+      "databaseName": "qa_scope_87ee0a",
+      "databaseUser": "qa_user_87ee0a",
+      "diskSizeGB": 1,
+      "diskAutoscalingEnabled": false,
+      "highAvailabilityEnabled": false,
+      "readReplicas": [],
+      "suspended": "not_suspended",
+      "createdAt": "2026-10-11T20:58:01Z",
+      "updatedAt": "2026-10-11T21:00:18.116262056Z",
+      "region": "fsn1",
+      "dashboardUrl": "https://dashboard.bex.co/d/dpg-db5vgm8a604s73e5saqg",
+      "externalHost": "dpg-db5vgm8a604s73e5saqg.db.bex.co",
+      "public": true,
+      "ipAllowList": [
+        {
+          "cidrBlock": "0.0.0.0/0",
+          "description": ""
+        },
+        {
+          "cidrBlock": "::/0",
+          "description": ""
+        }
+      ],
+      "poolerEnabled": false,
+      "connectionPool": "none",
+      "backupsEnabled": false,
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "projectId": "prj-db5vg88a604s73e5saog",
+      "environmentId": "evm-db5vg88a604s73e5sap0",
+      "owner": {
+        "id": "tea-daif693dqjvc73e7as3g",
+        "name": "bex-canary",
+        "email": "puncsky@gmail.com",
+        "type": "team"
+      }
+    }
+  },
+  "scoped_update_controls": [
+    {
+      "client": "bex",
+      "selector": "ids",
+      "command": [
+        "bex",
+        "postgres",
+        "update",
+        "qa-20261011-87ee0a-pgscope-db",
+        "--project",
+        "prj-db5vg88a604s73e5saog",
+        "--environment",
+        "evm-db5vg88a604s73e5sap0",
+        "--name",
+        "qa-142-87ee0a-bex-ids",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "at": "2026-10-11T20:59:56.186976+00:00",
+      "state": "native update intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "update",
+          "qa-20261011-87ee0a-pgscope-db",
+          "--project",
+          "prj-db5vg88a604s73e5saog",
+          "--environment",
+          "evm-db5vg88a604s73e5sap0",
+          "--name",
+          "qa-142-87ee0a-bex-ids",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.584,
+        "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-11T20:58:01Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db5vgm8a604s73e5saqg\",\n    \"databaseName\": \"qa_scope_87ee0a\",\n    \"databaseUser\": \"qa_user_87ee0a\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"environmentId\": \"evm-db5vg88a604s73e5sap0\",\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db5vgm8a604s73e5saqg\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-142-87ee0a-bex-ids\",\n    \"owner\": {\n      \"email\": \"puncsky@gmail.com\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"config_restart\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-11T20:59:58.774895614Z\",\n    \"version\": \"18\",\n    \"projectId\": \"prj-db5vg88a604s73e5saog\"\n  },\n  \"diff\": {\n    \"name\": {\n      \"before\": \"qa-20261011-87ee0a-pgscope-db\",\n      \"after\": \"qa-142-87ee0a-bex-ids\"\n    }\n  }\n}",
+        "stderr": ""
+      },
+      "readback": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db5vgm8a604s73e5saqg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.341,
+        "response": "{\"id\":\"dpg-db5vgm8a604s73e5saqg\",\"name\":\"qa-142-87ee0a-bex-ids\",\"plan\":\"free\",\"version\":\"18\",\"status\":\"available\",\"databaseName\":\"qa_scope_87ee0a\",\"databaseUser\":\"qa_user_87ee0a\",\"diskSizeGB\":1,\"diskAutoscalingEnabled\":false,\"highAvailabilityEnabled\":false,\"readReplicas\":[],\"suspended\":\"not_suspended\",\"createdAt\":\"2026-10-11T20:58:01Z\",\"updatedAt\":\"2026-10-11T20:59:58.774895614Z\",\"region\":\"fsn1\",\"dashboardUrl\":\"https://dashboard.bex.co/d/dpg-db5vgm8a604s73e5saqg\",\"externalHost\":\"dpg-db5vgm8a604s73e5saqg.db.bex.co\",\"public\":true,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"\"},{\"cidrBlock\":\"::/0\",\"description\":\"\"}],\"poolerEnabled\":false,\"connectionPool\":\"none\",\"backupsEnabled\":false,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"projectId\":\"prj-db5vg88a604s73e5saog\",\"environmentId\":\"evm-db5vg88a604s73e5sap0\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a490caae8d38f4c4-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "identity_and_membership_preserved": true,
+      "name_matches_expected": true,
+      "pass": true
+    },
+    {
+      "client": "bex",
+      "selector": "names",
+      "command": [
+        "bex",
+        "postgres",
+        "update",
+        "qa-142-87ee0a-bex-ids",
+        "--project",
+        "qa-20261011-87ee0a-pgscope",
+        "--environment",
+        "qa-20261011-87ee0a-pgscope-A",
+        "--name",
+        "qa-142-87ee0a-bex-names",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "at": "2026-10-11T20:59:59.600580+00:00",
+      "state": "native update intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "update",
+          "qa-142-87ee0a-bex-ids",
+          "--project",
+          "qa-20261011-87ee0a-pgscope",
+          "--environment",
+          "qa-20261011-87ee0a-pgscope-A",
+          "--name",
+          "qa-142-87ee0a-bex-names",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.21,
+        "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-11T20:58:01Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db5vgm8a604s73e5saqg\",\n    \"databaseName\": \"qa_scope_87ee0a\",\n    \"databaseUser\": \"qa_user_87ee0a\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"environmentId\": \"evm-db5vg88a604s73e5sap0\",\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db5vgm8a604s73e5saqg\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-142-87ee0a-bex-names\",\n    \"owner\": {\n      \"email\": \"puncsky@gmail.com\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"config_restart\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-11T21:00:01.74258456Z\",\n    \"version\": \"18\",\n    \"projectId\": \"prj-db5vg88a604s73e5saog\"\n  },\n  \"diff\": {\n    \"name\": {\n      \"before\": \"qa-142-87ee0a-bex-ids\",\n      \"after\": \"qa-142-87ee0a-bex-names\"\n    }\n  }\n}",
+        "stderr": ""
+      },
+      "readback": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db5vgm8a604s73e5saqg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.543,
+        "response": "{\"id\":\"dpg-db5vgm8a604s73e5saqg\",\"name\":\"qa-142-87ee0a-bex-names\",\"plan\":\"free\",\"version\":\"18\",\"status\":\"available\",\"databaseName\":\"qa_scope_87ee0a\",\"databaseUser\":\"qa_user_87ee0a\",\"diskSizeGB\":1,\"diskAutoscalingEnabled\":false,\"highAvailabilityEnabled\":false,\"readReplicas\":[],\"suspended\":\"not_suspended\",\"createdAt\":\"2026-10-11T20:58:01Z\",\"updatedAt\":\"2026-10-11T21:00:01.74258456Z\",\"region\":\"fsn1\",\"dashboardUrl\":\"https://dashboard.bex.co/d/dpg-db5vgm8a604s73e5saqg\",\"externalHost\":\"dpg-db5vgm8a604s73e5saqg.db.bex.co\",\"public\":true,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"\"},{\"cidrBlock\":\"::/0\",\"description\":\"\"}],\"poolerEnabled\":false,\"connectionPool\":\"none\",\"backupsEnabled\":false,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"projectId\":\"prj-db5vg88a604s73e5saog\",\"environmentId\":\"evm-db5vg88a604s73e5sap0\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a490cac16c8acf22-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "identity_and_membership_preserved": true,
+      "name_matches_expected": true,
+      "pass": true
+    },
+    {
+      "client": "bex",
+      "selector": "empty-environment",
+      "command": [
+        "bex",
+        "postgres",
+        "update",
+        "qa-142-87ee0a-bex-names",
+        "--project",
+        "qa-20261011-87ee0a-pgscope",
+        "--environment",
+        "qa-20261011-87ee0a-pgscope-B",
+        "--name",
+        "qa-142-87ee0a-bex-empty",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "at": "2026-10-11T21:00:02.810111+00:00",
+      "state": "native update intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "update",
+          "qa-142-87ee0a-bex-names",
+          "--project",
+          "qa-20261011-87ee0a-pgscope",
+          "--environment",
+          "qa-20261011-87ee0a-pgscope-B",
+          "--name",
+          "qa-142-87ee0a-bex-empty",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.627,
+        "stdout": "",
+        "stderr": "Error: No Postgres database named 'qa-142-87ee0a-bex-names' in environment qa-20261011-87ee0a-pgscope-B (evm-db5vg88a604s73e5sapg).\n"
+      },
+      "readback": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db5vgm8a604s73e5saqg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.36,
+        "response": "{\"id\":\"dpg-db5vgm8a604s73e5saqg\",\"name\":\"qa-142-87ee0a-bex-names\",\"plan\":\"free\",\"version\":\"18\",\"status\":\"available\",\"databaseName\":\"qa_scope_87ee0a\",\"databaseUser\":\"qa_user_87ee0a\",\"diskSizeGB\":1,\"diskAutoscalingEnabled\":false,\"highAvailabilityEnabled\":false,\"readReplicas\":[],\"suspended\":\"not_suspended\",\"createdAt\":\"2026-10-11T20:58:01Z\",\"updatedAt\":\"2026-10-11T21:00:01.74258456Z\",\"region\":\"fsn1\",\"dashboardUrl\":\"https://dashboard.bex.co/d/dpg-db5vgm8a604s73e5saqg\",\"externalHost\":\"dpg-db5vgm8a604s73e5saqg.db.bex.co\",\"public\":true,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"\"},{\"cidrBlock\":\"::/0\",\"description\":\"\"}],\"poolerEnabled\":false,\"connectionPool\":\"none\",\"backupsEnabled\":false,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"projectId\":\"prj-db5vg88a604s73e5saog\",\"environmentId\":\"evm-db5vg88a604s73e5sap0\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a490cad1ecd8eb25-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "identity_and_membership_preserved": true,
+      "name_matches_expected": true,
+      "pass": true
+    },
+    {
+      "client": "bex",
+      "selector": "no-op",
+      "command": [
+        "bex",
+        "postgres",
+        "update",
+        "qa-142-87ee0a-bex-names",
+        "--project",
+        "qa-20261011-87ee0a-pgscope",
+        "--environment",
+        "qa-20261011-87ee0a-pgscope-A",
+        "--name",
+        "qa-142-87ee0a-bex-names",
+        "--confirm",
+        "-o",
+        "text"
+      ],
+      "at": "2026-10-11T21:00:05.275815+00:00",
+      "state": "native update intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "update",
+          "qa-142-87ee0a-bex-names",
+          "--project",
+          "qa-20261011-87ee0a-pgscope",
+          "--environment",
+          "qa-20261011-87ee0a-pgscope-A",
+          "--name",
+          "qa-142-87ee0a-bex-names",
+          "--confirm",
+          "-o",
+          "text"
+        ],
+        "exit": 0,
+        "elapsed": 1.793,
+        "stdout": "No changes applied to Postgres database\n\nFull details:\n  Name: qa-142-87ee0a-bex-names\n  ID: dpg-db5vgm8a604s73e5saqg\n  Workspace: bex-canary (tea-daif693dqjvc73e7as3g)\n  Project: qa-20261011-87ee0a-pgscope (prj-db5vg88a604s73e5saog)\n  Environment: qa-20261011-87ee0a-pgscope-A (evm-db5vg88a604s73e5sap0)\n  Plan: free\n  Version: 18\n  Region: fsn1\n  Status: available\n  Database: qa_scope_87ee0a\n  User: qa_user_87ee0a\n  Disk size: 1 GB\n  Disk autoscaling: disabled\n  Connection pool: none\n  High availability: disabled\n  Dashboard: https://dashboard.bex.co/d/dpg-db5vgm8a604s73e5saqg\n  IP allow-list:\n    - 0.0.0.0/0\n    - ::/0\n",
+        "stderr": ""
+      },
+      "readback": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db5vgm8a604s73e5saqg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.29,
+        "response": "{\"id\":\"dpg-db5vgm8a604s73e5saqg\",\"name\":\"qa-142-87ee0a-bex-names\",\"plan\":\"free\",\"version\":\"18\",\"status\":\"available\",\"databaseName\":\"qa_scope_87ee0a\",\"databaseUser\":\"qa_user_87ee0a\",\"diskSizeGB\":1,\"diskAutoscalingEnabled\":false,\"highAvailabilityEnabled\":false,\"readReplicas\":[],\"suspended\":\"not_suspended\",\"createdAt\":\"2026-10-11T20:58:01Z\",\"updatedAt\":\"2026-10-11T21:00:06.997689636Z\",\"region\":\"fsn1\",\"dashboardUrl\":\"https://dashboard.bex.co/d/dpg-db5vgm8a604s73e5saqg\",\"externalHost\":\"dpg-db5vgm8a604s73e5saqg.db.bex.co\",\"public\":true,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"\"},{\"cidrBlock\":\"::/0\",\"description\":\"\"}],\"poolerEnabled\":false,\"connectionPool\":\"none\",\"backupsEnabled\":false,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"projectId\":\"prj-db5vg88a604s73e5saog\",\"environmentId\":\"evm-db5vg88a604s73e5sap0\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a490cae22abccf25-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "identity_and_membership_preserved": true,
+      "name_matches_expected": true,
+      "pass": true
+    },
+    {
+      "client": "render",
+      "selector": "ids",
+      "command": [
+        "render",
+        "postgres",
+        "update",
+        "qa-142-87ee0a-bex-names",
+        "--project",
+        "prj-db5vg88a604s73e5saog",
+        "--environment",
+        "evm-db5vg88a604s73e5sap0",
+        "--name",
+        "qa-142-87ee0a-render-ids",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "at": "2026-10-11T21:00:07.824941+00:00",
+      "state": "native update intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "postgres",
+          "update",
+          "qa-142-87ee0a-bex-names",
+          "--project",
+          "prj-db5vg88a604s73e5saog",
+          "--environment",
+          "evm-db5vg88a604s73e5sap0",
+          "--name",
+          "qa-142-87ee0a-render-ids",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.488,
+        "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-11T20:58:01Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db5vgm8a604s73e5saqg\",\n    \"databaseName\": \"qa_scope_87ee0a\",\n    \"databaseUser\": \"qa_user_87ee0a\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"environmentId\": \"evm-db5vg88a604s73e5sap0\",\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db5vgm8a604s73e5saqg\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-142-87ee0a-render-ids\",\n    \"owner\": {\n      \"email\": \"puncsky@gmail.com\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"config_restart\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-11T21:00:10.294839236Z\",\n    \"version\": \"18\",\n    \"projectId\": \"prj-db5vg88a604s73e5saog\"\n  },\n  \"diff\": {\n    \"name\": {\n      \"before\": \"qa-142-87ee0a-bex-names\",\n      \"after\": \"qa-142-87ee0a-render-ids\"\n    }\n  }\n}",
+        "stderr": ""
+      },
+      "readback": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db5vgm8a604s73e5saqg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.298,
+        "response": "{\"id\":\"dpg-db5vgm8a604s73e5saqg\",\"name\":\"qa-142-87ee0a-render-ids\",\"plan\":\"free\",\"version\":\"18\",\"status\":\"available\",\"databaseName\":\"qa_scope_87ee0a\",\"databaseUser\":\"qa_user_87ee0a\",\"diskSizeGB\":1,\"diskAutoscalingEnabled\":false,\"highAvailabilityEnabled\":false,\"readReplicas\":[],\"suspended\":\"not_suspended\",\"createdAt\":\"2026-10-11T20:58:01Z\",\"updatedAt\":\"2026-10-11T21:00:10.294839236Z\",\"region\":\"fsn1\",\"dashboardUrl\":\"https://dashboard.bex.co/d/dpg-db5vgm8a604s73e5saqg\",\"externalHost\":\"dpg-db5vgm8a604s73e5saqg.db.bex.co\",\"public\":true,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"\"},{\"cidrBlock\":\"::/0\",\"description\":\"\"}],\"poolerEnabled\":false,\"connectionPool\":\"none\",\"backupsEnabled\":false,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"projectId\":\"prj-db5vg88a604s73e5saog\",\"environmentId\":\"evm-db5vg88a604s73e5sap0\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a490caf65b29eb31-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "identity_and_membership_preserved": true,
+      "name_matches_expected": true,
+      "pass": true
+    },
+    {
+      "client": "render",
+      "selector": "names",
+      "command": [
+        "render",
+        "postgres",
+        "update",
+        "qa-142-87ee0a-render-ids",
+        "--project",
+        "qa-20261011-87ee0a-pgscope",
+        "--environment",
+        "qa-20261011-87ee0a-pgscope-A",
+        "--name",
+        "qa-142-87ee0a-render-names",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "at": "2026-10-11T21:00:11.054845+00:00",
+      "state": "native update intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "postgres",
+          "update",
+          "qa-142-87ee0a-render-ids",
+          "--project",
+          "qa-20261011-87ee0a-pgscope",
+          "--environment",
+          "qa-20261011-87ee0a-pgscope-A",
+          "--name",
+          "qa-142-87ee0a-render-names",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.092,
+        "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-11T20:58:01Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db5vgm8a604s73e5saqg\",\n    \"databaseName\": \"qa_scope_87ee0a\",\n    \"databaseUser\": \"qa_user_87ee0a\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"environmentId\": \"evm-db5vg88a604s73e5sap0\",\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db5vgm8a604s73e5saqg\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-142-87ee0a-render-names\",\n    \"owner\": {\n      \"email\": \"puncsky@gmail.com\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"config_restart\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-11T21:00:13.130863097Z\",\n    \"version\": \"18\",\n    \"projectId\": \"prj-db5vg88a604s73e5saog\"\n  },\n  \"diff\": {\n    \"name\": {\n      \"before\": \"qa-142-87ee0a-render-ids\",\n      \"after\": \"qa-142-87ee0a-render-names\"\n    }\n  }\n}",
+        "stderr": ""
+      },
+      "readback": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db5vgm8a604s73e5saqg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.347,
+        "response": "{\"id\":\"dpg-db5vgm8a604s73e5saqg\",\"name\":\"qa-142-87ee0a-render-names\",\"plan\":\"free\",\"version\":\"18\",\"status\":\"available\",\"databaseName\":\"qa_scope_87ee0a\",\"databaseUser\":\"qa_user_87ee0a\",\"diskSizeGB\":1,\"diskAutoscalingEnabled\":false,\"highAvailabilityEnabled\":false,\"readReplicas\":[],\"suspended\":\"not_suspended\",\"createdAt\":\"2026-10-11T20:58:01Z\",\"updatedAt\":\"2026-10-11T21:00:13.130863097Z\",\"region\":\"fsn1\",\"dashboardUrl\":\"https://dashboard.bex.co/d/dpg-db5vgm8a604s73e5saqg\",\"externalHost\":\"dpg-db5vgm8a604s73e5saqg.db.bex.co\",\"public\":true,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"\"},{\"cidrBlock\":\"::/0\",\"description\":\"\"}],\"poolerEnabled\":false,\"connectionPool\":\"none\",\"backupsEnabled\":false,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"projectId\":\"prj-db5vg88a604s73e5saog\",\"environmentId\":\"evm-db5vg88a604s73e5sap0\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a490cb087b7dcef5-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "identity_and_membership_preserved": true,
+      "name_matches_expected": true,
+      "pass": true
+    },
+    {
+      "client": "render",
+      "selector": "empty-environment",
+      "command": [
+        "render",
+        "postgres",
+        "update",
+        "qa-142-87ee0a-render-names",
+        "--project",
+        "qa-20261011-87ee0a-pgscope",
+        "--environment",
+        "qa-20261011-87ee0a-pgscope-B",
+        "--name",
+        "qa-142-87ee0a-render-empty",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "at": "2026-10-11T21:00:13.940364+00:00",
+      "state": "native update intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "postgres",
+          "update",
+          "qa-142-87ee0a-render-names",
+          "--project",
+          "qa-20261011-87ee0a-pgscope",
+          "--environment",
+          "qa-20261011-87ee0a-pgscope-B",
+          "--name",
+          "qa-142-87ee0a-render-empty",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.511,
+        "stdout": "",
+        "stderr": "Error: No Postgres database named 'qa-142-87ee0a-render-names' in environment qa-20261011-87ee0a-pgscope-B (evm-db5vg88a604s73e5sapg).\n"
+      },
+      "readback": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db5vgm8a604s73e5saqg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.381,
+        "response": "{\"id\":\"dpg-db5vgm8a604s73e5saqg\",\"name\":\"qa-142-87ee0a-render-names\",\"plan\":\"free\",\"version\":\"18\",\"status\":\"available\",\"databaseName\":\"qa_scope_87ee0a\",\"databaseUser\":\"qa_user_87ee0a\",\"diskSizeGB\":1,\"diskAutoscalingEnabled\":false,\"highAvailabilityEnabled\":false,\"readReplicas\":[],\"suspended\":\"not_suspended\",\"createdAt\":\"2026-10-11T20:58:01Z\",\"updatedAt\":\"2026-10-11T21:00:13.130863097Z\",\"region\":\"fsn1\",\"dashboardUrl\":\"https://dashboard.bex.co/d/dpg-db5vgm8a604s73e5saqg\",\"externalHost\":\"dpg-db5vgm8a604s73e5saqg.db.bex.co\",\"public\":true,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"\"},{\"cidrBlock\":\"::/0\",\"description\":\"\"}],\"poolerEnabled\":false,\"connectionPool\":\"none\",\"backupsEnabled\":false,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"projectId\":\"prj-db5vg88a604s73e5saog\",\"environmentId\":\"evm-db5vg88a604s73e5sap0\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a490cb168b551a0f-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "identity_and_membership_preserved": true,
+      "name_matches_expected": true,
+      "pass": true
+    },
+    {
+      "client": "render",
+      "selector": "no-op",
+      "command": [
+        "render",
+        "postgres",
+        "update",
+        "qa-142-87ee0a-render-names",
+        "--project",
+        "qa-20261011-87ee0a-pgscope",
+        "--environment",
+        "qa-20261011-87ee0a-pgscope-A",
+        "--name",
+        "qa-142-87ee0a-render-names",
+        "--confirm",
+        "-o",
+        "text"
+      ],
+      "at": "2026-10-11T21:00:16.291689+00:00",
+      "state": "native update intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "postgres",
+          "update",
+          "qa-142-87ee0a-render-names",
+          "--project",
+          "qa-20261011-87ee0a-pgscope",
+          "--environment",
+          "qa-20261011-87ee0a-pgscope-A",
+          "--name",
+          "qa-142-87ee0a-render-names",
+          "--confirm",
+          "-o",
+          "text"
+        ],
+        "exit": 0,
+        "elapsed": 1.847,
+        "stdout": "No changes applied to Postgres database\n\nFull details:\n  Name: qa-142-87ee0a-render-names\n  ID: dpg-db5vgm8a604s73e5saqg\n  Workspace: bex-canary (tea-daif693dqjvc73e7as3g)\n  Project: qa-20261011-87ee0a-pgscope (prj-db5vg88a604s73e5saog)\n  Environment: qa-20261011-87ee0a-pgscope-A (evm-db5vg88a604s73e5sap0)\n  Plan: free\n  Version: 18\n  Region: fsn1\n  Status: available\n  Database: qa_scope_87ee0a\n  User: qa_user_87ee0a\n  Disk size: 1 GB\n  Disk autoscaling: disabled\n  Connection pool: none\n  High availability: disabled\n  Dashboard: https://dashboard.bex.co/d/dpg-db5vgm8a604s73e5saqg\n  IP allow-list:\n    - 0.0.0.0/0\n    - ::/0\n",
+        "stderr": ""
+      },
+      "readback": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db5vgm8a604s73e5saqg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.439,
+        "response": "{\"id\":\"dpg-db5vgm8a604s73e5saqg\",\"name\":\"qa-142-87ee0a-render-names\",\"plan\":\"free\",\"version\":\"18\",\"status\":\"available\",\"databaseName\":\"qa_scope_87ee0a\",\"databaseUser\":\"qa_user_87ee0a\",\"diskSizeGB\":1,\"diskAutoscalingEnabled\":false,\"highAvailabilityEnabled\":false,\"readReplicas\":[],\"suspended\":\"not_suspended\",\"createdAt\":\"2026-10-11T20:58:01Z\",\"updatedAt\":\"2026-10-11T21:00:18.116262056Z\",\"region\":\"fsn1\",\"dashboardUrl\":\"https://dashboard.bex.co/d/dpg-db5vgm8a604s73e5saqg\",\"externalHost\":\"dpg-db5vgm8a604s73e5saqg.db.bex.co\",\"public\":true,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"\"},{\"cidrBlock\":\"::/0\",\"description\":\"\"}],\"poolerEnabled\":false,\"connectionPool\":\"none\",\"backupsEnabled\":false,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"projectId\":\"prj-db5vg88a604s73e5saog\",\"environmentId\":\"evm-db5vg88a604s73e5sap0\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a490cb274f1ee0ce-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "identity_and_membership_preserved": true,
+      "name_matches_expected": true,
+      "pass": true
+    }
+  ],
+  "excluded_initial_invalid_name_probe": [
+    {
+      "client": "bex",
+      "selector": "ids",
+      "command": [
+        "bex",
+        "postgres",
+        "update",
+        "qa-20261011-87ee0a-pgscope-db",
+        "--project",
+        "prj-db5vg88a604s73e5saog",
+        "--environment",
+        "evm-db5vg88a604s73e5sap0",
+        "--name",
+        "qa-20261011-87ee0a-pgscope-bex-ids",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "at": "2026-10-11T20:59:13.385959+00:00",
+      "state": "native update intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "update",
+          "qa-20261011-87ee0a-pgscope-db",
+          "--project",
+          "prj-db5vg88a604s73e5saog",
+          "--environment",
+          "evm-db5vg88a604s73e5sap0",
+          "--name",
+          "qa-20261011-87ee0a-pgscope-bex-ids",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 2.289,
+        "stdout": "",
+        "stderr": "Error: received response code 400 (RESOURCE_NAME_INVALID): name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\n"
+      },
+      "readback": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db5vgm8a604s73e5saqg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.456,
+        "response": "{\"id\":\"dpg-db5vgm8a604s73e5saqg\",\"name\":\"qa-20261011-87ee0a-pgscope-db\",\"plan\":\"free\",\"version\":\"18\",\"status\":\"available\",\"databaseName\":\"qa_scope_87ee0a\",\"databaseUser\":\"qa_user_87ee0a\",\"diskSizeGB\":1,\"diskAutoscalingEnabled\":false,\"highAvailabilityEnabled\":false,\"readReplicas\":[],\"suspended\":\"not_suspended\",\"createdAt\":\"2026-10-11T20:58:01Z\",\"updatedAt\":\"2026-10-11T20:58:56Z\",\"region\":\"fsn1\",\"dashboardUrl\":\"https://dashboard.bex.co/d/dpg-db5vgm8a604s73e5saqg\",\"externalHost\":\"dpg-db5vgm8a604s73e5saqg.db.bex.co\",\"public\":true,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"\"},{\"cidrBlock\":\"::/0\",\"description\":\"\"}],\"poolerEnabled\":false,\"connectionPool\":\"none\",\"backupsEnabled\":false,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"projectId\":\"prj-db5vg88a604s73e5saog\",\"environmentId\":\"evm-db5vg88a604s73e5sap0\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a490c9a12b0acf2a-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "identity_and_membership_preserved": true,
+      "name_matches_expected": false,
+      "pass": false,
+      "qualification": "Harness proposed display name exceeded 30-character Bex limit; named refusal and unchanged readback are correct; excluded from positive update matrix."
+    }
+  ],
+  "excluded_initial_unscoped_create": [
+    {
+      "sweep": 142,
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "type": "postgres",
+      "name": "qa-20261011-87ee0a-pgscope-db",
+      "nonce": "87ee0a",
+      "time": "2026-10-11T20:57:11.843818+00:00",
+      "state": "not created: native exit1 before create, fresh native PG list empty",
+      "command": [
+        "bex",
+        "postgres",
+        "create",
+        "--name",
+        "qa-20261011-87ee0a-pgscope-db",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--version",
+        "18",
+        "--connection-pool",
+        "none",
+        "--database-name",
+        "qa_scope_87ee0a",
+        "--database-user",
+        "qa_user_87ee0a",
+        "--project",
+        "qa-20261011-87ee0a-pgscope",
+        "--environment",
+        "qa-20261011-87ee0a-pgscope-A",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "capacity_proof": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.622,
+        "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a490c6959adf67c7-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "expected_database": "qa_scope_87ee0a",
+      "expected_user": "qa_user_87ee0a",
+      "project_id": "prj-db5vg88a604s73e5saog",
+      "environment_id": "evm-db5vg88a604s73e5sap0",
+      "dependency_ids": [],
+      "create_result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "create",
+          "--name",
+          "qa-20261011-87ee0a-pgscope-db",
+          "--plan",
+          "free",
+          "--region",
+          "frankfurt",
+          "--version",
+          "18",
+          "--connection-pool",
+          "none",
+          "--database-name",
+          "qa_scope_87ee0a",
+          "--database-user",
+          "qa_user_87ee0a",
+          "--project",
+          "qa-20261011-87ee0a-pgscope",
+          "--environment",
+          "qa-20261011-87ee0a-pgscope-A",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.373,
+        "stdout": "",
+        "stderr": "Error: received response code 400: bad request: invalid query parameter \"ownerId\"\n"
+      },
+      "create_reconciliation": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "list",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.668,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      }
+    }
+  ],
+  "qualification": "Eight native updates pass name/ID scope, empty-environment refusal and no-op text; identity/member fields read through API, not SQL. Initial unscoped workspace setup and overlong harness rename excluded."
+}

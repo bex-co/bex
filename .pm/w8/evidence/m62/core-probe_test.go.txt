@@ -1,0 +1,23 @@
+package core
+
+import (
+ "encoding/json"
+ "os"
+ "testing"
+)
+
+func TestQANULAdmissionCurrent171(t *testing.T) {
+ type observation struct { Label string `json:"label"`; Input string `json:"input"`; Error string `json:"error"`; Stored string `json:"stored"`; NULs int `json:"nul_count"` }
+ cases := []struct { name, value string }{{"nul", "qa171-before\x00after"}, {"newline", "qa171-before\nafter"}, {"empty", ""}, {"unicode", "qa171-雪☃"}, {"numeric-string", "0"}}
+ rows := []observation{}
+ for _, c := range cases {
+  raw, err := json.Marshal(map[string]any{"key":"QA_LITERAL", "value":c.value}); if err != nil { t.Fatal(err) }
+  var write EnvVarPatch; if err := json.Unmarshal(raw,&write); err != nil { t.Fatal(err) }
+  env := map[string]string{}; err = ApplyEnvVarPatch(env, []EnvVarPatch{write}); message := ""; if err != nil { message=err.Error() }
+  v := env["QA_LITERAL"]; n := 0; for i:=range len(v) { if v[i]==0 {n++} }
+  rows = append(rows,observation{c.name,c.value,message,v,n})
+  if err != nil || v != c.value { t.Fatalf("current implementation observation %s: err=%v exact=%v", c.name,err,v==c.value) }
+ }
+ out, err := json.MarshalIndent(rows,"","  "); if err != nil {t.Fatal(err)}
+ if err := os.WriteFile(os.Getenv("QA171_CORE_RESULT"),append(out,'\n'),0600); err != nil {t.Fatal(err)}
+}

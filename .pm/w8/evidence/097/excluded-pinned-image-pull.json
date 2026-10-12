@@ -1,0 +1,32 @@
+{
+  "source_head": "aeeba21e7cd5a56a0f59d5a0ffe7d17fa457aff0",
+  "containers": [
+    {
+      "name": "bex-log-shipper-e4875566c25b",
+      "intent": [
+        "docker",
+        "create",
+        "--label",
+        "co.bex.qa.sweep174=bex-log-shipper-e4875566c25b",
+        "--name",
+        "bex-log-shipper-e4875566c25b",
+        "--network",
+        "none",
+        "ghcr.io/bex-co/bex-alloy@sha256:d448ad121e332519f3427b4bc0e61241a1c03edd41d60218acb6935ef08b7a0a",
+        "run",
+        "--storage.path=/tmp/alloy",
+        "/tmp/config.alloy"
+      ],
+      "at": "2026-10-12T03:56:27.784417+00:00",
+      "name_absent": true,
+      "state": "local create timed out during image pull; exact name absent",
+      "after_timeout_inspect": {
+        "at": "2026-10-12T04:00:03.119173+00:00",
+        "exit": 1
+      },
+      "final_absence_after_all_tests": true
+    }
+  ],
+  "pipelines": [],
+  "qualification": "Pinned collector image creation timed out during pull. No pipeline ran; excluded as local prerequisite failure."
+}

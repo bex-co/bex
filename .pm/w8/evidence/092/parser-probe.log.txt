@@ -1,0 +1,10 @@
+=== RUN   TestQA143PresenceProbe
+    qa143_presence_probe_test.go:15: QA143JSON {"case":"seed-empty-copy","compiler_errors":0,"parse_error":"bad request: service \"qa143-544da4-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa143-544da4-target\", which has no such plainly-defined variable","parse_failed":true,"source_value_declared":true,"source_value_is_empty_string":true}
+    qa143_presence_probe_test.go:15: QA143JSON {"case":"seed-empty-unreferenced","compiler_errors":0,"parse_failed":false,"prompt_keys":["SOURCE_VALUE"],"seed_literal_present":false,"seed_literal_value":"","source_value_declared":true,"source_value_is_empty_string":true}
+    qa143_presence_probe_test.go:15: QA143JSON {"case":"prompt-unreferenced","compiler_errors":0,"parse_failed":false,"prompt_keys":["SOURCE_VALUE"],"seed_literal_present":false,"seed_literal_value":"","source_value_declared":false,"source_value_is_empty_string":false}
+    qa143_presence_probe_test.go:15: QA143JSON {"case":"literal-empty-copy","compiler_errors":0,"copied_value":"","copied_value_present":true,"parse_failed":false,"prompt_keys":null,"seed_literal_present":false,"seed_literal_value":"","source_value_declared":true,"source_value_is_empty_string":true}
+    qa143_presence_probe_test.go:15: QA143JSON {"case":"seed-space-copy","compiler_errors":0,"copied_value":" ","copied_value_present":true,"parse_failed":false,"prompt_keys":null,"seed_literal_present":true,"seed_literal_value":" ","source_value_declared":true,"source_value_is_empty_string":false}
+    qa143_presence_probe_test.go:15: QA143JSON {"case":"override-empty-copy","compiler_errors":0,"copied_value":"","copied_value_present":true,"parse_failed":false,"prompt_keys":["SOURCE_VALUE"],"seed_literal_present":true,"seed_literal_value":"","source_value_declared":true,"source_value_is_empty_string":true}
+--- PASS: TestQA143PresenceProbe (0.01s)
+PASS
+ok  	github.com/bex-co/bex/lego/backend/internal/apps	0.701s

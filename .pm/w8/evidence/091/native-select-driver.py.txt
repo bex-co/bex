@@ -1,0 +1,47 @@
+import pathlib,json,subprocess,datetime,os,pty,fcntl,termios,struct,time,select,re,errno,shutil
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');state=json.loads(cp.read_text());g=state['sweep138_projects'];target=g['selected'];ws='tea-daif693dqjvc73e7as3g';baseline=[x if isinstance(x,str) else x.get('service',x)['id'] for x in state['baseline']['services']]
+bin=p/'sweep138-child-recorder';assert not bin.exists();bin.mkdir(mode=0o700);stub=bin/'ssh';stub.write_text('#!/usr/bin/env python3\nimport pathlib,os,json,sys\np=pathlib.Path(os.environ["QA_SSH_CHILD_CAPTURE"]);p.write_text(json.dumps({"argv":sys.argv[1:]}));p.chmod(0o600)\n');stub.chmod(0o700)
+results=[]
+def clean(b):
+ s=b.decode(errors='replace');s=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',s);s=re.sub(r'\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)','',s);return s
+for role in ['bex','render']:
+ for surface in ['ssh','services']:
+  cfgdir=p/f'sweep138-{role}-{surface}-config';assert not cfgdir.exists();cfgdir.mkdir(mode=0o700);cfg=cfgdir/'cli.yaml';shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  parsed=json.loads(subprocess.check_output(['yq','-o=json','.',str(cfg)],text=True));assert not parsed.get('project_filter')
+  capture=p/f'sweep138-{role}-{surface}-child.json';assert not capture.exists()
+  env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_'))};prefix='BEX' if role=='bex' else 'RENDER';env.update({prefix+'_HOST':'https://api.bex.co/v1/',prefix+'_CLI_CONFIG_DIR':str(cfgdir),prefix+'_CLI_CONFIG_PATH':str(cfg),prefix+'_WORKSPACE':ws,prefix+'_NO_UPDATE_NOTIFIER':'1',prefix+'_CLI_DISABLE_ANALYTICS':'1','DO_NOT_TRACK':'1','TERM':'xterm-256color','PATH':str(bin)+os.pathsep+os.environ['PATH'],'QA_SSH_CHILD_CAPTURE':str(capture)})
+  args=[surface,'--confirm','-o','interactive'];m,s=pty.openpty();fcntl.ioctl(s,termios.TIOCSWINSZ,struct.pack('HHHH',28,155,0,0));start=time.monotonic();phase='initial';events=[];data=b'';offset=None;proc=None;timeout=False;selected_at=None
+  def setup():os.setsid();fcntl.ioctl(s,termios.TIOCSCTTY,0)
+  try:
+   proc=subprocess.Popen([str(p/('release/bex' if role=='bex' else 'render-pin')),*args],env=env,stdin=s,stdout=s,stderr=s,preexec_fn=setup);os.close(s);s=None
+   while time.monotonic()-start<24:
+    ready,_,_=select.select([m],[],[],.1)
+    if ready:
+     try:z=os.read(m,65536)
+     except OSError as e:
+      if e.errno==errno.EIO:break
+      raise
+     if not z:break
+     data+=z
+     if b'\x1b[6n' in z:os.write(m,b'\x1b[1;1R')
+     if b'\x1b]11;?' in z:os.write(m,b'\x1b]11;rgb:0000/0000/0000\x07')
+    text=clean(data)
+    if phase=='initial' and any(x in text for x in baseline) and 'Filter by Project' in text:
+     os.write(m,b'f');phase='project-picker';events.append({'action':'f: Filter by Project','seconds':round(time.monotonic()-start,3)})
+    elif phase=='project-picker' and target['id'] in text and target['name'] in text:
+     time.sleep(.4);offset=len(data);os.write(m,b'\r');phase='selected';selected_at=time.monotonic();events.append({'action':'Enter sole owned project','id':target['id'],'seconds':round(time.monotonic()-start,3)})
+    elif phase=='selected' and time.monotonic()-selected_at>1.2:
+     after=clean(data[offset:]);ready=('Failed to SSH' in after or 'Multiple services found' in after or 'No service found' in after or 'invalid query parameter' in after) if surface=='ssh' else ('Project: '+target['name'] in after and 'No Results' in after)
+     if ready:os.write(m,b'\x03');phase='dismissed';events.append({'action':'Ctrl+C after observed result','seconds':round(time.monotonic()-start,3)})
+    if proc.poll() is not None:break
+   if proc.poll() is None:
+    if time.monotonic()-start>=24:timeout=True;proc.kill();proc.wait(timeout=2)
+    else:
+     try:proc.wait(timeout=2)
+     except subprocess.TimeoutExpired:timeout=True;proc.kill();proc.wait(timeout=2)
+  finally:
+   if s is not None:os.close(s)
+   if proc is not None and proc.poll() is None:proc.kill();proc.wait(timeout=2)
+   os.close(m);shutil.rmtree(cfgdir)
+  text=clean(data);after=clean(data[offset:]) if offset is not None else '';r={'client':role,'command':[role,*args],'selected_project':target,'exit':proc.returncode,'timeout':timeout,'elapsed':round(time.monotonic()-start,3),'events':events,'post_selection_output':after,'full_terminal_output':text,'ssh_child_started':capture.exists(),'error_seen':'Failed to SSH' in after or 'Multiple services found' in after or 'No service found' in after or 'invalid query parameter' in after,'expected_filtered_empty_seen':'Project: '+target['name'] in after and 'No Results' in after,'qualification':'Native production human-QA metadata-only project filtering. No service row selected, no real SSH connection, no host resource mutated; native HTTP requests not intercepted.'};results.append(r);g.setdefault('native_cases',[]).append(r);state['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(state,indent=2));cp.chmod(0o600);(p/'sweep138-native.json').write_text(json.dumps(results,indent=2));print(role,surface,'exit',r['exit'],'timeout',timeout,'error',r['error_seen'],'expected_empty',r['expected_filtered_empty_seen'],'child',r['ssh_child_started'],flush=True)
+shutil.rmtree(bin)

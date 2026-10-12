@@ -1,0 +1,242 @@
+
+lego/backend/internal/apps/deploy.go
+438: // bexEnvVar is one envVars entry. The forms bex honors (w1/m35 closed the last
+439: // gaps): a literal {key,value} → a plain spec.Env var (re-synced each apply);
+440: // {fromDatabase} → a secretRef into the DB's connection Secret; {fromService}
+441: // with a property (host/port/hostport) → a literal, or with envVarKey → a copy of
+442: // a sibling service's declared var; {generateValue: true} → a server-minted secret
+443: // seeded once; {key, sync:false} → a literal seeded once into the mutable env
+444: // store; and a KEYLESS {fromGroup: <name>} → links every var of the named env
+445: // group. sync:false and generateValue land in the mutable env-vars store (not
+446: // spec.Env), so a later dashboard edit wins and a re-sync never overwrites them.
+447: type bexEnvVar struct {
+448: 	Key           string      `json:"key"`
+449: 	Value         string      `json:"value"`
+450: 	GenerateValue bool        `json:"generateValue"`
+451: 	Sync          *bool       `json:"sync"`
+452: 	FromDatabase  *bexFromRef `json:"fromDatabase"`
+453: 	FromService   *bexFromRef `json:"fromService"`
+454: 	FromGroup     string      `json:"fromGroup"`
+455: }
+456: 
+457: // UnmarshalJSON accepts a number for value, which the pinned schema allows
+458: // (envVarFromKeyValue.value is string|number). The compiler has already parsed
+459: // it to an int64/float64, so the process gets Go's JSON text for that number
+460: // (47, 47.5, 1e3 → 1000; magnitudes ≥ 1e21 keep exponent form). Taking the raw
+461: // text means integers never round-trip through float64. Strings, omission and
+462: // null keep the plain string decode.
+463: func (e *bexEnvVar) UnmarshalJSON(data []byte) error {
+464: 	type plain bexEnvVar
+465: 	var raw struct {
+466: 		plain
+467: 		Value json.RawMessage `json:"value"`
+468: 	}
+469: 	if err := json.Unmarshal(data, &raw); err != nil {
+470: 		return err
+471: 	}
+472: 	*e = bexEnvVar(raw.plain)
+473: 	value := bytes.TrimSpace(raw.Value)
+474: 	switch {
+475: 	case len(value) == 0 || bytes.Equal(value, []byte("null")):
+476: 	case value[0] == '-' || (value[0] >= '0' && value[0] <= '9'):
+477: 		e.Value = string(value)
+478: 	default:
+479: 		return json.Unmarshal(value, &e.Value)
+480: 	}
+481: 	return nil
+482: }
+483: 
+484: // bexFromRef is the fromDatabase / fromService target. property is the
+
+lego/backend/internal/apps/deploy.go
+1833: 		return parsedStack{}, fmt.Errorf("%w: render.yaml must define at least one service, database, env group, or project environment resource", core.ErrBadRequest)
+1834: 	}
+1835: 
+1836: 	var problems blueprintResourceErrors
+1837: 	// Env groups first (validated + name-deduped); a service's fromGroup links one.
+1838: 	groupNames := make(map[string]bool, len(envGroups))
+1839: 	for _, egDecl := range envGroups {
+1840: 		pg, err := parseEnvGroup(egDecl.value)
+1841: 		if err != nil {
+1842: 			problems = append(problems, blueprintResourceError{kind: BlueprintResourceEnvVarGroup, name: egDecl.value.Name, err: err})
+1843: 			continue
+1844: 		}
+1845: 		if err := registerUniqueName(pg.name, groupNames); err != nil {
+1846: 			return parsedStack{}, fmt.Errorf("%w: duplicate env group name %q", core.ErrBadRequest, pg.name)
+1847: 		}
+1848: 		pg.grouping = egDecl.grouping
+1849: 		st.envGroups = append(st.envGroups, pg)
+1850: 	}
+1851: 
+1852: 	// Databases next into the stack (and into the name index services reference).
+1853: 	idx := newStackIndex(len(services), len(databases))
+
+lego/backend/internal/apps/deploy.go
+2130: 
+2131: // parseEnvGroup validates one envVarGroups[] entry and classifies its vars into
+2132: // literals + generateValue keys. Per Render, a group var may be only a literal or
+2133: // a generateValue — a group cannot reference services/groups (fromService/
+2134: // fromDatabase/fromGroup) and cannot carry sync:false; each is rejected with a
+2135: // clear per-entry error rather than silently dropped.
+2136: func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
+2137: 	name := strings.TrimSpace(g.Name)
+2138: 	if name == "" {
+2139: 		return parsedEnvGroup{}, fmt.Errorf("%w: an envVarGroups entry is missing its name", core.ErrBadRequest)
+2140: 	}
+2141: 	pg := parsedEnvGroup{name: name, literals: map[string]string{}}
+2142: 	for _, e := range g.EnvVars {
+2143: 		if e.Key == "" {
+2144: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q has an env var without a key", core.ErrBadRequest, name)
+2145: 		}
+2146: 		if !core.ValidEnvKey(e.Key) {
+2147: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: invalid environment variable name (%s)",
+2148: 				core.ErrBadRequest, name, e.Key, core.EnvKeyRule)
+2149: 		}
+2150: 		if core.IsReservedEnvKey(e.Key) {
+2151: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: %s",
+2152: 				core.ErrBadRequest, name, e.Key, core.ReservedEnvKeySentence(e.Key))
+2153: 		}
+2154: 		switch {
+2155: 		case e.FromGroup != "", e.FromDatabase != nil, e.FromService != nil:
+2156: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q var %q: a group cannot reference services or other groups", core.ErrBadRequest, name, e.Key)
+2157: 		case e.Sync != nil && !*e.Sync:
+2158: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q var %q: sync:false is not allowed inside an env group", core.ErrBadRequest, name, e.Key)
+2159: 		case e.GenerateValue:
+2160: 			if e.Value != "" {
+2161: 				return parsedEnvGroup{}, fmt.Errorf("%w: env group %q var %q sets both value and generateValue", core.ErrBadRequest, name, e.Key)
+2162: 			}
+2163: 			pg.generates = append(pg.generates, e.Key)
+2164: 		default:
+2165: 			pg.literals[e.Key] = e.Value
+2166: 		}
+2167: 	}
+2168: 	return pg, nil
+2169: }
+2170: 
+
+lego/backend/internal/apps/deploy.go
+2225: 		runtime = "" // the schema's required runtime; buildpacks select the build
+2226: 	}
+2227: 	startCommand, autoDeploy, err := manifestStartAndAutoDeploy(a)
+2228: 	if err != nil {
+2229: 		return CreateRequest{}, serviceEnv{}, err
+2230: 	}
+2231: 
+2232: 	literal, se, err := classifyServiceEnv(overrides, a)
+2233: 	if err != nil {
+2234: 		return CreateRequest{}, serviceEnv{}, err
+2235: 	}
+2236: 	allowList, err := manifestAllowEntries(a.IPAllowList, "service", a.Name)
+2237: 	if err != nil {
+2238: 		return CreateRequest{}, serviceEnv{}, err
+2239: 	}
+2240: 
+2241: 	return CreateRequest{
+2242: 		Name:                    a.Name,
+2243: 		Type:                    svcType,
+2244: 		Schedule:                a.Schedule,
+
+lego/backend/internal/apps/deploy.go
+2370: // (all-or-nothing: a bad form rejects the whole apply). A keyless {fromGroup}
+2371: // links a whole group. Plain literals (sync unset/true) ride spec.Env and
+2372: // re-sync each apply. sync:false + generateValue seed the mutable env store
+2373: // once — never spec.Env — so a dashboard edit wins and a later sync neither
+2374: // overwrites nor re-mints. fromDatabase/fromService are resolved in pass 2 once
+2375: // every name is known.
+2376: func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv1alpha1.EnvVar, serviceEnv, error) {
+2377: 	se := serviceEnv{seedLiterals: map[string]string{}, known: map[string]string{}}
+2378: 	literal := make([]appv1alpha1.EnvVar, 0, len(a.EnvVars))
+2379: 	for _, e := range a.EnvVars {
+2380: 		if e.FromGroup != "" {
+2381: 			if err := validateGroupLink(e); err != nil {
+2382: 				return nil, serviceEnv{}, fmt.Errorf("%w: %s: %v", core.ErrBadRequest, a.Name, err)
+2383: 			}
+2384: 			se.groupLinks = append(se.groupLinks, e.FromGroup)
+2385: 			continue
+2386: 		}
+2387: 		if err := validateKeyedEnv(e); err != nil {
+2388: 			return nil, serviceEnv{}, fmt.Errorf("%w: %s env %q: %v", core.ErrBadRequest, a.Name, e.Key, err)
+2389: 		}
+2390: 		// A reserved key is refused here, before any seed or CR write. The
+2391: 		// message carries the location the way every neighbouring Blueprint
+2392: 		// parse error does — the validation surface renders the error string,
+2393: 		// not a code (w2/m95 t003).
+2394: 		if !core.ValidEnvKey(e.Key) {
+2395: 			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: invalid environment variable name (%s)",
+2396: 				core.ErrBadRequest, a.Name, e.Key, core.EnvKeyRule)
+2397: 		}
+2398: 		if core.IsReservedEnvKey(e.Key) {
+2399: 			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: %s",
+2400: 				core.ErrBadRequest, a.Name, e.Key, core.ReservedEnvKeySentence(e.Key))
+2401: 		}
+2402: 		switch {
+2403: 		case e.FromDatabase != nil, e.FromService != nil:
+2404: 			se.refVars = append(se.refVars, e)
+2405: 		case e.GenerateValue:
+2406: 			se.seedGenerates = append(se.seedGenerates, e.Key)
+2407: 		case e.Sync != nil && !*e.Sync:
+2408: 			// A literal seeds immediately; an omitted value is a create-time prompt
+2409: 			// that DeployRequest.EnvVarValues may seed exactly once.
+2410: 			if e.Value != "" {
+2411: 				se.seedLiterals[e.Key] = e.Value
+2412: 				se.known[e.Key] = e.Value
+2413: 			} else {
+2414: 				se.promptKeys = append(se.promptKeys, e.Key)
+2415: 				if value, ok := overrides.envVarValues[e.Key]; ok {
+2416: 					se.seedLiterals[e.Key] = value
+2417: 					se.known[e.Key] = value
+2418: 				}
+2419: 			}
+2420: 		default:
+2421: 			literal = append(literal, appv1alpha1.EnvVar{Name: e.Key, Value: e.Value})
+2422: 			se.known[e.Key] = e.Value
+2423: 		}
+2424: 	}
+2425: 	if len(literal) == 0 {
+2426: 		literal = nil
+2427: 	}
+2428: 	if len(se.seedLiterals) == 0 {
+2429: 		se.seedLiterals = nil
+
+lego/backend/internal/apps/deploy.go
+2601: 	}
+2602: 	return core.AllowListToSpec(allow), nil
+2603: }
+2604: 
+2605: // validateGroupLink checks a keyless {fromGroup: <name>} entry: it links a whole
+2606: // group and carries no other field. Its target's existence is pre-flighted in
+2607: // deployStack (declared in-file OR pre-existing in the workspace).
+2608: func validateGroupLink(e bexEnvVar) error {
+2609: 	if e.Key != "" || e.Value != "" || e.GenerateValue || e.Sync != nil || e.FromDatabase != nil || e.FromService != nil {
+2610: 		return fmt.Errorf("fromGroup %q must be the only field on its envVars entry (it links the whole group)", e.FromGroup)
+2611: 	}
+2612: 	return nil
+2613: }
+2614: 
+2615: // validateKeyedEnv validates one keyed env var (every form but the keyless
+2616: // fromGroup). It enforces Render's field rules: a key is required; value +
+2617: // generateValue is a contradiction; generateValue can't combine with a reference;
+2618: // a fromService takes EITHER a property (host/port/hostport) OR an envVarKey, not
+2619: // both; a fromDatabase property must map onto the CNPG Secret vocabulary.
+2620: func validateKeyedEnv(e bexEnvVar) error {
+2621: 	if e.Key == "" {
+2622: 		return fmt.Errorf("an envVars entry is missing its key")
+2623: 	}
+2624: 	if e.GenerateValue {
+2625: 		if e.Value != "" {
+2626: 			return fmt.Errorf("sets both value and generateValue — pick one")
+2627: 		}
+2628: 		if e.FromDatabase != nil || e.FromService != nil {
+2629: 			return fmt.Errorf("generateValue cannot be combined with fromDatabase/fromService")
+2630: 		}
+2631: 	}
+2632: 	if e.FromService != nil {
+2633: 		ref := e.FromService
+2634: 		switch {
+2635: 		case ref.EnvVarKey != "":
+2636: 			if ref.Property != "" {
+2637: 				return fmt.Errorf("fromService sets both envVarKey and property — pick one")
+2638: 			}
+2639: 		case isKeyValueType(ref.Type):
+2640: 			if ref.Property == "" {
+2641: 				return fmt.Errorf("fromService keyvalue needs a property (connectionString, host, port, or password)")

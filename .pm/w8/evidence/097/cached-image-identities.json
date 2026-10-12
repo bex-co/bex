@@ -1,0 +1,12 @@
+[
+  {
+    "name": "ghcr.io/bex-co/bex-alloy:pinned",
+    "exit": 0,
+    "identity": "[\"ghcr.io/bex-co/bex-alloy@sha256:ba131343dcb3d9661f4b673d282e04d90526c686240cda5a03b5768c55ac6f70\"] \"arm64\" sha256:ba131343dcb3d9661f4b673d282e04d90526c686240cda5a03b5768c55ac6f70"
+  },
+  {
+    "name": "grafana/alloy:v1.11.2",
+    "exit": 0,
+    "identity": "[\"grafana/alloy@sha256:6ab34b8201f0e8b0c4346be4934c9965723af3f7f21dd9a65fd73f270f69b451\"] \"arm64\" sha256:6ab34b8201f0e8b0c4346be4934c9965723af3f7f21dd9a65fd73f270f69b451"
+  }
+]

@@ -1,0 +1,6 @@
+package logs
+import("encoding/json";"os";"slices";"testing")
+func TestQAHistoryMatcherCurrent176(t *testing.T){
+ var in struct{Lines map[string]string `json:"lines"`;Cases []struct{Label string `json:"label"`;Terms []string `json:"terms"`;Want []string `json:"want_labels"`} `json:"cases"`};raw,err:=os.ReadFile(os.Getenv("QA176_INPUT"));if err!=nil{t.Fatal(err)};if err=json.Unmarshal(raw,&in);err!=nil{t.Fatal(err)}
+ out:=[]map[string]any{};for _,tc:=range in.Cases{q:=LogQuery{Search:tc.Terms};q=q.normalized();got:=[]string{};for label,line:=range in.Lines{if q.matchesText(line){got=append(got,label)}};slices.Sort(got);slices.Sort(tc.Want);if !slices.Equal(got,tc.Want){t.Fatalf("oracle %s got=%v want=%v",tc.Label,got,tc.Want)};out=append(out,map[string]any{"label":tc.Label,"normalized_search_terms":q.Search,"actual_label_keys":got,"manual_expected_labels_match":true})};b,err:=json.MarshalIndent(out,"","  ");if err!=nil{t.Fatal(err)};if err=os.WriteFile(os.Getenv("QA176_RESULT"),append(b,'\n'),0600);err!=nil{t.Fatal(err)}
+}

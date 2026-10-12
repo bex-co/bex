@@ -1,0 +1,66 @@
+[
+  {
+    "label": "copy-web",
+    "compiler_problems": 0,
+    "reference_type": "web",
+    "target_type": "web_service",
+    "resolved_value": "source-173",
+    "parser_error": ""
+  },
+  {
+    "label": "port-web",
+    "compiler_problems": 0,
+    "reference_type": "web",
+    "target_type": "web_service",
+    "resolved_value": "3000",
+    "parser_error": ""
+  },
+  {
+    "label": "copy-pserv",
+    "compiler_problems": 0,
+    "reference_type": "pserv",
+    "target_type": "web_service",
+    "resolved_value": "source-173",
+    "parser_error": ""
+  },
+  {
+    "label": "port-pserv",
+    "compiler_problems": 0,
+    "reference_type": "pserv",
+    "target_type": "web_service",
+    "resolved_value": "3000",
+    "parser_error": ""
+  },
+  {
+    "label": "copy-worker",
+    "compiler_problems": 0,
+    "reference_type": "worker",
+    "target_type": "web_service",
+    "resolved_value": "source-173",
+    "parser_error": ""
+  },
+  {
+    "label": "port-worker",
+    "compiler_problems": 0,
+    "reference_type": "worker",
+    "target_type": "web_service",
+    "resolved_value": "3000",
+    "parser_error": ""
+  },
+  {
+    "label": "copy-cron",
+    "compiler_problems": 0,
+    "reference_type": "cron",
+    "target_type": "web_service",
+    "resolved_value": "source-173",
+    "parser_error": ""
+  },
+  {
+    "label": "port-cron",
+    "compiler_problems": 0,
+    "reference_type": "cron",
+    "target_type": "web_service",
+    "resolved_value": "3000",
+    "parser_error": ""
+  }
+]

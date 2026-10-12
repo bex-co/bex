@@ -1,0 +1,123 @@
+{
+  "live_history_comparisons": [
+    {
+      "client": "bex",
+      "count": 2,
+      "pairs": [
+        {
+          "id": "srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr-2026-10-11T20:31:33.423853965Z-fec985cd",
+          "message_timestamp_identity_equal": true,
+          "shared_attribution_equal": true,
+          "history_only_labels": {
+            "level": "unknown"
+          },
+          "live_only_labels": {}
+        },
+        {
+          "id": "srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr-2026-10-11T20:31:33.423999086Z-782eec76",
+          "message_timestamp_identity_equal": true,
+          "shared_attribution_equal": true,
+          "history_only_labels": {
+            "level": "unknown"
+          },
+          "live_only_labels": {}
+        }
+      ],
+      "entire_objects_identical": false
+    },
+    {
+      "client": "render",
+      "count": 2,
+      "pairs": [
+        {
+          "id": "srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr-2026-10-11T20:31:33.423853965Z-fec985cd",
+          "message_timestamp_identity_equal": true,
+          "shared_attribution_equal": true,
+          "history_only_labels": {
+            "level": "unknown"
+          },
+          "live_only_labels": {}
+        },
+        {
+          "id": "srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr-2026-10-11T20:31:33.423999086Z-782eec76",
+          "message_timestamp_identity_equal": true,
+          "shared_attribution_equal": true,
+          "history_only_labels": {
+            "level": "unknown"
+          },
+          "live_only_labels": {}
+        }
+      ],
+      "entire_objects_identical": false
+    }
+  ],
+  "strict_single_yaml_controls": [
+    {
+      "documents": [
+        {
+          "id": "srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr-2026-10-11T20:31:28.657521844Z-9f602c41",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db5v2g4hj6ks739l0p10"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "unknown"
+            }
+          ],
+          "message": "QA139_9f1a1a-yaml-B: value=two,three",
+          "timestamp": "2026-10-11T20:31:28.657521844Z"
+        }
+      ],
+      "error": "",
+      "file": "sweep139-bex-single-history.yaml"
+    },
+    {
+      "documents": [
+        {
+          "id": "srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr-2026-10-11T20:31:28.657521844Z-9f602c41",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db5v2g4hj6ks739l0p10"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "unknown"
+            }
+          ],
+          "message": "QA139_9f1a1a-yaml-B: value=two,three",
+          "timestamp": "2026-10-11T20:31:28.657521844Z"
+        }
+      ],
+      "error": "",
+      "file": "sweep139-render-single-history.yaml"
+    }
+  ],
+  "qualification": "An initial whole-object assertion was too broad: history adds level=unknown to these messages while live labels omit it. No record/identity/timestamp/common-attribution loss; differences are retained, not erased. No live level filtering or complete metadata parity is claimed."
+}

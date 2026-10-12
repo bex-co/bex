@@ -1,0 +1,72 @@
+import datetime,hashlib,json,pathlib,secrets,shlex,subprocess,sys,time
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('<REPO>/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());ws='tea-daif693dqjvc73e7as3g';mode=sys.argv[1]
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+def cli(a):return json.loads(subprocess.check_output(['python3',str(p/'run.py'),'--release',*a],text=True))
+def wire(method,path,body=None):
+ a=['python3',str(p/'wire.py'),method,path]
+ if body is not None:a.append(json.dumps(body))
+ return json.loads(subprocess.check_output(a,text=True))
+if mode=='create':
+ assert not (p/'sweep166-id.txt').exists();q=wire('GET','/v1/owners/'+ws+'/limits');assert q['status']=='200';v=json.loads(q['response']);assert v['services']['used']+v['services']['terminating']<v['services']['limit']
+ nonce=secrets.token_hex(3);tag='QA166_'+nonce;name='qa-20261011-'+nonce+'-nodepath'
+ snapshot="const crypto=require('crypto');function snapshot(){const note=process.env.QA_NOTE||'';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'QA_NOTE'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('sha256').update(note).digest('hex')};}\n"
+ build=snapshot+"require('fs').writeFileSync('qa-built.json',JSON.stringify({marker:"+json.dumps(tag)+",snapshot:snapshot(),built_at:Date.now()}));console.log('QA166_USER_BUILD_RAN');"
+ program=snapshot+"const built=JSON.parse(require('fs').readFileSync('qa-built.json','utf8'));require('http').createServer((req,res)=>{const b=JSON.stringify({marker:built.marker,built,runtime:snapshot(),instance:require('os').hostname()});res.writeHead(200,{'Content-Type':'application/json','Content-Length':Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),'0.0.0.0');"
+ args=['services','create','--name',name,'--type','web_service','--runtime','node','--repo','https://github.com/bex-co/bex','--branch','main','--root-directory','examples/hello-go','--build-command','/usr/local/bin/node -e '+shlex.quote(build),'--start-command','/usr/local/bin/node -e '+shlex.quote(program),'--health-check-path','/','--plan','free','--region','frankfurt','--auto-deploy=false','--env-var','PATH=/usr/local/bin','--confirm','-o','json']
+ x={'sweep':166,'workspace':ws,'type':'web_service','name':name,'nonce':nonce,'marker':tag,'time':now(),'dependency_ids':[],'state':'create intent persisted','command':['bex',*args],'capacity_proof':q,'program':program,'build_program':build,'source_head':c['head'],'stages':{'initial':{'at':now(),'before_ids':[],'expected_path':'/usr/local/bin','expected_note':None}},'role':'Node PATH-only positive then additive later variable failure; path-only recovery on same commit'};c['resources'].append(x);save();r=cli(args);x['create_result']=r;x['state']='create result received; reconcile before another create';save()
+ if r['exit']==0:
+  v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v);x.update(id=v['id'],create_response=v,state='created: Node customPATH control; initial runtime pending');(p/'sweep166-id.txt').write_text(v['id']);save()
+ print(json.dumps({'id':x.get('id'),'name':name,'exit':r['exit'],'elapsed':r['elapsed'],'stderr':r['stderr']}),flush=True);raise SystemExit(0 if r['exit']==0 else 1)
+sid=(p/'sweep166-id.txt').read_text().strip();x=next(z for z in c['resources'] if z.get('id')==sid);base={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']};assert x['workspace']==ws and x['sweep']==166 and x['create_result']['exit']==0 and x['create_response']['id']==sid and sid not in base and not x['state'].startswith('deleted:')
+def public():
+ f=p/'sweep166-runtime.json';r=subprocess.run(['curl','-sS','--max-time','8','-o',str(f),'-w','%{http_code}',x['create_response']['serviceDetails']['url']+'/'],text=True,capture_output=True);raw=f.read_text() if f.exists() else ''
+ try:b=json.loads(raw)
+ except ValueError:b=None
+ return {'at':now(),'exit':r.returncode,'http':r.stdout,'body':b,'raw':raw,'stderr':r.stderr}
+def matches(b,path,note):
+ if not isinstance(b,dict) or b.get('marker')!=x['marker']:return False
+ data=(note or '').encode();expected={'path':path,'note_present':note is not None,'note_length':len(data),'note_sha256':hashlib.sha256(data).hexdigest()}
+ return b.get('runtime')==expected and b.get('built',{}).get('snapshot')==expected
+if mode in ('save-note','save-path'):
+ stage='add_note' if mode=='save-note' else 'repair_path';assert stage not in x
+ if mode=='save-note':assert x['stages']['initial']['passed'];key='QA_NOTE';value=x['marker']+'_NOTE'
+ else:assert x['stages']['failure']['settled'];key='PATH';value='/usr/local/bin:/usr/bin:/bin'
+ body={'envVars':[{'key':key,'value':value}],'saveMode':'save_only'};before=cli(['deploys','list',sid,'--confirm','-o','json']);assert before['exit']==0
+ z={'at':now(),'method':'PATCH','path':'/v1/services/'+sid+'/environment','body':body,'before_history':before};x[stage]=z;save();r=wire('PATCH',z['path'],body);z['result']=r;save();assert r['status']=='200';v=json.loads(r['response']);assert v.get('rolledOut') is False
+ after=cli(['deploys','list',sid,'--confirm','-o','json']);assert after['exit']==0;runtime=public();z.update(after_history=after,runtime=runtime,history_unchanged={v['id'] for v in json.loads(before['stdout'])}=={v['id'] for v in json.loads(after['stdout'])});save();assert z['history_unchanged']
+ print(json.dumps({'save':stage,'http':r['status'],'rolled_out':v.get('rolledOut'),'history_unchanged':z['history_unchanged'],'runtime_http':runtime['http']}),flush=True)
+elif mode=='deploy':
+ stage=sys.argv[2];assert stage in ('failure','recovery') and stage not in x['stages'];assert x['add_note']['history_unchanged']
+ if stage=='recovery':assert x['repair_path']['history_unchanged']
+ before=cli(['deploys','list',sid,'--confirm','-o','json']);assert before['exit']==0;commit=x['stages']['initial']['deploy']['commit']['id'];assert len(commit)==40
+ s={'at':now(),'before_ids':[z['id'] for z in json.loads(before['stdout'])],'before_history':before,'expected_path':'/usr/local/bin' if stage=='failure' else '/usr/local/bin:/usr/bin:/bin','expected_note':x['marker']+'_NOTE'};x['stages'][stage]=s;args=['deploys','create',sid,'--commit',commit,'--confirm','-o','json'];s['intent']=['bex',*args];save();r=cli(args);s['result']=r;save();assert r['exit']==0;s['deploy_id']=json.loads(r['stdout'])['id'];save();print(json.dumps({'stage':stage,'exit':r['exit'],'elapsed':r['elapsed'],'id':s['deploy_id']}),flush=True)
+elif mode=='ready':
+ stage=sys.argv[2];s=x['stages'][stage]
+ for attempt in range(5):
+  r=cli(['deploys','list',sid,'--confirm','-o','json']);assert r['exit']==0;ds=json.loads(r['stdout']);new=[d for d in ds if d['id'] not in s['before_ids']];target=next((d for d in new if d['id']==s.get('deploy_id')),None) if s.get('deploy_id') else new[0] if len(new)==1 else None
+  o=public();detail=wire('GET','/v1/services/'+sid);obs={'at':now(),'native_history':r,'target':target,'runtime':o,'detail':detail};s.setdefault('observations',[]).append(obs);save();b=o['body'];status=target.get('status') if target else None
+  if stage=='failure':
+   runtime_ok=matches(b,'/usr/local/bin',None) and b['instance']==x['stages']['initial']['runtime']['body']['instance'] and b['built']['built_at']==x['stages']['initial']['runtime']['body']['built']['built_at'];expected=status=='build_failed' and o['http']=='200' and runtime_ok
+  else:
+   runtime_ok=matches(b,s['expected_path'],s['expected_note']);fresh=stage=='initial' or runtime_ok and b['instance']!=x['stages']['initial']['runtime']['body']['instance'];expected=status=='live' and o['http']=='200' and runtime_ok and fresh
+  print(json.dumps({'stage':stage,'attempt':attempt,'status':status,'http':o['http'],'build_runtime_match_expected':runtime_ok,'expected_observation':bool(expected)}),flush=True)
+  terminal_failure=status in ('build_failed','update_failed','canceled')
+  if expected or terminal_failure:
+   s.update(settled=True,passed=bool(expected),deploy=target,runtime=o);save();break
+  if attempt<4:time.sleep(8)
+elif mode=='details':
+ for stage,s in x['stages'].items():
+  assert s.get('deploy') and s['deploy']['id'] not in s['before_ids']
+  r=wire('GET','/v1/services/'+sid+'/deploys/'+s['deploy']['id']);s['deploy_detail']=r;save();b=json.loads(r['response']) if r['status']=='200' else {};print(json.dumps({'stage':stage,'http':r['status'],'status':b.get('status'),'commit':b.get('commit',{}).get('id'),'failure_reason':b.get('failureReason')}),flush=True)
+  
+elif mode=='logs':
+ args=['logs','--resources',sid,'--type','build','--limit','100','--confirm','-o','json'];r=cli(args);x['native_build_logs']=r;save();objects=[]
+ if r['exit']==0:
+  dec=json.JSONDecoder();raw=r['stdout'];at=0
+  while at<len(raw):
+   while at<len(raw) and raw[at].isspace():at+=1
+   if at>=len(raw):break
+   item,at=dec.raw_decode(raw,at);objects.append(item)
+ x['native_build_log_objects']=objects;save();print(json.dumps({'log_exit':r['exit'],'elapsed':r['elapsed'],'objects':len(objects),'decoder_errors':[z.get('message','') for z in objects if 'base64' in z.get('message','') or 'not found' in z.get('message','')][:8]}),flush=True)
+else:raise ValueError(mode)

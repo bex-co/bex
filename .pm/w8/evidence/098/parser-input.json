@@ -1,0 +1,350 @@
+[
+  {
+    "label": "app-missing-key",
+    "document": {
+      "services": [
+        {
+          "name": "qa175-94d0fe-source",
+          "type": "web",
+          "plan": "free",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "envVars": [
+            {
+              "key": "QA_SOURCE",
+              "value": "source-175"
+            }
+          ]
+        },
+        {
+          "name": "qa175-94d0fe-target",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_TARGET",
+              "fromService": {
+                "type": "web",
+                "name": "qa175-94d0fe-source",
+                "envVarKey": "QA_UNDECLARED"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_hypothesis": false
+  },
+  {
+    "label": "app-literal-key",
+    "document": {
+      "services": [
+        {
+          "name": "qa175-94d0fe-source",
+          "type": "web",
+          "plan": "free",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "envVars": [
+            {
+              "key": "QA_SOURCE",
+              "value": "source-175"
+            }
+          ]
+        },
+        {
+          "name": "qa175-94d0fe-target",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_TARGET",
+              "fromService": {
+                "type": "web",
+                "name": "qa175-94d0fe-source",
+                "envVarKey": "QA_SOURCE"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_hypothesis": true
+  },
+  {
+    "label": "kv-env-key-complete",
+    "document": {
+      "services": [
+        {
+          "name": "qa175-94d0fe-source",
+          "type": "keyvalue",
+          "plan": "free",
+          "ipAllowList": []
+        },
+        {
+          "name": "qa175-94d0fe-target",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_TARGET",
+              "fromService": {
+                "type": "keyvalue",
+                "name": "qa175-94d0fe-source",
+                "envVarKey": "QA_UNDECLARED"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_hypothesis": false
+  },
+  {
+    "label": "redis-env-key-complete",
+    "document": {
+      "services": [
+        {
+          "name": "qa175-94d0fe-source",
+          "type": "redis",
+          "plan": "free",
+          "ipAllowList": []
+        },
+        {
+          "name": "qa175-94d0fe-target",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_TARGET",
+              "fromService": {
+                "type": "redis",
+                "name": "qa175-94d0fe-source",
+                "envVarKey": "QA_UNDECLARED"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_hypothesis": false
+  },
+  {
+    "label": "kv-missing-property-complete",
+    "document": {
+      "services": [
+        {
+          "name": "qa175-94d0fe-source",
+          "type": "keyvalue",
+          "plan": "free",
+          "ipAllowList": []
+        },
+        {
+          "name": "qa175-94d0fe-target",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_TARGET",
+              "fromService": {
+                "type": "keyvalue",
+                "name": "qa175-94d0fe-source"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_hypothesis": false
+  },
+  {
+    "label": "kv-host-complete",
+    "document": {
+      "services": [
+        {
+          "name": "qa175-94d0fe-source",
+          "type": "keyvalue",
+          "plan": "free",
+          "ipAllowList": []
+        },
+        {
+          "name": "qa175-94d0fe-target",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_TARGET",
+              "fromService": {
+                "type": "keyvalue",
+                "name": "qa175-94d0fe-source",
+                "property": "host"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_hypothesis": true
+  },
+  {
+    "label": "kv-port-complete",
+    "document": {
+      "services": [
+        {
+          "name": "qa175-94d0fe-source",
+          "type": "keyvalue",
+          "plan": "free",
+          "ipAllowList": []
+        },
+        {
+          "name": "qa175-94d0fe-target",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_TARGET",
+              "fromService": {
+                "type": "keyvalue",
+                "name": "qa175-94d0fe-source",
+                "property": "port"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_hypothesis": true
+  },
+  {
+    "label": "kv-connection-complete",
+    "document": {
+      "services": [
+        {
+          "name": "qa175-94d0fe-source",
+          "type": "keyvalue",
+          "plan": "free",
+          "ipAllowList": []
+        },
+        {
+          "name": "qa175-94d0fe-target",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_TARGET",
+              "fromService": {
+                "type": "keyvalue",
+                "name": "qa175-94d0fe-source",
+                "property": "connectionString"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_hypothesis": true
+  },
+  {
+    "label": "kv-hostport-complete",
+    "document": {
+      "services": [
+        {
+          "name": "qa175-94d0fe-source",
+          "type": "keyvalue",
+          "plan": "free",
+          "ipAllowList": []
+        },
+        {
+          "name": "qa175-94d0fe-target",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_TARGET",
+              "fromService": {
+                "type": "keyvalue",
+                "name": "qa175-94d0fe-source",
+                "property": "hostport"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_hypothesis": false
+  },
+  {
+    "label": "kv-both-complete",
+    "document": {
+      "services": [
+        {
+          "name": "qa175-94d0fe-source",
+          "type": "keyvalue",
+          "plan": "free",
+          "ipAllowList": []
+        },
+        {
+          "name": "qa175-94d0fe-target",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_TARGET",
+              "fromService": {
+                "type": "keyvalue",
+                "name": "qa175-94d0fe-source",
+                "envVarKey": "QA_UNDECLARED",
+                "property": "host"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_hypothesis": false
+  }
+]

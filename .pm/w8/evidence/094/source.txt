@@ -1,0 +1,642 @@
+
+lego/backend/internal/apps/blueprint_ir.go
+150: func NormalizeBlueprintIR(source *BlueprintSource) (BlueprintIR, []BlueprintSourceProblem) {
+151: 	if source == nil {
+152: 		return BlueprintIR{}, []BlueprintSourceProblem{{Code: "BLUEPRINT_IR_SOURCE", Path: "#", Message: "Blueprint source is required"}}
+153: 	}
+154: 	root, ok := source.Value.(map[string]any)
+155: 	if !ok {
+156: 		return BlueprintIR{}, []BlueprintSourceProblem{{Code: "BLUEPRINT_IR_ROOT", Path: "#", Message: "Blueprint root must be an object"}}
+157: 	}
+158: 	ir := BlueprintIR{}
+159: 	var problems []BlueprintSourceProblem
+160: 	normalizeBlueprintResourceLists(&ir, &problems, source, root, nil, "", "", false)
+161: 
+162: 	if ungrouped, ok := root["ungrouped"].(map[string]any); ok {
+163: 		normalizeBlueprintResourceLists(&ir, &problems, source, ungrouped, []string{"ungrouped"}, "", "", true)
+164: 	}
+165: 	if projects, ok := root["projects"].([]any); ok {
+166: 		for projectIndex, rawProject := range projects {
+167: 			project, ok := rawProject.(map[string]any)
+168: 			if !ok {
+169: 				continue
+170: 			}
+171: 			projectName, _ := project["name"].(string)
+172: 			environments, _ := project["environments"].([]any)
+173: 			for environmentIndex, rawEnvironment := range environments {
+174: 				environment, ok := rawEnvironment.(map[string]any)
+175: 				if !ok {
+176: 					continue
+177: 				}
+178: 				environmentName, _ := environment["name"].(string)
+179: 				path := []string{"projects", fmt.Sprintf("%d", projectIndex), "environments", fmt.Sprintf("%d", environmentIndex)}
+180: 				normalizeBlueprintResourceLists(&ir, &problems, source, environment, path, projectName, environmentName, false)
+181: 			}
+182: 		}
+183: 	}
+184: 
+185: 	seen := map[BlueprintResourceKind]map[string]BlueprintResourceIR{}
+186: 	for _, resource := range ir.Resources {
+187: 		byName := seen[resource.Kind]
+188: 		if byName == nil {
+189: 			byName = map[string]BlueprintResourceIR{}
+190: 			seen[resource.Kind] = byName
+191: 		}
+192: 		if first, duplicate := byName[resource.Name]; duplicate {
+193: 			location := source.Locations[resource.SourcePath]
+194: 			problems = append(problems, BlueprintSourceProblem{
+195: 				Code: "BLUEPRINT_DUPLICATE_RESOURCE", Path: resource.SourcePath,
+196: 				Message: fmt.Sprintf("duplicate name %q for %s (first declared at %s)", resource.Name, resource.Kind, first.SourcePath),
+197: 				Line:    location.Line, Column: location.Column,
+198: 			})
+199: 			continue
+200: 		}
+201: 		byName[resource.Name] = resource
+202: 	}
+203: 	problems = append(problems, blueprintDuplicateHostProblems(source, ir)...)
+204: 	sort.SliceStable(ir.Resources, func(i, j int) bool {
+205: 		return blueprintResourceOrder(ir.Resources[i], ir.Resources[j])
+206: 	})
+207: 	return ir, sortBlueprintSourceProblems(problems)
+208: }
+209: 
+210: // CompileBlueprintIR is the canonical Blueprint intake boundary. It preserves
+211: // source locations while returning the normalized resource view required by
+212: // every downstream adapter.
+213: func CompileBlueprintIR(manifest string) (*BlueprintSource, BlueprintIR, []BlueprintSourceProblem) {
+214: 	source, problems := CompileBlueprintSource(manifest)
+215: 	if len(problems) > 0 {
+216: 		return source, BlueprintIR{}, problems
+217: 	}
+218: 	ir, problems := NormalizeBlueprintIR(source)
+
+lego/backend/internal/apps/blueprint_ir.go
+222: 	return source, ir, nil
+223: }
+224: 
+225: func normalizeBlueprintResourceLists(ir *BlueprintIR, problems *[]BlueprintSourceProblem, source *BlueprintSource, container map[string]any, basePath []string, project, environment string, ungrouped bool) {
+226: 	for _, declaration := range []struct {
+227: 		Field string
+228: 		Kind  BlueprintResourceKind
+229: 	}{
+230: 		{Field: "services", Kind: BlueprintResourceService},
+231: 		{Field: "databases", Kind: BlueprintResourcePostgres},
+232: 		{Field: "envVarGroups", Kind: BlueprintResourceEnvVarGroup},
+233: 	} {
+234: 		entries, _ := container[declaration.Field].([]any)
+235: 		for index, rawEntry := range entries {
+236: 			entry, ok := rawEntry.(map[string]any)
+237: 			if !ok {
+238: 				continue
+239: 			}
+240: 			path := append(append([]string(nil), basePath...), declaration.Field, fmt.Sprintf("%d", index))
+241: 			resource := blueprintResourceFromMap(source, declaration.Kind, entry, path, project, environment, ungrouped)
+242: 			if declaration.Field == "services" {
+243: 				if kind, _ := entry["type"].(string); isKeyValueType(kind) {
+244: 					resource.Kind = BlueprintResourceKeyValue
+245: 				}
+246: 			}
+247: 			if resource.Name == "" {
+248: 				location := source.Locations[resource.SourcePath]
+249: 				*problems = append(*problems, BlueprintSourceProblem{Code: "BLUEPRINT_IR_NAME", Path: resource.SourcePath + "/name", Message: "Blueprint resource is missing its name", Line: location.Line, Column: location.Column})
+250: 				continue
+251: 			}
+252: 			ir.Resources = append(ir.Resources, resource)
+253: 		}
+254: 	}
+255: }
+256: 
+257: func blueprintResourceFromMap(source *BlueprintSource, kind BlueprintResourceKind, entry map[string]any, path []string, project, environment string, ungrouped bool) BlueprintResourceIR {
+258: 	resourcePath := renderSchemaPointer(path)
+259: 	fields := make(map[string]BlueprintField, len(entry))
+260: 	for name, value := range entry {
+261: 		fieldPath := resourcePath + "/" + renderSchemaPointer([]string{name})[2:]
+262: 		fields[name] = BlueprintField{Null: value == nil, Value: value, Location: source.Locations[fieldPath]}
+263: 	}
+264: 	name, _ := entry["name"].(string)
+265: 	return BlueprintResourceIR{Kind: kind, Name: name, SourcePath: resourcePath, Project: project, Environment: environment, Ungrouped: ungrouped, Fields: fields}
+266: }
+267: 
+268: // PlanBlueprintIR resolves each normalized declaration exactly once under the
+269: // caller-provided context. It records only field names in an update action,
+270: // retaining the no-secret plan invariant while field-specific handlers decide
+271: // actual patch semantics later.
+272: func PlanBlueprintIR(ctx context.Context, ir BlueprintIR, resolver BlueprintStateResolver) (BlueprintPlan, error) {
+273: 	if resolver == nil {
+274: 		return BlueprintPlan{}, fmt.Errorf("Blueprint current-state resolver is required")
+275: 	}
+276: 	resources := append([]BlueprintResourceIR(nil), ir.Resources...)
+277: 	sort.SliceStable(resources, func(i, j int) bool { return blueprintResourceOrder(resources[i], resources[j]) })
+278: 	plan := BlueprintPlan{Actions: make([]BlueprintPlanAction, 0, len(resources))}
+279: 	for _, resource := range resources {
+280: 		current, exists, err := resolver.ResolveBlueprintResource(ctx, resource.Kind, resource.Name)
+281: 		if err != nil {
+282: 			return BlueprintPlan{}, fmt.Errorf("resolve %s %q: %w", resource.Kind, resource.Name, err)
+283: 		}
+284: 		if actionResolver, ok := resolver.(BlueprintActionResolver); ok {
+285: 			action, err := actionResolver.PlanBlueprintResource(ctx, resource, current, exists)
+286: 			if err != nil {
+287: 				return BlueprintPlan{}, fmt.Errorf("plan %s %q: %w", resource.Kind, resource.Name, err)
+288: 			}
+289: 			if action.Kind == "" {
+290: 				action.Kind = resource.Kind
+291: 			}
+292: 			if action.Name == "" {
+293: 				action.Name = resource.Name
+294: 			}
+295: 			if action.SourcePath == "" {
+296: 				action.SourcePath = resource.SourcePath
+297: 			}
+298: 			plan.Actions = append(plan.Actions, action)
+299: 			continue
+300: 		}
+301: 		action := BlueprintPlanAction{Kind: resource.Kind, Name: resource.Name, SourcePath: resource.SourcePath}
+302: 		if !exists {
+303: 			action.Operation = BlueprintPlanCreate
+304: 			plan.Actions = append(plan.Actions, action)
+305: 			continue
+306: 		}
+307: 		action.ResourceID = current.ID
+308: 		action.ChangedFields = changedBlueprintFields(resource.Fields, current.Fields)
+309: 		if len(action.ChangedFields) == 0 {
+310: 			action.Operation = BlueprintPlanNoop
+
+lego/backend/internal/apps/blueprint_state_plan.go
+30: // blueprintActionPlan returns an authorized current-state plan when the
+31: // complete non-secret state needed to make one is available. Env groups store
+32: // mutable secret values behind a deliberately write-only seam: an absent group
+33: // is a create, while an existing group is conservatively an update because a
+34: // no-op cannot be proved without revealing its values.
+35: func (s *Service) blueprintActionPlan(ctx context.Context, ir BlueprintIR, st parsedStack, blueprintID string, snap *workspaceSnapshot) (BlueprintPlan, bool, error) {
+36: 	if s.Client == nil || (len(st.envGroups) > 0 && s.EnvGroups == nil) {
+37: 		return BlueprintPlan{}, false, checkBlueprintDatabaseCreates(st)
+38: 	}
+39: 	resolver, err := newBlueprintActionResolver(ctx, s, st, snap)
+40: 	if err != nil {
+41: 		return BlueprintPlan{}, false, err
+42: 	}
+43: 	plan, err := PlanBlueprintIR(ctx, ir, resolver)
+44: 	if err != nil {
+45: 		return BlueprintPlan{}, false, err
+46: 	}
+47: 	detached, err := s.blueprintDetachments(ctx, s.resolveTenantID(ctx), blueprintID, st, func() (*blueprintActionResolver, error) { return resolver, nil })
+48: 	if err != nil {
+49: 		return BlueprintPlan{}, false, err
+50: 	}
+51: 	for _, resource := range detached {
+52: 		plan.Actions = append(plan.Actions, BlueprintPlanAction{Operation: BlueprintPlanDetach, Kind: resource.kind, Name: resource.Name, ResourceID: resource.ID, Message: "Stops being managed by this blueprint; continues running and may incur charges."})
+53: 	}
+54: 	return plan, true, nil
+55: }
+56: 
+57: type blueprintActionResolver struct {
+58: 	services  map[string]*appv1alpha1.App
+59: 	databases map[string]*appv1alpha1.Database
+60: 	keyValues map[string]*appv1alpha1.KeyValue
+61: 	envGroups map[string]string
+62: 	parsed    parsedStack
+63: }
+64: 
+65: func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedStack, snap *workspaceSnapshot) (*blueprintActionResolver, error) {
+66: 	resolver := &blueprintActionResolver{
+67: 		databases: map[string]*appv1alpha1.Database{},
+68: 		keyValues: map[string]*appv1alpha1.KeyValue{},
+69: 		envGroups: map[string]string{},
+70: 		parsed:    parsed,
+71: 	}
+72: 	if len(parsed.envGroups) > 0 {
+73: 		groups, err := s.EnvGroups.GroupIDsByName(ctx)
+74: 		if err != nil {
+75: 			return nil, err
+76: 		}
+77: 		resolver.envGroups = groups
+78: 	}
+79: 	tenantID, scoped := s.Tenant(ctx)
+80: 	services, err := snap.services(ctx)
+81: 	if err != nil {
+82: 		return nil, err
+83: 	}
+84: 	resolver.services = services
+
+lego/backend/internal/apps/blueprint_state_plan.go
+115: 
+116: func (r *blueprintActionResolver) ResolveBlueprintResource(_ context.Context, kind BlueprintResourceKind, name string) (BlueprintCurrentResource, bool, error) {
+117: 	switch kind {
+118: 	case BlueprintResourceService:
+119: 		app, ok := r.services[name]
+120: 		if !ok {
+121: 			return BlueprintCurrentResource{}, false, nil
+122: 		}
+123: 		id := store.ManagedAppID(app.Labels)
+124: 		if id == "" {
+125: 			id = app.Name
+126: 		}
+127: 		return BlueprintCurrentResource{ID: id}, true, nil
+128: 	case BlueprintResourcePostgres:
+129: 		database, ok := r.databases[name]
+130: 		if !ok {
+131: 			return BlueprintCurrentResource{}, false, nil
+132: 		}
+133: 		return BlueprintCurrentResource{ID: database.Name}, true, nil
+134: 	case BlueprintResourceKeyValue:
+135: 		keyValue, ok := r.keyValues[name]
+136: 		if !ok {
+137: 			return BlueprintCurrentResource{}, false, nil
+138: 		}
+139: 		return BlueprintCurrentResource{ID: keyValue.Name}, true, nil
+140: 	case BlueprintResourceEnvVarGroup:
+141: 		groupID, ok := r.envGroups[name]
+142: 		return BlueprintCurrentResource{ID: groupID}, ok, nil
+143: 	default:
+144: 		return BlueprintCurrentResource{}, false, nil
+145: 	}
+146: }
+147: 
+148: func (r *blueprintActionResolver) PlanBlueprintResource(_ context.Context, resource BlueprintResourceIR, current BlueprintCurrentResource, exists bool) (BlueprintPlanAction, error) {
+149: 	action := BlueprintPlanAction{Kind: resource.Kind, Name: resource.Name, SourcePath: resource.SourcePath, ResourceID: current.ID}
+150: 	if !exists {
+151: 		if resource.Kind == BlueprintResourcePostgres {
+152: 			db, ok := parsedBlueprintDatabase(r.parsed, resource.Name)
+153: 			if !ok {
+154: 				return BlueprintPlanAction{}, fmt.Errorf("compiled database is missing")
+155: 			}
+156: 			if err := postgres.CheckDatabaseAdmission(nil, db.spec); err != nil {
+
+lego/backend/internal/apps/blueprint_state_plan.go
+218: 			return action, nil
+219: 		}
+220: 	case BlueprintResourceEnvVarGroup:
+221: 		// Group values are write-only. ApplyEnvGroup reconciles declarations, so
+222: 		// an existing group must be represented as a possible update rather than
+223: 		// a false no-op; field paths are safe and values remain omitted.
+224: 		action.Operation = BlueprintPlanUpdate
+225: 		action.ChangedFields = blueprintDeclaredFieldChanges(resource.Fields)
+226: 		return action, nil
+227: 	}
+228: 	action.Operation = BlueprintPlanNoop
+229: 	return action, nil
+230: }
+231: 
+232: func parsedBlueprintService(st parsedStack, name string) (parsedService, bool) {
+
+lego/backend/internal/apps/deploy.go
+1825: 	databases := mergeDecls(m.Databases, ungrouped.Databases, true)
+1826: 	envGroups := mergeDecls(m.EnvVarGroups, ungrouped.EnvVarGroups, false)
+1827: 	services, databases, envGroups, groupings, err := flattenProjectDecls(m.Projects, services, databases, envGroups)
+1828: 	if err != nil {
+1829: 		return parsedStack{}, err
+1830: 	}
+1831: 	st := parsedStack{groupings: groupings}
+1832: 	if len(services) == 0 && len(databases) == 0 && len(envGroups) == 0 {
+1833: 		return parsedStack{}, fmt.Errorf("%w: render.yaml must define at least one service, database, env group, or project environment resource", core.ErrBadRequest)
+1834: 	}
+1835: 
+1836: 	var problems blueprintResourceErrors
+1837: 	// Env groups first (validated + name-deduped); a service's fromGroup links one.
+1838: 	groupNames := make(map[string]bool, len(envGroups))
+1839: 	for _, egDecl := range envGroups {
+1840: 		pg, err := parseEnvGroup(egDecl.value)
+1841: 		if err != nil {
+1842: 			problems = append(problems, blueprintResourceError{kind: BlueprintResourceEnvVarGroup, name: egDecl.value.Name, err: err})
+1843: 			continue
+1844: 		}
+1845: 		if err := registerUniqueName(pg.name, groupNames); err != nil {
+1846: 			return parsedStack{}, fmt.Errorf("%w: duplicate env group name %q", core.ErrBadRequest, pg.name)
+1847: 		}
+1848: 		pg.grouping = egDecl.grouping
+1849: 		st.envGroups = append(st.envGroups, pg)
+1850: 	}
+1851: 
+1852: 	// Databases next into the stack (and into the name index services reference).
+1853: 	idx := newStackIndex(len(services), len(databases))
+1854: 	for _, d := range databases {
+1855: 		ds, err := parseDatabase(d.value)
+
+lego/backend/internal/apps/deploy.go
+2131: // parseEnvGroup validates one envVarGroups[] entry and classifies its vars into
+2132: // literals + generateValue keys. Per Render, a group var may be only a literal or
+2133: // a generateValue — a group cannot reference services/groups (fromService/
+2134: // fromDatabase/fromGroup) and cannot carry sync:false; each is rejected with a
+2135: // clear per-entry error rather than silently dropped.
+2136: func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
+2137: 	name := strings.TrimSpace(g.Name)
+2138: 	if name == "" {
+2139: 		return parsedEnvGroup{}, fmt.Errorf("%w: an envVarGroups entry is missing its name", core.ErrBadRequest)
+2140: 	}
+2141: 	pg := parsedEnvGroup{name: name, literals: map[string]string{}}
+2142: 	for _, e := range g.EnvVars {
+2143: 		if e.Key == "" {
+2144: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q has an env var without a key", core.ErrBadRequest, name)
+2145: 		}
+
+lego/backend/internal/apps/deploy.go
+833: // its projection Secret) to exist before the service is patched.
+834: func (s *Service) applyStackEnvGroups(ctx context.Context, envGroups []parsedEnvGroup, assignments map[string]core.EnvironmentAssignment, res *StackResult) error {
+835: 	if len(envGroups) == 0 {
+836: 		return nil // nothing declared — and the EnvGroups seam may not be wired
+837: 	}
+838: 	for _, g := range envGroups {
+839: 		if err := requireDeployAuthority(ctx, s); err != nil {
+840: 			return err
+841: 		}
+842: 		if err := s.EnvGroups.ApplyEnvGroup(ctx, g.name, g.literals, g.generates); err != nil {
+843: 			return fmt.Errorf("env group %q: %w", g.name, err)
+844: 		}
+845: 		if g.grouping != "" {
+846: 			if assignment := assignments[g.grouping]; assignment.ID != "" {
+847: 				if err := requireDeployAuthority(ctx, s); err != nil {
+848: 					return err
+849: 				}
+850: 				if err := s.EnvGroups.SetGroupEnvironment(ctx, g.name, assignment.ID); err != nil {
+851: 					return fmt.Errorf("assigning env group %q to environment: %w", g.name, err)
+852: 				}
+853: 			}
+854: 		}
+855: 	}
+856: 	// One identity read after the loop: ApplyEnvGroup mints an id for a group it
+857: 	// creates but reports only error, so the ids exist to read only once every
+858: 	// declared group has been applied.
+859: 	ids, err := s.EnvGroups.GroupIDsByName(ctx)
+860: 	if err != nil {
+861: 		return fmt.Errorf("resolving applied env group ids: %w", err)
+862: 	}
+863: 	for _, g := range envGroups {
+864: 		res.EnvGroups = append(res.EnvGroups, StackEnvGroupView{ID: ids[g.name], Name: g.name})
+
+lego/backend/internal/envgroups/service.go
+1461: // GroupIDsByName returns the acting workspace's non-secret env-group ids keyed
+1462: // by name. It is the narrow read seam Blueprint resource inventories and
+1463: // current-state plans need; secret values stay behind the reveal verbs.
+1464: func (s *Service) GroupIDsByName(ctx context.Context) (map[string]string, error) {
+1465: 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+1466: 		return nil, err
+1467: 	}
+1468: 	if s.Store == nil {
+1469: 		return nil, core.ErrSecretsUnavailable
+1470: 	}
+1471: 	scopeTo, scoped := s.boundWorkspace(ctx)
+1472: 	if scoped && scopeTo == "" {
+1473: 		return map[string]string{}, nil
+1474: 	}
+1475: 	ids, err := s.listGroupIDs(ctx, scopeTo, true)
+1476: 	if err != nil {
+1477: 		return nil, err
+1478: 	}
+1479: 	out := make(map[string]string, len(ids))
+1480: 	for _, gid := range ids {
+1481: 		m, err := s.readMeta(ctx, gid)
+1482: 		if errors.Is(err, core.ErrNotFound) {
+1483: 			continue
+1484: 		}
+1485: 		if err != nil {
+1486: 			return nil, err
+1487: 		}
+1488: 		if scoped && m.workspace != scopeTo {
+1489: 			continue // another workspace's group — not this deploy's to see
+1490: 		}
+1491: 		if prior, duplicate := out[m.name]; duplicate {
+1492: 			return nil, envGroupNameAmbiguous(m.name, scopeTo, []string{prior, gid})
+1493: 		}
+1494: 		out[m.name] = gid
+1495: 	}
+1496: 	return out, nil
+
+lego/backend/internal/envgroups/service.go
+1509: func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[string]string, generates []string) error {
+1510: 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+1511: 		return err
+1512: 	}
+1513: 	if s.Store == nil {
+1514: 		return core.ErrSecretsUnavailable
+1515: 	}
+1516: 	name = strings.TrimSpace(name)
+1517: 	if name == "" {
+1518: 		return fmt.Errorf("%w: env group name is required", core.ErrBadRequest)
+1519: 	}
+1520: 	gid, m, found, err := s.findGroupByName(ctx, name)
+1521: 	if err != nil {
+1522: 		return err
+1523: 	}
+1524: 	if !found {
+1525: 		gid = id.New(id.EnvGroup)
+1526: 		workspace, _ := s.Tenant(ctx) // "" with the store off, matching CreateEnvGroup
+1527: 		if err := s.envGroupQuota(ctx, workspace); err != nil {
+1528: 			return err
+1529: 		}
+1530: 		if err := s.claimGroupName(ctx, workspace, name, gid); err != nil {
+1531: 			return err
+1532: 		}
+1533: 		now := s.now()
+1534: 		m = meta{name: name, workspace: workspace, createdAt: now, updatedAt: now}
+1535: 		inputs := make([]CreateEnvVarInput, 0, len(literals)+len(generates))
+1536: 		for _, key := range core.SortedKeys(literals) {
+1537: 			inputs = append(inputs, CreateEnvVarInput{Key: key, Value: literals[key], ValueSet: true})
+
+lego/backend/internal/apps/blueprint.go
+1871: func blueprintValidationPlanFromIR(ir BlueprintIR, st parsedStack) BlueprintValidationPlan {
+1872: 	plan := BlueprintValidationPlan{
+1873: 		Mode:      "structural",
+1874: 		Services:  make([]string, 0, len(st.services)),
+1875: 		Databases: make([]string, 0, len(st.databases)),
+1876: 		KeyValue:  make([]string, 0, len(st.keyValues)),
+1877: 		EnvGroups: make([]string, 0, len(st.envGroups)),
+1878: 	}
+1879: 	for _, svc := range st.services {
+1880: 		plan.Services = append(plan.Services, svc.req.Name)
+1881: 	}
+1882: 	for _, db := range st.databases {
+1883: 		plan.Databases = append(plan.Databases, db.name)
+1884: 	}
+1885: 	for _, kv := range st.keyValues {
+1886: 		plan.KeyValue = append(plan.KeyValue, kv.name)
+1887: 	}
+1888: 	for _, group := range st.envGroups {
+1889: 		plan.EnvGroups = append(plan.EnvGroups, group.name)
+1890: 	}
+1891: 	plan.SyncFalseVars = syncFalseVarsFromBlueprintIR(ir)
+1892: 	plan.TotalActions = len(plan.Services) + len(plan.Databases) + len(plan.KeyValue) + len(plan.EnvGroups)
+1893: 	return plan
+1894: }
+1895: 
+
+dashboard/src/features/blueprints/components/blueprint-plan-summary.tsx
+61:   action: BlueprintPlanAction;
+62:   operation: ListedOperation;
+63: }) {
+64:   const { t } = useTranslations();
+65:   const kind = blueprintKindLabel(action.kind);
+66:   const fields = (action.changedFields ?? [])
+67:     .map((field) => field.path)
+68:     .filter(Boolean);
+69:   return (
+70:     <li className="space-y-0.5">
+71:       <div className="flex flex-wrap items-center gap-2">
+72:         <Badge variant={OPERATION_VARIANT[operation]} className="text-xs">
+73:           {t(OPERATION_LABEL[operation])}
+74:         </Badge>
+75:         <span className="text-sm font-medium">{action.name}</span>
+76:         {kind && (
+77:           <span className="text-xs text-muted-foreground">{t(kind)}</span>
+78:         )}
+79:       </div>
+80:       {operation === "update" && fields.length > 0 && (
+81:         <p className="break-words text-xs text-muted-foreground">
+82:           {t("blueprints.previewChangedFields", { fields: fields.join(", ") })}
+83:         </p>
+84:       )}
+85:       {operation === "update" && action.kind === "env_var_group" && (
+86:         <p className="text-xs text-muted-foreground">
+87:           {t("blueprints.previewEnvGroupReapplied")}
+88:         </p>
+89:       )}
+90:       {operation === "error" && action.message && (
+91:         <p className="break-words text-xs text-destructive">{action.message}</p>
+
+dashboard/src/features/blueprints/components/blueprint-plan-summary.tsx
+115: }) {
+116:   const { t } = useTranslations();
+117:   const actions = plan?.actions ?? null;
+118:   const detached = (actions ?? []).filter(
+119:     (action) => action.operation === "detach",
+120:   );
+121:   const changes = actions
+122:     ? actions.filter((action) => action.operation !== "noop").length
+123:     : (plan?.totalActions ?? 0);
+124:   const listed = OPERATION_ORDER.flatMap((operation) =>
+125:     (actions ?? [])
+126:       .filter((action) => action.operation === operation)
+127:       .map((action) => ({ action, operation })),
+128:   );
+129:   return (
+130:     <>
+131:       <div className="space-y-3 rounded-md border p-4">
+132:         <p className="text-sm font-medium">
+133:           {changes === 0
+134:             ? t("blueprints.previewNoChanges")
+135:             : t("blueprints.previewValid", { count: changes })}
+136:         </p>
+137:         {actions ? (
+138:           <ul className="space-y-2">
+139:             {listed.map(({ action, operation }) => (
+140:               <PlanActionRow
+141:                 key={`${action.kind}:${action.name}:${action.sourcePath}`}
+142:                 action={action}
+143:                 operation={operation}
+144:               />
+145:             ))}
+146:           </ul>
+147:         ) : (
+
+pinned-render/cmd/blueprintvalidate.go
+90: 		workspaceID, err = config.WorkspaceID()
+91: 		if err != nil {
+92: 			return fmt.Errorf("no workspace specified and no default workspace set. Use --workspace or run 'render workspace set'")
+93: 		}
+94: 	}
+95: 
+96: 	var body bytes.Buffer
+97: 	writer := multipart.NewWriter(&body)
+98: 
+99: 	if err := writer.WriteField("ownerId", workspaceID); err != nil {
+100: 		return fmt.Errorf("failed to write ownerId field: %w", err)
+101: 	}
+102: 
+103: 	part, err := writer.CreateFormFile("file", filepath.Base(absPath))
+104: 	if err != nil {
+105: 		return fmt.Errorf("failed to create form file: %w", err)
+106: 	}
+107: 	if _, err := part.Write(content); err != nil {
+108: 		return fmt.Errorf("failed to write file content: %w", err)
+109: 	}
+110: 
+111: 	if err := writer.Close(); err != nil {
+112: 		return fmt.Errorf("failed to close multipart writer: %w", err)
+113: 	}
+114: 
+115: 	c, err := client.NewDefaultClient()
+116: 	if err != nil {
+117: 		return fmt.Errorf("failed to create client: %w", err)
+118: 	}
+119: 
+120: 	resp, err := c.ValidateBlueprintWithBodyWithResponse(
+121: 		ctx,
+122: 		writer.FormDataContentType(),
+123: 		&body,
+124: 	)
+125: 	if err != nil {
+126: 		return fmt.Errorf("failed to validate Blueprint: %w", err)
+127: 	}
+128: 
+129: 	if resp.StatusCode() != 200 {
+130: 		return fmt.Errorf("validation request failed with status %d: %s", resp.StatusCode(), string(resp.Body))
+131: 	}
+132: 
+133: 	result := resp.JSON200
+134: 	if result == nil {
+135: 		return fmt.Errorf("unexpected response from server: %s", string(resp.Body))
+136: 	}
+137: 
+138: 	if output.Interactive() {
+139: 		return printValidationResultInteractive(absPath, result)
+140: 	}
+141: 
+142: 	// The API returns 200 for both validation outcomes. Preserve its validation
+143: 	// details on stdout before returning an error for an invalid Blueprint.
+144: 	_, err = command.PrintData(cmd, result, func(r *bptypes.ValidateBlueprintResponse) string {
+145: 		jsonBytes, err := json.MarshalIndent(r, "", "  ")
+146: 		if err != nil {
+147: 			return fmt.Sprintf("{\"error\": \"failed to format result: %v\"}\n", err)
+148: 		}
+149: 		return string(jsonBytes) + "\n"
+150: 	})
+151: 	if err != nil {
+152: 		return err
+153: 	}
+154: 	if result.Valid {
+
+pinned-render/pkg/client/blueprints/blueprints_gen.go
+224: // ValidateBlueprintResponse defines model for validateBlueprintResponse.
+225: type ValidateBlueprintResponse struct {
+226: 	// Errors A list of validation errors. Only present if `valid` is `false`.
+227: 	Errors *[]ValidationError     `json:"errors,omitempty"`
+228: 	Plan   *ValidationPlanSummary `json:"plan,omitempty"`
+229: 
+230: 	// Valid If `true`, the Blueprint validated successfully. If `false`, at least one validation error occurred.
+231: 	Valid bool `json:"valid"`
+232: }
+233: 
+234: // ValidationError defines model for validationError.
+235: type ValidationError struct {
+236: 	// Column The column number in the YAML file (1-indexed)
+237: 	Column *int `json:"column,omitempty"`
+238: 
+239: 	// Error The error message
+240: 	Error string `json:"error"`
+241: 
+242: 	// Line The line number in the YAML file (1-indexed)
+243: 	Line *int `json:"line,omitempty"`
+244: 
+245: 	// Path The path to the field with the error (e.g., `services[0].plan`)
+246: 	Path *string `json:"path,omitempty"`
+247: }
+248: 
+249: // ValidationPlanSummary defines model for validationPlanSummary.
+250: type ValidationPlanSummary struct {
+251: 	// Databases The names of Render Postgres databases that would be created as part of the Blueprint.
+252: 	Databases *[]string `json:"databases,omitempty"`
+253: 
+254: 	// EnvGroups The names of environment groups that would be created as part of the Blueprint.
+255: 	EnvGroups *[]string `json:"envGroups,omitempty"`
+256: 
+257: 	// KeyValue The names of Render Key Value instances that would be created as part of the Blueprint.
+258: 	KeyValue *[]string `json:"keyValue,omitempty"`
+259: 
+260: 	// Services The names of services that would be created as part of the Blueprint.
+261: 	Services *[]string `json:"services,omitempty"`
+262: 
+263: 	// TotalActions The total number of actions that would be performed by the Blueprint. In addition to created resources, this includes modifications to individual configuration fields.
+264: 	TotalActions *int `json:"totalActions,omitempty"`
+265: 
+266: 	// Workflows The names of workflows that would be created as part of the Blueprint.
+267: 	Workflows *[]string `json:"workflows,omitempty"`
+268: }

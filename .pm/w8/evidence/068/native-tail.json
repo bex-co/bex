@@ -1,0 +1,150 @@
+[
+  {
+    "client": "bex",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5v2g4hj6ks739l0p10",
+      "--type",
+      "app",
+      "--text",
+      "QA139_9f1a1a-yaml",
+      "--tail",
+      "--confirm",
+      "-o",
+      "yaml"
+    ],
+    "mode": "yaml",
+    "exit": -2,
+    "elapsed": 4.74,
+    "sent_interrupt": true,
+    "forced_kill": false,
+    "both_messages_observed": true,
+    "stdout": "id: srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr-2026-10-11T20:31:28.657474055Z-ca06e97a\nlabels:\n    - name: type\n      value: app\n    - name: resource\n      value: srv-db5v2g4hj6ks739l0p10\n    - name: instance\n      value: srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr\n    - name: container\n      value: app\nmessage: 'QA139_9f1a1a-yaml-A: \"雪\" [first]'\ntimestamp: 2026-10-11T20:31:28.657474055Z\nid: srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr-2026-10-11T20:31:28.657521844Z-9f602c41\nlabels:\n    - name: type\n      value: app\n    - name: resource\n      value: srv-db5v2g4hj6ks739l0p10\n    - name: instance\n      value: srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr\n    - name: container\n      value: app\nmessage: 'QA139_9f1a1a-yaml-B: value=two,three'\ntimestamp: 2026-10-11T20:31:28.657521844Z\n",
+    "stderr": "",
+    "expected_messages": [
+      "QA139_9f1a1a-yaml-A: \"雪\" [first]",
+      "QA139_9f1a1a-yaml-B: value=two,three"
+    ],
+    "pre_emission_stdout": "",
+    "emission": {
+      "status": "200",
+      "exit": 0,
+      "body": "QA139_9f1a1a-yaml-emitted",
+      "stderr": ""
+    },
+    "qualification": "Actual unchanged native non-TTY WebSocket tail of this own Free web fixture. Parent sends SIGINT after both messages; native HTTP/WebSocket wire not intercepted."
+  },
+  {
+    "client": "render",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5v2g4hj6ks739l0p10",
+      "--type",
+      "app",
+      "--text",
+      "QA139_9f1a1a-yaml",
+      "--tail",
+      "--confirm",
+      "-o",
+      "yaml"
+    ],
+    "mode": "yaml",
+    "exit": -2,
+    "elapsed": 4.732,
+    "sent_interrupt": true,
+    "forced_kill": false,
+    "both_messages_observed": true,
+    "stdout": "id: srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr-2026-10-11T20:31:28.657474055Z-ca06e97a\nlabels:\n    - name: type\n      value: app\n    - name: resource\n      value: srv-db5v2g4hj6ks739l0p10\n    - name: instance\n      value: srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr\n    - name: container\n      value: app\nmessage: 'QA139_9f1a1a-yaml-A: \"雪\" [first]'\ntimestamp: 2026-10-11T20:31:28.657474055Z\nid: srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr-2026-10-11T20:31:28.657521844Z-9f602c41\nlabels:\n    - name: type\n      value: app\n    - name: resource\n      value: srv-db5v2g4hj6ks739l0p10\n    - name: instance\n      value: srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr\n    - name: container\n      value: app\nmessage: 'QA139_9f1a1a-yaml-B: value=two,three'\ntimestamp: 2026-10-11T20:31:28.657521844Z\n",
+    "stderr": "",
+    "expected_messages": [
+      "QA139_9f1a1a-yaml-A: \"雪\" [first]",
+      "QA139_9f1a1a-yaml-B: value=two,three"
+    ],
+    "pre_emission_stdout": "",
+    "emission": {
+      "status": "200",
+      "exit": 0,
+      "body": "QA139_9f1a1a-yaml-emitted",
+      "stderr": ""
+    },
+    "qualification": "Actual unchanged native non-TTY WebSocket tail of this own Free web fixture. Parent sends SIGINT after both messages; native HTTP/WebSocket wire not intercepted."
+  },
+  {
+    "client": "bex",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db5v2g4hj6ks739l0p10",
+      "--type",
+      "app",
+      "--text",
+      "QA139_9f1a1a-json",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "mode": "json",
+    "exit": -2,
+    "elapsed": 4.775,
+    "sent_interrupt": true,
+    "forced_kill": false,
+    "both_messages_observed": true,
+    "stdout": "{\n  \"id\": \"srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr-2026-10-11T20:31:33.423853965Z-fec985cd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5v2g4hj6ks739l0p10\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA139_9f1a1a-json-A: \\\"雪\\\" [first]\",\n  \"timestamp\": \"2026-10-11T20:31:33.423853965Z\"\n}{\n  \"id\": \"srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr-2026-10-11T20:31:33.423999086Z-782eec76\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5v2g4hj6ks739l0p10\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA139_9f1a1a-json-B: value=two,three\",\n  \"timestamp\": \"2026-10-11T20:31:33.423999086Z\"\n}",
+    "stderr": "",
+    "expected_messages": [
+      "QA139_9f1a1a-json-A: \"雪\" [first]",
+      "QA139_9f1a1a-json-B: value=two,three"
+    ],
+    "pre_emission_stdout": "",
+    "emission": {
+      "status": "200",
+      "exit": 0,
+      "body": "QA139_9f1a1a-json-emitted",
+      "stderr": ""
+    },
+    "qualification": "Actual unchanged native non-TTY WebSocket tail of this own Free web fixture. Parent sends SIGINT after both messages; native HTTP/WebSocket wire not intercepted."
+  },
+  {
+    "client": "render",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db5v2g4hj6ks739l0p10",
+      "--type",
+      "app",
+      "--text",
+      "QA139_9f1a1a-json",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "mode": "json",
+    "exit": -2,
+    "elapsed": 4.77,
+    "sent_interrupt": true,
+    "forced_kill": false,
+    "both_messages_observed": true,
+    "stdout": "{\n  \"id\": \"srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr-2026-10-11T20:31:33.423853965Z-fec985cd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5v2g4hj6ks739l0p10\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA139_9f1a1a-json-A: \\\"雪\\\" [first]\",\n  \"timestamp\": \"2026-10-11T20:31:33.423853965Z\"\n}{\n  \"id\": \"srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr-2026-10-11T20:31:33.423999086Z-782eec76\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db5v2g4hj6ks739l0p10\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db5v2g4hj6ks739l0p10-6a0d7a5ei0dd6jeloegr\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA139_9f1a1a-json-B: value=two,three\",\n  \"timestamp\": \"2026-10-11T20:31:33.423999086Z\"\n}",
+    "stderr": "",
+    "expected_messages": [
+      "QA139_9f1a1a-json-A: \"雪\" [first]",
+      "QA139_9f1a1a-json-B: value=two,three"
+    ],
+    "pre_emission_stdout": "",
+    "emission": {
+      "status": "200",
+      "exit": 0,
+      "body": "QA139_9f1a1a-json-emitted",
+      "stderr": ""
+    },
+    "qualification": "Actual unchanged native non-TTY WebSocket tail of this own Free web fixture. Parent sends SIGINT after both messages; native HTTP/WebSocket wire not intercepted."
+  }
+]

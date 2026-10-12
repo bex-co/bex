@@ -1,0 +1,23 @@
+{
+  "main_sha": "c4d106cfdaf8eec6d23475155e43f4baeeed2013",
+  "url": "https://github.com/render-oss/cli/blob/c4d106cfdaf8eec6d23475155e43f4baeeed2013/cmd/ssh.go",
+  "queries": [
+    {
+      "q": "repo:render-oss/cli \"instance\" \"selection\"",
+      "count": 0,
+      "items": []
+    },
+    {
+      "q": "repo:render-oss/cli \"instance\" \"picker\"",
+      "count": 0,
+      "items": []
+    },
+    {
+      "q": "repo:render-oss/cli \"InstanceID\" \"ServiceIDOrName\"",
+      "count": 0,
+      "items": []
+    }
+  ],
+  "identical_assignment_count": 3,
+  "qualification": "Three matching assignment strings: two picker callbacks are suspect; the direct-instance argument branch is a valid positive control."
+}

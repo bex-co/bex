@@ -1,0 +1,1038 @@
+{
+  "qualification": "actual native validation success controls; pinned client omits Bex action extensions",
+  "source_head": "396cc2027215cc4ee98a8f40d0a048f79d2de6f4",
+  "cases": [
+    {
+      "client": "bex",
+      "container": "root",
+      "variant": "exact",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa-20261011-0f49ee-envgroup",
+            "envVars": []
+          }
+        ]
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-root-exact.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.879,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "bex",
+      "container": "root",
+      "variant": "leading-space",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "  qa-20261011-0f49ee-envgroup",
+            "envVars": []
+          }
+        ]
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-root-leading-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.675,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "bex",
+      "container": "root",
+      "variant": "trailing-space",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa-20261011-0f49ee-envgroup  ",
+            "envVars": []
+          }
+        ]
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-root-trailing-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.611,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "bex",
+      "container": "root",
+      "variant": "unicode-space",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": " qa-20261011-0f49ee-envgroup ",
+            "envVars": []
+          }
+        ]
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-root-unicode-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.778,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "variant": "exact",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa-20261011-0f49ee-envgroup",
+            "envVars": []
+          }
+        ]
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-root-exact.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.557,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "variant": "leading-space",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "  qa-20261011-0f49ee-envgroup",
+            "envVars": []
+          }
+        ]
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-root-leading-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.352,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "variant": "trailing-space",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa-20261011-0f49ee-envgroup  ",
+            "envVars": []
+          }
+        ]
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-root-trailing-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.611,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "variant": "unicode-space",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": " qa-20261011-0f49ee-envgroup ",
+            "envVars": []
+          }
+        ]
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-root-unicode-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.107,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "bex",
+      "container": "ungrouped",
+      "variant": "exact",
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "qa-20261011-0f49ee-envgroup",
+              "envVars": []
+            }
+          ]
+        }
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-ungrouped-exact.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.116,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "bex",
+      "container": "ungrouped",
+      "variant": "leading-space",
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "  qa-20261011-0f49ee-envgroup",
+              "envVars": []
+            }
+          ]
+        }
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-ungrouped-leading-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.837,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "bex",
+      "container": "ungrouped",
+      "variant": "trailing-space",
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "qa-20261011-0f49ee-envgroup  ",
+              "envVars": []
+            }
+          ]
+        }
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-ungrouped-trailing-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.945,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "bex",
+      "container": "ungrouped",
+      "variant": "unicode-space",
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": " qa-20261011-0f49ee-envgroup ",
+              "envVars": []
+            }
+          ]
+        }
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-ungrouped-unicode-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.553,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "bex",
+      "container": "project",
+      "variant": "exact",
+      "document": {
+        "projects": [
+          {
+            "name": "qa153-0f49ee-project",
+            "environments": [
+              {
+                "name": "qa153-0f49ee-env",
+                "envVarGroups": [
+                  {
+                    "name": "qa-20261011-0f49ee-envgroup",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-project-exact.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.823,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "bex",
+      "container": "project",
+      "variant": "leading-space",
+      "document": {
+        "projects": [
+          {
+            "name": "qa153-0f49ee-project",
+            "environments": [
+              {
+                "name": "qa153-0f49ee-env",
+                "envVarGroups": [
+                  {
+                    "name": "  qa-20261011-0f49ee-envgroup",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-project-leading-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.803,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "bex",
+      "container": "project",
+      "variant": "trailing-space",
+      "document": {
+        "projects": [
+          {
+            "name": "qa153-0f49ee-project",
+            "environments": [
+              {
+                "name": "qa153-0f49ee-env",
+                "envVarGroups": [
+                  {
+                    "name": "qa-20261011-0f49ee-envgroup  ",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-project-trailing-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.756,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "bex",
+      "container": "project",
+      "variant": "unicode-space",
+      "document": {
+        "projects": [
+          {
+            "name": "qa153-0f49ee-project",
+            "environments": [
+              {
+                "name": "qa153-0f49ee-env",
+                "envVarGroups": [
+                  {
+                    "name": " qa-20261011-0f49ee-envgroup ",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-project-unicode-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.658,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "render",
+      "container": "ungrouped",
+      "variant": "exact",
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "qa-20261011-0f49ee-envgroup",
+              "envVars": []
+            }
+          ]
+        }
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-ungrouped-exact.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.847,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "render",
+      "container": "ungrouped",
+      "variant": "leading-space",
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "  qa-20261011-0f49ee-envgroup",
+              "envVars": []
+            }
+          ]
+        }
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-ungrouped-leading-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.73,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "render",
+      "container": "ungrouped",
+      "variant": "trailing-space",
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "qa-20261011-0f49ee-envgroup  ",
+              "envVars": []
+            }
+          ]
+        }
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-ungrouped-trailing-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.659,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "render",
+      "container": "ungrouped",
+      "variant": "unicode-space",
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": " qa-20261011-0f49ee-envgroup ",
+              "envVars": []
+            }
+          ]
+        }
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-ungrouped-unicode-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.503,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "render",
+      "container": "project",
+      "variant": "exact",
+      "document": {
+        "projects": [
+          {
+            "name": "qa153-0f49ee-project",
+            "environments": [
+              {
+                "name": "qa153-0f49ee-env",
+                "envVarGroups": [
+                  {
+                    "name": "qa-20261011-0f49ee-envgroup",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-project-exact.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.759,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "render",
+      "container": "project",
+      "variant": "leading-space",
+      "document": {
+        "projects": [
+          {
+            "name": "qa153-0f49ee-project",
+            "environments": [
+              {
+                "name": "qa153-0f49ee-env",
+                "envVarGroups": [
+                  {
+                    "name": "  qa-20261011-0f49ee-envgroup",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-project-leading-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.053,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "render",
+      "container": "project",
+      "variant": "trailing-space",
+      "document": {
+        "projects": [
+          {
+            "name": "qa153-0f49ee-project",
+            "environments": [
+              {
+                "name": "qa153-0f49ee-env",
+                "envVarGroups": [
+                  {
+                    "name": "qa-20261011-0f49ee-envgroup  ",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-project-trailing-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.915,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    },
+    {
+      "client": "render",
+      "container": "project",
+      "variant": "unicode-space",
+      "document": {
+        "projects": [
+          {
+            "name": "qa153-0f49ee-project",
+            "environments": [
+              {
+                "name": "qa153-0f49ee-env",
+                "envVarGroups": [
+                  {
+                    "name": " qa-20261011-0f49ee-envgroup ",
+                    "envVars": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native read-only plan intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<PRIVATE_QA_DIR>/sweep153-project-unicode-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.289,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261011-0f49ee-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa-20261011-0f49ee-envgroup"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      }
+    }
+  ]
+}

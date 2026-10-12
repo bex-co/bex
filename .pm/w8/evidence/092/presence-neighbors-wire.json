@@ -1,0 +1,98 @@
+[
+  {
+    "at": "2026-10-11T22:30:24.404212+00:00",
+    "case": "service-generated-plus-empty",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa152-6706a7480853fffbac8fa122e3697255",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa152-6706a7480853fffbac8fa122e3697255\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa152-6706a7480853fffbac8fa122e3697255\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep152-service-generated-plus-empty.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa152-10e6aa-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"\",\n          \"generateValue\": true\n        }\n      ]\n    }\n  ]\n}\n\r\n--qa152-6706a7480853fffbac8fa122e3697255--\r\n"
+    },
+    "status": "200",
+    "elapsed": 0.394,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4914f2099902289-SJC"
+    },
+    "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa152-10e6aa-web\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa152-10e6aa-web\",\"sourcePath\":\"#/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+  },
+  {
+    "at": "2026-10-11T22:30:24.751233+00:00",
+    "case": "service-generated-plus-space",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa152-caab4287e44c527bd0be7a53d889870f",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa152-caab4287e44c527bd0be7a53d889870f\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa152-caab4287e44c527bd0be7a53d889870f\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep152-service-generated-plus-space.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa152-10e6aa-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \" \",\n          \"generateValue\": true\n        }\n      ]\n    }\n  ]\n}\n\r\n--qa152-caab4287e44c527bd0be7a53d889870f--\r\n"
+    },
+    "status": "200",
+    "elapsed": 0.346,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4914f22dd40ee17-SJC"
+    },
+    "response": "{\"valid\":false,\"errors\":[{\"error\":\"qa152-10e6aa-web env \\\"VALUE\\\": sets both value and generateValue \u2014 pick one\",\"line\":11,\"column\":18,\"path\":\"services[0].envVars\"}]}\n"
+  },
+  {
+    "at": "2026-10-11T22:30:25.315806+00:00",
+    "case": "environment-group-generated-plus-empty",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa152-410be5e442c01b7a204f8be0cd5191da",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa152-410be5e442c01b7a204f8be0cd5191da\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa152-410be5e442c01b7a204f8be0cd5191da\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep152-environment-group-generated-plus-empty.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa152-10e6aa-group\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"\",\n          \"generateValue\": true\n        }\n      ]\n    }\n  ],\n  \"services\": [\n    {\n      \"name\": \"qa152-10e6aa-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      }\n    }\n  ]\n}\n\r\n--qa152-410be5e442c01b7a204f8be0cd5191da--\r\n"
+    },
+    "status": "200",
+    "elapsed": 0.563,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4914f2519806ce3-SJC"
+    },
+    "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa152-10e6aa-web\"],\"envGroups\":[\"qa152-10e6aa-group\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa152-10e6aa-group\",\"sourcePath\":\"#/envVarGroups/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa152-10e6aa-web\",\"sourcePath\":\"#/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+  },
+  {
+    "at": "2026-10-11T22:30:25.598473+00:00",
+    "case": "environment-group-generated-plus-space",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa152-870448ca0076c9ac165955c987c5cab9",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa152-870448ca0076c9ac165955c987c5cab9\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa152-870448ca0076c9ac165955c987c5cab9\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep152-environment-group-generated-plus-space.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa152-10e6aa-group\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \" \",\n          \"generateValue\": true\n        }\n      ]\n    }\n  ],\n  \"services\": [\n    {\n      \"name\": \"qa152-10e6aa-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      }\n    }\n  ]\n}\n\r\n--qa152-870448ca0076c9ac165955c987c5cab9--\r\n"
+    },
+    "status": "200",
+    "elapsed": 0.282,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4914f288d36cf1b-SJC"
+    },
+    "response": "{\"valid\":false,\"errors\":[{\"error\":\"env group \\\"qa152-10e6aa-group\\\" var \\\"VALUE\\\" sets both value and generateValue\",\"line\":3,\"column\":5,\"path\":\"envVarGroups[0]\"}]}\n"
+  }
+]

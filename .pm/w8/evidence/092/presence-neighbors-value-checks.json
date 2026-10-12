@@ -1,0 +1,59 @@
+{
+  "value_nonempty_checks": [
+    {
+      "path": "lego/backend/internal/apps/deploy.go",
+      "line": 2160,
+      "function": "parseEnvGroup",
+      "source": "if e.Value != \"\" {"
+    },
+    {
+      "path": "lego/backend/internal/apps/deploy.go",
+      "line": 2410,
+      "function": "classifyServiceEnv",
+      "source": "if e.Value != \"\" {"
+    },
+    {
+      "path": "lego/backend/internal/apps/deploy.go",
+      "line": 2609,
+      "function": "validateGroupLink",
+      "source": "if e.Key != \"\" || e.Value != \"\" || e.GenerateValue || e.Sync != nil || e.FromDatabase != nil || e.FromService != nil {"
+    },
+    {
+      "path": "lego/backend/internal/apps/deploy.go",
+      "line": 2625,
+      "function": "validateKeyedEnv",
+      "source": "if e.Value != \"\" {"
+    }
+  ],
+  "direct_callers": {
+    "parseEnvGroup": [
+      {
+        "path": "lego/backend/internal/apps/deploy.go",
+        "line": 1840,
+        "source": "pg, err := parseEnvGroup(egDecl.value)"
+      }
+    ],
+    "classifyServiceEnv": [
+      {
+        "path": "lego/backend/internal/apps/deploy.go",
+        "line": 2232,
+        "source": "literal, se, err := classifyServiceEnv(overrides, a)"
+      }
+    ],
+    "validateKeyedEnv": [
+      {
+        "path": "lego/backend/internal/apps/deploy.go",
+        "line": 2387,
+        "source": "if err := validateKeyedEnv(e); err != nil {"
+      }
+    ],
+    "validateGroupLink": [
+      {
+        "path": "lego/backend/internal/apps/deploy.go",
+        "line": 2381,
+        "source": "if err := validateGroupLink(e); err != nil {"
+      }
+    ]
+  },
+  "scope": "production deploy.go; definitions excluded; no new copy-lookup change proposed"
+}

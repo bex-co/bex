@@ -1,0 +1,31 @@
+import os,datetime,importlib.util,json,pathlib,re,subprocess,unittest
+p=pathlib.Path(__file__).parent;root=pathlib.Path('<REPO>');out=p/'sweep174-local-platform-pipeline.json';assert not out.exists();state={'source_head':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'containers':[],'pipelines':[],'qualification':'Actual current Helm-rendered source pipelines in cached upstream Alloy1.11.2. Alternate local diagnostic; exact patched production collector image not tested.', 'collector_image':'grafana/alloy@sha256:6ab34b8201f0e8b0c4346be4934c9965723af3f7f21dd9a65fd73f270f69b451'}
+os.environ['BEX_ALLOY_IMAGE']=state['collector_image']
+def save():out.write_text(json.dumps(state,indent=2)+'\n');out.chmod(0o600)
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+spec=importlib.util.spec_from_file_location('qa174_shipper',root/'scripts/test_log_shipper.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+def run(*args,**kwargs):
+ args=list(args)
+ if args[0]=='docker' and args[1]=='create':
+  name=args[args.index('--name')+1];probe=subprocess.run(['docker','container','inspect','--format','{{.Id}}',name],text=True,capture_output=True,timeout=5);assert probe.returncode!=0
+  args[2:2]=['--pull=never','--label','co.bex.qa.sweep174='+name]
+  z={'name':name,'intent':args,'at':now(),'name_absent':True,'state':'owned local create intent persisted'};state['containers'].append(z);save()
+  r=subprocess.run(args,cwd=root,text=True,capture_output=True,timeout=120);z['create']={'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr};save();cid=r.stdout.strip();assert r.returncode==0 and re.fullmatch('[0-9a-f]{64}',cid)
+  z.update(id=cid,state='owned ID with create proof');save();print(json.dumps({'local_container_created':cid[:12]}),flush=True);return cid
+ if args[0]=='docker':
+  for z in state['containers']:
+   name=z['name']
+   if any(a==name or a.startswith(name+':') for a in args):
+    assert z.get('id') and z['state']!='deleted';args=[z['id']+a[len(name):] if a==name or a.startswith(name+':') else a for a in args]
+    break
+  else:raise RuntimeError('Refuse Docker call without this diagnostic ownership proof')
+ r=subprocess.run(args,cwd=root,text=True,capture_output=not ('stderr' in kwargs),stdout=subprocess.PIPE if 'stderr' in kwargs else None,stderr=kwargs.get('stderr'),timeout=45)
+ if r.returncode!=0:raise RuntimeError('bounded '+args[0]+' '+args[1]+' failed: '+(r.stderr or r.stdout or '')[:1800])
+ if args[:2]==['docker','rm']:
+  cid=args[-1];z=next(z for z in state['containers'] if z['id']==cid);probe=subprocess.run(['docker','container','inspect','--format','{{.Id}}',cid],capture_output=True,text=True,timeout=5);z.update(state='deleted' if probe.returncode!=0 else 'cleanup pending',cleanup_exit=r.returncode,after_inspect_exit=probe.returncode);save();assert probe.returncode!=0
+ return r.stdout.strip()
+m.run=run
+cp=json.loads((root/'.playwright-mcp/cli-qa-w8-checkpoint.json').read_text());x=next(z for z in cp['resources'] if z.get('sweep')==174 and z.get('id'));lines=x['expected_message_bytes'];test=unittest.TestCase()
+for pipeline,typ,target in [('platform_logs','platform','namespace = "synthetic", service = "bex-api", pod = "qa174-local", container = "api"')]:
+ actual,logs=m.run_pipeline(test,pipeline,lines,typ,target,cri=False);wanted={line:x['expected_level_buckets'][line] if typ=='app' or line.lstrip().startswith('{') else 'unknown' for line in lines};z={'pipeline':pipeline,'at':now(),'rows':[{'line':line,'labels':actual[line],'expected_bucket':wanted[line]} for line in lines],'complete_rows':len(actual),'raw_output':logs};state['pipelines'].append(z);save();print(json.dumps({'pipeline':pipeline,'rows':len(actual),'label_counts':{v:sum(a.get('level')==v for a in actual.values()) for v in ['debug','info','warning','error','unknown']},'missing_literal_severity_mapping':sum(actual[line].get('level')!=wanted[line] for line in lines)}),flush=True)
+assert all(z['state']=='deleted' for z in state['containers']);state['complete']=True;save()

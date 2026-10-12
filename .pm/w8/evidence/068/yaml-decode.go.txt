@@ -1,0 +1,3 @@
+package main
+import("encoding/json";"fmt";"os";"io";"gopkg.in/yaml.v3")
+func main(){for _,path:=range os.Args[1:]{f,e:=os.Open(path);if e!=nil{panic(e)};d:=yaml.NewDecoder(f);values:=[]map[string]any{};problem:="";for {var v map[string]any;e=d.Decode(&v);if e==io.EOF{break};if e!=nil{problem=e.Error();break};values=append(values,v)};f.Close();b,_:=json.Marshal(map[string]any{"file":path,"documents":values,"error":problem});fmt.Println(string(b))}}

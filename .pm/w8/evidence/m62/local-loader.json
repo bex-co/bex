@@ -1,0 +1,140 @@
+[
+  {
+    "label": "ordinary-control",
+    "name": "qa-cli-w8-171-loader-1067c8b1",
+    "nonce": "1067c8b1",
+    "at": "2026-10-12T02:37:27.604822+00:00",
+    "image": "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4",
+    "input_length": 18,
+    "input_sha256": "cb9e5bf57977c2f0478c5dc277d14f63a5dc83bcc5c7dd0d77e8765d12952c57",
+    "input_nul_count": 0,
+    "name_absence_proof": {
+      "at": "2026-10-12T02:37:27.497861+00:00",
+      "exit": 1,
+      "stdout": "\n",
+      "stderr": "Error response from daemon: No such container: qa-cli-w8-171-loader-1067c8b1\n"
+    },
+    "intent": [
+      "docker",
+      "create",
+      "--pull=never",
+      "--name",
+      "qa-cli-w8-171-loader-1067c8b1",
+      "--network",
+      "none",
+      "--read-only",
+      "--label",
+      "co.bex.qa.sweep171=1067c8b1",
+      "--mount",
+      "type=bind,src=<QA_TMP>/sweep171-loader-ordinary-control.bundle,dst=/run/secrets/render-env,readonly",
+      "--mount",
+      "type=bind,src=<QA_TMP>/sweep171-loader.sh,dst=/opt/bex/load-env,readonly",
+      "--entrypoint",
+      "/bin/bash",
+      "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4",
+      "-c",
+      ". /opt/bex/load-env\n/usr/local/bin/python3 -c 'import os,json,hashlib; v=os.environ[\"QA_LITERAL\"].encode(); print(json.dumps({\"length\":len(v),\"sha256\":hashlib.sha256(v).hexdigest(),\"nul_count\":v.count(bytes([0]))}))'"
+    ],
+    "state": "local container deleted",
+    "create_result": {
+      "at": "2026-10-12T02:37:27.605301+00:00",
+      "exit": 0,
+      "stdout": "b580af9e1086403a016e1f1ff1abd2306d57358735f8b65809f988fcd7717aa1\n",
+      "stderr": ""
+    },
+    "id": "b580af9e1086403a016e1f1ff1abd2306d57358735f8b65809f988fcd7717aa1",
+    "start_result": {
+      "at": "2026-10-12T02:37:28.010750+00:00",
+      "exit": 0,
+      "stdout": "{\"length\": 18, \"sha256\": \"cb9e5bf57977c2f0478c5dc277d14f63a5dc83bcc5c7dd0d77e8765d12952c57\", \"nul_count\": 0}\n",
+      "stderr": ""
+    },
+    "container_state": {
+      "at": "2026-10-12T02:37:28.447020+00:00",
+      "exit": 0,
+      "stdout": "{\"Status\":\"exited\",\"Running\":false,\"Paused\":false,\"Restarting\":false,\"OOMKilled\":false,\"Dead\":false,\"Pid\":0,\"ExitCode\":0,\"Error\":\"\",\"StartedAt\":\"2026-10-12T02:37:28.093083504Z\",\"FinishedAt\":\"2026-10-12T02:37:28.347157962Z\"}\n",
+      "stderr": ""
+    },
+    "cleanup_result": {
+      "at": "2026-10-12T02:37:28.518055+00:00",
+      "exit": 0,
+      "stdout": "b580af9e1086403a016e1f1ff1abd2306d57358735f8b65809f988fcd7717aa1\n",
+      "stderr": ""
+    },
+    "after_cleanup": {
+      "at": "2026-10-12T02:37:28.653681+00:00",
+      "exit": 1,
+      "stdout": "\n",
+      "stderr": "Error response from daemon: No such container: b580af9e1086403a016e1f1ff1abd2306d57358735f8b65809f988fcd7717aa1\n"
+    }
+  },
+  {
+    "label": "nul",
+    "name": "qa-cli-w8-171-loader-a7e079da",
+    "nonce": "a7e079da",
+    "at": "2026-10-12T02:37:28.710888+00:00",
+    "image": "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4",
+    "input_length": 18,
+    "input_sha256": "e28d81fb87d318892b267e70acd31f34fef09683b763b83ed2a9aa59bde0d1a8",
+    "input_nul_count": 1,
+    "name_absence_proof": {
+      "at": "2026-10-12T02:37:28.681594+00:00",
+      "exit": 1,
+      "stdout": "\n",
+      "stderr": "Error response from daemon: No such container: qa-cli-w8-171-loader-a7e079da\n"
+    },
+    "intent": [
+      "docker",
+      "create",
+      "--pull=never",
+      "--name",
+      "qa-cli-w8-171-loader-a7e079da",
+      "--network",
+      "none",
+      "--read-only",
+      "--label",
+      "co.bex.qa.sweep171=a7e079da",
+      "--mount",
+      "type=bind,src=<QA_TMP>/sweep171-loader-nul.bundle,dst=/run/secrets/render-env,readonly",
+      "--mount",
+      "type=bind,src=<QA_TMP>/sweep171-loader.sh,dst=/opt/bex/load-env,readonly",
+      "--entrypoint",
+      "/bin/bash",
+      "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4",
+      "-c",
+      ". /opt/bex/load-env\n/usr/local/bin/python3 -c 'import os,json,hashlib; v=os.environ[\"QA_LITERAL\"].encode(); print(json.dumps({\"length\":len(v),\"sha256\":hashlib.sha256(v).hexdigest(),\"nul_count\":v.count(bytes([0]))}))'"
+    ],
+    "state": "local container deleted",
+    "create_result": {
+      "at": "2026-10-12T02:37:28.712243+00:00",
+      "exit": 0,
+      "stdout": "cc9a3000fe74390bfd3abe2443ad916709eb0b0bd9afda38a035b458ac934165\n",
+      "stderr": ""
+    },
+    "id": "cc9a3000fe74390bfd3abe2443ad916709eb0b0bd9afda38a035b458ac934165",
+    "start_result": {
+      "at": "2026-10-12T02:37:28.839074+00:00",
+      "exit": 0,
+      "stdout": "{\"length\": 17, \"sha256\": \"0c0afbe3a20701846fe9266466db63cb787f73095c55a486153e4670f1596c91\", \"nul_count\": 0}\n",
+      "stderr": "/opt/bex/load-env: line 6: warning: command substitution: ignored null byte in input\n"
+    },
+    "container_state": {
+      "at": "2026-10-12T02:37:29.268000+00:00",
+      "exit": 0,
+      "stdout": "{\"Status\":\"exited\",\"Running\":false,\"Paused\":false,\"Restarting\":false,\"OOMKilled\":false,\"Dead\":false,\"Pid\":0,\"ExitCode\":0,\"Error\":\"\",\"StartedAt\":\"2026-10-12T02:37:28.916342962Z\",\"FinishedAt\":\"2026-10-12T02:37:29.221674588Z\"}\n",
+      "stderr": ""
+    },
+    "cleanup_result": {
+      "at": "2026-10-12T02:37:29.294480+00:00",
+      "exit": 0,
+      "stdout": "cc9a3000fe74390bfd3abe2443ad916709eb0b0bd9afda38a035b458ac934165\n",
+      "stderr": ""
+    },
+    "after_cleanup": {
+      "at": "2026-10-12T02:37:29.348642+00:00",
+      "exit": 1,
+      "stdout": "\n",
+      "stderr": "Error response from daemon: No such container: cc9a3000fe74390bfd3abe2443ad916709eb0b0bd9afda38a035b458ac934165\n"
+    }
+  }
+]

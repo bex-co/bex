@@ -1,0 +1,15 @@
+import pathlib,json,datetime,shutil,subprocess,sys
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('<REPO>/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());x=c['sweep173_reference_types'];client=sys.argv[1];assert client in ('bex','render');assert not any(z['client']==client and z['label']=='copy-matching-worker-plan-control' for z in x['results']);cfg=p/'render-config/cli.yaml';assert not cfg.exists()
+def save():
+ c['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(c,indent=2)+'\n');cp.chmod(0o600);(p/'sweep173-reference-types.json').write_text(json.dumps(x,indent=2)+'\n')
+if client=='render':shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+try:
+ base=next(z['document'] for z in x['results'] if z['label']=='copy-web')
+ for label,target_type,ref_type,form,expected in [('copy-matching-worker','worker','worker','copy',True),('copy-worker-target-misdeclared-web','worker','web','copy',False),('port-worker-target-as-web','worker','web','port',False),]:
+  label+='-plan-control';doc=json.loads(json.dumps(base));doc['services'][0]['type']=target_type;doc['services'][0]['plan']='starter'
+  if target_type=='cron':doc['services'][0]['schedule']='0 0 1 1 *'
+  doc['services'][1]['envVars'][0]['fromService']={'name':doc['services'][0]['name'],'type':ref_type,**({'envVarKey':'QA_SOURCE'} if form=='copy' else {'property':'port'})}
+  f=p/('sweep173-'+label+'.yaml');f.write_text(json.dumps(doc,indent=2)+'\n');f.chmod(0o600);args=['blueprints','validate',str(f),'--confirm','-o','json'];z={'client':client,'label':label,'expected_valid_hypothesis':expected,'document':doc,'intent':[client,*args],'state':'neighbor validation intent persisted'};x['results'].append(z);save();r=json.loads(subprocess.check_output(['python3',str(p/('run.py' if client=='bex' else 'run-render.py')),*([] if client=='render' else ['--release']),*args],text=True));z['result']=r;z['decoded']=json.loads(r['stdout']) if r['stdout'] else None;z['consumer_consistent']=z['decoded'] is not None and r['exit']==(0 if z['decoded']['valid'] else 1) and not r['stderr'];save();print(json.dumps({'client':client,'label':label,'valid':z['decoded'].get('valid') if z['decoded'] else None,'exit':r['exit'],'elapsed':r['elapsed'],'errors':z['decoded'].get('errors') if z['decoded'] else None,'consistent':z['consumer_consistent']}),flush=True)
+finally:
+ if client=='render':cfg.unlink(missing_ok=True)
+ save()

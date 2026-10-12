@@ -1,0 +1,42 @@
+import datetime,json,pathlib,shutil,subprocess
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());g=c['sweep150_projects'];own=g['selected'];ws='tea-daif693dqjvc73e7as3g';pid=own['id'];eid=own['environment_ids'][0]
+parent=next(z for z in c['resources'] if z.get('id')==pid);child=next(z for z in c['resources'] if z.get('id')==eid)
+assert parent['sweep']==child['sweep']==150 and parent['workspace']==child['workspace']==ws and parent['create_result']['status']=='201' and child['create_proof']['status']=='201'
+assert not g.get('selector_cases')
+synthetic_suffix='0'*14+g['nonce']
+assert len(synthetic_suffix)==20
+pname='prj-'+synthetic_suffix;ename='evm-'+synthetic_suffix
+assert pname!=pid and ename!=eid
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+def wire(method,path,body=None):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),method,path,*([json.dumps(body)] if body is not None else [])],text=True))
+def cli(args,client):return json.loads(subprocess.check_output(['python3',str(p/('run.py' if client=='bex' else 'run-render.py')),*(['--release'] if client=='bex' else []),*args],text=True))
+g['selector_cases']=[];g['renames']=[];g['id_shaped_names']={'project':pname,'environment':ename};save()
+for kind,name in [('projects',pname),('environments',ename)]:
+ q=wire('GET','/v1/'+kind+'/'+name);g.setdefault('synthetic_lookup_before_names',[]).append(q);save();assert q['status']=='404'
+def rename(kind,actual_id,name,resource):
+ assert resource['sweep']==150 and resource['workspace']==ws and resource['id']==actual_id
+ a={'at':now(),'kind':kind,'actual_id':actual_id,'name':name,'method':'PATCH','path':'/v1/'+kind+'/'+actual_id,'body':{'name':name},'state':'exact owned metadata rename intent persisted'};g['renames'].append(a);save();r=wire('PATCH',a['path'],a['body']);a['result']=r;save();assert r['status']=='200';r=wire('GET',a['path']);a['readback']=r;save();assert r['status']=='200';v=json.loads(r['response']);assert v['id']==actual_id and v['name']==name;resource['name']=name;save();print('Owned metadata rename',kind,actual_id,'name',name,'accepted and read back',flush=True)
+def checks(stage,selectors):
+ for client in ['bex','render']:
+  for family in ['postgres','keyvalues']:
+   for label,project_selector,environment_selector,expect_success in selectors:
+    args=[family,'list','--project',project_selector,'--environment',environment_selector,'--confirm','-o','json'];a={'stage':stage,'case':label,'client':client,'family':family,'expected_success':expect_success,'command':[client,*args],'state':'native selector read intent persisted'};g['selector_cases'].append(a);save();r=cli(args,client);a['result']=r;save()
+    if expect_success:
+     a['decoded']=json.loads(r['stdout']);a['observed_expected_pattern']=r['exit']==0 and not r['stderr'] and a['decoded'].get('data')==[]
+    else:
+     bad=project_selector if stage=='project-id-shaped-name' else environment_selector;a['observed_expected_pattern']=r['exit']==1 and not r['stdout'] and bad in r['stderr'] and '404' in r['stderr']
+    save();print(client,family,stage,label,'exit',r['exit'],'expected_pattern',a['observed_expected_pattern'],flush=True);assert a['observed_expected_pattern']
+cfg=p/'render-config/cli.yaml';assert not cfg.exists();shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+try:
+ original_p=parent['name'];original_e=child['name']
+ checks('ordinary-names',[('named-control',original_p,original_e,True)])
+ rename('projects',pid,pname,parent)
+ checks('project-id-shaped-name',[('id-shaped-project-name',pname,eid,False),('actual-project-id',pid,original_e,True)])
+ rename('environments',eid,ename,child)
+ checks('environment-id-shaped-name',[('id-shaped-environment-name',pid,ename,False),('both-actual-ids',pid,eid,True)])
+ rename('projects',pid,pname[:-1],parent);rename('environments',eid,ename[:-1],child)
+ checks('near-miss-names',[('19-character-suffix-control',pname[:-1],ename[:-1],True)])
+finally:
+ cfg.unlink(missing_ok=True);g['copied_render_config_removed']=True;save();(p/'sweep150-native.json').write_text(json.dumps(g['selector_cases'],ensure_ascii=False,indent=2)+'\n');(p/'sweep150-renames.json').write_text(json.dumps(g['renames'],ensure_ascii=False,indent=2)+'\n')
+g['selector_state']='complete: 24 native cases reproduce ID-shaped-name failures and pass ordinary/near-miss/actual-ID controls';save()

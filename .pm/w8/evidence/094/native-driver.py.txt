@@ -1,0 +1,12 @@
+import pathlib,json,subprocess,shutil,datetime
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());g=c['sweep153_group'];cfg=p/'render-config/cli.yaml';assert not cfg.exists() and not g['cases'];owned=next(x for x in c['resources'] if x.get('id')==g['id']);assert owned['sweep']==153 and owned['create_result']['status']=='201'
+def save():c['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+try:
+ for client in ['bex','render']:
+  for label,name in [('exact',g['name']),('leading-space','  '+g['name']),('trailing-space',g['name']+'  '),('unicode-space','\u00a0'+g['name']+'\u2003')]:
+   document={'envVarGroups':[{'name':name,'envVars':[]}]};f=p/('sweep153-root-'+label+'.yaml');f.write_text(json.dumps(document,ensure_ascii=False,indent=2)+'\n');f.chmod(0o600);args=['blueprints','validate',str(f),'--confirm','-o','json'];x={'client':client,'container':'root','variant':label,'document':document,'state':'native read-only plan intent persisted'};g['cases'].append(x);save();r=json.loads(subprocess.check_output(['python3',str(p/('run.py' if client=='bex' else 'run-render.py')),*(['--release'] if client=='bex' else []),*args],text=True));x['result']=r;save()
+   if r['stdout']:
+    v=json.loads(r['stdout']);x['decoded']=v;save();plan=v.get('plan',{});print(client,label,'valid',v.get('valid'),'exit',r['exit'],'mode',plan.get('mode'),'envGroups',plan.get('envGroups'),'actions',json.dumps(plan.get('actions',[]),ensure_ascii=False),flush=True)
+   else:print(client,label,'no validation body',r['exit'],r['stderr'],flush=True)
+finally:cfg.unlink(missing_ok=True);g['copied_render_config_removed']=True;save();(p/'sweep153-native.json').write_text(json.dumps(g['cases'],ensure_ascii=False,indent=2)+'\n')

@@ -1,0 +1,44 @@
+[
+  {
+    "label": "service-literal/nul",
+    "compiler_problems": 0,
+    "typed_exact": true,
+    "value": "QA171_e47724\u0000after",
+    "nul_count": 1
+  },
+  {
+    "label": "service-literal/newline-control",
+    "compiler_problems": 0,
+    "typed_exact": true,
+    "value": "QA171_e47724\nafter",
+    "nul_count": 0
+  },
+  {
+    "label": "service-seed/nul",
+    "compiler_problems": 0,
+    "typed_exact": true,
+    "value": "QA171_e47724\u0000after",
+    "nul_count": 1
+  },
+  {
+    "label": "service-seed/newline-control",
+    "compiler_problems": 0,
+    "typed_exact": true,
+    "value": "QA171_e47724\nafter",
+    "nul_count": 0
+  },
+  {
+    "label": "group-literal/nul",
+    "compiler_problems": 0,
+    "typed_exact": true,
+    "value": "QA171_e47724\u0000after",
+    "nul_count": 1
+  },
+  {
+    "label": "group-literal/newline-control",
+    "compiler_problems": 0,
+    "typed_exact": true,
+    "value": "QA171_e47724\nafter",
+    "nul_count": 0
+  }
+]

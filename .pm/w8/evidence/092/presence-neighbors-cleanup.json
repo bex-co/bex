@@ -1,0 +1,56 @@
+{
+  "native": {
+    "services": {
+      "exit": 0,
+      "elapsed": 0.902,
+      "stderr": "",
+      "ids": [
+        "srv-daif6dsmg29s73d1umvg",
+        "srv-dap3r714dm7c7390q91g",
+        "srv-dap3umrbdpcs73f5eeug",
+        "srv-dap3v694dm7c7390q930",
+        "srv-db09u90ehcmc739j12cg",
+        "srv-db09vbgehcmc739j12i0"
+      ]
+    },
+    "postgres list": {
+      "exit": 0,
+      "elapsed": 0.586,
+      "stdout": "{\n  \"data\": []\n}",
+      "stderr": "",
+      "empty_value": []
+    },
+    "keyvalues list": {
+      "exit": 0,
+      "elapsed": 0.51,
+      "stdout": "{\n  \"data\": []\n}",
+      "stderr": "",
+      "empty_value": []
+    },
+    "projects": {
+      "exit": 0,
+      "elapsed": 0.364,
+      "stdout": "null",
+      "stderr": "",
+      "empty_value": null
+    }
+  },
+  "resources_created": 0,
+  "probe_completed": true,
+  "limits": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.678,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a491516458affb34-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "copied_render_config_absent": true,
+  "qualification": "initial cleanup harness required [] for empty projects; pinned native null is also an empty inventory, accepted after inspecting native serialization; no product defect"
+}

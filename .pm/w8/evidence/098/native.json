@@ -1,0 +1,2116 @@
+{
+  "sweep": 175,
+  "source_head": "a5ad5cda47f3b346a95f000021910a5bc33d88f3",
+  "nonce": "94d0fe",
+  "mutation": "Blueprint validation only; no Key Value or workload created",
+  "results": [
+    {
+      "client": "bex",
+      "label": "kv-env-key",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free"
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source",
+                  "envVarKey": "QA_UNDECLARED"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-env-key.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-kv-env-key.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.909,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"at '/services/0': missing property 'ipAllowList'\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "at '/services/0': missing property 'ipAllowList'",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "qualification": "Excluded from reference semantics: incomplete fixture omitted required ipAllowList; corrected validation-only documents use an empty list."
+    },
+    {
+      "client": "bex",
+      "label": "redis-env-key",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "redis",
+            "plan": "free"
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "redis",
+                  "name": "qa175-94d0fe-source",
+                  "envVarKey": "QA_UNDECLARED"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-redis-env-key.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-redis-env-key.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.757,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"at '/services/0': missing property 'ipAllowList'\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "at '/services/0': missing property 'ipAllowList'",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "qualification": "Excluded from reference semantics: incomplete fixture omitted required ipAllowList; corrected validation-only documents use an empty list."
+    },
+    {
+      "client": "bex",
+      "label": "kv-missing-property",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free"
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-missing-property.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-kv-missing-property.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.42,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"at '/services/0': missing property 'ipAllowList'\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "at '/services/0': missing property 'ipAllowList'",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "qualification": "Excluded from reference semantics: incomplete fixture omitted required ipAllowList; corrected validation-only documents use an empty list."
+    },
+    {
+      "client": "bex",
+      "label": "kv-host",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free"
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source",
+                  "property": "host"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-host.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-kv-host.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.381,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"at '/services/0': missing property 'ipAllowList'\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "at '/services/0': missing property 'ipAllowList'",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "qualification": "Excluded from reference semantics: incomplete fixture omitted required ipAllowList; corrected validation-only documents use an empty list."
+    },
+    {
+      "client": "bex",
+      "label": "kv-port",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free"
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-port.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-kv-port.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.657,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"at '/services/0': missing property 'ipAllowList'\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "at '/services/0': missing property 'ipAllowList'",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "qualification": "Excluded from reference semantics: incomplete fixture omitted required ipAllowList; corrected validation-only documents use an empty list."
+    },
+    {
+      "client": "bex",
+      "label": "kv-connection",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free"
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source",
+                  "property": "connectionString"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-connection.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-kv-connection.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.681,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"at '/services/0': missing property 'ipAllowList'\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "at '/services/0': missing property 'ipAllowList'",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "qualification": "Excluded from reference semantics: incomplete fixture omitted required ipAllowList; corrected validation-only documents use an empty list."
+    },
+    {
+      "client": "bex",
+      "label": "kv-hostport",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free"
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source",
+                  "property": "hostport"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-hostport.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-kv-hostport.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.627,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"at '/services/0': missing property 'ipAllowList'\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "at '/services/0': missing property 'ipAllowList'",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "qualification": "Excluded from reference semantics: incomplete fixture omitted required ipAllowList; corrected validation-only documents use an empty list."
+    },
+    {
+      "client": "bex",
+      "label": "kv-both",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free"
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source",
+                  "envVarKey": "QA_UNDECLARED",
+                  "property": "host"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-both.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-kv-both.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.628,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"at '/services/0': missing property 'ipAllowList'\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "at '/services/0': missing property 'ipAllowList'",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "qualification": "Excluded from reference semantics: incomplete fixture omitted required ipAllowList; corrected validation-only documents use an empty list."
+    },
+    {
+      "client": "bex",
+      "label": "app-missing-key",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "web",
+            "plan": "free",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-175"
+              }
+            ]
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa175-94d0fe-source",
+                  "envVarKey": "QA_UNDECLARED"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-app-missing-key.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-app-missing-key.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.38,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa175-94d0fe-target\\\": fromService.envVarKey references env \\\"QA_UNDECLARED\\\" on service \\\"qa175-94d0fe-source\\\", which has no such plainly-defined variable\",\n      \"line\": 26,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa175-94d0fe-target\": fromService.envVarKey references env \"QA_UNDECLARED\" on service \"qa175-94d0fe-source\", which has no such plainly-defined variable",
+            "line": 26,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "app-literal-key",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "web",
+            "plan": "free",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-175"
+              }
+            ]
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa175-94d0fe-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-app-literal-key.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-app-literal-key.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.446,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa175-94d0fe-source\",\n      \"qa175-94d0fe-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa175-94d0fe-source",
+            "qa175-94d0fe-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "kv-env-key-complete",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source",
+                  "envVarKey": "QA_UNDECLARED"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-env-key-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-kv-env-key-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.615,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa175-94d0fe-source\"\n    ],\n    \"services\": [\n      \"qa175-94d0fe-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa175-94d0fe-source"
+          ],
+          "services": [
+            "qa175-94d0fe-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "redis-env-key-complete",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "redis",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "redis",
+                  "name": "qa175-94d0fe-source",
+                  "envVarKey": "QA_UNDECLARED"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-redis-env-key-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-redis-env-key-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.774,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa175-94d0fe-source\"\n    ],\n    \"services\": [\n      \"qa175-94d0fe-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa175-94d0fe-source"
+          ],
+          "services": [
+            "qa175-94d0fe-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "kv-missing-property-complete",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-missing-property-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-kv-missing-property-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.64,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa175-94d0fe-target env \\\"QA_TARGET\\\": fromService keyvalue needs a property (connectionString, host, port, or password)\",\n      \"line\": 17,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa175-94d0fe-target env \"QA_TARGET\": fromService keyvalue needs a property (connectionString, host, port, or password)",
+            "line": 17,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "kv-host-complete",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source",
+                  "property": "host"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-host-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-kv-host-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.644,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa175-94d0fe-source\"\n    ],\n    \"services\": [\n      \"qa175-94d0fe-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa175-94d0fe-source"
+          ],
+          "services": [
+            "qa175-94d0fe-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "kv-port-complete",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-port-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-kv-port-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.806,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa175-94d0fe-source\"\n    ],\n    \"services\": [\n      \"qa175-94d0fe-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa175-94d0fe-source"
+          ],
+          "services": [
+            "qa175-94d0fe-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "kv-connection-complete",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source",
+                  "property": "connectionString"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-connection-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-kv-connection-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.462,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa175-94d0fe-source\"\n    ],\n    \"services\": [\n      \"qa175-94d0fe-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa175-94d0fe-source"
+          ],
+          "services": [
+            "qa175-94d0fe-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "kv-hostport-complete",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source",
+                  "property": "hostport"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-hostport-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-kv-hostport-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.376,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa175-94d0fe-target env \\\"QA_TARGET\\\": fromService keyvalue property \\\"hostport\\\" is not supported (want connectionString, host, port, or password)\",\n      \"line\": 17,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa175-94d0fe-target env \"QA_TARGET\": fromService keyvalue property \"hostport\" is not supported (want connectionString, host, port, or password)",
+            "line": 17,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "kv-both-complete",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source",
+                  "envVarKey": "QA_UNDECLARED",
+                  "property": "host"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-both-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-kv-both-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.386,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa175-94d0fe-target env \\\"QA_TARGET\\\": fromService sets both envVarKey and property \u2014 pick one\",\n      \"line\": 17,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa175-94d0fe-target env \"QA_TARGET\": fromService sets both envVarKey and property \u2014 pick one",
+            "line": 17,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "kv-env-key-complete",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source",
+                  "envVarKey": "QA_UNDECLARED"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-env-key-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-kv-env-key-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.059,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa175-94d0fe-source\"\n    ],\n    \"services\": [\n      \"qa175-94d0fe-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa175-94d0fe-source"
+          ],
+          "services": [
+            "qa175-94d0fe-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "redis-env-key-complete",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "redis",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "redis",
+                  "name": "qa175-94d0fe-source",
+                  "envVarKey": "QA_UNDECLARED"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-redis-env-key-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-redis-env-key-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.923,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa175-94d0fe-source\"\n    ],\n    \"services\": [\n      \"qa175-94d0fe-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa175-94d0fe-source"
+          ],
+          "services": [
+            "qa175-94d0fe-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "kv-missing-property-complete",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-missing-property-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-kv-missing-property-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.694,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa175-94d0fe-target env \\\"QA_TARGET\\\": fromService keyvalue needs a property (connectionString, host, port, or password)\",\n      \"line\": 17,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa175-94d0fe-target env \"QA_TARGET\": fromService keyvalue needs a property (connectionString, host, port, or password)",
+            "line": 17,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "kv-host-complete",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source",
+                  "property": "host"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-host-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-kv-host-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.8,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa175-94d0fe-source\"\n    ],\n    \"services\": [\n      \"qa175-94d0fe-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa175-94d0fe-source"
+          ],
+          "services": [
+            "qa175-94d0fe-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "kv-port-complete",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-port-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-kv-port-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.385,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa175-94d0fe-source\"\n    ],\n    \"services\": [\n      \"qa175-94d0fe-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa175-94d0fe-source"
+          ],
+          "services": [
+            "qa175-94d0fe-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "kv-connection-complete",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source",
+                  "property": "connectionString"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-connection-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-kv-connection-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.674,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa175-94d0fe-source\"\n    ],\n    \"services\": [\n      \"qa175-94d0fe-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa175-94d0fe-source"
+          ],
+          "services": [
+            "qa175-94d0fe-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "kv-hostport-complete",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source",
+                  "property": "hostport"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-hostport-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-kv-hostport-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.636,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa175-94d0fe-target env \\\"QA_TARGET\\\": fromService keyvalue property \\\"hostport\\\" is not supported (want connectionString, host, port, or password)\",\n      \"line\": 17,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa175-94d0fe-target env \"QA_TARGET\": fromService keyvalue property \"hostport\" is not supported (want connectionString, host, port, or password)",
+            "line": 17,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "kv-both-complete",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source",
+                  "envVarKey": "QA_UNDECLARED",
+                  "property": "host"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-both-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-kv-both-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.767,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa175-94d0fe-target env \\\"QA_TARGET\\\": fromService sets both envVarKey and property \u2014 pick one\",\n      \"line\": 17,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa175-94d0fe-target env \"QA_TARGET\": fromService sets both envVarKey and property \u2014 pick one",
+            "line": 17,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "app-missing-key",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "web",
+            "plan": "free",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-175"
+              }
+            ]
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa175-94d0fe-source",
+                  "envVarKey": "QA_UNDECLARED"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-app-missing-key.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-app-missing-key.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.867,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa175-94d0fe-target\\\": fromService.envVarKey references env \\\"QA_UNDECLARED\\\" on service \\\"qa175-94d0fe-source\\\", which has no such plainly-defined variable\",\n      \"line\": 26,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa175-94d0fe-target\": fromService.envVarKey references env \"QA_UNDECLARED\" on service \"qa175-94d0fe-source\", which has no such plainly-defined variable",
+            "line": 26,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "app-literal-key",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "web",
+            "plan": "free",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-175"
+              }
+            ]
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa175-94d0fe-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-app-literal-key.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep175-app-literal-key.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.813,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa175-94d0fe-source\",\n      \"qa175-94d0fe-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa175-94d0fe-source",
+            "qa175-94d0fe-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    }
+  ],
+  "question": "Does validation reject a Key Value envVarKey reference that its actual apply resolver cannot resolve?",
+  "harness_failures": [
+    {
+      "client": "bex",
+      "label": "kv-env-key",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa175-94d0fe-source",
+            "type": "keyvalue",
+            "plan": "free"
+          },
+          {
+            "name": "qa175-94d0fe-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa175-94d0fe-source",
+                  "envVarKey": "QA_UNDECLARED"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep175-kv-env-key.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "harness failed before native process launch",
+      "qualification": "Missing private run.py; no CLI/API request sent"
+    }
+  ],
+  "copied_render_config_removed": true
+}

@@ -1,0 +1,218 @@
+[
+  {
+    "label": "unicode-raw",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "result": {
+      "at": "2026-10-12T21:20:43.355488+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&resource=srv-db6kqe15i38c73fd5mc0&type=app&direction=backward&limit=100&textMode=raw&text=caf%C3%A9+%CE%B5%CE%BB%CE%BB%CE%B7%CE%BD%CE%B9%CE%BA%CE%AC",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 4.173,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a499265579b1ce44-SJC"
+      },
+      "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T20:20:43.256151443Z\",\"nextEndTime\":\"2026-10-12T21:14:34.974127529Z\",\"logs\":[{\"id\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.97412753Z-abb5389c\",\"message\":\"QA176_3ff02e UPPER CAFÉ Ελληνικά\",\"timestamp\":\"2026-10-12T21:14:34.97412753Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6kqe15i38c73fd5mc0\"},{\"name\":\"instance\",\"value\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974128712Z-79d2f8df\",\"message\":\"QA176_3ff02e LOWER café ελληνικά\",\"timestamp\":\"2026-10-12T21:14:34.974128712Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6kqe15i38c73fd5mc0\"},{\"name\":\"instance\",\"value\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+    },
+    "expected_ids": [
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.97412753Z-abb5389c",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974128712Z-79d2f8df"
+    ],
+    "actual_ids": [
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.97412753Z-abb5389c",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974128712Z-79d2f8df"
+    ],
+    "passed": true
+  },
+  {
+    "label": "unicode-display",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "result": {
+      "at": "2026-10-12T21:20:47.229260+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&resource=srv-db6kqe15i38c73fd5mc0&type=app&direction=backward&limit=100&textMode=display&text=caf%C3%A9+%CE%B5%CE%BB%CE%BB%CE%B7%CE%BD%CE%B9%CE%BA%CE%AC",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 3.807,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49926707d4dbd4e-ATL"
+      },
+      "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T20:20:47.132363415Z\",\"nextEndTime\":\"2026-10-12T21:14:34.974127529Z\",\"logs\":[{\"id\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.97412753Z-abb5389c\",\"message\":\"QA176_3ff02e UPPER CAFÉ Ελληνικά\",\"timestamp\":\"2026-10-12T21:14:34.97412753Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6kqe15i38c73fd5mc0\"},{\"name\":\"instance\",\"value\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974128712Z-79d2f8df\",\"message\":\"QA176_3ff02e LOWER café ελληνικά\",\"timestamp\":\"2026-10-12T21:14:34.974128712Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6kqe15i38c73fd5mc0\"},{\"name\":\"instance\",\"value\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+    },
+    "expected_ids": [
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.97412753Z-abb5389c",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974128712Z-79d2f8df"
+    ],
+    "actual_ids": [
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.97412753Z-abb5389c",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974128712Z-79d2f8df"
+    ],
+    "passed": true
+  },
+  {
+    "label": "dotted-raw",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "result": {
+      "at": "2026-10-12T21:20:51.157966+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&resource=srv-db6kqe15i38c73fd5mc0&type=app&direction=backward&limit=100&textMode=raw&text=%C4%B0",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 3.869,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4992688ba87b261-ATL"
+      },
+      "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T20:20:51.058671621Z\",\"nextEndTime\":\"2026-10-12T21:14:34.973578425Z\",\"logs\":[{\"id\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.973578426Z-b64475b2\",\"message\":\"QA176_3ff02e PUNCT 100%_literal [a]+.(b)?^$\",\"timestamp\":\"2026-10-12T21:14:34.973578426Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6kqe15i38c73fd5mc0\"},{\"name\":\"instance\",\"value\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.973792164Z-186962f6\",\"message\":\"QA176_3ff02e DECOY 100XXliteral aabZ\",\"timestamp\":\"2026-10-12T21:14:34.973792164Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6kqe15i38c73fd5mc0\"},{\"name\":\"instance\",\"value\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974129775Z-4aa30356\",\"message\":\"QA176_3ff02e DOTTED İ\",\"timestamp\":\"2026-10-12T21:14:34.974129775Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6kqe15i38c73fd5mc0\"},{\"name\":\"instance\",\"value\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974130836Z-034bb696\",\"message\":\"QA176_3ff02e ASCII i\",\"timestamp\":\"2026-10-12T21:14:34.974130836Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6kqe15i38c73fd5mc0\"},{\"name\":\"instance\",\"value\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.97413288Z-194bd938\",\"message\":\"QA176_3ff02e ASCII S\",\"timestamp\":\"2026-10-12T21:14:34.97413288Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6kqe15i38c73fd5mc0\"},{\"name\":\"instance\",\"value\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974136477Z-633baf74\",\"message\":\"QA176_3ff02e LITERAL a\\\\tb\",\"timestamp\":\"2026-10-12T21:14:34.974136477Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6kqe15i38c73fd5mc0\"},{\"name\":\"instance\",\"value\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.97413806Z-2979dcb8\",\"message\":\"QA176_3ff02e PLAIN ordinary\",\"timestamp\":\"2026-10-12T21:14:34.97413806Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6kqe15i38c73fd5mc0\"},{\"name\":\"instance\",\"value\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+    },
+    "expected_ids": [
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.973578426Z-b64475b2",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.973792164Z-186962f6",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974129775Z-4aa30356",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974130836Z-034bb696",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.97413288Z-194bd938",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974136477Z-633baf74",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.97413806Z-2979dcb8"
+    ],
+    "actual_ids": [
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.973578426Z-b64475b2",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.973792164Z-186962f6",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974129775Z-4aa30356",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974130836Z-034bb696",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.97413288Z-194bd938",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974136477Z-633baf74",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.97413806Z-2979dcb8"
+    ],
+    "passed": true
+  },
+  {
+    "label": "dotted-display",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "result": {
+      "at": "2026-10-12T21:20:54.796960+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&resource=srv-db6kqe15i38c73fd5mc0&type=app&direction=backward&limit=100&textMode=display&text=%C4%B0",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 3.573,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49926a179b81f03-EWR"
+      },
+      "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T20:20:54.704878415Z\",\"nextEndTime\":\"2026-10-12T21:14:34.973578425Z\",\"logs\":[{\"id\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.973578426Z-b64475b2\",\"message\":\"QA176_3ff02e PUNCT 100%_literal [a]+.(b)?^$\",\"timestamp\":\"2026-10-12T21:14:34.973578426Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6kqe15i38c73fd5mc0\"},{\"name\":\"instance\",\"value\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.973792164Z-186962f6\",\"message\":\"QA176_3ff02e DECOY 100XXliteral aabZ\",\"timestamp\":\"2026-10-12T21:14:34.973792164Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6kqe15i38c73fd5mc0\"},{\"name\":\"instance\",\"value\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974129775Z-4aa30356\",\"message\":\"QA176_3ff02e DOTTED İ\",\"timestamp\":\"2026-10-12T21:14:34.974129775Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6kqe15i38c73fd5mc0\"},{\"name\":\"instance\",\"value\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974130836Z-034bb696\",\"message\":\"QA176_3ff02e ASCII i\",\"timestamp\":\"2026-10-12T21:14:34.974130836Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6kqe15i38c73fd5mc0\"},{\"name\":\"instance\",\"value\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.97413288Z-194bd938\",\"message\":\"QA176_3ff02e ASCII S\",\"timestamp\":\"2026-10-12T21:14:34.97413288Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6kqe15i38c73fd5mc0\"},{\"name\":\"instance\",\"value\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974136477Z-633baf74\",\"message\":\"QA176_3ff02e LITERAL a\\\\tb\",\"timestamp\":\"2026-10-12T21:14:34.974136477Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6kqe15i38c73fd5mc0\"},{\"name\":\"instance\",\"value\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.97413806Z-2979dcb8\",\"message\":\"QA176_3ff02e PLAIN ordinary\",\"timestamp\":\"2026-10-12T21:14:34.97413806Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6kqe15i38c73fd5mc0\"},{\"name\":\"instance\",\"value\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+    },
+    "expected_ids": [
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.973578426Z-b64475b2",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.973792164Z-186962f6",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974129775Z-4aa30356",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974130836Z-034bb696",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.97413288Z-194bd938",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974136477Z-633baf74",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.97413806Z-2979dcb8"
+    ],
+    "actual_ids": [
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.973578426Z-b64475b2",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.973792164Z-186962f6",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974129775Z-4aa30356",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974130836Z-034bb696",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.97413288Z-194bd938",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974136477Z-633baf74",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.97413806Z-2979dcb8"
+    ],
+    "passed": true
+  },
+  {
+    "label": "comma",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "result": {
+      "at": "2026-10-12T21:20:58.920601+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&resource=srv-db6kqe15i38c73fd5mc0&type=app&direction=backward&limit=100&textMode=raw&text=QA176_3ff02e+COMMA+a%2Cb",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 4.065,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49926b83ddaf5c2-BOS"
+      },
+      "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T20:20:58.824525012Z\",\"nextEndTime\":\"2026-10-12T21:14:34.974120516Z\",\"logs\":[{\"id\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974120517Z-f1c4510c\",\"message\":\"QA176_3ff02e COMMA a,b\",\"timestamp\":\"2026-10-12T21:14:34.974120517Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6kqe15i38c73fd5mc0\"},{\"name\":\"instance\",\"value\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+    },
+    "expected_ids": [
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974120517Z-f1c4510c"
+    ],
+    "actual_ids": [
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974120517Z-f1c4510c"
+    ],
+    "passed": true
+  },
+  {
+    "label": "or",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "result": {
+      "at": "2026-10-12T21:21:03.129055+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&resource=srv-db6kqe15i38c73fd5mc0&type=app&direction=backward&limit=100&textMode=raw&text=QA176_3ff02e+COMMA+a%2Cb&text=QA176_3ff02e+SNOW+%E9%9B%AA%F0%9F%98%80",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 4.139,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49926d22c6a4d13-BOS"
+      },
+      "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T20:21:03.030700836Z\",\"nextEndTime\":\"2026-10-12T21:14:34.974120516Z\",\"logs\":[{\"id\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974120517Z-f1c4510c\",\"message\":\"QA176_3ff02e COMMA a,b\",\"timestamp\":\"2026-10-12T21:14:34.974120517Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6kqe15i38c73fd5mc0\"},{\"name\":\"instance\",\"value\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974134523Z-2ada7e82\",\"message\":\"QA176_3ff02e SNOW 雪😀\",\"timestamp\":\"2026-10-12T21:14:34.974134523Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6kqe15i38c73fd5mc0\"},{\"name\":\"instance\",\"value\":\"srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+    },
+    "expected_ids": [
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974120517Z-f1c4510c",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974134523Z-2ada7e82"
+    ],
+    "actual_ids": [
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974120517Z-f1c4510c",
+      "srv-db6kqe15i38c73fd5mc0-f5m93vda09k64bf3173e-2026-10-12T21:14:34.974134523Z-2ada7e82"
+    ],
+    "passed": true
+  }
+]

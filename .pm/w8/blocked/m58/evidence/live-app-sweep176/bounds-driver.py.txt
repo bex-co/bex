@@ -1,0 +1,35 @@
+import csv,datetime,io,json,os,pathlib,secrets,shlex,shutil,subprocess,sys,time
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('<REPO>/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());ws='tea-daif693dqjvc73e7as3g';mode=sys.argv[1]
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+def cli(a,render=False):
+ cfg=p/'render-config/cli.yaml'
+ try:
+  if render:shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  return json.loads(subprocess.check_output(['python3',str(p/('run-render.py' if render else 'run.py')),*a] if render else ['python3',str(p/'run.py'),'--release',*a],text=True))
+ finally:
+  if render:cfg.unlink(missing_ok=True)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True))
+def objects(raw):
+ result=[];dec=json.JSONDecoder();at=0
+ while at<len(raw):
+  while at<len(raw) and raw[at].isspace():at+=1
+  if at>=len(raw):break
+  v,at=dec.raw_decode(raw,at);result.append(v)
+ return result
+assert mode in ('bex','render');render=mode=='render';sid=(p/'sweep176-id.txt').read_text().strip();x=next(z for z in c['resources'] if z.get('id')==sid);base={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']};assert sid not in base and x['workspace']==ws and x['create_result']['exit']==0 and x['create_response']['id']==sid and x.get('baseline_log_rows')
+known={z['id']:z for z in x['baseline_log_rows']};x.setdefault('boundary_checks',{});cases=[]
+def nanoseconds(stamp):
+ assert stamp.endswith('Z');base,sep,frac=stamp[:-1].partition('.');seconds=int((datetime.datetime.fromisoformat(base).replace(tzinfo=datetime.timezone.utc)-datetime.datetime(1970,1,1,tzinfo=datetime.timezone.utc)).total_seconds());return seconds*1000000000+int((frac if sep else '').ljust(9,'0'))
+
+for label,row in [('first-baseline-time',x['baseline_log_rows'][0]),('last-baseline-time',x['baseline_log_rows'][-1])]:
+ stamp=row['timestamp'];expected={z['id'] for z in x['baseline_log_rows'] if z['timestamp']==stamp}
+ for direction in ['forward','backward']:cases.append((label+'-'+direction,['--start',stamp,'--end',stamp,'--direction',direction,'--limit','100'],expected,False))
+for direction in ['forward','backward']:cases.append(('limit3-'+direction+('-chronological' if direction=='backward' else ''),['--direction',direction,'--limit','3'],set(known),True))
+for label,extra,expected,subset in cases:
+ key=mode+'-'+label
+ if key in x['boundary_checks']:continue
+ args=['logs','--resources',sid,'--type','app','--text',x['marker'],*extra,'--confirm','-o','json'];z={'at':now(),'intent':['render' if render else 'bex',*args],'expected_ids':sorted(expected),'expectation':'Three distinct exact baseline records within limit in the requested direction' if subset else 'Start equals end; every baseline row exactly on the inclusive timestamp is retained'};x['boundary_checks'][key]=z;save();r=cli(args,render);rows=objects(r['stdout']) if r['exit']==0 else [];actual={v['id'] for v in rows};ok=r['exit']==0 and len(rows)==len(actual) and all(v['id'] in known and v['message']==known[v['id']]['message'] for v in rows) and ((len(rows)==3 and actual<=expected) if subset else actual==expected);ordering=True
+ if subset:
+  ts=[nanoseconds(v['timestamp']) for v in rows];backward=extra[1]=='backward';ordering=ts==sorted(ts);all_ts=sorted([nanoseconds(v['timestamp']) for v in known.values()],reverse=backward);ordering=ordering and ts==sorted(all_ts[:3]);ok=ok and ordering
+ z.update(result=r,rows=rows,passed=ok,time_order_verified=ordering if subset else None);save();print(json.dumps({'key':key,'exit':r['exit'],'expected_rows':3 if subset else len(expected),'actual_rows':len(rows),'passed':ok,'stderr':r['stderr']}),flush=True)

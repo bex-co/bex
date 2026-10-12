@@ -1,0 +1,39 @@
+{
+  "services": [
+    {
+      "name": "qa173-4b9e73-source",
+      "type": "cron",
+      "runtime": "image",
+      "image": {
+        "url": "nginx:1"
+      },
+      "plan": "free",
+      "envVars": [
+        {
+          "key": "QA_SOURCE",
+          "value": "source-173"
+        }
+      ],
+      "schedule": "0 0 1 1 *"
+    },
+    {
+      "name": "qa173-4b9e73-target",
+      "type": "web",
+      "runtime": "image",
+      "image": {
+        "url": "nginx:1"
+      },
+      "plan": "free",
+      "envVars": [
+        {
+          "key": "QA_TARGET",
+          "fromService": {
+            "name": "qa173-4b9e73-source",
+            "type": "cron",
+            "envVarKey": "QA_SOURCE"
+          }
+        }
+      ]
+    }
+  ]
+}

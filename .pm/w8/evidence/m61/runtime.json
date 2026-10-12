@@ -1,0 +1,118 @@
+[
+  {
+    "client": "bex",
+    "expected_bytes": {
+      "env_length": 30,
+      "env_sha256": "cc12e7fddbc604ceb9aac4d93e3507fef58360e0a6cf7cfff376d21da9965f3e",
+      "file_present": true,
+      "file_length": 24,
+      "file_sha256": "0241b8fd18b3c48fec559a8fd60377f850b512558925a9808ec537805b74fd9d"
+    },
+    "initial": {
+      "at": "2026-10-12T00:25:38.559795+00:00",
+      "exit": 0,
+      "http": "404",
+      "body": null,
+      "raw": "404 page not found\n",
+      "stderr": ""
+    },
+    "recovery": {
+      "at": "2026-10-12T00:30:27.943792+00:00",
+      "exit": 0,
+      "http": "200",
+      "body": {
+        "marker": "QA163_4acbc9",
+        "built": {
+          "marker": "QA163_4acbc9",
+          "snapshot": {
+            "env_length": 30,
+            "env_sha256": "cc12e7fddbc604ceb9aac4d93e3507fef58360e0a6cf7cfff376d21da9965f3e",
+            "file_present": true,
+            "file_length": 24,
+            "file_sha256": "0241b8fd18b3c48fec559a8fd60377f850b512558925a9808ec537805b74fd9d"
+          },
+          "build_path": "/usr/local/bin:/usr/bin:/bin",
+          "built_at": 1791764963079654083
+        },
+        "runtime": {
+          "env_length": 30,
+          "env_sha256": "cc12e7fddbc604ceb9aac4d93e3507fef58360e0a6cf7cfff376d21da9965f3e",
+          "file_present": true,
+          "file_length": 24,
+          "file_sha256": "0241b8fd18b3c48fec559a8fd60377f850b512558925a9808ec537805b74fd9d"
+        },
+        "runtime_path": "/usr/local/bin:/usr/bin:/bin",
+        "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-4acbc9-buildbytes-56948hsg"
+      },
+      "raw": "{\"marker\": \"QA163_4acbc9\", \"built\": {\"marker\": \"QA163_4acbc9\", \"snapshot\": {\"env_length\": 30, \"env_sha256\": \"cc12e7fddbc604ceb9aac4d93e3507fef58360e0a6cf7cfff376d21da9965f3e\", \"file_present\": true, \"file_length\": 24, \"file_sha256\": \"0241b8fd18b3c48fec559a8fd60377f850b512558925a9808ec537805b74fd9d\"}, \"build_path\": \"/usr/local/bin:/usr/bin:/bin\", \"built_at\": 1791764963079654083}, \"runtime\": {\"env_length\": 30, \"env_sha256\": \"cc12e7fddbc604ceb9aac4d93e3507fef58360e0a6cf7cfff376d21da9965f3e\", \"file_present\": true, \"file_length\": 24, \"file_sha256\": \"0241b8fd18b3c48fec559a8fd60377f850b512558925a9808ec537805b74fd9d\"}, \"runtime_path\": \"/usr/local/bin:/usr/bin:/bin\", \"instance\": \"tea-daif693dqjvc73e7as3g-qa-20261011-4acbc9-buildbytes-56948hsg\"}",
+      "stderr": ""
+    },
+    "control_assertions": {
+      "at": "2026-10-12T00:34:42.606330+00:00",
+      "build_command_unchanged": true,
+      "same_resolved_commit": true,
+      "build_path_exact": true,
+      "runtime_path_exact": true,
+      "native_build_log_message_count": 100,
+      "log_parser_qualification": "Native JSON is a stream of JSON objects, not an array; first harness array assumption was corrected"
+    }
+  },
+  {
+    "client": "render",
+    "expected_bytes": {
+      "env_length": 30,
+      "env_sha256": "1a3fbef6c1ca34e9465bc95e04d14e81570c98304a414ec4a2b2e484f0f8e615",
+      "file_present": true,
+      "file_length": 24,
+      "file_sha256": "5ff8eddf49b7ce53216ef72a20b807e93c01ca7842bcea740c5877f92749b18a"
+    },
+    "initial": {
+      "at": "2026-10-12T00:26:32.479205+00:00",
+      "exit": 0,
+      "http": "404",
+      "body": null,
+      "raw": "404 page not found\n",
+      "stderr": ""
+    },
+    "recovery": {
+      "at": "2026-10-12T00:31:41.527351+00:00",
+      "exit": 0,
+      "http": "200",
+      "body": {
+        "marker": "QA163_1bfc95",
+        "built": {
+          "marker": "QA163_1bfc95",
+          "snapshot": {
+            "env_length": 30,
+            "env_sha256": "1a3fbef6c1ca34e9465bc95e04d14e81570c98304a414ec4a2b2e484f0f8e615",
+            "file_present": true,
+            "file_length": 24,
+            "file_sha256": "5ff8eddf49b7ce53216ef72a20b807e93c01ca7842bcea740c5877f92749b18a"
+          },
+          "build_path": "/usr/local/bin:/usr/bin:/bin",
+          "built_at": 1791765039990159440
+        },
+        "runtime": {
+          "env_length": 30,
+          "env_sha256": "1a3fbef6c1ca34e9465bc95e04d14e81570c98304a414ec4a2b2e484f0f8e615",
+          "file_present": true,
+          "file_length": 24,
+          "file_sha256": "5ff8eddf49b7ce53216ef72a20b807e93c01ca7842bcea740c5877f92749b18a"
+        },
+        "runtime_path": "/usr/local/bin:/usr/bin:/bin",
+        "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-1bfc95-buildbytes-747p2lns"
+      },
+      "raw": "{\"marker\": \"QA163_1bfc95\", \"built\": {\"marker\": \"QA163_1bfc95\", \"snapshot\": {\"env_length\": 30, \"env_sha256\": \"1a3fbef6c1ca34e9465bc95e04d14e81570c98304a414ec4a2b2e484f0f8e615\", \"file_present\": true, \"file_length\": 24, \"file_sha256\": \"5ff8eddf49b7ce53216ef72a20b807e93c01ca7842bcea740c5877f92749b18a\"}, \"build_path\": \"/usr/local/bin:/usr/bin:/bin\", \"built_at\": 1791765039990159440}, \"runtime\": {\"env_length\": 30, \"env_sha256\": \"1a3fbef6c1ca34e9465bc95e04d14e81570c98304a414ec4a2b2e484f0f8e615\", \"file_present\": true, \"file_length\": 24, \"file_sha256\": \"5ff8eddf49b7ce53216ef72a20b807e93c01ca7842bcea740c5877f92749b18a\"}, \"runtime_path\": \"/usr/local/bin:/usr/bin:/bin\", \"instance\": \"tea-daif693dqjvc73e7as3g-qa-20261011-1bfc95-buildbytes-747p2lns\"}",
+      "stderr": ""
+    },
+    "control_assertions": {
+      "at": "2026-10-12T00:34:44.174694+00:00",
+      "build_command_unchanged": true,
+      "same_resolved_commit": true,
+      "build_path_exact": true,
+      "runtime_path_exact": true,
+      "native_build_log_message_count": 100,
+      "log_parser_qualification": "Native JSON is a stream of JSON objects, not an array; first harness array assumption was corrected"
+    }
+  }
+]

@@ -1,0 +1,21 @@
+import datetime,json,pathlib,secrets,shutil,subprocess,sys
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('<REPO>/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());client=sys.argv[1];assert client in ('bex','render');cfg=p/'render-config/cli.yaml';assert not cfg.exists();key='sweep173_reference_types'
+if key not in c:
+ assert client=='bex' and c['sync173_result']==0;nonce=secrets.token_hex(3);c[key]={'sweep':173,'source_head':c['head'],'nonce':nonce,'mutation':'Blueprint validation only; no group/workload/database created','results':[],'question':'Does fromService.type have to match the actual same-file target type, and are contradictory literal/reference fields refused?'}
+x=c[key];assert not any(z['client']==client for z in x['results'])
+def save():
+ c['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(c,indent=2)+'\n');cp.chmod(0o600);f=p/'sweep173-reference-types.json';f.write_text(json.dumps(x,indent=2)+'\n');f.chmod(0o600)
+save()
+if client=='render':shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+try:
+ a='qa173-'+x['nonce']+'-source';b='qa173-'+x['nonce']+'-target';variants=[]
+ for typ in ['web','pserv','worker','cron']:
+  for form in ['copy','port']:
+   ref={'type':typ,'name':a,**({'envVarKey':'QA_SOURCE'} if form=='copy' else {'property':'port'})};variants.append((form+'-'+typ,{'key':'QA_TARGET','fromService':ref},typ=='web'))
+ base={'type':'web','name':a,'envVarKey':'QA_SOURCE'}
+ variants.extend([('copy-extra-empty-value',{'key':'QA_TARGET','value':'','fromService':base},False),('copy-extra-value',{'key':'QA_TARGET','value':'literal-173','fromService':base},False),('copy-wrong-keyvalue',{'key':'QA_TARGET','fromService':{'type':'keyvalue','name':a,'property':'host'}},False)])
+ for label,entry,expected in variants:
+  doc={'services':[{'name':a,'type':'web','runtime':'image','image':{'url':'nginx:1'},'plan':'free','envVars':[{'key':'QA_SOURCE','value':'source-173'}]},{'name':b,'type':'web','runtime':'image','image':{'url':'nginx:1'},'plan':'free','envVars':[entry]}]};f=p/('sweep173-'+label+'.yaml');f.write_text(json.dumps(doc,indent=2)+'\n');f.chmod(0o600);args=['blueprints','validate',str(f),'--confirm','-o','json'];z={'client':client,'label':label,'expected_valid_hypothesis':expected,'document':doc,'intent':[client,*args],'state':'native validation intent persisted'};x['results'].append(z);save();r=json.loads(subprocess.check_output(['python3',str(p/('run.py' if client=='bex' else 'run-render.py')),*([] if client=='render' else ['--release']),*args],text=True));z['result']=r;z['decoded']=json.loads(r['stdout']) if r['stdout'] else None;z['consumer_consistent']=z['decoded'] is not None and r['exit']==(0 if z['decoded']['valid'] else 1) and not r['stderr'];save();print(json.dumps({'client':client,'label':label,'valid':z['decoded'].get('valid') if z['decoded'] else None,'exit':r['exit'],'elapsed':r['elapsed'],'errors':z['decoded'].get('errors') if z['decoded'] else None,'consistent':z['consumer_consistent']}),flush=True)
+finally:
+ if client=='render':cfg.unlink(missing_ok=True);x['copied_render_config_removed']=True
+ save()

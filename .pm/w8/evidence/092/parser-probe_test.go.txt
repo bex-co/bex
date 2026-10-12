@@ -1,0 +1,18 @@
+package apps
+import("encoding/json";"os";"testing";"strings")
+func TestQA143PresenceProbe(t *testing.T){
+ raw,err:=os.ReadFile(os.Getenv("QA143_INPUT_FILE"));if err!=nil{t.Fatal(err)}
+ var initial map[string]any;if err=json.Unmarshal(raw,&initial);err!=nil{t.Fatal(err)}
+ for _,name:=range []string{"seed-empty-copy","seed-empty-unreferenced","prompt-unreferenced","literal-empty-copy","seed-space-copy","override-empty-copy"}{
+  var doc map[string]any;_ = json.Unmarshal(raw,&doc)
+  svcs:=doc["services"].([]any);caller:=svcs[0].(map[string]any);target:=svcs[1].(map[string]any);env:=target["envVars"].([]any)[0].(map[string]any)
+  switch name{case "seed-empty-unreferenced":delete(caller,"envVars");case "prompt-unreferenced":delete(caller,"envVars");delete(env,"value");case "literal-empty-copy":delete(env,"sync");case "seed-space-copy":env["value"]=" "}
+  manifest,_:=json.Marshal(doc);req:=DeployRequest{Manifest:string(manifest)};if name=="override-empty-copy"{req.EnvVarValues=map[string]string{"SOURCE_VALUE":""}}
+  _,ir,problems:=CompileBlueprintIR(string(manifest));if len(problems)!=0{t.Fatalf("%s schema failure %v",name,problems)}
+  valueDeclared:=false;valueEmpty:=false;for _,r:=range ir.Resources{if strings.HasSuffix(r.Name,"-target"){entry:=r.Fields["envVars"].Value.([]any)[0].(map[string]any);v,ok:=entry["value"];valueDeclared=ok;valueEmpty=ok&&v==""}}
+  st,parseErr:=parseStack(req);record:=map[string]any{"case":name,"compiler_errors":len(problems),"source_value_declared":valueDeclared,"source_value_is_empty_string":valueEmpty,"parse_failed":parseErr!=nil}
+  if parseErr!=nil{record["parse_error"]=parseErr.Error()}else{for _,s:=range st.services{if strings.HasSuffix(s.req.Name,"-target"){v,ok:=s.seedLiterals["SOURCE_VALUE"];record["seed_literal_present"]=ok;record["seed_literal_value"]=v;record["prompt_keys"]=s.promptKeys};if strings.HasSuffix(s.req.Name,"-caller"){for _,v:=range s.req.Env{if v.Name=="COPY_VALUE"{record["copied_value"]=v.Value;record["copied_value_present"]=true}}}}}
+  encoded,_:=json.Marshal(record);t.Log("QA143JSON "+string(encoded))
+  if (name=="seed-empty-copy")!=(parseErr!=nil){t.Fatalf("unexpected probe branch %s: %v",name,parseErr)}
+ }
+}

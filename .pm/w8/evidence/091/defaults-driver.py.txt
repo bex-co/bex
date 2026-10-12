@@ -1,0 +1,49 @@
+from pathlib import Path
+import json,os,subprocess,shutil,pty,fcntl,termios,struct,time,select,errno,re,datetime
+p=Path(__file__).parent;cp=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');d=json.loads(cp.read_text());g=d['sweep141_projects'];target=g['selected'];base=[x if isinstance(x,str) else x.get('service',x)['id'] for x in d['baseline']['services']];results=[];bin=p/'sweep141-ssh-recorder';assert not bin.exists();bin.mkdir(mode=0o700);stub=bin/'ssh';stub.write_text('#!/usr/bin/env python3\nimport pathlib,os,json,sys\np=pathlib.Path(os.environ["QA_SSH_CAPTURE"]);p.write_text(json.dumps({"argv":sys.argv[1:]}))\n');stub.chmod(0o700)
+def save():d['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(d,indent=2));cp.chmod(0o600)
+def clean(b):return re.sub(r'\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)','',re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',b.decode(errors='replace')))
+try:
+ for role in ['bex','render']:
+  cfgdir=p/f'sweep141-{role}-config';assert not cfgdir.exists();cfgdir.mkdir(mode=0o700);cfg=cfgdir/'cli.yaml';shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600);prefix='BEX' if role=='bex' else 'RENDER';env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_'))};env.update({prefix+'_HOST':'https://api.bex.co/v1/',prefix+'_CLI_CONFIG_DIR':str(cfgdir),prefix+'_CLI_CONFIG_PATH':str(cfg),prefix+'_WORKSPACE':'tea-daif693dqjvc73e7as3g',prefix+'_NO_UPDATE_NOTIFIER':'1',prefix+'_CLI_DISABLE_ANALYTICS':'1','DO_NOT_TRACK':'1','TERM':'xterm-256color','PATH':str(bin)+os.pathsep+os.environ['PATH']})
+  try:
+   for case in ['save','saved-fresh','clear','cleared-fresh']:
+    parsed=json.loads(subprocess.check_output(['yq','-o=json','.',str(cfg)],text=True));before={k:parsed.get(k) for k in ['project_filter','project_name']};assert before['project_filter']==target['id'] if case in ['saved-fresh','clear'] else not before['project_filter']
+    capture=p/f'sweep141-{role}-{case}-child.json';assert not capture.exists();env['QA_SSH_CAPTURE']=str(capture);m,s=pty.openpty();fcntl.ioctl(s,termios.TIOCSWINSZ,struct.pack('HHHH',28,155,0,0));start=time.monotonic();data=b'';offset=0;phase='initial';events=[];timeout=False;proc=None;result_seen=False
+    def setup():os.setsid();fcntl.ioctl(s,termios.TIOCSCTTY,0)
+    def send(key,nextphase):
+     global phase
+     os.write(m,key);phase=nextphase;events.append({'action':nextphase,'key_hex':key.hex(),'seconds':round(time.monotonic()-start,3)})
+    try:
+     proc=subprocess.Popen([str(p/('release/bex' if role=='bex' else 'render-pin')),'ssh','--confirm','-o','interactive'],env=env,stdin=s,stdout=s,stderr=s,preexec_fn=setup);os.close(s);s=None
+     while time.monotonic()-start<20:
+      ready,_,_=select.select([m],[],[],.1)
+      if ready:
+       try:z=os.read(m,65536)
+       except OSError as e:
+        if e.errno==errno.EIO:break
+        raise
+       if not z:break
+       data+=z
+       if b'\x1b[6n' in z:os.write(m,b'\x1b[1;1R')
+       if b'\x1b]11;?' in z:os.write(m,b'\x1b]11;rgb:0000/0000/0000\x07')
+      text=clean(data[offset:]);scoped='No Results' in text and 'Filter by Project' in text and not any(v in text for v in base);unfiltered=any(v in text for v in base) and 'Filter by Project' in text
+      if phase=='initial':
+       if case in ['saved-fresh','cleared-fresh'] and (scoped if case=='saved-fresh' else unfiltered):result_seen=True;send(b'\x03','dismissed')
+       elif (case=='save' and unfiltered) or (case=='clear' and scoped):send(b'f','project-picker')
+      elif phase=='project-picker' and target['id'] in text and target['name'] in text:
+       time.sleep(.3);offset=len(data);send(b's' if case=='save' else b'x','callback-result')
+      elif phase=='callback-result' and 'invalid query parameter "name"' in text:result_seen=True;send(b'\x03','dismissed')
+      if proc.poll() is not None:break
+     if proc.poll() is None:
+      if time.monotonic()-start>=20:timeout=True;proc.kill();proc.wait(timeout=2)
+      else:
+       try:proc.wait(timeout=2)
+       except subprocess.TimeoutExpired:timeout=True;proc.kill();proc.wait(timeout=2)
+    finally:
+     if s is not None:os.close(s)
+     if proc is not None and proc.poll() is None:proc.kill();proc.wait(timeout=2)
+     os.close(m)
+    parsed=json.loads(subprocess.check_output(['yq','-o=json','.',str(cfg)],text=True));after={k:parsed.get(k) for k in ['project_filter','project_name']};assert after['project_filter']==target['id'] if case in ['save','saved-fresh'] else not after['project_filter'];record={'client':role,'case':case,'command':[role,'ssh','--confirm','-o','interactive'],'project':target,'config_before':before,'config_after':after,'exit':proc.returncode,'timeout':timeout,'elapsed':round(time.monotonic()-start,3),'events':events,'result_seen':result_seen,'ssh_child_started':capture.exists(),'post_action_output':clean(data[offset:]),'full_terminal_output':clean(data),'qualification':'Actual native production metadata-only SSH chooser/default-filter behavior. Per-role isolated copied config only; no service row selected or SSH child/connection. Native HTTP not intercepted.'};results.append(record);g.setdefault('native_cases',[]).append(record);save();(p/'sweep141-native.json').write_text(json.dumps(results,indent=2));print(role,case,'exit',record['exit'],'timeout',timeout,'seen',result_seen,'config_saved',after['project_filter']==target['id'],'child',record['ssh_child_started'],flush=True);assert result_seen and not timeout and record['exit']==0 and not record['ssh_child_started']
+  finally:shutil.rmtree(cfgdir)
+finally:shutil.rmtree(bin)

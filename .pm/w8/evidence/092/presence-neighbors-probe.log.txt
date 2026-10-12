@@ -1,0 +1,14 @@
+=== RUN   TestQA152EnvFormsProbe
+    qa152_envforms_probe_test.go:11: QA152JSON {"compiler_errors":0,"container":"service","generate_keys":null,"parse_failed":false,"seed_literal_present":false,"seed_literal_value":"","spec_env":[{"name":"VALUE"}],"value_declared_in_ir":true,"variant":"literal-empty"}
+    qa152_envforms_probe_test.go:11: QA152JSON {"compiler_errors":0,"container":"service","generate_keys":["VALUE"],"parse_failed":false,"seed_literal_present":false,"seed_literal_value":"","spec_env":null,"value_declared_in_ir":false,"variant":"generated-only"}
+    qa152_envforms_probe_test.go:11: QA152JSON {"compiler_errors":0,"container":"service","generate_keys":["VALUE"],"parse_failed":false,"seed_literal_present":false,"seed_literal_value":"","spec_env":null,"value_declared_in_ir":true,"variant":"generated-plus-empty"}
+    qa152_envforms_probe_test.go:11: QA152JSON {"compiler_errors":0,"container":"service","parse_error":"bad request: qa152-10e6aa-web env \"VALUE\": sets both value and generateValue — pick one","parse_failed":true,"value_declared_in_ir":true,"variant":"generated-plus-space"}
+    qa152_envforms_probe_test.go:11: QA152JSON {"compiler_errors":0,"container":"service","generate_keys":null,"parse_failed":false,"seed_literal_present":false,"seed_literal_value":"","spec_env":[{"name":"VALUE"}],"value_declared_in_ir":true,"variant":"disabled-generation-empty"}
+    qa152_envforms_probe_test.go:11: QA152JSON {"compiler_errors":0,"container":"environment-group","generate_keys":null,"group_literal_present":true,"group_literal_value":"","parse_failed":false,"value_declared_in_ir":true,"variant":"literal-empty"}
+    qa152_envforms_probe_test.go:11: QA152JSON {"compiler_errors":0,"container":"environment-group","generate_keys":["VALUE"],"group_literal_present":false,"group_literal_value":"","parse_failed":false,"value_declared_in_ir":false,"variant":"generated-only"}
+    qa152_envforms_probe_test.go:11: QA152JSON {"compiler_errors":0,"container":"environment-group","generate_keys":["VALUE"],"group_literal_present":false,"group_literal_value":"","parse_failed":false,"value_declared_in_ir":true,"variant":"generated-plus-empty"}
+    qa152_envforms_probe_test.go:11: QA152JSON {"compiler_errors":0,"container":"environment-group","parse_error":"bad request: env group \"qa152-10e6aa-group\" var \"VALUE\" sets both value and generateValue","parse_failed":true,"value_declared_in_ir":true,"variant":"generated-plus-space"}
+    qa152_envforms_probe_test.go:11: QA152JSON {"compiler_errors":0,"container":"environment-group","generate_keys":null,"group_literal_present":true,"group_literal_value":"","parse_failed":false,"value_declared_in_ir":true,"variant":"disabled-generation-empty"}
+--- PASS: TestQA152EnvFormsProbe (0.01s)
+PASS
+ok  	github.com/bex-co/bex/lego/backend/internal/apps	0.722s

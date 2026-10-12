@@ -1,0 +1,242 @@
+[
+  {
+    "at": "2026-10-11T22:10:13.305743+00:00",
+    "kind": "projects",
+    "actual_id": "prj-db60hghtodic73duutjg",
+    "name": "prj-00000000000000093206",
+    "method": "PATCH",
+    "path": "/v1/projects/prj-db60hghtodic73duutjg",
+    "body": {
+      "name": "prj-00000000000000093206"
+    },
+    "state": "exact owned metadata rename intent persisted",
+    "result": {
+      "method": "PATCH",
+      "path": "/v1/projects/prj-db60hghtodic73duutjg",
+      "body": "{\"name\": \"prj-00000000000000093206\"}",
+      "status": "200",
+      "elapsed": 0.331,
+      "response": "{\"id\":\"prj-db60hghtodic73duutjg\",\"name\":\"prj-00000000000000093206\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL>\",\"type\":\"team\"},\"environmentIds\":[\"evm-db60hghtodic73duutk0\"],\"createdAt\":\"2026-10-11T22:08:02.226977Z\",\"updatedAt\":\"2026-10-11T22:10:13.638301Z\"}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49131925a0e4c71-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "readback": {
+      "method": "GET",
+      "path": "/v1/projects/prj-db60hghtodic73duutjg",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.39,
+      "response": "{\"id\":\"prj-db60hghtodic73duutjg\",\"name\":\"prj-00000000000000093206\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL>\",\"type\":\"team\"},\"environmentIds\":[\"evm-db60hghtodic73duutk0\"],\"createdAt\":\"2026-10-11T22:08:02.226977Z\",\"updatedAt\":\"2026-10-11T22:10:13.638301Z\"}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4913195b9475fe3-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "at": "2026-10-11T22:10:26.041548+00:00",
+    "kind": "environments",
+    "actual_id": "evm-db60hghtodic73duutk0",
+    "name": "evm-00000000000000093206",
+    "method": "PATCH",
+    "path": "/v1/environments/evm-db60hghtodic73duutk0",
+    "body": {
+      "name": "evm-00000000000000093206"
+    },
+    "state": "exact owned metadata rename intent persisted",
+    "result": {
+      "method": "PATCH",
+      "path": "/v1/environments/evm-db60hghtodic73duutk0",
+      "body": "{\"name\": \"evm-00000000000000093206\"}",
+      "status": "200",
+      "elapsed": 0.649,
+      "response": "{\"id\":\"evm-db60hghtodic73duutk0\",\"projectId\":\"prj-db60hghtodic73duutjg\",\"name\":\"evm-00000000000000093206\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49131e45bf98b3c-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "readback": {
+      "method": "GET",
+      "path": "/v1/environments/evm-db60hghtodic73duutk0",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.673,
+      "response": "{\"id\":\"evm-db60hghtodic73duutk0\",\"projectId\":\"prj-db60hghtodic73duutjg\",\"name\":\"evm-00000000000000093206\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49131eaed2c15ce-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "at": "2026-10-11T22:10:41.591234+00:00",
+    "kind": "projects",
+    "actual_id": "prj-db60hghtodic73duutjg",
+    "name": "prj-0000000000000009320",
+    "method": "PATCH",
+    "path": "/v1/projects/prj-db60hghtodic73duutjg",
+    "body": {
+      "name": "prj-0000000000000009320"
+    },
+    "state": "exact owned metadata rename intent persisted",
+    "result": {
+      "method": "PATCH",
+      "path": "/v1/projects/prj-db60hghtodic73duutjg",
+      "body": "{\"name\": \"prj-0000000000000009320\"}",
+      "status": "200",
+      "elapsed": 0.294,
+      "response": "{\"id\":\"prj-db60hghtodic73duutjg\",\"name\":\"prj-0000000000000009320\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL>\",\"type\":\"team\"},\"environmentIds\":[\"evm-db60hghtodic73duutk0\"],\"createdAt\":\"2026-10-11T22:08:02.226977Z\",\"updatedAt\":\"2026-10-11T22:10:41.963759Z\"}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49132438e3acce4-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "readback": {
+      "method": "GET",
+      "path": "/v1/projects/prj-db60hghtodic73duutjg",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.351,
+      "response": "{\"id\":\"prj-db60hghtodic73duutjg\",\"name\":\"prj-0000000000000009320\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL>\",\"type\":\"team\"},\"environmentIds\":[\"evm-db60hghtodic73duutk0\"],\"createdAt\":\"2026-10-11T22:08:02.226977Z\",\"updatedAt\":\"2026-10-11T22:10:41.963759Z\"}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49132469a0ecfbc-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "at": "2026-10-11T22:10:42.789779+00:00",
+    "kind": "environments",
+    "actual_id": "evm-db60hghtodic73duutk0",
+    "name": "evm-0000000000000009320",
+    "method": "PATCH",
+    "path": "/v1/environments/evm-db60hghtodic73duutk0",
+    "body": {
+      "name": "evm-0000000000000009320"
+    },
+    "state": "exact owned metadata rename intent persisted",
+    "result": {
+      "method": "PATCH",
+      "path": "/v1/environments/evm-db60hghtodic73duutk0",
+      "body": "{\"name\": \"evm-0000000000000009320\"}",
+      "status": "200",
+      "elapsed": 1.335,
+      "response": "{\"id\":\"evm-db60hghtodic73duutk0\",\"projectId\":\"prj-db60hghtodic73duutjg\",\"name\":\"evm-0000000000000009320\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a491324af8c9138a-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "readback": {
+      "method": "GET",
+      "path": "/v1/environments/evm-db60hghtodic73duutk0",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.8,
+      "response": "{\"id\":\"evm-db60hghtodic73duutk0\",\"projectId\":\"prj-db60hghtodic73duutjg\",\"name\":\"evm-0000000000000009320\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4913253cd540c60-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "kind": "projects",
+    "actual_id": "prj-db60hghtodic73duutjg",
+    "name": "prj-00000000000000093206",
+    "method": "PATCH",
+    "path": "/v1/projects/prj-db60hghtodic73duutjg",
+    "body": {
+      "name": "prj-00000000000000093206"
+    },
+    "purpose": "current-checkout comparison on same admitted exact names",
+    "state": "exact owned rename intent persisted",
+    "result": {
+      "method": "PATCH",
+      "path": "/v1/projects/prj-db60hghtodic73duutjg",
+      "body": "{\"name\": \"prj-00000000000000093206\"}",
+      "status": "200",
+      "elapsed": 0.4,
+      "response": "{\"id\":\"prj-db60hghtodic73duutjg\",\"name\":\"prj-00000000000000093206\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL>\",\"type\":\"team\"},\"environmentIds\":[\"evm-db60hghtodic73duutk0\"],\"createdAt\":\"2026-10-11T22:08:02.226977Z\",\"updatedAt\":\"2026-10-11T22:12:38.194364Z\"}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4913519b9742994-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "readback": {
+      "method": "GET",
+      "path": "/v1/projects/prj-db60hghtodic73duutjg",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.382,
+      "response": "{\"id\":\"prj-db60hghtodic73duutjg\",\"name\":\"prj-00000000000000093206\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL>\",\"type\":\"team\"},\"environmentIds\":[\"evm-db60hghtodic73duutk0\"],\"createdAt\":\"2026-10-11T22:08:02.226977Z\",\"updatedAt\":\"2026-10-11T22:12:38.194364Z\"}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a491351d0a07ca3e-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "kind": "environments",
+    "actual_id": "evm-db60hghtodic73duutk0",
+    "name": "evm-00000000000000093206",
+    "method": "PATCH",
+    "path": "/v1/environments/evm-db60hghtodic73duutk0",
+    "body": {
+      "name": "evm-00000000000000093206"
+    },
+    "purpose": "current-checkout comparison on same admitted exact names",
+    "state": "exact owned rename intent persisted",
+    "result": {
+      "method": "PATCH",
+      "path": "/v1/environments/evm-db60hghtodic73duutk0",
+      "body": "{\"name\": \"evm-00000000000000093206\"}",
+      "status": "200",
+      "elapsed": 1.526,
+      "response": "{\"id\":\"evm-db60hghtodic73duutk0\",\"projectId\":\"prj-db60hghtodic73duutjg\",\"name\":\"evm-00000000000000093206\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49135216e9f88fa-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "readback": {
+      "method": "GET",
+      "path": "/v1/environments/evm-db60hghtodic73duutk0",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.697,
+      "response": "{\"id\":\"evm-db60hghtodic73duutk0\",\"projectId\":\"prj-db60hghtodic73duutjg\",\"name\":\"evm-00000000000000093206\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a491352b7bb25616-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    }
+  }
+]

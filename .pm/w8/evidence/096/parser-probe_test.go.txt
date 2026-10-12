@@ -1,0 +1,14 @@
+package apps
+import("encoding/json";"os";"testing")
+func TestQAReferenceTypeCurrent173(t *testing.T){
+ type input struct{Label string `json:"label"`;Document map[string]any `json:"document"`}
+ type observation struct{Label string `json:"label"`;CompilerProblems int `json:"compiler_problems"`;ReferenceType string `json:"reference_type"`;TargetType string `json:"target_type"`;ResolvedValue string `json:"resolved_value"`;ParserError string `json:"parser_error"`}
+ raw,err:=os.ReadFile(os.Getenv("QA173_INPUT"));if err!=nil{t.Fatal(err)};var in []input;if err=json.Unmarshal(raw,&in);err!=nil{t.Fatal(err)};out:=[]observation{}
+ for _,x:=range in{manifest,err:=json.Marshal(x.Document);if err!=nil{t.Fatal(err)};source,ir,problems:=CompileBlueprintIR(string(manifest));if len(problems)!=0{t.Fatalf("%s compiler: %+v",x.Label,problems)}
+  decoded,err:=decodeCompiledBlueprintManifest(source);if err!=nil{t.Fatal(err)};refType:=decoded.Services[1].EnvVars[0].FromService.Type
+  st,err:=parseCompiledStack(blueprintParseOverrides{},source,ir);if err!=nil{t.Fatalf("%s parser: %v",x.Label,err)};value:="";for _,v:=range st.services[1].req.Env{if v.Name=="QA_TARGET"{value=v.Value}}
+  want:="source-173";if x.Label[:4]=="port"{want="3000"};if value!=want{t.Fatalf("%s resolved=%q want=%q",x.Label,value,want)}
+  out=append(out,observation{x.Label,len(problems),refType,st.services[0].req.Type,value,""})
+ }
+ encoded,err:=json.MarshalIndent(out,"","  ");if err!=nil{t.Fatal(err)};if err=os.WriteFile(os.Getenv("QA173_RESULT"),append(encoded,'\n'),0600);err!=nil{t.Fatal(err)}
+}

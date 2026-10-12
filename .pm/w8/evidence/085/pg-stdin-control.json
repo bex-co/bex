@@ -1,0 +1,416 @@
+{
+  "sweep": 136,
+  "fixture_id": "dpg-db5ue9chj6ks739l0on0",
+  "actions": [
+    {
+      "at": "2026-10-11T19:47:24.196258+00:00",
+      "client": "bex",
+      "command": [
+        "bex",
+        "psql",
+        "dpg-db5ue9chj6ks739l0on0",
+        "--confirm",
+        "-o",
+        "interactive",
+        "--",
+        "-X",
+        "--csv",
+        "-q",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--pset",
+        "pager=off",
+        "-c",
+        "CREATE TEMP TABLE qa_copy_input(seq serial, value text);",
+        "-c",
+        "COPY qa_copy_input(value) FROM STDIN WITH (FORMAT csv);",
+        "-c",
+        "SELECT octet_length(value), md5(value) FROM qa_copy_input ORDER BY seq;"
+      ],
+      "state": "native process reaped; actual independent stored-byte/hash result recorded",
+      "input_values": [
+        "qa-input-871442-bex 雪, left=right",
+        "qa-input-871442-bex say \"hello\" and apostrophe's",
+        "qa-input-871442-bex first\nsecond\tthird"
+      ],
+      "input_bytes": 135,
+      "expected": [
+        {
+          "bytes": 35,
+          "md5": "cb8bec786a6dca28f60c55fbd91ca59d"
+        },
+        {
+          "bytes": 48,
+          "md5": "f63d4b035c6ab895836d8f59ae64c0c9"
+        },
+        {
+          "bytes": 38,
+          "md5": "1c47a1a621b2453cc351a0c617fe17c7"
+        }
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db5ue9chj6ks739l0on0",
+          "--confirm",
+          "-o",
+          "interactive",
+          "--",
+          "-X",
+          "--csv",
+          "-q",
+          "-t",
+          "--set",
+          "ON_ERROR_STOP=1",
+          "--pset",
+          "pager=off",
+          "-c",
+          "CREATE TEMP TABLE qa_copy_input(seq serial, value text);",
+          "-c",
+          "COPY qa_copy_input(value) FROM STDIN WITH (FORMAT csv);",
+          "-c",
+          "SELECT octet_length(value), md5(value) FROM qa_copy_input ORDER BY seq;"
+        ],
+        "pid": 3231,
+        "exit": 0,
+        "elapsed": 2.504,
+        "timeout": false,
+        "error_screen_seen": false,
+        "dismissed_error_screen": false,
+        "harness_error": null,
+        "stdin_payload_sent": true,
+        "child_started": true,
+        "stdin_bytes": 135,
+        "quit_after_expected_row": false,
+        "rollback_on_exit": false,
+        "output": "\u001b]11;?\u001b\\\ntea-daif693dqjvc73e7as3g > Login\ntea-daif693dqjvc73e7as3g > psql\ntea-daif693dqjvc73e7as3g > psql\n\"qa-input-871442-bex 雪, left=right\"\n\"qa-input-871442-bex say \"\"hello\"\" and apostrophe's\"\n\"qa-input-871442-bex first\nsecond\tthird\"\n\\.\n^D\b\bpsql: error: connection to server at \"dpg-db5ue9chj6ks739l0on0.db.bex.co\" (2a01:4f8:c01e:3d1f::1), port 5432 failed: SSL error: unexpected eof while reading"
+      },
+      "child_start_observer": {
+        "pid": 3237,
+        "tool": "psql",
+        "stdin_is_tty": true
+      },
+      "stored_rows": [],
+      "pass": false,
+      "qualification": "Initial TLS EOF before SQL/import. Occurred soon after own runner connection setup; not reported as data forwarding failure. Bounded settled retry pending."
+    },
+    {
+      "at": "2026-10-11T19:47:26.842435+00:00",
+      "client": "render",
+      "command": [
+        "render",
+        "psql",
+        "dpg-db5ue9chj6ks739l0on0",
+        "--confirm",
+        "-o",
+        "interactive",
+        "--",
+        "-X",
+        "--csv",
+        "-q",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--pset",
+        "pager=off",
+        "-c",
+        "CREATE TEMP TABLE qa_copy_input(seq serial, value text);",
+        "-c",
+        "COPY qa_copy_input(value) FROM STDIN WITH (FORMAT csv);",
+        "-c",
+        "SELECT octet_length(value), md5(value) FROM qa_copy_input ORDER BY seq;"
+      ],
+      "state": "native process reaped; actual independent stored-byte/hash result recorded",
+      "input_values": [
+        "qa-input-871442-render 雪, left=right",
+        "qa-input-871442-render say \"hello\" and apostrophe's",
+        "qa-input-871442-render first\nsecond\tthird"
+      ],
+      "input_bytes": 144,
+      "expected": [
+        {
+          "bytes": 38,
+          "md5": "8b96dd429f9bd9a10a5e8c4b2d32c320"
+        },
+        {
+          "bytes": 51,
+          "md5": "a1fb794e17efa7e566d5d98fb8043a56"
+        },
+        {
+          "bytes": 41,
+          "md5": "6aacd923096f77465868e4869f284607"
+        }
+      ],
+      "result": {
+        "binary": "unmodified Render a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db5ue9chj6ks739l0on0",
+          "--confirm",
+          "-o",
+          "interactive",
+          "--",
+          "-X",
+          "--csv",
+          "-q",
+          "-t",
+          "--set",
+          "ON_ERROR_STOP=1",
+          "--pset",
+          "pager=off",
+          "-c",
+          "CREATE TEMP TABLE qa_copy_input(seq serial, value text);",
+          "-c",
+          "COPY qa_copy_input(value) FROM STDIN WITH (FORMAT csv);",
+          "-c",
+          "SELECT octet_length(value), md5(value) FROM qa_copy_input ORDER BY seq;"
+        ],
+        "pid": 3257,
+        "exit": 0,
+        "elapsed": 3.031,
+        "timeout": false,
+        "error_screen_seen": false,
+        "dismissed_error_screen": false,
+        "harness_error": null,
+        "stdin_payload_sent": true,
+        "child_started": true,
+        "stdin_bytes": 144,
+        "quit_after_expected_row": false,
+        "rollback_on_exit": false,
+        "output": "\u001b]11;?\u001b\\\ntea-daif693dqjvc73e7as3g > Login\ntea-daif693dqjvc73e7as3g > psql\ntea-daif693dqjvc73e7as3g > psql\n\"qa-input-871442-render 雪, left=right\"\n\"qa-input-871442-render say \"\"hello\"\" and apostrophe's\"\n\"qa-input-871442-render first\nsecond\tthird\"\n\\.\n^D\b\b>> >> >> >> >> 38,8b96dd429f9bd9a10a5e8c4b2d32c320\n51,a1fb794e17efa7e566d5d98fb8043a56\n41,6aacd923096f77465868e4869f284607"
+      },
+      "child_start_observer": {
+        "pid": 3262,
+        "tool": "psql",
+        "stdin_is_tty": true
+      },
+      "stored_rows": [
+        {
+          "bytes": 38,
+          "md5": "8b96dd429f9bd9a10a5e8c4b2d32c320"
+        },
+        {
+          "bytes": 51,
+          "md5": "a1fb794e17efa7e566d5d98fb8043a56"
+        },
+        {
+          "bytes": 41,
+          "md5": "6aacd923096f77465868e4869f284607"
+        }
+      ],
+      "pass": true,
+      "harness_acceptance_correction": "Original regex required line start; first valid row followed >> COPY prompt. No expected hash in SQL or echoed CSV; independently parsed three actual SQL results."
+    },
+    {
+      "at": "2026-10-11T19:49:06.540175+00:00",
+      "client": "bex",
+      "command": [
+        "bex",
+        "psql",
+        "dpg-db5ue9chj6ks739l0on0",
+        "--confirm",
+        "-o",
+        "interactive",
+        "--",
+        "-X",
+        "--csv",
+        "-q",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--pset",
+        "pager=off",
+        "-c",
+        "CREATE TEMP TABLE qa_copy_input(seq serial, value text);",
+        "-c",
+        "COPY qa_copy_input(value) FROM STDIN WITH (FORMAT csv);",
+        "-c",
+        "SELECT octet_length(value), md5(value) FROM qa_copy_input ORDER BY seq;"
+      ],
+      "state": "native process reaped; actual independent stored-byte/hash result recorded",
+      "input_values": [
+        "qa-input-871442-bex 雪, left=right",
+        "qa-input-871442-bex say \"hello\" and apostrophe's",
+        "qa-input-871442-bex first\nsecond\tthird"
+      ],
+      "input_bytes": 135,
+      "expected": [
+        {
+          "bytes": 35,
+          "md5": "cb8bec786a6dca28f60c55fbd91ca59d"
+        },
+        {
+          "bytes": 48,
+          "md5": "f63d4b035c6ab895836d8f59ae64c0c9"
+        },
+        {
+          "bytes": 38,
+          "md5": "1c47a1a621b2453cc351a0c617fe17c7"
+        }
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db5ue9chj6ks739l0on0",
+          "--confirm",
+          "-o",
+          "interactive",
+          "--",
+          "-X",
+          "--csv",
+          "-q",
+          "-t",
+          "--set",
+          "ON_ERROR_STOP=1",
+          "--pset",
+          "pager=off",
+          "-c",
+          "CREATE TEMP TABLE qa_copy_input(seq serial, value text);",
+          "-c",
+          "COPY qa_copy_input(value) FROM STDIN WITH (FORMAT csv);",
+          "-c",
+          "SELECT octet_length(value), md5(value) FROM qa_copy_input ORDER BY seq;"
+        ],
+        "pid": 3635,
+        "exit": 0,
+        "elapsed": 2.073,
+        "timeout": false,
+        "error_screen_seen": true,
+        "dismissed_error_screen": true,
+        "harness_error": null,
+        "stdin_payload_sent": false,
+        "child_started": true,
+        "stdin_bytes": 135,
+        "quit_after_expected_row": false,
+        "rollback_on_exit": false,
+        "output": "\u001b]11;?\u001b\\\ntea-daif693dqjvc73e7as3g > Login\ntea-daif693dqjvc73e7as3g > psql\ntea-daif693dqjvc73e7as3g > psql\npsql: error: connection to server at \"dpg-db5ue9chj6ks739l0on0.db.bex.co\" (2a01:4f8:c01e:3d1f::1), port 5432 failed: SSL error: unexpected eof while reading\ntea-daif693dqjvc73e7as3g > psql\n┌──────────────────────────────────────┐\n│                                      │\n│                                      │\n│ An error occurred while running psql │\n│                                      │\n│                                      │\n│                                      │\n└──────────────────────────────────────┘"
+      },
+      "child_start_observer": {
+        "pid": 3638,
+        "tool": "psql",
+        "stdin_is_tty": true
+      },
+      "stored_rows": [],
+      "pass": false
+    },
+    {
+      "at": "2026-10-11T19:50:43.665627+00:00",
+      "client": "bex",
+      "command": [
+        "bex",
+        "psql",
+        "dpg-db5ue9chj6ks739l0on0",
+        "--confirm",
+        "-o",
+        "interactive",
+        "--",
+        "-X",
+        "--csv",
+        "-q",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--pset",
+        "pager=off",
+        "-c",
+        "CREATE TEMP TABLE qa_copy_input(seq serial, value text);",
+        "-c",
+        "COPY qa_copy_input(value) FROM STDIN WITH (FORMAT csv);",
+        "-c",
+        "SELECT octet_length(value), md5(value) FROM qa_copy_input ORDER BY seq;"
+      ],
+      "state": "native process reaped; actual independent stored-byte/hash result recorded",
+      "input_values": [
+        "qa-input-871442-bex 雪, left=right",
+        "qa-input-871442-bex say \"hello\" and apostrophe's",
+        "qa-input-871442-bex first\nsecond\tthird"
+      ],
+      "input_bytes": 135,
+      "expected": [
+        {
+          "bytes": 35,
+          "md5": "cb8bec786a6dca28f60c55fbd91ca59d"
+        },
+        {
+          "bytes": 48,
+          "md5": "f63d4b035c6ab895836d8f59ae64c0c9"
+        },
+        {
+          "bytes": 38,
+          "md5": "1c47a1a621b2453cc351a0c617fe17c7"
+        }
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db5ue9chj6ks739l0on0",
+          "--confirm",
+          "-o",
+          "interactive",
+          "--",
+          "-X",
+          "--csv",
+          "-q",
+          "-t",
+          "--set",
+          "ON_ERROR_STOP=1",
+          "--pset",
+          "pager=off",
+          "-c",
+          "CREATE TEMP TABLE qa_copy_input(seq serial, value text);",
+          "-c",
+          "COPY qa_copy_input(value) FROM STDIN WITH (FORMAT csv);",
+          "-c",
+          "SELECT octet_length(value), md5(value) FROM qa_copy_input ORDER BY seq;"
+        ],
+        "pid": 3835,
+        "exit": 0,
+        "elapsed": 3.221,
+        "timeout": false,
+        "error_screen_seen": false,
+        "dismissed_error_screen": false,
+        "harness_error": null,
+        "stdin_payload_sent": true,
+        "child_started": true,
+        "stdin_bytes": 135,
+        "quit_after_expected_row": false,
+        "rollback_on_exit": false,
+        "output": "\u001b]11;?\u001b\\\ntea-daif693dqjvc73e7as3g > Login\ntea-daif693dqjvc73e7as3g > psql\ntea-daif693dqjvc73e7as3g > psql\n>> \"qa-input-871442-bex 雪, left=right\"\n\"qa-input-871442-bex say \"\"hello\"\" and apostrophe's\"\n\"qa-input-871442-bex first\nsecond\tthird\"\n\\.\n>> >> >> >> ^D\b\b35,cb8bec786a6dca28f60c55fbd91ca59d\n48,f63d4b035c6ab895836d8f59ae64c0c9\n38,1c47a1a621b2453cc351a0c617fe17c7"
+      },
+      "child_start_observer": {
+        "pid": 3839,
+        "tool": "psql",
+        "stdin_is_tty": true
+      },
+      "stored_rows": [
+        {
+          "bytes": 35,
+          "md5": "cb8bec786a6dca28f60c55fbd91ca59d"
+        },
+        {
+          "bytes": 48,
+          "md5": "f63d4b035c6ab895836d8f59ae64c0c9"
+        },
+        {
+          "bytes": 38,
+          "md5": "1c47a1a621b2453cc351a0c617fe17c7"
+        }
+      ],
+      "pass": true
+    }
+  ],
+  "routing_control": {
+    "qualification": "Default Bex psql IPv6 EOF matches existing w9/blocked/m164; own API hostname resolved A and used PGHOSTADDR per-process. URI hostname, certificate checking, credentials, SQL and CSV unchanged. Default-path success not claimed.",
+    "api_host": "dpg-db5ue9chj6ks739l0on0.db.bex.co",
+    "family": "IPv4"
+  },
+  "qualification": "Render default connection preserved all3 values; first row recognition corrected for >> prompt. Bex default connection twice failed before import, matches existing dual-stack finding; IPv4 control preserved all3. Later driver waits actual COPY prompt. Initial/updated helper distinctions retained in checkpoint and actions; no default Bex data-path success claimed."
+}

@@ -1,0 +1,38 @@
+{
+  "parseCompiledStack": [
+    "blueprint.go:661 validation",
+    "blueprint.go:1607 plan",
+    "deploy.go:1687 preparation/apply",
+    "blueprint_generate.go:240 generator self-check"
+  ],
+  "validateKeyedEnv": [
+    "deploy.go env parsing: shared service, seed and group input validation"
+  ],
+  "classifyRefs": [
+    "deploy.go:1935"
+  ],
+  "resolveKeyValueRef": [
+    "deploy.go:1017 resolveServiceRefs"
+  ],
+  "resolveServiceRefs": [
+    "deploy.go:932 applyStackServices"
+  ],
+  "transport_validation": [
+    "rest.go:1346",
+    "graphql.go:1259",
+    "mcp.go:1024"
+  ],
+  "consumer": "operator appEnv:4740 copies SecretKeyRef.Key unchanged into corev1.EnvVar. Kubernetes v1.35.0 validateSecretKeySelector rejects an empty key.",
+  "aliases": [
+    "keyvalue",
+    "redis"
+  ],
+  "unverified": [
+    "live Blueprint apply/sync",
+    "Pod admission",
+    "password property live control",
+    "nested declarations",
+    "outside-file Key Value references",
+    "GraphQL/MCP/dashboard live responses"
+  ]
+}

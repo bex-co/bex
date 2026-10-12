@@ -1,0 +1,36 @@
+import json,pathlib,subprocess,datetime,secrets,sys,shutil
+p=pathlib.Path(__file__).parent
+cp=pathlib.Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json')
+c=json.loads(cp.read_text());ws='tea-daif693dqjvc73e7as3g';mode=sys.argv[1]
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+def wire(method,path,body=None):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),method,path,*([json.dumps(body)] if body is not None else [])],text=True))
+def cli(args,role='bex'):
+ return json.loads(subprocess.check_output(['python3',str(p/('run.py' if role=='bex' else 'run-render.py')),*(['--release'] if role=='bex' else []),*args],text=True))
+def pgdata(r):
+ v=json.loads(r['stdout']);v=v.get('data',v);return v.get('postgres',v)
+if mode=='project':
+ assert 'sweep142_pgscope' not in c
+ inv=wire('GET','/v1/projects?ownerId='+ws+'&limit=100');assert inv['status']=='200' and json.loads(inv['response'])==[]
+ nonce=secrets.token_hex(3);name='qa-20261011-'+nonce+'-pgscope';g={'nonce':nonce,'name':name,'source_head':c['head'],'baseline_project_inventory':inv};c['sweep142_pgscope']=g
+ body={'name':name,'ownerId':ws,'environments':[{'name':name+'-A'},{'name':name+'-B'}]}
+ x={'sweep':142,'type':'project','workspace':ws,'name':name,'nonce':nonce,'time':now(),'state':'API metadata create intent persisted','command':{'method':'POST','path':'/v1/projects','body':body},'baseline_project_ids':[],'dependency_ids':[]};c['resources'].append(x);save()
+ r=wire('POST','/v1/projects',body);x['create_result']=r;save();assert r['status']=='201';v=json.loads(r['response']);assert v['name']==name and len(v['environmentIds'])==2;x.update(id=v['id'],create_response=v,state='created: own PG update scope project');g['project']={'id':v['id'],'name':name};g['environments']=[];save()
+ for eid in v['environmentIds']:
+  e=wire('GET','/v1/environments/'+eid);assert e['status']=='200';ev=json.loads(e['response']);assert ev['projectId']==v['id'];child={'sweep':142,'type':'environment','workspace':ws,'nonce':nonce,'id':eid,'name':ev['name'],'parent_id':v['id'],'time':now(),'state':'created: atomic owned project environment','create_proof':{'status':'201','parent_id':v['id'],'returned_environment_ids':v['environmentIds']},'readback_proof':e,'dependency_ids':[]};c['resources'].append(child);x['dependency_ids'].append(eid);g['environments'].append({'id':eid,'name':ev['name']});save()
+ print('Own project',g['project']['id'],'with two owned empty environments',flush=True)
+elif mode=='create':
+ g=c['sweep142_pgscope'];assert not g.get('postgres');q=wire('GET','/v1/owners/'+ws+'/limits');assert q['status']=='200';quota=json.loads(q['response']);assert quota['postgres']['used']+quota['postgres']['terminating']<quota['postgres']['limit'];e=next(e for e in g['environments'] if e['name'].endswith('-A'));db='qa_scope_'+g['nonce'];user='qa_user_'+g['nonce'];name=g['name']+'-db'
+ args=['postgres','create','--name',name,'--plan','free','--region','frankfurt','--version','18','--connection-pool','none','--workspace',ws,'--database-name',db,'--database-user',user,'--project',g['project']['name'],'--environment',e['name'],'--confirm','-o','json'];x={'sweep':142,'workspace':ws,'type':'postgres','name':name,'nonce':g['nonce'],'time':now(),'state':'native Free PG scoped create intent persisted','command':['bex',*args],'capacity_proof':q,'expected_database':db,'expected_user':user,'project_id':g['project']['id'],'environment_id':e['id'],'dependency_ids':[]};c['resources'].append(x);save();r=cli(args);x['create_result']=r;save();assert r['exit']==0;v=pgdata(r);assert v['plan']=='free' and v['databaseName']==db and v['databaseUser']==user;x.update(id=v['id'],create_response=v,state='created: native own Free PG scope fixture');g['postgres']={'id':v['id'],'name':name};save();print('Own PG',v['id'],'native create exit0',r['elapsed'],flush=True)
+elif mode=='observe':
+ g=c['sweep142_pgscope'];sid=g['postgres']['id'];x=next(x for x in c['resources'] if x.get('id')==sid);assert x['sweep']==142 and x['create_result']['exit']==0;r=wire('GET','/v1/postgres/'+sid);x.setdefault('observations',[]).append(r);save();assert r['status']=='200';v=json.loads(r['response']);x['last_readback']=v;save();print('Own PG status',v['status'],'placement',v.get('projectId'),v.get('environmentId'),'identity preserved',v['databaseName']==x['expected_database'] and v['databaseUser']==x['expected_user'],flush=True)
+elif mode=='updates':
+ g=c['sweep142_pgscope'];sid=g['postgres']['id'];x=next(x for x in c['resources'] if x.get('id')==sid);assert x['sweep']==142 and x['last_readback']['status']=='available';assert not g.get('update_cases');assert not (p/'render-config/cli.yaml').exists();(p/'render-config').mkdir(mode=0o700,exist_ok=True);shutil.copy2(p/'config/cli.yaml',p/'render-config/cli.yaml');eA=next(e for e in g['environments'] if e['name'].endswith('-A'));eB=next(e for e in g['environments'] if e['name'].endswith('-B'));original=x['last_readback'];g['update_cases']=[];save()
+ try:
+  for role in ['bex','render']:
+   for selector in ['ids','names','empty-environment','no-op']:
+    current=g['postgres']['name'];new='qa-142-'+g['nonce']+'-'+role+'-'+('empty' if selector=='empty-environment' else selector)
+    if selector=='no-op':new=current
+    pr=g['project']['id'] if selector=='ids' else g['project']['name'];ev=eA['id'] if selector=='ids' else eB['name'] if selector=='empty-environment' else eA['name'];args=['postgres','update',current,'--project',pr,'--environment',ev,'--name',new,'--confirm','-o','text' if selector=='no-op' else 'json'];a={'client':role,'selector':selector,'command':[role,*args],'at':now(),'state':'native update intent persisted'};g['update_cases'].append(a);save();r=cli(args,role);a['result']=r;save();rd=wire('GET','/v1/postgres/'+sid);a['readback']=rd;save();assert rd['status']=='200';v=json.loads(rd['response']);expected=current if selector=='empty-environment' else new;identity=all(v.get(k)==original.get(k) for k in ['id','databaseName','databaseUser','createdAt','projectId','environmentId','version','plan','diskSizeGB']);a['identity_and_membership_preserved']=identity;a['name_matches_expected']=v['name']==expected;a['pass']=identity and v['name']==expected and (r['exit']==1 if selector=='empty-environment' else r['exit']==0) and ('No changes applied' in r['stdout'] if selector=='no-op' else True);save();print(role,selector,'exit',r['exit'],'preserves identity/name',a['pass'],r['elapsed'],flush=True);assert a['pass'];g['postgres']['name']=expected;x['last_readback']=v;save()
+ finally:(p/'render-config/cli.yaml').unlink(missing_ok=True)
+else:raise ValueError(mode)
