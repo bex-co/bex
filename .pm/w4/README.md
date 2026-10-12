@@ -299,14 +299,14 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **239** — [Generate Blueprint lets YAML widen the dialog and push actions off-screen](239.md) (55m) ← functional QA 2026-10-10 a56; fresh desktop/mobile reproduction, local bounded-column prototype, exact download and cleanup verified.
 
-- [ ] **238** — [Top queries loses timing columns on a narrow database page](238.md) (55m) ← live qa-find-bugs 2026-10-10 pass a54; the 320px query cell pushes Mean time outside a 390px viewport and collapses numeric columns.
-- [ ] **237** — [Trigger Run omits its replacement warning while cron history catches up](237.md) (45m) ← live qa-find-bugs 2026-10-10 pass a53; the accepted replacement is absent from the first history read, hiding its consequence in the next confirmation.
-- [ ] **236** — [Metrics puts runtime service changes under Configuration](236.md) (55m) ← live qa-find-bugs 2026-10-10 pass a52; Lifecycle omits actual suspended/resumed facts that Configuration includes, on fresh desktop and mobile loads.
-- [ ] **235** — [Static rule fields collapse to a few characters on mobile](235.md) (55m) ← live qa-find-bugs 2026-10-10 pass a50; header fields shrink to 38px and redirect fields to 54px despite correct saved values.
+- [x] **238** — [Top queries loses timing columns on a narrow database page](done/238.md) (55m) — **DONE 2026-10-12** (`97ce481c8`, live-verified: 576px pannable table at 390px, desktop unchanged) ← live qa-find-bugs 2026-10-10 pass a54; the 320px query cell pushes Mean time outside a 390px viewport and collapses numeric columns.
+- [x] **237** — [Trigger Run omits its replacement warning while cron history catches up](done/237.md) (45m) — **DONE 2026-10-12** (`bb9f8fff8`, live-verified: both dialog branches explain replacement) ← live qa-find-bugs 2026-10-10 pass a53; the accepted replacement is absent from the first history read, hiding its consequence in the next confirmation.
+- [x] **236** — [Metrics puts runtime service changes under Configuration](done/236.md) (55m) — **DONE 2026-10-12** (`de9c9b092`, live-verified at desktop and 390px incl. service_hibernated) ← live qa-find-bugs 2026-10-10 pass a52; Lifecycle omits actual suspended/resumed facts that Configuration includes, on fresh desktop and mobile loads.
+- [x] **235** — [Static rule fields collapse to a few characters on mobile](done/235.md) (55m) — **DONE 2026-10-12** (`a84eb3ae5`, live-verified: 200/216px fields at 390px, desktop unchanged) ← live qa-find-bugs 2026-10-10 pass a50; header fields shrink to 38px and redirect fields to 54px despite correct saved values.
 
 - [x] **234** — [Renaming a file and replacing its old filename cannot be saved in one draft](done/234.md) (55m) ← live qa-find-bugs 2026-10-10 pass a49. — **DONE 2026-10-11** (`079cd3e14`): one plain write may now refill a name a rename vacated, and the dashboard draft sends removals, renames, then writes; the live four-file Save only lands the exact named map.
 
-- [ ] **233** — [File contents dialog grows and moves its controls when loading finishes](233.md) (45m) ← live qa-find-bugs 2026-10-10 pass a47; the shared spinner reserves 192px before a 256px editor, moving the controls on desktop and mobile.
+- [x] **233** — [File contents dialog grows and moves its controls when loading finishes](done/233.md) (45m) — **DONE 2026-10-12** (`142af845a`, live-verified: dialog 418→418 desktop, 482→482 at 390px) ← live qa-find-bugs 2026-10-10 pass a47; the shared spinner reserves 192px before a 256px editor, moving the controls on desktop and mobile.
 
 - [x] **232** — [Deploy history silently loses an older row after a new deployment arrives](done/232.md) (55m) — **DONE 2026-10-12** (`b3d4db7c1`, live-verified 22/22 and 23/23 deploys after arrivals) ← live qa-find-bugs 2026-10-10 pass a44; a refreshed head leaves a gap before a retained tail, hides Load more, and reload restores the missing deployment.
 
