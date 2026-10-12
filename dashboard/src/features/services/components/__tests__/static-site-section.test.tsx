@@ -256,3 +256,41 @@ it("blocks malformed URL destinations without saving and preserves a corrected e
     { type: "rewrite", source: "/old", destination: corrected },
   ]);
 });
+
+// On a 390px screen the full-width rule tables split what was left after the
+// fixed Path/Type and action columns, crushing Name/Value and Source/
+// Destination to ~40-55px. Each table keeps a 40rem floor and scrolls inside
+// its own container instead (the shared Table primitive stays unbounded).
+describe("edge-rule tables keep readable fields on narrow screens", () => {
+  it.each([
+    [
+      "RoutesEditor",
+      <RoutesEditor
+        key="routes"
+        routes={[{ type: "redirect", source: "/old", destination: "/new" }]}
+        onSave={vi.fn(async () => ({ ok: true }))}
+        busy={false}
+      />,
+      "Source",
+    ],
+    [
+      "HeadersEditor",
+      <HeadersEditor
+        key="headers"
+        headers={[{ path: "/*", name: "X-QA", value: "on" }]}
+        onSave={vi.fn(async () => ({ ok: true }))}
+        busy={false}
+      />,
+      "Name",
+    ],
+  ])("%s sets a minimum width inside a scrolling container", (_, ui, field) => {
+    render(ui);
+    const table = screen.getByRole("textbox", { name: field }).closest("table");
+    expect(table).toHaveClass("min-w-[40rem]", "w-full");
+    expect(table!.parentElement).toHaveAttribute(
+      "data-slot",
+      "table-container",
+    );
+    expect(table!.parentElement).toHaveClass("overflow-x-auto");
+  });
+});
