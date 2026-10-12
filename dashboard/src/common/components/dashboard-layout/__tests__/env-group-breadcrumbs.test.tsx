@@ -106,6 +106,23 @@ describe("environment-group breadcrumbs (w4/212)", () => {
     expect(nav).not.toHaveTextContent("evg-2");
   });
 
+  // Below sm the text label is display:none (Tailwind `hidden sm:inline`),
+  // which removes it from the accessible name; jsdom loads no stylesheet, so
+  // apply that mobile style by hand (w4/254).
+  it("keeps the Environment Groups link named when its mobile label is hidden", async () => {
+    state.group = { id: "evg-2", name: "workspace-clone", environmentId: null };
+    renderAt("/env-groups/evg-2");
+
+    await screen.findByRole("navigation", { name: "Breadcrumbs" });
+    const link = screen.getByRole("link", { name: "Environment Groups" });
+    for (const span of link.querySelectorAll("span"))
+      span.style.display = "none";
+
+    expect(
+      screen.getByRole("link", { name: "Environment Groups" }),
+    ).toHaveAttribute("href", "/env-groups");
+  });
+
   it("never guesses a project or shows the id while placement or name is unresolved", async () => {
     state.indexReady = false;
     state.group = {
