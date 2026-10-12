@@ -148,3 +148,33 @@ describe("InsightsPanel masked rows", () => {
     expect(screen.queryByText("Hidden")).not.toBeInTheDocument();
   });
 });
+
+// At 390px the bare Top queries table kept its 320px query cell while Calls/
+// Total/Mean collapsed to character-wide strips, and Mean ran past the card
+// edge with no way to reach it. The table now pans inside its own region and
+// keeps every timing on one line; layout itself is verified in a browser.
+describe("InsightsPanel Top queries on a narrow screen", () => {
+  it("pans locally and keeps timing headings and values on one line", () => {
+    state.topQueries = [
+      topQuery({ query: "SELECT pg_sleep(1.2)", totalTimeMs: 1197.785851 }),
+    ];
+
+    render(<InsightsPanel id="dpg-1" />);
+
+    const table = screen.getByText("SELECT pg_sleep(1.2)").closest("table")!;
+    expect(table.parentElement).toHaveAttribute(
+      "data-slot",
+      "top-queries-scroll",
+    );
+    expect(table.parentElement).toHaveClass("overflow-x-auto");
+    expect(table).toHaveClass("min-w-[36rem]");
+
+    const headings = [...table.querySelectorAll("th")].slice(1);
+    const values = [...table.querySelectorAll("tbody td")].slice(1);
+    expect(headings).toHaveLength(3);
+    for (const cell of [...headings, ...values]) {
+      expect(cell).toHaveClass("whitespace-nowrap");
+    }
+    expect(values[1]).toHaveTextContent("1197.8ms");
+  });
+});
