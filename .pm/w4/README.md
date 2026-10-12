@@ -297,7 +297,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [x] **240** — [Switching source tabs discards the Public Git Branch draft](done/240.md) (55m) — **DONE 2026-10-11** (`77e941359`, live-verified at 390×844/1440×1000) ← functional QA 2026-10-10 a64; unchanged URL and settings survive, Branch clears on a fresh source-tab round trip, owned fixture/session cleanup verified.
 
-- [ ] **239** — [Generate Blueprint lets YAML widen the dialog and push actions off-screen](239.md) (55m) ← functional QA 2026-10-10 a56; fresh desktop/mobile reproduction, local bounded-column prototype, exact download and cleanup verified.
+- [x] **239** — [Generate Blueprint lets YAML widen the dialog and push actions off-screen](done/239.md) (55m) — **DONE 2026-10-12** (bounded dialog column; Chromium: client=scroll 574 desktop / 356 at 390px, preview alone pans; live replay pending deploy) ← functional QA 2026-10-10 a56; fresh desktop/mobile reproduction, local bounded-column prototype, exact download and cleanup verified.
 
 - [x] **238** — [Top queries loses timing columns on a narrow database page](done/238.md) (55m) — **DONE 2026-10-12** (`97ce481c8`, live-verified: 576px pannable table at 390px, desktop unchanged) ← live qa-find-bugs 2026-10-10 pass a54; the 320px query cell pushes Mean time outside a 390px viewport and collapses numeric columns.
 - [x] **237** — [Trigger Run omits its replacement warning while cron history catches up](done/237.md) (45m) — **DONE 2026-10-12** (`bb9f8fff8`, live-verified: both dialog branches explain replacement) ← live qa-find-bugs 2026-10-10 pass a53; the accepted replacement is absent from the first history read, hiding its consequence in the next confirmation.

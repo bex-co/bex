@@ -157,7 +157,7 @@ export function GenerateBlueprintDialog({
         }
       }}
     >
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
+      <DialogContent className="max-h-[85vh] grid-cols-[minmax(0,1fr)] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{t("blueprints.generateTitle")}</DialogTitle>
           <DialogDescription>
