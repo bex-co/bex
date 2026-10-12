@@ -10,6 +10,22 @@ import {
 import { reportRouteError } from "@/common/lib/report-route-error";
 
 /**
+ * A route chunk from an older deploy is gone, so retrying in this document
+ * re-imports the same dead URL; only a fresh document recovers (w4/269).
+ * Matches only the Chrome/Firefox/Safari module-load messages, so a data
+ * request's "Failed to fetch" keeps the in-place retry.
+ */
+function isStaleChunkError(error: unknown): boolean {
+  const message = (error as { message?: unknown } | null)?.message;
+  return (
+    typeof message === "string" &&
+    (message.startsWith("Failed to fetch dynamically imported module") ||
+      message.startsWith("error loading dynamically imported module") ||
+      message.startsWith("Importing a module script failed"))
+  );
+}
+
+/**
  * Global error page component
  * Displays a user-friendly error page when route validation or other errors occur
  */
@@ -74,7 +90,11 @@ export default function ErrorPage({ error, reset }: ErrorComponentProps) {
             <Button
               variant="outline"
               size="lg"
-              onClick={() => void router.invalidate().then(reset)}
+              onClick={() =>
+                isStaleChunkError(error)
+                  ? window.location.reload()
+                  : void router.invalidate().then(reset)
+              }
               className="min-w-[140px]"
             >
               {t("common.tryAgain")}
