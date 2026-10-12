@@ -249,6 +249,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **275** — [Unchanged image sources enable Update source and report a successful change](275.md) (35m) ← functional QA a285; fresh desktop/mobile image editors are falsely dirty on the API's empty repo; unchanged Save reports success, while real tag Save/manual deploy and Cancel pass; own Free fixture deleted and session revoked.
+
 - [ ] **274** — [Untouched Build Filters keeps old paths after refresh and can undo a newer save](274.md) (55m) ← functional QA a284; two-tab included/ignored edits leave a pristine editor stale, explicit Save restores the old filters; mobile repeat and dirty-draft/Cancel controls captured; own static fixture deleted and session revoked.
 
 - [ ] **273** — [Multiline .env import drops whitespace inside the opening quoted line](273.md) (50m) ← functional QA a281; create paste, existing-group file import and mobile paste lose quoted opening-line spaces/tabs before saving; escaped and ordinary multiline controls pass; shared parser traced, own group deleted, seven inventories restored and session revoked.
