@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
@@ -66,6 +66,9 @@ const RUN_STATUS: Record<
   },
 };
 
+// The same active set useCronRuns' hasActiveRun uses.
+const ACTIVE_STATUSES = new Set(["pending", "running"]);
+
 function CronRunStatusBadge({ status }: { status: string }) {
   const { t } = useTranslations();
   const value = RUN_STATUS[status.toLowerCase()] ?? RUN_STATUS.pending;
@@ -107,7 +110,31 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
   // used to ignore and then show the raw refusal.
   const { currentWorkspaceId } = useWorkspace();
   const serverActions = useServerActions(serviceId);
-  const actionBlocked = (action: ResourceActionId) =>
+  // The action snapshot is a separate no-cache read that history polling never
+  // replaces, so a run arriving after it kept a settled "no active run" Cancel
+  // (w4/249). Re-read it whenever the set of active runs changes, and treat
+  // Cancel as checking until that re-read settles.
+  const activeRunKey = runs
+    .filter((run) => ACTIVE_STATUSES.has(run.status.toLowerCase()))
+    .map((run) => run.id)
+    .join(" ");
+  const [checkedRunKey, setCheckedRunKey] = useState(activeRunKey);
+  const refreshActions = useRef(serverActions.refresh);
+  refreshActions.current = serverActions.refresh;
+  useEffect(() => {
+    if (activeRunKey === checkedRunKey) return;
+    let live = true;
+    void refreshActions.current().finally(() => {
+      if (live) setCheckedRunKey(activeRunKey);
+    });
+    return () => {
+      live = false;
+    };
+  }, [activeRunKey, checkedRunKey]);
+  const actionBlocked = (
+    action: ResourceActionId,
+    status = serverActions.status,
+  ) =>
     gateReason(
       gateAction(
         serverActions.status === "ready"
@@ -118,12 +145,15 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
               action,
             )
           : null,
-        serverActions.status === "ready" ? "ready" : serverActions.status,
+        status,
       ),
       t,
     );
   const triggerBlocked = actionBlocked("cron_run_now");
-  const cancelBlocked = actionBlocked("cron_cancel_run");
+  const cancelBlocked = actionBlocked(
+    "cron_cancel_run",
+    activeRunKey === checkedRunKey ? serverActions.status : "checking",
+  );
   const [confirmRun, setConfirmRun] = useState<CronRunView | null>(null);
   const [confirmTrigger, setConfirmTrigger] = useState(false);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
@@ -238,8 +268,7 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
                             <CronRunStatusBadge status={run.status} />
                           </TableCell>
                           <TableCell className="text-right">
-                            {run.status.toLowerCase() === "pending" ||
-                            run.status.toLowerCase() === "running" ? (
+                            {ACTIVE_STATUSES.has(run.status.toLowerCase()) ? (
                               <PermissionTooltip reason={cancelBlocked}>
                                 <Button
                                   size="sm"

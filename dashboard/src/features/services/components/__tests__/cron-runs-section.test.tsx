@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CronRunsSection } from "@/features/services/components/cron-runs-section";
 import type { CronRunView } from "@/features/services/types";
@@ -35,13 +35,15 @@ vi.mock("@/features/services/hooks/use-cron-runs", () => ({
 
 // The service's action projection (w4/203). Default: both verbs allowed.
 let preconditions: Record<string, string> = {};
+let actionsStatus: "ready" | "checking" | "unavailable" = "ready";
+const refreshActions = vi.fn(async () => {});
 vi.mock("@/features/workspaces/context/hooks", () => ({
   useWorkspace: () => ({ currentWorkspaceId: "tea-1" }),
 }));
 vi.mock("@/features/capabilities/hooks/use-resource-actions", () => ({
   useServerActions: (serviceId: string) => ({
-    status: "ready",
-    refresh: vi.fn(),
+    status: actionsStatus,
+    refresh: refreshActions,
     snapshot: toResourceSnapshot(
       "tea-1",
       serviceId,
@@ -69,6 +71,9 @@ vi.mock("@/features/services/hooks/use-cron-run", () => ({
 
 beforeEach(() => {
   preconditions = {};
+  actionsStatus = "ready";
+  refreshActions.mockReset();
+  refreshActions.mockResolvedValue(undefined);
   runs = [];
   hasMore = false;
   hasActiveRun = false;
@@ -333,5 +338,92 @@ describe("CronRunsSection", () => {
     expect(
       screen.getByText("Couldn't load this run's detail."),
     ).toBeInTheDocument();
+  });
+});
+
+// w4/249: the action snapshot is read once; a run that arrives later (after a
+// trigger, or on a later history poll) must re-read it rather than keep the
+// pre-run "no active run" Cancel decision.
+describe("CronRunsSection active-run action refresh (w4/249)", () => {
+  const finished: CronRunView = {
+    id: "crr-old",
+    startedAt: "2026-10-11T03:40:00Z",
+    finishedAt: "2026-10-11T03:41:15Z",
+    status: "successful",
+  };
+  const pending: CronRunView = {
+    id: "crr-new",
+    startedAt: "2026-10-11T03:47:31Z",
+    finishedAt: null,
+    status: "pending",
+  };
+
+  function deferRefresh(settle: () => void) {
+    let resolve!: () => void;
+    refreshActions.mockImplementationOnce(() => {
+      actionsStatus = "checking";
+      return new Promise<void>((r) => {
+        resolve = () => {
+          settle();
+          r();
+        };
+      });
+    });
+    return () => act(async () => resolve());
+  }
+
+  it("re-reads the action decision when a new run arrives and enables Cancel once it settles", async () => {
+    preconditions = { cron_cancel_run: "no_active_run" };
+    runs = [finished];
+    const { rerender } = render(<CronRunsSection serviceId="nightly" />);
+    expect(refreshActions).not.toHaveBeenCalled();
+
+    // A later history poll delivers the accepted run.
+    const settle = deferRefresh(() => {
+      preconditions = {};
+      actionsStatus = "ready";
+    });
+    runs = [pending, finished];
+    hasActiveRun = true;
+    rerender(<CronRunsSection serviceId="nightly" />);
+
+    expect(refreshActions).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
+
+    await settle();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
+
+    // Further polls of the same active run do not re-read again.
+    runs = [{ ...pending, status: "running" }, finished];
+    rerender(<CronRunsSection serviceId="nightly" />);
+    expect(refreshActions).toHaveBeenCalledTimes(1);
+
+    // Go Back on the confirmation sends nothing.
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await user.click(screen.getByRole("button", { name: "Go Back" }));
+    expect(cancel).not.toHaveBeenCalled();
+
+    // The run finishing is a transition too: the decision is re-read.
+    runs = [{ ...pending, status: "successful" }, finished];
+    hasActiveRun = false;
+    rerender(<CronRunsSection serviceId="nightly" />);
+    expect(refreshActions).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps Cancel disabled when the re-read fails", async () => {
+    preconditions = { cron_cancel_run: "no_active_run" };
+    runs = [finished];
+    const { rerender } = render(<CronRunsSection serviceId="nightly" />);
+
+    const settle = deferRefresh(() => {
+      actionsStatus = "unavailable";
+    });
+    runs = [pending, finished];
+    rerender(<CronRunsSection serviceId="nightly" />);
+    await settle();
+
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
+    expect(refreshActions).toHaveBeenCalledTimes(1);
   });
 });
