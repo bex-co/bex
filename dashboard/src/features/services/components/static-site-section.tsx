@@ -79,6 +79,25 @@ function useAdoptAcceptedRows<T>(
 }
 
 /**
+ * An edge-rule draft that follows newer saved rows (another tab, the API)
+ * while untouched, so it never shows them as an unsaved rollback (w4/268). A
+ * draft that differs from the rows it last synced to is a real edit or a save
+ * in flight, and is kept.
+ */
+function useSavedRulesDraft<T>(saved: T[]) {
+  const [draft, setDraft] = useState<T[]>(saved);
+  const [baseline, setBaseline] = useState<T[]>(saved);
+  if (
+    saved !== baseline &&
+    JSON.stringify(saved) !== JSON.stringify(baseline)
+  ) {
+    setBaseline(saved);
+    if (JSON.stringify(draft) === JSON.stringify(baseline)) setDraft(saved);
+  }
+  return [draft, setDraft] as const;
+}
+
+/**
  * The Static Site section of the service Settings tab (w1/m21): the published
  * output directory (publishPath), over bex-api's static-site GraphQL
  * (docs/ADR029-static-sites.md). The two edge-rule editors — redirects/rewrites
@@ -187,7 +206,7 @@ export function RoutesEditor({
   busy: boolean;
 }) {
   const { t } = useTranslations();
-  const [draft, setDraft] = useState<StaticRouteView[]>(routes);
+  const [draft, setDraft] = useSavedRulesDraft(routes);
   const dirty = JSON.stringify(draft) !== JSON.stringify(routes);
   const save = useAdoptAcceptedRows(draft, setDraft, onSave);
   const errors = draft.map(routeErrors);
@@ -334,7 +353,7 @@ export function HeadersEditor({
   busy: boolean;
 }) {
   const { t } = useTranslations();
-  const [draft, setDraft] = useState<StaticHeaderView[]>(headers);
+  const [draft, setDraft] = useSavedRulesDraft(headers);
   const dirty = JSON.stringify(draft) !== JSON.stringify(headers);
   const save = useAdoptAcceptedRows(draft, setDraft, onSave);
   const errors = draft.map(headerErrors);
