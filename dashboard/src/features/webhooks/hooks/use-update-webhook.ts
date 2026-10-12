@@ -17,9 +17,22 @@ export interface WebhookUpdate {
   enabled?: boolean;
 }
 
+/** The Name/URL the server accepted — it trims both (service.Update). */
+export interface AcceptedWebhookFields {
+  name: string;
+  url: string;
+}
+
 export interface UseUpdateWebhookResult {
-  /** Fires updateWebhookEndpoint; resolves true on success (toasted either way). */
-  update: (id: string, patch: WebhookUpdate) => Promise<boolean>;
+  /**
+   * Fires updateWebhookEndpoint (toasted either way). Resolves the accepted
+   * Name/URL on success; null when the save failed or the response carried
+   * no accepted record, so callers keep their drafts.
+   */
+  update: (
+    id: string,
+    patch: WebhookUpdate,
+  ) => Promise<AcceptedWebhookFields | null>;
   busy: boolean;
   error: Error | null;
   clearError: () => void;
@@ -45,11 +58,14 @@ export function useUpdateWebhook(): UseUpdateWebhookResult {
       setError(null);
       setBusy(true);
       try {
-        await mutate({
+        const { data } = await mutate({
           variables: { id, ownerId: currentWorkspaceId, ...patch },
         });
         toast.success(t("webhooks.updateSuccess"));
-        return true;
+        const accepted = data?.updateWebhookEndpoint;
+        return accepted?.name != null && accepted.url != null
+          ? { name: accepted.name, url: accepted.url }
+          : null;
       } catch (err) {
         const normalized = toWebhookMutationError(err);
         if (normalized instanceof WebhookMutationError) {
@@ -59,7 +75,7 @@ export function useUpdateWebhook(): UseUpdateWebhookResult {
           setError(new Error(message));
           toast.error(message);
         }
-        return false;
+        return null;
       } finally {
         setBusy(false);
       }
