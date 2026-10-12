@@ -137,11 +137,7 @@ describe("ApplicationMetricsCard", () => {
       skip: true,
     });
     // Absolute usage (Total tab + percentage-unavailable witness).
-    expect(mockUseMetrics).toHaveBeenCalledWith(
-      "beancount-cms",
-      "cpu",
-      WINDOW,
-    );
+    expect(mockUseMetrics).toHaveBeenCalledWith("beancount-cms", "cpu", WINDOW);
     expect(mockUseMetrics).toHaveBeenCalledWith(
       "beancount-cms",
       "memory",
@@ -445,9 +441,8 @@ describe("ApplicationMetricsCard", () => {
   it("retains the selection across a discovery gap instead of broadening to all (w5/m91)", async () => {
     mockFilterValues.mockReturnValue(["web-a"]);
     mockUseMetrics.mockImplementation((_resource, metric, opts) => {
-      const instances = (
-        opts as { instances?: string[] } | undefined
-      )?.instances;
+      const instances = (opts as { instances?: string[] } | undefined)
+        ?.instances;
       if (metric === "cpu" && !instances)
         return seriesResult("cpu", [0.5], "web-a");
       return emptyResult();
@@ -464,9 +459,9 @@ describe("ApplicationMetricsCard", () => {
     const reselected = (await screen.findByLabelText(
       "Instances",
     )) as unknown as HTMLSelectElement;
-    expect(Array.from(reselected.selectedOptions).map((o) => o.value)).toEqual(
-      ["web-a"],
-    );
+    expect(Array.from(reselected.selectedOptions).map((o) => o.value)).toEqual([
+      "web-a",
+    ]);
     expect(
       await screen.findByRole("button", { name: "Show all" }),
     ).toBeInTheDocument();
@@ -481,9 +476,8 @@ describe("ApplicationMetricsCard", () => {
   it("keeps a selected historical instance and offers an explicit return to all (w5/m91)", async () => {
     mockFilterValues.mockReturnValue(["web-a", "web-b"]);
     mockUseMetrics.mockImplementation((_resource, metric, opts) => {
-      const instances = (
-        opts as { instances?: string[] } | undefined
-      )?.instances;
+      const instances = (opts as { instances?: string[] } | undefined)
+        ?.instances;
       if (metric === "cpu" && !instances)
         return seriesResult("cpu", [0.5], "web-a");
       return emptyResult();
@@ -512,9 +506,8 @@ describe("ApplicationMetricsCard", () => {
   it("resets the selection on resource navigation so choices never cross services (w5/m91)", async () => {
     mockFilterValues.mockReturnValue(["web-a"]);
     mockUseMetrics.mockImplementation((_resource, metric, opts) => {
-      const instances = (
-        opts as { instances?: string[] } | undefined
-      )?.instances;
+      const instances = (opts as { instances?: string[] } | undefined)
+        ?.instances;
       if (metric === "cpu" && !instances)
         return seriesResult("cpu", [0.5], "web-a");
       return emptyResult();
@@ -569,9 +562,8 @@ describe("ApplicationMetricsCard", () => {
   it("marks retained-but-unavailable choices and names the empty selection result (w5/m91)", async () => {
     mockFilterValues.mockReturnValue(["web-a"]);
     mockUseMetrics.mockImplementation((_resource, metric, opts) => {
-      const instances = (
-        opts as { instances?: string[] } | undefined
-      )?.instances;
+      const instances = (opts as { instances?: string[] } | undefined)
+        ?.instances;
       if (metric === "cpu" && !instances)
         return seriesResult("cpu", [0.5], "web-a");
       return emptyResult();
@@ -583,8 +575,9 @@ describe("ApplicationMetricsCard", () => {
     mockUseMetrics.mockImplementation(() => emptyResult());
     mockFilterValues.mockReturnValue([]);
     await userEvent.click(await screen.findByRole("tab", { name: "Total" }));
-    expect(await screen.findByRole("button", { name: "Show all" }))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Show all" }),
+    ).toBeInTheDocument();
     expect(
       await screen.findByText(/unavailable in this window/),
     ).toBeInTheDocument();
@@ -622,5 +615,123 @@ describe("summarizeLimits", () => {
     expect(
       summarizeLimits([limitSeries("a", 100), limitSeries("b", 200)]),
     ).toEqual({ kind: "vary" });
+  });
+});
+
+// w4/258: Raw CPU said 0.1% — a retired instance's last point, because the
+// header read series[0] — while the running instance sat near 100%.
+describe("ApplicationMetricsCard usage header across instances (w4/258)", () => {
+  beforeEach(() => {
+    mockUseMetrics.mockReset();
+    mockFilterValues.mockReset();
+    mockFilterValues.mockReturnValue([]);
+  });
+
+  function renderCard() {
+    const rootRoute = createRootRoute();
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/",
+      component: () => (
+        <ApplicationMetricsCard resource="app" window={WINDOW} runsInstances />
+      ),
+    });
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: createMemoryHistory({ initialEntries: ["/"] }),
+      context: { client: {} as never, session: null },
+    });
+    return render(<RouterProvider router={router} />);
+  }
+
+  /** The bold scalars beside section titles — not axis ticks or legends. */
+  function headerScalars(container: HTMLElement): string[] {
+    return [
+      ...container.querySelectorAll("span.text-sm.font-semibold.tabular-nums"),
+    ].map((el) => el.textContent ?? "");
+  }
+
+  const OLD = "web-old";
+  const NEW = "web-new";
+  function cpu(order: "old-first" | "new-first", unit: string) {
+    const old = { [OLD]: [0.13470908047852115] };
+    const fresh = { [NEW]: [92.55276727078095, 100.04089244388521] };
+    return multiSeriesResult(
+      unit,
+      order === "old-first" ? { ...old, ...fresh } : { ...fresh, ...old },
+    );
+  }
+
+  for (const order of ["old-first", "new-first"] as const) {
+    it(`omits the Raw scalar for several instances, keeping their lines (${order})`, async () => {
+      mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+        if (metric === "cpu")
+          return cpu(order, opts?.percentage ? "percentage" : "cpu");
+        return emptyResult();
+      });
+      const { container } = renderCard();
+
+      expect(await screen.findAllByText(NEW)).not.toHaveLength(0);
+      expect(screen.getAllByText(OLD)).not.toHaveLength(0);
+      expect(headerScalars(container)).toEqual([]);
+
+      await userEvent.click(screen.getByRole("tab", { name: "Total" }));
+      expect(screen.getAllByText(NEW)).not.toHaveLength(0);
+      expect(headerScalars(container)).toEqual([]);
+    });
+  }
+
+  it("shows the one series that has points, ignoring empty siblings", async () => {
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      if (metric !== "cpu" || !opts?.percentage) return emptyResult();
+      return multiSeriesResult("percentage", {
+        [OLD]: [],
+        [NEW]: [92.5, 99.9],
+      });
+    });
+    const { container } = renderCard();
+    await screen.findAllByText(NEW);
+    expect(headerScalars(container)).toEqual(["99.9%"]);
+  });
+
+  it("keeps the scalar for an aggregate's single series", async () => {
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      if (metric !== "cpu" || !opts?.percentage) return emptyResult();
+      return opts.aggregateMethod
+        ? seriesResult("percentage", [99.99772292754182])
+        : cpu("old-first", "percentage");
+    });
+    const { container } = renderCard();
+    await screen.findAllByText(NEW);
+    expect(headerScalars(container)).toEqual([]);
+
+    await userEvent.click(screen.getByRole("tab", { name: "Max" }));
+    expect(headerScalars(container)).toEqual(["100.0%"]);
+  });
+
+  it("returns the scalar when a filter narrows the result to one instance, historical included", async () => {
+    mockFilterValues.mockReturnValue([OLD, NEW]);
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      if (metric !== "cpu" || !opts?.percentage) return emptyResult();
+      const instances = (opts as { instances?: string[] }).instances;
+      if (instances?.length === 1) {
+        const all = cpu("old-first", "percentage");
+        return {
+          ...all,
+          series: all.series.filter((s) => s.labels.instance === instances[0]),
+        };
+      }
+      return cpu("old-first", "percentage");
+    });
+    const { container } = renderCard();
+    await screen.findAllByText(NEW);
+    expect(headerScalars(container)).toEqual([]);
+
+    const select = (await screen.findByLabelText("Instances")) as HTMLElement;
+    await userEvent.selectOptions(select, [OLD]);
+    expect(headerScalars(container)).toEqual(["0.1%"]);
+    await userEvent.deselectOptions(select, [OLD]);
+    await userEvent.selectOptions(select, [NEW]);
+    expect(headerScalars(container)).toEqual(["100.0%"]);
   });
 });
