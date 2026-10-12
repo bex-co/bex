@@ -44,6 +44,24 @@ describe("IdleTimeoutRow", () => {
     expect(control).toHaveTextContent("15 min");
   });
 
+  // Only public traffic reaches the activator (ADR003); internal calls from a
+  // sibling neither count as activity nor wake the service (w4/252).
+  it("says only public requests keep a free service awake or wake it", () => {
+    render(
+      <IdleTimeoutRow
+        serviceId="app"
+        serviceType="web_service"
+        plan="free"
+        idleTTLSeconds={0}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "Free services sleep after this long without public HTTP requests or WebSocket messages, then wake on the next public request. Internal requests from other services neither keep them awake nor wake them.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("treats an untiered App (null plan) as free — the control is shown", () => {
     render(
       <IdleTimeoutRow

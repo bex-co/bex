@@ -268,6 +268,49 @@ describe("ServiceDetailHeader", () => {
     ).toBeInTheDocument();
   });
 
+  describe("sleeping Free web service wake guidance (w4/252)", () => {
+    const note =
+      "Free web services sleep when idle, and internal requests can't wake them. If this service is asleep, request its public URL first.";
+    const free = {
+      plan: "free",
+      phase: "Hibernated",
+      internalAddress: "app-x1y2:8080",
+    };
+
+    it("qualifies the sleeping hint as a public request", async () => {
+      renderHeader(svc(free));
+      expect(
+        await screen.findByText(
+          "Sleeping to save resources — wakes on the next request to its public URL.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("explains next to the internal address that internal calls can't wake it", async () => {
+      const user = userEvent.setup();
+      renderHeader(svc(free));
+      await user.click(await screen.findByRole("button", { name: "Connect" }));
+      expect(screen.getByText("app-x1y2:8080")).toBeInTheDocument();
+      expect(screen.getByText(note)).toBeInTheDocument();
+    });
+
+    it.each([
+      ["a paid web service", { plan: "starter", phase: "Running" }],
+      ["a suspended Free web service", { suspended: true }],
+      [
+        "a private service",
+        { type: "private_service", url: null, phase: "Running" },
+      ],
+      ["a Free web service with no public URL", { url: null }],
+    ])("omits the note for %s", async (_name, overrides) => {
+      const user = userEvent.setup();
+      renderHeader(svc({ ...free, ...overrides } as Partial<ServiceView>));
+      await user.click(await screen.findByRole("button", { name: "Connect" }));
+      expect(screen.getAllByText("app-x1y2:8080").length).toBeGreaterThan(0);
+      expect(screen.queryByText(note)).not.toBeInTheDocument();
+    });
+  });
+
   it("omits the Internal section for a non-addressable service", async () => {
     const user = userEvent.setup();
     renderHeader(svc({ type: "background_worker", internalAddress: null }));

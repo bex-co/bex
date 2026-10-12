@@ -48,6 +48,7 @@ import {
 } from "@/features/services/lib/service-type";
 import { serviceBaseForType } from "@/features/services/lib/service-base";
 import { sshRemedy } from "@/features/services/lib/ssh-remedy";
+import { autoSleepEligible } from "@/features/services/lib/idle-timeout";
 import {
   isSleeping,
   isDeleting,
@@ -388,6 +389,17 @@ function ServiceConnectButton({ service }: { service: ServiceView }) {
               copiedText={t("services.internalCopied")}
               errorText={t("services.internalCopyError")}
             />
+            {/* Only public traffic reaches the activator that wakes a
+                sleeping Free web service (ADR003), so a sibling's internal
+                call fails while it sleeps. Shown while awake too: it will
+                sleep again. A suspended service needs Resume instead. */}
+            {!service.suspended &&
+            service.url &&
+            autoSleepEligible(service.type, service.plan) ? (
+              <p className="text-muted-foreground mb-2 text-xs">
+                {t("services.connectInternalSleepNote")}
+              </p>
+            ) : null}
           </>
         ) : null}
         <DropdownMenuLabel className="flex items-center gap-2 px-0 pt-0">
