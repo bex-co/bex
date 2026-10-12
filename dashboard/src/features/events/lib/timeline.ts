@@ -1,4 +1,5 @@
 import type { ServiceEventView } from "@/features/events/hooks/use-service-events";
+import { SERVICE_EVENT_GROUPS } from "@/features/events/service-event-catalog";
 
 export type EventTimelineFilter = "all" | "deploy" | "lifecycle" | "config";
 
@@ -8,10 +9,12 @@ const DEPLOY_TYPES = new Set([
   "cron_job_run_started",
   "cron_job_run_ended",
 ]);
+// Lifecycle is the catalog's whole service-status family (suspend/resume,
+// hibernate/wake, failed/available, restart, suspender intents) plus the
+// capacity changes that alter what is running.
 const LIFECYCLE_TYPES = new Set([
-  "suspender_added",
-  "suspender_removed",
-  "server_restarted",
+  ...(SERVICE_EVENT_GROUPS.find((group) => group.key === "serviceStatus")
+    ?.types ?? []),
   "instance_count_changed",
   "autoscaling_config_changed",
   "plan_changed",
