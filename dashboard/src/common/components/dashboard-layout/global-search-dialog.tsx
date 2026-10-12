@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import {
   CommandDialog,
-  CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
@@ -70,7 +69,6 @@ export function GlobalSearchDialog({
         onValueChange={setSearch}
       />
       <CommandList>
-        <CommandEmpty>{t("common.topbarSearchEmpty")}</CommandEmpty>
         {open ? (
           <SearchResults search={search} close={() => onOpenChange(false)} />
         ) : null}
@@ -164,13 +162,6 @@ function SearchResults({
     projectsLoading ||
     envGroupsLoading ||
     blueprintsLoading;
-  const resourceCount =
-    services.length +
-    databases.length +
-    keyValues.length +
-    projects.length +
-    envGroups.length +
-    blueprints.length;
 
   const filteredPages = pages.filter((page) => matchesQuery(page.label, query));
   const filteredProjects = projects.filter((r) =>
@@ -201,6 +192,9 @@ function SearchResults({
   // shouldFilter={false} means cmdk never prunes an itemless group for us — an
   // unguarded group would float its heading over zero children (w6/046). Render
   // each group only when it has content, and the separator only between two.
+  // While any list is still on its first read the Resources group keeps a
+  // Loading row, even beside unrelated cached rows: the match may be in the
+  // list that hasn't arrived (w4/229).
   const showNavigation = filteredPages.length > 0;
   const showResources =
     filteredProjects.length > 0 ||
@@ -209,7 +203,18 @@ function SearchResults({
     filteredKeyValues.length > 0 ||
     filteredEnvGroups.length > 0 ||
     filteredBlueprints.length > 0 ||
-    (loading && resourceCount === 0);
+    loading;
+
+  // "No matches" is decided here, from settled lists and the computed matches —
+  // not by cmdk's Command.Empty, which only counts currently registered items
+  // and so declared a definitive empty while lists were still loading (w4/229).
+  if (!showNavigation && !showResources) {
+    return (
+      <div role="status" className="py-6 text-center text-sm">
+        {t("common.topbarSearchEmpty")}
+      </div>
+    );
+  }
 
   return (
     <>
@@ -230,9 +235,6 @@ function SearchResults({
       {showNavigation && showResources ? <CommandSeparator /> : null}
       {showResources ? (
         <CommandGroup heading={t("common.topbarResources")}>
-          {loading && resourceCount === 0 ? (
-            <CommandItem disabled>{t("common.loading")}</CommandItem>
-          ) : null}
           {filteredProjects.map((project) => (
             <CommandItem
               key={`project:${project.id}`}
@@ -376,6 +378,11 @@ function SearchResults({
               />
             </CommandItem>
           ))}
+          {/* Last, so already-matching rows above it never shift when it
+              leaves; disabled, so cmdk's keyboard selection skips it. */}
+          {loading ? (
+            <CommandItem disabled>{t("common.loading")}</CommandItem>
+          ) : null}
         </CommandGroup>
       ) : null}
     </>
