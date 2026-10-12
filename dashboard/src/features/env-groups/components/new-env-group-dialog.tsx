@@ -105,7 +105,7 @@ export function NewEnvGroupDialog(props: NewEnvGroupDialogProps) {
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[90vh] grid-cols-[minmax(0,1fr)] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{t("envGroups.createTitle")}</DialogTitle>
           <DialogDescription>
@@ -574,7 +574,7 @@ function NewEnvGroupForm({
               : t("envGroups.noServicesInScope")}
           </p>
         ) : (
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {linkable.map((service) => {
               const checkboxId = `env-group-service-${service.id}`;
               return (
@@ -592,7 +592,7 @@ function NewEnvGroupForm({
                   />
                   <Label
                     htmlFor={checkboxId}
-                    className="min-w-0 cursor-pointer"
+                    className="min-w-0 flex-1 cursor-pointer flex-col items-stretch gap-1"
                   >
                     <span className="block truncate">{service.name}</span>
                     {service.name !== service.id ? (
