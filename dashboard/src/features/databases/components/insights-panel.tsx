@@ -307,8 +307,7 @@ export function InsightsPanel({ id }: { id: string }) {
           title={t("databases.insightsParamsTitle")}
           description={t("databases.insightsParamsDescription")}
         >
-          {insights.parameterSpecLoading &&
-          insights.parameterSpec.length === 0 ? (
+          {insights.parameterSpecLoading ? (
             <p className="text-sm text-muted-foreground">
               {t("databases.loading")}
             </p>
@@ -317,10 +316,10 @@ export function InsightsPanel({ id }: { id: string }) {
               {t("databases.insightsUnavailable")}
             </p>
           ) : (
+            // Keyed by database only: the editor adopts a new saved set
+            // itself, keeping an unsaved draft (w4/253).
             <ParameterOverridesEditor
-              key={insights.parameterSpec
-                .map((parameter) => [parameter.name, parameter.value].join(":"))
-                .join("|")}
+              key={id}
               parameters={insights.parameterSpec}
               saving={insights.saving}
               onSave={insights.saveParameters}
