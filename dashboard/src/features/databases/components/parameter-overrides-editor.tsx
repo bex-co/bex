@@ -90,6 +90,16 @@ export function ParameterOverridesEditor({
   const initial = initialDrafts(parameters);
   const [rows, setRows] = useState(initial);
   const [savedRows, setSavedRows] = useState(initial);
+  // A poll, another tab's save, or this editor's own post-save refetch can
+  // deliver a new saved set. It becomes the Discard/dirty baseline; the rows
+  // follow it only when they hold no unsaved edit (w4/253).
+  const incomingSignature = signature(initial);
+  const [seenSignature, setSeenSignature] = useState(incomingSignature);
+  if (incomingSignature !== seenSignature) {
+    setSeenSignature(incomingSignature);
+    if (signature(rows) === signature(savedRows)) setRows(initial);
+    setSavedRows(initial);
+  }
   const [saveError, setSaveError] = useState<string | null>(null);
   const nextID = useRef(0);
 

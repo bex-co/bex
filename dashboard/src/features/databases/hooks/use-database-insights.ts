@@ -176,7 +176,10 @@ export function useDatabaseInsights(id: string) {
     parameterOverridesError: parameterOverrides.error,
 
     parameterSpec: parameterSpecRows,
-    parameterSpecLoading: parameterSpec.loading,
+    // First load only: a poll or post-save refetch also reports loading, and
+    // swapping the editor for a placeholder then would drop its draft (w4/253).
+    parameterSpecLoading:
+      parameterSpec.loading && parameterSpecData === undefined,
     parameterSpecError: parameterSpec.error,
 
     saving,

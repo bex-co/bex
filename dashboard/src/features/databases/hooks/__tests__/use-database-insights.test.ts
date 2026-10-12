@@ -106,4 +106,28 @@ describe("useDatabaseInsights parameter writes", () => {
     expect(saved).toEqual({ ok: false, error: "operation forbidden" });
     expect(refetchOverrides).not.toHaveBeenCalled();
   });
+
+  // A poll or post-save refetch reports loading too; the panel would swap the
+  // editor for a placeholder and drop a draft added to an empty set (w4/253).
+  it("reports the declared set as loading only before its first result", () => {
+    const spec = (data: unknown) =>
+      mockUseQuery.mockImplementation((document: unknown) => ({
+        data: document === DatabaseParameterSpecDocument ? data : undefined,
+        loading: true,
+        error: undefined,
+        refetch: vi.fn(),
+      }));
+
+    spec(undefined);
+    expect(
+      renderHook(() => useDatabaseInsights("db-1")).result.current
+        .parameterSpecLoading,
+    ).toBe(true);
+
+    spec({ databaseParameterSpec: [] });
+    expect(
+      renderHook(() => useDatabaseInsights("db-1")).result.current
+        .parameterSpecLoading,
+    ).toBe(false);
+  });
 });
