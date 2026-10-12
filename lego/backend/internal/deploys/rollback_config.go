@@ -184,7 +184,7 @@ func (s *Service) restartSelection(ctx context.Context, a *appv1alpha1.App) (sto
 	selected, err := s.targetReleaseConfig(ctx, a, target, true)
 	if err == nil && selected.SourceGeneration == 0 && target.Status != store.DeployLive {
 		// Image-only would run the saved configuration, not the serving one.
-		err = unresolvedServing(a, "its configuration record is unavailable")
+		err = unresolvedServing(a, "its configuration record is unavailable", retryShortly)
 	}
 	return target, selected, err
 }
@@ -214,7 +214,10 @@ func (s *Service) servingDeploy(ctx context.Context, a *appv1alpha1.App) (store.
 		return store.Deploy{}, err
 	}
 	if id == "" {
-		return store.Deploy{}, unresolvedServing(a, "no deploy records that release")
+		// Not necessarily transient: a gated env-group link/unlink converges a
+		// new revision without opening a deploy row (w2/m94), so waiting alone
+		// may never resolve it (w4/264).
+		return store.Deploy{}, unresolvedServing(a, "no deploy records that release, so Restart cannot preserve it", untrackedRelease)
 	}
 	d, err := s.Store.GetDeploy(ctx, appID, id)
 	if err != nil {
@@ -224,12 +227,18 @@ func (s *Service) servingDeploy(ctx context.Context, a *appv1alpha1.App) (store.
 		return d, nil
 	}
 	if a.Status.ReleaseGeneration != generation || a.Status.Image == "" {
-		return store.Deploy{}, unresolvedServing(a, "its image is not recorded yet")
+		return store.Deploy{}, unresolvedServing(a, "its image is not recorded yet", retryShortly)
 	}
 	d.ResolvedImage = a.Status.Image
 	return d, nil
 }
 
-func unresolvedServing(a *appv1alpha1.App, why string) error {
-	return fmt.Errorf("%w: service %q is serving %s but %s; retry shortly", core.ErrConflict, a.Name, a.Status.ActiveRevision, why)
+// Recovery steps for unresolvedServing.
+const (
+	retryShortly     = "retry shortly"
+	untrackedRelease = "if this persists, run a standard deploy to establish a tracked release (it applies the saved configuration and current source)"
+)
+
+func unresolvedServing(a *appv1alpha1.App, why, next string) error {
+	return fmt.Errorf("%w: service %q is serving %s but %s; %s", core.ErrConflict, a.Name, a.Status.ActiveRevision, why, next)
 }
