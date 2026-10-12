@@ -421,4 +421,40 @@ describe("EditableFieldRow", () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  // Geometry itself is verified in a real browser (jsdom has no layout); this
+  // pins the classes that let a long label wrap instead of pushing the pencil
+  // and Cancel/Save off a 360–390px screen (w4/251).
+  it("select variant lets a long label shrink and wrap, and drops actions below it while editing on mobile", async () => {
+    const user = userEvent.setup();
+    render(
+      <EditableFieldRow
+        label="Notifications"
+        value="default"
+        editLabel="Edit notifications"
+        options={[
+          {
+            value: "default",
+            label: "Use workspace default (Only failure notifications)",
+          },
+        ]}
+        onSave={ok()}
+      />,
+    );
+
+    const trigger = screen.getByRole("combobox", { name: "Notifications" });
+    expect(trigger).toHaveClass(
+      "min-w-0",
+      "whitespace-normal",
+      "data-[size=sm]:h-auto",
+    );
+    expect(trigger).not.toHaveClass("whitespace-nowrap");
+    expect(trigger.parentElement).toHaveClass("flex-wrap", "sm:flex-nowrap");
+    expect(trigger).not.toHaveClass("basis-full");
+
+    await user.click(
+      screen.getByRole("button", { name: "Edit notifications" }),
+    );
+    expect(trigger).toHaveClass("basis-full", "sm:basis-0");
+  });
 });

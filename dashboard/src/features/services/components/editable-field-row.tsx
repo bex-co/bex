@@ -194,7 +194,15 @@ export function EditableFieldRow({
         )}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div
+        className={cn(
+          "flex items-center gap-2",
+          // A long select label must not push the actions off a narrow
+          // screen: the select wraps its label, and while editing it takes
+          // the whole first line so Cancel/Save wrap beneath it (w4/251).
+          options && "flex-wrap sm:flex-nowrap",
+        )}
+      >
         {/* The value prefix (e.g. "app/ $") only makes sense before a text
             input, never a select. */}
         {!options && valuePrefix && (
@@ -225,7 +233,10 @@ export function EditableFieldRow({
               ref={triggerRef}
               size="sm"
               aria-label={label}
-              className="flex-1"
+              className={cn(
+                "min-h-8 min-w-0 flex-1 text-left whitespace-normal data-[size=sm]:h-auto *:data-[slot=select-value]:line-clamp-none",
+                editing && "basis-full sm:basis-0",
+              )}
               // A closed trigger cancels on Escape like the Input; an open
               // popup consumes its own Escape and refocuses here (w4/250).
               onKeyDown={(event) => {
@@ -237,9 +248,13 @@ export function EditableFieldRow({
             >
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="max-w-(--radix-select-content-available-width)">
               {options.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
+                <SelectItem
+                  key={option.value}
+                  value={option.value}
+                  className="whitespace-normal"
+                >
                   {option.label}
                 </SelectItem>
               ))}
