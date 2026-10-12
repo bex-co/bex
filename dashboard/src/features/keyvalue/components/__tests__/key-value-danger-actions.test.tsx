@@ -172,9 +172,14 @@ describe("KeyValueDangerActions — Render-parity bottom action row", () => {
         name: "Suspend Key Value Instance",
       }),
     ).toBeInTheDocument();
-    expect(
-      within(dialog).getByText(/suspend sessions-cache/),
-    ).toBeInTheDocument();
+    // w4/247: an Off store loses its keys on suspend, so the warning ties
+    // retention to the persistence mode instead of promising preservation.
+    const detail = within(dialog).getByText(/suspend sessions-cache/);
+    expect(detail).toHaveTextContent("Off loses all data");
+    expect(detail).toHaveTextContent(
+      "Snapshot only keeps data up to the last snapshot",
+    );
+    expect(detail).not.toHaveTextContent(/data is preserved/i);
     const confirm = within(dialog).getByRole("button", {
       name: "Suspend Key Value Instance",
     });
@@ -188,12 +193,30 @@ describe("KeyValueDangerActions — Render-parity bottom action row", () => {
     expect(confirm).toBeEnabled();
 
     await user.click(confirm);
+    expect(run).toHaveBeenCalledOnce();
     expect(run).toHaveBeenCalledWith(
       "suspend",
       "red-sessions",
       "sessions-cache",
     );
     expect(onChanged).toHaveBeenCalledOnce();
+  });
+
+  it("Cancel on the suspend warning runs no lifecycle mutation (w4/247)", async () => {
+    const user = userEvent.setup();
+    render(
+      <KeyValueDangerActions
+        keyValue={KEY_VALUE}
+        onDeleted={vi.fn()}
+        onChanged={vi.fn()}
+      />,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Suspend Key Value Instance" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(run).not.toHaveBeenCalled();
   });
 
   it("swaps Suspend for an immediate Resume action while suspended", async () => {
