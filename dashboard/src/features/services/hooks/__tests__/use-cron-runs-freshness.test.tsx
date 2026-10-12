@@ -6,10 +6,7 @@ import { ApolloProvider } from "@apollo/client/react";
 import { MockLink } from "@apollo/client/testing";
 import { CronJobRunsDocument } from "@/graphql/definitions";
 import { apolloCacheConfig } from "@/common/apollo/cache";
-import {
-  useCronRuns,
-  mergeCronRunPages,
-} from "@/features/services/hooks/use-cron-runs";
+import { useCronRuns } from "@/features/services/hooks/use-cron-runs";
 
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -269,52 +266,121 @@ describe("useCronRuns freshness (w4/138)", () => {
       expect(result.current.runs.map((r) => r.id)).toEqual(["crr-2"]),
     );
   });
-});
 
-describe("mergeCronRunPages", () => {
-  const a = {
-    id: "a",
-    status: "successful",
-    startedAt: null,
-    finishedAt: null,
-  };
-  const b = {
-    id: "b",
-    status: "successful",
-    startedAt: null,
-    finishedAt: null,
-  };
-  const c = {
-    id: "c",
-    status: "successful",
-    startedAt: null,
-    finishedAt: null,
-  };
+  const ids = (runs: { id: string }[]) => runs.map((r) => r.id);
+  const range = (from: number, to: number) =>
+    Array.from({ length: from - to + 1 }, (_, i) => cronRun(from - i));
 
-  it("appends a disjoint tail in order", () => {
-    expect(mergeCronRunPages([a], [b, c])).toEqual({
-      rows: [a, b, c],
-      dropAppended: false,
+  it("recovers the whole history with Load more after an arrival shifts the head (w4/230)", async () => {
+    // The live capture: head [7…3] + tail [2,1], then run 8 arrives. The
+    // shifted head [8…4] drops the tail, and the next Load more — read past 4 —
+    // must replace it, not be discarded against the stale anchor 3.
+    const { result } = renderHook(() => useCronRuns("srv-1"), {
+      wrapper: wrapperFor([
+        firstPage("srv-1", range(7, 3)),
+        olderPage("srv-1", "crr-3", range(2, 1)),
+        firstPage("srv-1", range(8, 4)),
+        olderPage("srv-1", "crr-4", range(3, 1)),
+        firstPage("srv-1", range(9, 5)),
+        olderPage("srv-1", "crr-5", range(4, 1)),
+        firstPage("srv-1", range(9, 5)),
+      ]),
     });
+
+    await waitFor(() => expect(result.current.runs).toHaveLength(5));
+    await act(async () => {
+      await result.current.loadMore();
+    });
+    await waitFor(() => expect(result.current.runs).toHaveLength(7));
+    expect(result.current.hasMore).toBe(false);
+
+    await tickSettledPoll();
+    await waitFor(() =>
+      expect(ids(result.current.runs)).toEqual(ids(range(8, 4))),
+    );
+    expect(result.current.hasMore).toBe(true);
+
+    await act(async () => {
+      await result.current.loadMore();
+    });
+    await waitFor(() =>
+      expect(ids(result.current.runs)).toEqual(ids(range(8, 1))),
+    );
+    expect(result.current.hasMore).toBe(false);
+
+    // Another arrival stays recoverable the same way.
+    await tickSettledPoll();
+    await waitFor(() =>
+      expect(ids(result.current.runs)).toEqual(ids(range(9, 5))),
+    );
+    expect(result.current.hasMore).toBe(true);
+    await act(async () => {
+      await result.current.loadMore();
+    });
+    await waitFor(() =>
+      expect(ids(result.current.runs)).toEqual(ids(range(9, 1))),
+    );
+    expect(result.current.hasMore).toBe(false);
   });
 
-  it("drops the tail when the first page overlaps it", () => {
-    expect(mergeCronRunPages([a, b], [b, c])).toEqual({
-      rows: [a, b],
-      dropAppended: true,
+  it("discards a Load more answer that lands after the head shifted", async () => {
+    // The older page is read past 3 from head [7…3]; before it answers, run 8
+    // arrives. The late page must not reattach under the shifted head.
+    const { result } = renderHook(() => useCronRuns("srv-1"), {
+      wrapper: wrapperFor([
+        firstPage("srv-1", range(7, 3)),
+        { ...olderPage("srv-1", "crr-3", range(2, 1)), delay: 40_000 },
+        firstPage("srv-1", range(8, 4)),
+        firstPage("srv-1", range(8, 4)),
+        olderPage("srv-1", "crr-4", range(3, 1)),
+      ]),
     });
+
+    await waitFor(() => expect(result.current.runs).toHaveLength(5));
+    let pending: Promise<void> = Promise.resolve();
+    act(() => {
+      pending = result.current.loadMore();
+    });
+    await tickSettledPoll();
+    await waitFor(() =>
+      expect(ids(result.current.runs)).toEqual(ids(range(8, 4))),
+    );
+    // Now the older page read past crr-3 answers.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+      await pending;
+    });
+    expect(ids(result.current.runs)).toEqual(ids(range(8, 4)));
+    expect(result.current.hasMore).toBe(true);
+
+    await act(async () => {
+      await result.current.loadMore();
+    });
+    await waitFor(() =>
+      expect(ids(result.current.runs)).toEqual(ids(range(8, 1))),
+    );
+    expect(result.current.hasMore).toBe(false);
   });
 
-  it("drops the tail when its anchor has fallen off the first page", () => {
-    // Anchor "z" is not on page 1, so head and tail no longer join up.
-    expect(mergeCronRunPages([a], [b, c], "z")).toEqual({
-      rows: [a],
-      dropAppended: true,
+  it("an errored Load more read is a failure, not an exhausted history", async () => {
+    const { result } = renderHook(() => useCronRuns("srv-1"), {
+      wrapper: wrapperFor([
+        firstPage("srv-1", range(7, 3)),
+        {
+          request: {
+            query: CronJobRunsDocument,
+            variables: { serviceId: "srv-1", cursor: "crr-3", limit: 5 },
+          },
+          result: { errors: [{ message: "boom" }] },
+        },
+      ]),
     });
-    // Anchor still present: contiguous, so the tail is kept.
-    expect(mergeCronRunPages([a], [b, c], "a")).toEqual({
-      rows: [a, b, c],
-      dropAppended: false,
+
+    await waitFor(() => expect(result.current.runs).toHaveLength(5));
+    await act(async () => {
+      await result.current.loadMore();
     });
+    expect(ids(result.current.runs)).toEqual(ids(range(7, 3)));
+    expect(result.current.hasMore).toBe(true);
   });
 });
