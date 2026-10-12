@@ -75,3 +75,22 @@ describe("EnvGroupActions — Move dialog (w6/m48)", () => {
     ).toHaveTextContent("prod");
   });
 });
+
+// w4/270: without a bounded column the dialog's implicit grid track grew to
+// the long scope label's width, pushing title, fields and actions off screen.
+describe("EnvGroupActions — bounded Move/Clone dialogs (w4/270)", () => {
+  it.each([/move/i, /clone/i])(
+    "%s keeps its content inside the dialog's column",
+    async (item) => {
+      const user = userEvent.setup();
+      renderActions(WORKSPACE_GROUP);
+
+      await user.click(screen.getByRole("button", { name: /manage/i }));
+      await user.click(screen.getByRole("menuitem", { name: item }));
+
+      expect(await screen.findByRole("dialog")).toHaveClass(
+        "grid-cols-[minmax(0,1fr)]",
+      );
+    },
+  );
+});

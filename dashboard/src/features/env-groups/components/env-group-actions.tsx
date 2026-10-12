@@ -204,7 +204,7 @@ export function EnvGroupActions({
         open={dialog === "move"}
         onOpenChange={(isOpen) => !isOpen && setDialog(null)}
       >
-        <DialogContent>
+        <DialogContent className="grid-cols-[minmax(0,1fr)]">
           <DialogHeader>
             <DialogTitle>{t("envGroups.moveTitle")}</DialogTitle>
             <DialogDescription>
@@ -237,7 +237,7 @@ export function EnvGroupActions({
         open={dialog === "clone"}
         onOpenChange={(isOpen) => !isOpen && setDialog(null)}
       >
-        <DialogContent>
+        <DialogContent className="grid-cols-[minmax(0,1fr)]">
           <DialogHeader>
             <DialogTitle>{t("envGroups.cloneTitle")}</DialogTitle>
             <DialogDescription>
