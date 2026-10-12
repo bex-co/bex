@@ -67,7 +67,12 @@ export function SecretFileContentDialog({
           </DialogDescription>
         </DialogHeader>
         {loading ? (
-          <div className="text-muted-foreground flex min-h-48 items-center justify-center gap-2 text-sm">
+          // The placeholder reserves the editor's fixed h-64 region so the
+          // dialog and its footer don't move when the read settles.
+          <div
+            data-slot="secret-file-content-pending"
+            className="text-muted-foreground flex h-64 items-center justify-center gap-2 text-sm"
+          >
             <Loader2 className="animate-spin" />{" "}
             {t("services.secretFileLoadingContent")}
           </div>
@@ -76,7 +81,9 @@ export function SecretFileContentDialog({
             value={value}
             disabled={disabled}
             onChange={(event) => setValue(event.target.value)}
-            className="min-h-64 font-mono text-sm"
+            // Fixed sizing (Textarea defaults to content) keeps long files
+            // scrolling inside the editor instead of growing the dialog.
+            className="field-sizing-fixed h-64 font-mono text-sm"
             aria-label={t("services.secretFileColContent")}
             aria-invalid={error}
             autoFocus
