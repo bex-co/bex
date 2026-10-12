@@ -29,6 +29,21 @@ import { useDatabaseInsights } from "@/features/databases/hooks/use-database-ins
 import { ParameterOverridesEditor } from "@/features/databases/components/parameter-overrides-editor";
 
 /**
+ * `"schema"."table"` with each identifier double-quoted and embedded quotes
+ * doubled, as PostgreSQL spells them. Always quoting keeps the label
+ * injective — `"qa.a174"."widgets"` and `"qa"."a174.widgets"` stay distinct
+ * where a bare `schema.name` join collides — so it doubles as the row key.
+ */
+function qualifiedTableName(
+  schema: string | null,
+  name: string | null,
+): string {
+  return [schema ?? "", name ?? ""]
+    .map((part) => `"${part.replace(/"/g, '""')}"`)
+    .join(".");
+}
+
+/**
  * The database detail's Insights section: processes, top queries, sizes,
  * table scans, and non-default parameter overrides — a live introspection
  * window into the running Postgres cluster. All five datasets load
@@ -97,14 +112,14 @@ export function InsightsPanel({ id }: { id: string }) {
                   <tbody>
                     {insights.sizes.tables?.map((tbl) => (
                       <tr
-                        key={`${tbl?.schema}.${tbl?.name}`}
+                        key={qualifiedTableName(tbl.schema, tbl.name)}
                         className="border-b last:border-0"
                       >
                         <td className="py-1 pr-4 font-mono text-muted-foreground">
-                          {tbl?.schema}.{tbl?.name}
+                          {qualifiedTableName(tbl.schema, tbl.name)}
                         </td>
                         <td className="py-1 text-right tabular-nums">
-                          {tbl?.sizePretty}
+                          {tbl.sizePretty}
                         </td>
                       </tr>
                     ))}
@@ -278,20 +293,20 @@ export function InsightsPanel({ id }: { id: string }) {
               <tbody>
                 {insights.tableScans.map((r) => (
                   <tr
-                    key={`${r?.schema}.${r?.name}`}
+                    key={qualifiedTableName(r.schema, r.name)}
                     className="border-b last:border-0"
                   >
                     <td className="py-1 pr-3 font-mono text-muted-foreground">
-                      {r?.schema}.{r?.name}
+                      {qualifiedTableName(r.schema, r.name)}
                     </td>
                     <td className="py-1 pr-3 text-right tabular-nums">
-                      {r?.seqScans ?? 0}
+                      {r.seqScans ?? 0}
                     </td>
                     <td className="py-1 pr-3 text-right tabular-nums">
-                      {r?.indexScans ?? 0}
+                      {r.indexScans ?? 0}
                     </td>
                     <td className="py-1 text-right tabular-nums">
-                      {r?.liveRows ?? 0}
+                      {r.liveRows ?? 0}
                     </td>
                   </tr>
                 ))}

@@ -59,15 +59,27 @@ function topQuery(over: Partial<TopQueryRow>): TopQueryRow {
 }
 
 type SpecRow = { name: string; value: string };
+type SizeRow = { schema: string; name: string; sizePretty: string };
+type ScanRow = {
+  schema: string;
+  name: string;
+  seqScans: number;
+  indexScans: number;
+  liveRows: number;
+};
 
 const state: {
   processes: ProcessRow[];
   topQueries: TopQueryRow[];
   parameterSpec: SpecRow[];
+  sizes: { database: null; tables: SizeRow[] } | null;
+  tableScans: ScanRow[];
 } = {
   processes: [],
   topQueries: [],
   parameterSpec: [],
+  sizes: null,
+  tableScans: [],
 };
 const saveParameters = vi.fn();
 
@@ -79,10 +91,10 @@ vi.mock("@/features/databases/hooks/use-database-insights", () => ({
     topQueries: state.topQueries,
     topQueriesLoading: false,
     topQueriesError: undefined,
-    sizes: null,
+    sizes: state.sizes,
     sizesLoading: false,
     sizesError: undefined,
-    tableScans: [],
+    tableScans: state.tableScans,
     tableScansLoading: false,
     tableScansError: undefined,
     parameterOverrides: [],
@@ -101,6 +113,8 @@ beforeEach(() => {
   state.processes = [];
   state.topQueries = [];
   state.parameterSpec = [];
+  state.sizes = null;
+  state.tableScans = [];
   saveParameters.mockReset();
 });
 
@@ -292,5 +306,116 @@ describe("InsightsPanel parameter overrides refresh", () => {
 
     expect(value()).toHaveValue("8MB");
     expect(discard()).not.toBeInTheDocument();
+  });
+});
+
+// w4/255: `"qa.a174".widgets` and `qa."a174.widgets"` are distinct tables, but
+// a bare `schema.name` join printed both as `qa.a174.widgets` and used that as
+// the React key — so a refresh that reordered the list left phantom rows.
+describe("InsightsPanel table identities", () => {
+  const size = (schema: string, name: string, sizePretty: string) => ({
+    schema,
+    name,
+    sizePretty,
+  });
+  const scan = (schema: string, name: string, liveRows: number) => ({
+    schema,
+    name,
+    seqScans: 1,
+    indexScans: 0,
+    liveRows,
+  });
+
+  function rowsOf(heading: string): string[][] {
+    const table = screen
+      .getAllByRole("table")
+      .find((t) =>
+        t.querySelector("th")?.parentElement?.textContent?.includes(heading),
+      );
+    if (!table) throw new Error(`no table with ${heading}`);
+    return [...table.querySelectorAll("tbody tr")].map((tr) =>
+      [...tr.querySelectorAll("td")].map((td) => td.textContent ?? ""),
+    );
+  }
+
+  const sizesInitial = [
+    size("qa_a174", "size_control", "240 kB"),
+    size("qa.a174", "widgets", "72 kB"),
+    size("qa", "a174.widgets", "72 kB"),
+    size("qa_a174", "shared", "16 kB"),
+    size("qa_a174", "order items 雪", "16 kB"),
+    size("public", "shared", "16 kB"),
+    size("qa_a174", "move_control", "8192 bytes"),
+  ];
+  const sizesGrown = [
+    size("qa_a174", "move_control", "528 kB"),
+    size("qa_a174", "size_control", "240 kB"),
+    size("qa.a174", "widgets", "72 kB"),
+    size("qa", "a174.widgets", "72 kB"),
+    size("qa_a174", "order items 雪", "16 kB"),
+    size("public", "shared", "16 kB"),
+    size("qa_a174", "shared", "16 kB"),
+  ];
+
+  it("renders one distinct row per schema/table pair through reorders", () => {
+    state.sizes = { database: null, tables: sizesInitial };
+    const { rerender } = render(<InsightsPanel id="dpg-1" />);
+    expect(rowsOf("Size")).toEqual([
+      ['"qa_a174"."size_control"', "240 kB"],
+      ['"qa.a174"."widgets"', "72 kB"],
+      ['"qa"."a174.widgets"', "72 kB"],
+      ['"qa_a174"."shared"', "16 kB"],
+      ['"qa_a174"."order items 雪"', "16 kB"],
+      ['"public"."shared"', "16 kB"],
+      ['"qa_a174"."move_control"', "8192 bytes"],
+    ]);
+
+    // Growth moves a table to the top, then truncate moves it back.
+    for (const tables of [sizesGrown, sizesInitial, sizesGrown]) {
+      state.sizes = { database: null, tables };
+      rerender(<InsightsPanel id="dpg-1" />);
+      expect(rowsOf("Size")).toEqual(
+        tables.map((t) => [`"${t.schema}"."${t.name}"`, t.sizePretty]),
+      );
+    }
+
+    // Deleting a table removes exactly its row; adding one adds exactly one.
+    state.sizes = {
+      database: null,
+      tables: [
+        ...sizesGrown.filter((t) => t.schema !== "qa"),
+        size("qa", "new", "8 kB"),
+      ],
+    };
+    rerender(<InsightsPanel id="dpg-1" />);
+    const labels = rowsOf("Size").map((r) => r[0]);
+    expect(labels).toHaveLength(7);
+    expect(labels).not.toContain('"qa"."a174.widgets"');
+    expect(labels).toContain('"qa.a174"."widgets"');
+    expect(labels.at(-1)).toBe('"qa"."new"');
+  });
+
+  it("keeps table-scan counts with their own pair through a reorder", () => {
+    const a = scan("qa.a174", "widgets", 500);
+    const b = scan("qa", "a174.widgets", 7);
+    const c = scan("public", "shared", 1);
+    state.tableScans = [c, a, b];
+    const { rerender } = render(<InsightsPanel id="dpg-1" />);
+    state.tableScans = [b, c, a];
+    rerender(<InsightsPanel id="dpg-1" />);
+    expect(rowsOf("Seq scans")).toEqual([
+      ['"qa"."a174.widgets"', "1", "0", "7"],
+      ['"public"."shared"', "1", "0", "1"],
+      ['"qa.a174"."widgets"', "1", "0", "500"],
+    ]);
+  });
+
+  it("doubles embedded quotes so a quoted dot cannot impersonate a separator", () => {
+    state.tableScans = [scan('a"."b', "c", 1), scan("a", 'b"."c', 2)];
+    render(<InsightsPanel id="dpg-1" />);
+    expect(rowsOf("Seq scans").map((r) => r[0])).toEqual([
+      '"a"".""b"."c"',
+      '"a"."b"".""c"',
+    ]);
   });
 });
