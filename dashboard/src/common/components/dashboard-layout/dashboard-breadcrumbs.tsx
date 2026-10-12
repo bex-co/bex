@@ -460,7 +460,9 @@ function BreadcrumbLink({
 }) {
   return (
     <Button variant="ghost" size="sm" className="min-w-0 gap-1.5 px-2" asChild>
-      <Link to={to}>
+      {/* The text label is display:none below sm, which drops it from the
+          accessible name; name the icon-only link explicitly (w4/254). */}
+      <Link to={to} aria-label={label}>
         <Icon className="shrink-0" />
         <span className="hidden truncate sm:inline">{label}</span>
       </Link>
