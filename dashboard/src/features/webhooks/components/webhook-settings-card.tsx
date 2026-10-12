@@ -94,13 +94,18 @@ export function WebhookSettingsCard({
     if (!canSave) return;
     // Send only what changed — the backend's Update keeps omitted fields
     // (service.Update's merge), same semantics as REST PATCH.
-    await update(endpoint.id, {
+    const accepted = await update(endpoint.id, {
       ...(name !== endpoint.name ? { name: name.trim() } : {}),
       ...(url !== endpoint.url ? { url: url.trim() } : {}),
       ...(!sameSet(new Set(targetEventTypes), endpoint.eventTypes)
         ? { eventTypes: targetEventTypes }
         : {}),
     });
+    if (!accepted) return;
+    // Show what the server stored (it trims), so a padded draft goes clean —
+    // but never over an edit typed while the save was in flight (w4/271).
+    setName((current) => (current === name ? accepted.name : current));
+    setUrl((current) => (current === url ? accepted.url : current));
   }
 
   async function handleDelete() {
