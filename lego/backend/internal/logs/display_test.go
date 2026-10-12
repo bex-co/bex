@@ -23,9 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -213,32 +211,21 @@ func TestLiveTailAppliesDisplayMatching(t *testing.T) {
 	}
 }
 
-func TestLokiDisplayPrefilterIsASupersetOfDisplayMatches(t *testing.T) {
+func TestLokiTextSearchesKeepTheLokiQueryBroad(t *testing.T) {
 	raw := lokiQueryFor("default", LogQuery{App: "web", Search: []string{"a.b"}, Path: []string{"/x"}}.normalized())
-	if !strings.Contains(raw, `|~ "(?i)a\\.b"`) {
-		t.Fatalf("raw predicate changed: %s", raw)
+	if strings.Contains(raw, " |~ ") {
+		t.Fatalf("raw text search must not delegate matching to Loki: %s", raw)
+	}
+	if !strings.Contains(raw, `request_path="/x"`) {
+		t.Fatalf("raw query lost the path filter: %s", raw)
 	}
 	q := LogQuery{App: "web", Search: []string{"QA_A31_ANSI_red_end", "a.b"}, Path: []string{"/x"}, TextMode: TextModeDisplay}.normalized()
 	query := lokiQueryFor("default", q)
+	if strings.Contains(query, " |~ ") {
+		t.Fatalf("display text search must not delegate matching to Loki: %s", query)
+	}
 	if !strings.Contains(query, `request_path="/x"`) {
 		t.Fatalf("display query lost a filter: %s", query)
-	}
-	_, quoted, _ := strings.Cut(query, " |~ ")
-	quoted, _, _ = strings.Cut(quoted, " | json")
-	pattern, err := strconv.Unquote(quoted)
-	if err != nil {
-		t.Fatal(err)
-	}
-	re := regexp.MustCompile(pattern)
-	for _, line := range []string{ansiSample, "secret\rSHOWN", "plain A.B", "x \x1b]8;;u\alink"} {
-		if !re.MatchString(line) {
-			t.Errorf("prefilter drops %q, which the display matcher must see", line)
-		}
-	}
-	for _, line := range []string{"plain control", "aXb"} {
-		if re.MatchString(line) {
-			t.Errorf("prefilter passes %q, a plain line that cannot display a term", line)
-		}
 	}
 }
 

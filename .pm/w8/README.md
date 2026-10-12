@@ -17,7 +17,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m60** — [Preserve accepted arguments when copying CLI commands](m60/README.md) (7 tasks; 2h50m) ← functional CLI QA sweep135: both native clients change phrase/literal-comma searches and reject copied relative times; original controls pass; own fixture fully cleaned.
 
-- [ ] **m58** — [Preserve Unicode matches in log history](m58/README.md) (6 tasks) ← CLI sweep 94: both native clients lose stored Unicode matches, including ASCII searches; local Loki causes and safe candidate prefilter isolated; all fixtures cleaned.
+- [ ] **m58** — [Preserve Unicode matches in log history](blocked/m58/README.md) — **BLOCKED (2026-10-12: backend fix/tests complete and shipped locally in the milestone; needs production deployment plus fresh native Bex/Render App/Postgres/Key Value acceptance receipts and cleanup before t003/t006 can close)**
 - [ ] **m59** — [Return static sites to direct publication after clearing their build command](m59/README.md) (6 tasks, 2h15) ← CLI QA sweep 99: Bex and actual pinned Render accept the clear command, but create-time native Builder prevents no-build publication; passing direct-created control, four owned fixtures cleaned.
 
 - [ ] **m57** — [Preserve literal string lists in interactive CLI forms](blocked/m57/README.md) — **BLOCKED (2026-10-12: t001/t002 prepared and tested with `blocked/m57/evidence/upstream-lossless-string-list.patch` + caller audit; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release, and native Bex/Render receipts; no fork/backend workaround per scope/DO_NOT_DO)**
