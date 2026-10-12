@@ -1521,6 +1521,32 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 		[]string{cronFacts[0].SourceKey, cronFacts[1].SourceKey}).Scan(&cronFactCount); err != nil || cronFactCount != 2 {
 		t.Fatalf("batched cron fact count = %d (err %v), want exactly 2 after replay", cronFactCount, err)
 	}
+	// w4/259: run-1's start predates the start-time run id (blank run_id) and is
+	// insert-once, so the feed key is what carries the association; run-3's
+	// start stores its id and round-trips it.
+	run3Start := ServiceEventFact{
+		SourceKey: "cron:" + app.ID + ":run-3:started", AppID: app.ID, Type: EventFactCronRunStarted,
+		At: base.Add(960 * time.Millisecond), RunID: ids.Derive(ids.CronRun, "run-3"),
+	}
+	if inserted, err := s.InsertServiceEventFact(ctx, run3Start); err != nil || !inserted {
+		t.Fatalf("insert cron start with run id: %v", err)
+	}
+	cronStarted, err := s.ListServiceEvents(ctx, app.ID, ten.ID,
+		ServiceEventFilter{FactTypes: []string{string(EventFactCronRunStarted)}})
+	if err != nil || len(cronStarted) != 2 {
+		t.Fatalf("cron_job_run_started feed = %+v (err %v), want run-3 and run-1", cronStarted, err)
+	}
+	if got := cronStarted[0]; got.FactRunID != run3Start.RunID {
+		t.Fatalf("run-3 start row = %+v, want stored run id %s", got, run3Start.RunID)
+	}
+	legacy := cronStarted[1]
+	if name, ok := CronRunNameFromStartedKey(legacy.Key); legacy.FactRunID != "" || !ok || name != "run-1" {
+		t.Fatalf("pre-fix start row = %+v (key name %q %v), want a blank run id and a key naming run-1", legacy, name, ok)
+	}
+	legacyLookup, err := s.GetServiceEvent(ctx, ten.ID, ids.Derive(ids.Event, legacy.Key))
+	if err != nil || legacyLookup.Event.Key != legacy.Key {
+		t.Fatalf("pre-fix start lookup = %+v (err %v), want the same row key", legacyLookup.Event, err)
+	}
 	// w4/m114: a failed run's ended fact carries why it failed, its exit status
 	// and its public run id through both the feed and the by-id lookup.
 	failedRun := ServiceEventFact{
