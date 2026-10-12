@@ -306,15 +306,15 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **233** — [File contents dialog grows and moves its controls when loading finishes](233.md) (45m) ← live qa-find-bugs 2026-10-10 pass a47; the shared spinner reserves 192px before a 256px editor, moving the controls on desktop and mobile.
 
-- [ ] **232** — [Deploy history silently loses an older row after a new deployment arrives](232.md) (55m) ← live qa-find-bugs 2026-10-10 pass a44; a refreshed head leaves a gap before a retained tail, hides Load more, and reload restores the missing deployment.
+- [x] **232** — [Deploy history silently loses an older row after a new deployment arrives](done/232.md) (55m) — **DONE 2026-10-12** (`b3d4db7c1`, live-verified 22/22 and 23/23 deploys after arrivals) ← live qa-find-bugs 2026-10-10 pass a44; a refreshed head leaves a gap before a retained tail, hides Load more, and reload restores the missing deployment.
 
-- [ ] **231** — [Created environment stays absent after the create refresh finishes](231.md) (55m) ← live qa-find-bugs 2026-10-10 pass a42; a naturally overlapping pre-save list read is accepted as the post-create refresh, while settled-page creation passes.
+- [x] **231** — [Created environment stays absent after the create refresh finishes](done/231.md) (55m) — **DONE 2026-10-12** (`460e106eb`, live-verified with a held pre-save read) ← live qa-find-bugs 2026-10-10 pass a42; a naturally overlapping pre-save list read is accepted as the post-create refresh, while settled-page creation passes.
 
-- [ ] **230** — [Cron history Load more cannot recover older runs after a new arrival](230.md) (55m) ← live qa-find-bugs 2026-10-10 pass a40; successful older-page responses stay hidden after a shifted head, and reload recovers the identical response.
+- [x] **230** — [Cron history Load more cannot recover older runs after a new arrival](done/230.md) (55m) — **DONE 2026-10-12** (`1c79d5171`, live-verified 8/8 and 9/9 runs after arrivals) ← live qa-find-bugs 2026-10-10 pass a40; successful older-page responses stay hidden after a shifted head, and reload recovers the identical response.
 
-- [ ] **229** — [Global Search declares no matches while result lists are still loading](229.md) (55m) ← live qa-find-bugs 2026-10-10 pass a38; two fresh-tab pending false-empty reproductions with successful settled Blueprint controls.
+- [x] **229** — [Global Search declares no matches while result lists are still loading](done/229.md) (55m) — **DONE 2026-10-12** (`55d03259b`, live-verified with a held Blueprints read) ← live qa-find-bugs 2026-10-10 pass a38; two fresh-tab pending false-empty reproductions with successful settled Blueprint controls.
 
-- [ ] **228** — [Datastore log text and instance filters disappear on reload](228.md) (55m) ← live qa-find-bugs 2026-10-10 pass a36; Key Value text/instance and Postgres text reset, while service text and datastore range persist.
+- [x] **228** — [Datastore log text and instance filters disappear on reload](done/228.md) (55m) — **DONE 2026-10-12** (`5b82d6e60`, live-verified on Postgres + Key Value) ← live qa-find-bugs 2026-10-10 pass a36; Key Value text/instance and Postgres text reset, while service text and datastore range persist.
 
 - [ ] **227** — [Cron “Last run” labels the last successful run](227.md) (30m) ← live `$qa-find-bugs w4`, 2026-10-09 pass a27; fresh English/Chinese failure repro with correct last-success API data and passing run controls.
 
