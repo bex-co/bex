@@ -470,7 +470,7 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.confirmSuspendDetail": {
     message:
-      "Please confirm you would like to suspend {name}. Active connections will be dropped; data is preserved and you can resume it at any time.",
+      "Please confirm you would like to suspend {name}. Active connections will be dropped, and you can resume it at any time. Data retention follows the persistence mode: Off loses all data; Snapshot only keeps data up to the last snapshot; Journal + Snapshot keeps writes up to about the last second.",
     description: "Suspend-confirmation consequences and named instance",
   },
   "keyvalue.confirmSuspendPrompt": {
