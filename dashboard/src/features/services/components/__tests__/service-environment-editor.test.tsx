@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { useSyncExternalStore } from "react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { mockCapabilities } from "@/test/mocks/capabilities";
@@ -960,5 +961,115 @@ describe("ServiceEnvironmentEditor restored-draft row identity (w4/139)", () => 
     expect(
       screen.getByRole("textbox", { name: "Value for ALPHA" }),
     ).toBeInTheDocument();
+  });
+});
+
+// w4/260: a background capability refresh passes through "checking", which
+// gives each action a reason tooltip for a moment. PermissionTooltip then moves
+// its child in the tree; a DropdownMenu root inside it remounted and dropped
+// the open menu. The root now stays put — the open menu survives, refuses to
+// act while checking, and recovers without replaying anything.
+describe("ServiceEnvironmentEditor menus across a capability refresh (w4/260)", () => {
+  let current = mockCapabilities();
+  const listeners = new Set<() => void>();
+  function subscribe(listener: () => void) {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  }
+  function setCapabilities(next: ReturnType<typeof mockCapabilities>) {
+    current = next;
+    act(() => listeners.forEach((listener) => listener()));
+  }
+  const checking = () =>
+    mockCapabilities({
+      role: null,
+      canCreate: false,
+      canViewSensitive: false,
+      loading: true,
+      loaded: false,
+      stale: true,
+    });
+
+  beforeEach(() => {
+    current = mockCapabilities();
+    listeners.clear();
+    vi.mocked(useCapabilities).mockImplementation(() =>
+      useSyncExternalStore(subscribe, () => current),
+    );
+  });
+
+  async function expectSurvivesChecking(itemName: string) {
+    const menu = await screen.findByRole("menu");
+    setCapabilities(checking());
+    expect(screen.getByRole("menu")).toBe(menu);
+    const item = screen.getByRole("menuitem", { name: itemName });
+    expect(item).toHaveAttribute("aria-disabled", "true");
+    await userEvent.setup().click(item);
+    expect(screen.getByRole("menu")).toBe(menu);
+    setCapabilities(mockCapabilities());
+    expect(screen.getByRole("menu")).toBe(menu);
+    expect(
+      screen.getByRole("menuitem", { name: itemName }),
+    ).not.toHaveAttribute("aria-disabled");
+  }
+
+  it("keeps Export open and inert while checking, then copies on request", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Export" }));
+    await expectSurvivesChecking("Copy env vars");
+    expect(revealEnv).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("menuitem", { name: "Copy env vars" }));
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith("Environment copied"),
+    );
+    expect(revealEnv).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("keeps Add variable open and inert while checking, then closes on Escape", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    const rows = screen.getAllByRole("textbox", {
+      name: /Value for /,
+      hidden: true,
+    }).length;
+    await user.click(screen.getByRole("button", { name: "Add variable" }));
+    await expectSurvivesChecking("Generated secret");
+    expect(
+      screen.getAllByRole("textbox", { name: /Value for /, hidden: true }),
+    ).toHaveLength(rows);
+    expect(screen.queryByDisplayValue("NEW_SECRET")).toBeNull();
+
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(
+      screen.getAllByRole("textbox", { name: /Value for /, hidden: true }),
+    ).toHaveLength(rows);
+  });
+
+  it("keeps Save options open and inert while checking, then saves once on request", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Value for ALPHA" }),
+      "v2",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Environment save options" }),
+    );
+    await expectSurvivesChecking("Save only");
+    expect(save).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("menuitem", { name: "Save only" }));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(save).toHaveBeenCalledWith(
+      "web",
+      { envVars: [{ key: "ALPHA", value: "v2" }], secretFiles: [] },
+      "save_only",
+    );
   });
 });
