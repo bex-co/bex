@@ -459,6 +459,11 @@ const enMetrics: Record<string, TranslationEntry> = {
     message: "Custom…",
     description: "Time-range dropdown option that opens the start/end picker",
   },
+  "metrics.rangeCustomEdit": {
+    message: "Edit custom range",
+    description:
+      "Button beside the time-range dropdown that reopens the picker for the active custom range",
+  },
   "metrics.rangeCustomTitle": {
     message: "Custom range",
     description: "Custom time-range picker dialog title",

@@ -442,6 +442,11 @@ const zhMetrics: Record<string, TranslationEntry> = {
     message: "自定义…",
     description: "Time-range dropdown option that opens the start/end picker",
   },
+  "metrics.rangeCustomEdit": {
+    message: "编辑自定义范围",
+    description:
+      "Button beside the time-range dropdown that reopens the picker for the active custom range",
+  },
   "metrics.rangeCustomTitle": {
     message: "自定义范围",
     description: "Custom time-range picker dialog title",
