@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 
@@ -312,5 +312,113 @@ describe("EditableFieldRow", () => {
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
     expect(onSave).toHaveBeenCalledWith("none");
+  });
+
+  describe("select variant Escape (w4/250)", () => {
+    const options = [
+      { value: "default", label: "Use workspace default" },
+      { value: "none", label: "No notifications" },
+    ];
+
+    function renderSelect(onSave = ok()) {
+      return render(
+        <EditableFieldRow
+          label="Notifications"
+          value="default"
+          editLabel="Edit notifications"
+          options={options}
+          onSave={onSave}
+        />,
+      );
+    }
+
+    it("Escape on the closed trigger discards the picked draft without saving", async () => {
+      const user = userEvent.setup();
+      const onSave = ok();
+      renderSelect(onSave);
+
+      await user.click(
+        screen.getByRole("button", { name: "Edit notifications" }),
+      );
+      await user.click(screen.getByRole("combobox", { name: "Notifications" }));
+      await user.click(
+        screen.getByRole("option", { name: "No notifications" }),
+      );
+      const trigger = screen.getByRole("combobox", { name: "Notifications" });
+      expect(trigger).toHaveTextContent("No notifications");
+      expect(trigger).toHaveFocus();
+
+      await user.keyboard("{Escape}");
+
+      expect(trigger).toHaveTextContent("Use workspace default");
+      expect(trigger).toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: "Edit notifications" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Save changes" }),
+      ).not.toBeInTheDocument();
+      expect(onSave).not.toHaveBeenCalled();
+    });
+
+    it("first Escape closes an open popup and keeps editing; the next cancels", async () => {
+      const user = userEvent.setup();
+      const onSave = ok();
+      renderSelect(onSave);
+
+      await user.click(
+        screen.getByRole("button", { name: "Edit notifications" }),
+      );
+      const trigger = screen.getByRole("combobox", { name: "Notifications" });
+      await user.click(trigger);
+      expect(screen.getByRole("listbox")).toBeInTheDocument();
+
+      await user.keyboard("{Escape}");
+
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+      expect(trigger).toBeEnabled();
+      expect(
+        screen.getByRole("button", { name: "Save changes" }),
+      ).toBeInTheDocument();
+
+      trigger.focus();
+      await user.keyboard("{Escape}");
+
+      expect(trigger).toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: "Edit notifications" }),
+      ).toBeInTheDocument();
+      expect(onSave).not.toHaveBeenCalled();
+    });
+
+    it("Escape does not cancel while a save is in flight", async () => {
+      const user = userEvent.setup();
+      const { rerender } = renderSelect();
+
+      await user.click(
+        screen.getByRole("button", { name: "Edit notifications" }),
+      );
+      rerender(
+        <EditableFieldRow
+          label="Notifications"
+          value="default"
+          editLabel="Edit notifications"
+          options={options}
+          busy
+          onSave={ok()}
+        />,
+      );
+      fireEvent.keyDown(
+        screen.getByRole("combobox", { name: "Notifications" }),
+        { key: "Escape" },
+      );
+
+      expect(
+        screen.getByRole("button", { name: "Save changes" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Edit notifications" }),
+      ).not.toBeInTheDocument();
+    });
   });
 });
