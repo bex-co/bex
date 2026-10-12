@@ -61,9 +61,15 @@ describe("GenerateBlueprintDialog", () => {
       },
     });
     expect(await screen.findByText(/services:/)).toBeInTheDocument();
-    expect(
-      screen.getByText(/secret values are never exported/i),
-    ).toBeInTheDocument();
+    // w4/248: selected group keys export as generateValue (generated if
+    // missing, never prompted) — only service sync: false keys are prompted.
+    const note = screen.getByText(/stored values are never exported/i);
+    expect(note).toHaveTextContent(
+      "Service variables marked sync: false are prompted for",
+    );
+    expect(note).toHaveTextContent(
+      "including exported environment-group keys — keep an existing value, or get a generated one if missing",
+    );
     expect(
       screen.getByRole("button", { name: /download render\.yaml/i }),
     ).toBeInTheDocument();

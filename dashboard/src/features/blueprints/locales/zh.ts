@@ -457,7 +457,7 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.generateSecretsNote": {
     message:
-      "机密值绝不导出——机密变量以 sync: false 形式出现，首次创建蓝图时会提示填写。",
+      "已存储的值绝不导出。标记为 sync: false 的服务变量会在首次创建蓝图时提示填写。标记为 generateValue 的变量（包括导出的环境组键）会保留现有值，缺失时自动生成。",
     description: "Generate dialog note under the yaml preview",
   },
   "blueprints.generateError": {
