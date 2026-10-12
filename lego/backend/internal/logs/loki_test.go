@@ -18,6 +18,7 @@ package logs
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -28,6 +29,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
@@ -407,6 +409,64 @@ func TestHistoryAndLivePayloadAndIDConverge(t *testing.T) {
 	}
 	if logID(hist[0]) != logID(live) {
 		t.Fatalf("log id diverges: history %q vs live %q", logID(hist[0]), logID(live))
+	}
+}
+
+// w4/256: a 70,065-byte record came back whole from history but capped from
+// live, so the dashboard keyed two rows for one record. History applies the
+// live reader's cap — same bytes, same marker, same id — while below- and
+// at-cap records stay byte-identical, and the cap holds for every log type.
+func TestHistoryAndLiveConvergeAcrossTheMessageCap(t *testing.T) {
+	const nanos = 1760177677536529519
+	ts := time.Unix(0, nanos).UTC().Format(time.RFC3339Nano)
+	payload := func(reps int) string {
+		return `{"case":"qa-a176","pad":"` + strings.Repeat("雪🚀β|", reps) + `"}`
+	}
+	atCap := strings.Repeat("a", maxLogMessageBytes)
+	for _, tc := range []struct {
+		name, msg, logType string
+		capped             bool
+	}{
+		{"short", `{"case":"qa-a176-short","text":"雪🚀β"}`, LogTypeApp, false},
+		{"below", payload(5000), LogTypeApp, false},
+		{"exactly at cap", atCap, LogTypeApp, false},
+		{"above, split rune", payload(7000), LogTypeApp, true},
+		{"above, build", payload(7000), LogTypeBuild, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			raw, err := json.Marshal(tc.msg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			body := lokiResp(map[string]any{
+				"stream": fmt.Sprintf(`{"app":"web","pod":"web-1","container":"app","type":%q}`, tc.logType),
+				"values": fmt.Sprintf(`[["%d",%s]]`, nanos, raw),
+			})
+			var lr lokiRangeResponse
+			if err := decodeJSON(body, &lr); err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			hist, err := parseLokiStreams(lr, LogQuery{App: "web", Limit: 10})
+			if err != nil || len(hist) != 1 {
+				t.Fatalf("history parse: %d entries (err %v)", len(hist), err)
+			}
+			live := parseContainerLogLine("web", "web-1", core.AppContainer, tc.logType, ts+" "+tc.msg)
+
+			got := hist[0].Message
+			if got != live.Message || logID(hist[0]) != logID(live) {
+				t.Fatalf("history (%d bytes) and live (%d bytes) diverge", len(got), len(live.Message))
+			}
+			if !tc.capped {
+				if got != tc.msg {
+					t.Fatalf("under-cap message changed: %d bytes, want %d", len(got), len(tc.msg))
+				}
+				return
+			}
+			prefix, ok := strings.CutSuffix(got, " …[truncated]")
+			if !ok || !utf8.ValidString(got) || len(prefix) > maxLogMessageBytes || !strings.HasPrefix(tc.msg, prefix) {
+				t.Fatalf("capped message malformed: %d bytes, tail %q", len(got), got[max(0, len(got)-20):])
+			}
+		})
 	}
 }
 
