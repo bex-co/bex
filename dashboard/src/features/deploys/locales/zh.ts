@@ -174,6 +174,11 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy detail page: accurate explanation of a storeless build-log response",
   },
+  "deploys.logPartiallyLoaded": {
+    message: "此时间范围只加载了一部分。加载更早的日志以搜索更早的行。",
+    description:
+      "Deploy log viewer banner while older history remains unloaded. The panel's search and type/instance filters run over loaded lines only, so it must not claim a number of matches",
+  },
   "deploys.logStepEndMissing": {
     message:
       "该部署在预部署步骤结束前已取消，且未记录该步骤的完成时间，因此其之后的输出可能不在此时间范围内。请在日志选项中选择更大的范围查看。",
