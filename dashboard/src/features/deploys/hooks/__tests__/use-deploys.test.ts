@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { mergeDeployPages, useDeploys, type DeployRow } from "../use-deploys";
+import { useDeploys, type DeployRow } from "../use-deploys";
 
 const useQuery = vi.fn();
 const startPolling = vi.fn();
 const stopPolling = vi.fn();
 const query = vi.fn();
+const toastError = vi.hoisted(() => vi.fn());
+vi.mock("sonner", () => ({ toast: { error: toastError } }));
 vi.mock("@apollo/client/react", () => ({
   useQuery: (...args: unknown[]) => useQuery(...args),
   useApolloClient: () => ({ query }),
@@ -55,26 +57,7 @@ beforeEach(() => {
   startPolling.mockReset();
   stopPolling.mockReset();
   query.mockReset();
-});
-
-describe("mergeDeployPages", () => {
-  it("appends without duplicates", () => {
-    const { rows, dropAppended } = mergeDeployPages(
-      [row({ id: "dep-1" }), row({ id: "dep-2" })],
-      [row({ id: "dep-3" })],
-    );
-    expect(dropAppended).toBe(false);
-    expect(rows.map((d) => d.id)).toEqual(["dep-1", "dep-2", "dep-3"]);
-  });
-
-  it("drops appended pages when a poll shifts page 1 into their territory", () => {
-    const { rows, dropAppended } = mergeDeployPages(
-      [row({ id: "dep-new" }), row({ id: "dep-1" })],
-      [row({ id: "dep-1" }), row({ id: "dep-2" })],
-    );
-    expect(dropAppended).toBe(true);
-    expect(rows.map((d) => d.id)).toEqual(["dep-new", "dep-1"]);
-  });
+  toastError.mockReset();
 });
 
 describe("useDeploys", () => {
@@ -109,7 +92,8 @@ describe("useDeploys", () => {
     act(() => result.current.loadMore());
     await waitFor(() => expect(result.current.deploys).toHaveLength(21));
     expect(result.current.hasMore).toBe(false);
-    expect(result.current.error?.message).toBe("partial page");
+    // The partial page is kept, and its error announced.
+    expect(toastError).toHaveBeenCalledWith("Couldn't load older deploys.");
 
     const refreshed = [row({ id: "dep-tail" }), ...firstPage.slice(0, 19)];
     mockDeploys(refreshed);
@@ -119,10 +103,9 @@ describe("useDeploys", () => {
       refreshed.map((deploy) => deploy.id),
     );
     expect(result.current.hasMore).toBe(true);
-    expect(result.current.error).toBeUndefined();
   });
 
-  it("drops appended history and its error when the status filter changes", async () => {
+  it("drops appended history when the status filter changes", async () => {
     const firstPage = Array.from({ length: 20 }, (_, i) =>
       row({ id: `dep-${i}` }),
     );
@@ -138,7 +121,6 @@ describe("useDeploys", () => {
 
     act(() => result.current.loadMore());
     await waitFor(() => expect(result.current.deploys).toHaveLength(21));
-    expect(result.current.error?.message).toBe("old filter error");
 
     mockDeploys([row({ id: "dep-failed", status: "build_failed" })]);
     rerender({ statuses: ["build_failed"] });
@@ -147,7 +129,6 @@ describe("useDeploys", () => {
       "dep-failed",
     ]);
     expect(result.current.hasMore).toBe(false);
-    expect(result.current.error).toBeUndefined();
   });
 
   // w4/073 — mirror of useLatestDeploy / w6/m46 t005. Settled history still

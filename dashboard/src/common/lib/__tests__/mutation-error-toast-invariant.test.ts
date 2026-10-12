@@ -41,6 +41,8 @@ const ALLOWED: Record<string, string> = {
     DEDICATED,
   'features/blueprints/hooks/use-sync-blueprint.ts: toast.error(t("blueprints.syncBusy"))':
     DEDICATED,
+  'features/deploys/hooks/use-deploys.ts: toast.error(t("deploys.listLoadMoreError"))':
+    READ,
   'features/databases/hooks/use-create-database.ts: toast.error(t("databases.fieldPhysicalNameReserved",{name}))':
     DEDICATED,
   'features/databases/hooks/use-rename-database.ts: toast.error(t("databases.nameConflict"))':

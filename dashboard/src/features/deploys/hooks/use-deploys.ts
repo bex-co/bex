@@ -1,8 +1,17 @@
 import { useMemo, useState } from "react";
 import { useApolloClient, useQuery } from "@apollo/client/react";
+import { toast } from "sonner";
 import { DeploysDocument, type DeploysQuery } from "@/graphql/definitions";
+import { useTranslations } from "@/common/hooks/use-translations";
 import { skipPollWhenHidden, useConvergingPoll } from "@/common/lib/polling";
 import { isTerminalDeployStatus } from "@/features/deploys/lib/deploy-status";
+import {
+  NO_APPENDED,
+  appendPage,
+  joinAppendedPages,
+  type AppendRequest,
+  type AppendedPages,
+} from "@/common/lib/appended-pages";
 
 const PAGE_SIZE = 20;
 
@@ -70,46 +79,6 @@ export interface UseDeploysResult {
   loadMore: () => void;
 }
 
-/** The `loadMore`-appended pages, tagged with the filter they were read for. */
-interface AppendedPages {
-  filterKey: string;
-  rows: DeployRow[];
-  /** Size of the most recently appended page (null ⇒ none appended yet). */
-  lastPageSize: number | null;
-  error: Error | undefined;
-}
-
-const NO_APPENDED: AppendedPages = {
-  filterKey: "",
-  rows: [],
-  lastPageSize: null,
-  error: undefined,
-};
-
-/**
- * Merge page-1 with appended history, dropping duplicates by id. A poll that
- * prepends a new deploy shifts the keyset so page 1 overlaps an appended page —
- * in that case drop the stale appends the way a filter change already does
- * (w4/073).
- */
-export function mergeDeployPages(
-  firstPage: DeployRow[],
-  appended: DeployRow[],
-): { rows: DeployRow[]; dropAppended: boolean } {
-  const firstIds = new Set(firstPage.map((d) => d.id));
-  if (appended.some((d) => firstIds.has(d.id))) {
-    return { rows: firstPage, dropAppended: true };
-  }
-  const seen = new Set(firstIds);
-  const rows = [...firstPage];
-  for (const d of appended) {
-    if (seen.has(d.id)) continue;
-    seen.add(d.id);
-    rows.push(d);
-  }
-  return { rows, dropAppended: false };
-}
-
 /**
  * Reads a service's deploy history (`deploys(serviceId, status[], cursor,
  * limit)`) newest-first for the dedicated Deploys tab (w9/002). `deploys` is
@@ -117,9 +86,11 @@ export function mergeDeployPages(
  * precedent — so `loadMore` re-queries imperatively past the last-loaded
  * deploy's id (the surface's keyset cursor, internal/store's pageNewestFirst)
  * and appends the pages itself. Appended pages carry the status filter they
- * were read for, so changing the filter drops them (and any in-flight page
- * that lands late) instead of stacking one filter's tail under another's
- * first page.
+ * were read for and the first-page boundary they hang off
+ * (common/lib/appended-pages), so a filter change or a new deploy shifting
+ * page 1 drops them — and the next Load more reads from the current head —
+ * instead of stacking a stale tail under it with a row missing between
+ * (w4/232).
  *
  * Polls on the same converging cadence as `useLatestDeploy` (w4/073 / the
  * mirror of w6/m46 t005): arrivals while watching the tab must appear without
@@ -131,6 +102,7 @@ export function useDeploys(
   serviceId: string,
   statuses: string[],
 ): UseDeploysResult {
+  const { t } = useTranslations();
   const client = useApolloClient();
   const status = statuses.length > 0 ? statuses : undefined;
   const filterKey = `${serviceId}${FILTER_SEP}${statuses.join(",")}`;
@@ -146,18 +118,18 @@ export function useDeploys(
   );
   const firstPage = useMemo(() => toRows(data?.deploys), [data]);
 
-  const [appended, setAppended] = useState<AppendedPages>(NO_APPENDED);
+  const [appended, setAppended] =
+    useState<AppendedPages<DeployRow>>(NO_APPENDED);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const { deploys, scoped } = useMemo(() => {
-    const pages = appended.filterKey === filterKey ? appended : NO_APPENDED;
-    const { rows, dropAppended } = mergeDeployPages(firstPage, pages.rows);
-    return {
-      deploys: rows,
-      scoped: dropAppended ? NO_APPENDED : pages,
-    };
-  }, [appended, filterKey, firstPage]);
-
+  const {
+    rows: deploys,
+    hasMore,
+    next,
+  } = useMemo(
+    () => joinAppendedPages(firstPage, appended, filterKey, PAGE_SIZE),
+    [appended, filterKey, firstPage],
+  );
   // Not yet loaded counts as converging, matching useLatestDeploy.
   useConvergingPoll(
     startPolling,
@@ -166,43 +138,33 @@ export function useDeploys(
       deploys.some((d) => !isTerminalDeployStatus(d.status)),
   );
 
-  const hasMore =
-    scoped.lastPageSize === null
-      ? firstPage.length === PAGE_SIZE
-      : scoped.lastPageSize === PAGE_SIZE;
-
   async function loadMore() {
-    if (loadingMore || deploys.length === 0) return;
-    const key = filterKey;
+    if (loadingMore || !next) return;
+    const request: AppendRequest = next;
     setLoadingMore(true);
     try {
-      const cursor = deploys[deploys.length - 1].id;
       const result = await client.query({
         query: DeploysDocument,
-        variables: { serviceId, status, cursor, limit: PAGE_SIZE },
+        variables: {
+          serviceId,
+          status,
+          cursor: request.cursor,
+          limit: PAGE_SIZE,
+        },
         fetchPolicy: "network-only",
         errorPolicy: "all",
       });
-      const page = toRows(result.data?.deploys);
-      // Defensive only — the exclusive keyset cursor shouldn't hand back an
-      // id already loaded. Bounded to the current tail, not the full history.
-      const seenTail = new Set(deploys.slice(-PAGE_SIZE).map((d) => d.id));
-      setAppended((prev) => {
-        const base = prev.filterKey === key ? prev.rows : [];
-        return {
-          filterKey: key,
-          rows: [...base, ...page.filter((d) => !seenTail.has(d.id))],
-          lastPageSize: page.length,
-          error: result.error,
-        };
-      });
-    } catch (err) {
-      const failure = err instanceof Error ? err : new Error(String(err));
-      setAppended((prev) => ({
-        ...(prev.filterKey === key ? prev : NO_APPENDED),
-        filterKey: key,
-        error: failure,
-      }));
+      // A partial page is still kept; an unreadable one is a failure, never a
+      // successful empty page that would claim the history is exhausted.
+      if (result.data?.deploys) {
+        const page = toRows(result.data.deploys);
+        setAppended((prev) => appendPage(prev, request, page));
+      }
+      if (result.error || !result.data?.deploys) throw result.error;
+    } catch {
+      // The page's own error state covers only an empty list, so an older-page
+      // failure is announced here.
+      toast.error(t("deploys.listLoadMoreError"));
     } finally {
       setLoadingMore(false);
     }
@@ -212,7 +174,7 @@ export function useDeploys(
     deploys,
     loading: loading && deploys.length === 0,
     loadingMore,
-    error: error ?? scoped.error,
+    error,
     hasMore,
     loadMore: () => void loadMore(),
   };
