@@ -271,7 +271,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **265** — [Global Search retains its previous query after selection or Ctrl+K close](265.md) (55m) ← functional QA a254; fresh resource, Navigation and keyboard repeats retain the filter while Escape/Close reset; both bypasses traced; owned project deleted and session revoked.
 
-- [ ] **264** — [Restart tells users to retry a revision that has no deploy record](264.md) (55m) ← functional QA a246; gated native group link/unlink leaves persistent rowless revisions, fresh Restart retries give misleading recovery copy, and normal deploy restores the passing Restart control; preserve the refusal; fixtures deleted and session revoked.
+- [x] **264** — [Restart tells users to retry a revision that has no deploy record](done/264.md) (55m) — **DONE 2026-10-12** (`26cf0d6f1`, live-verified: rowless rev-4 Restart toast and REST 409 give the standard-deploy recovery; standard deploy then Restart succeeds) ← functional QA a246; gated native group link/unlink leaves persistent rowless revisions, fresh Restart retries give misleading recovery copy, and normal deploy restores the passing Restart control; preserve the refusal; fixtures deleted and session revoked.
 
 - [x] **263** — [Completed Key Value environment move keeps the old source row](done/263.md) (55m) — **DONE 2026-10-12** (`88405750a`, live-verified: bulk Move cleared the source row/count on the post-write list read; inverse move and API agree) ← functional QA a243; two completed moves accept an older list, leaving source row/count stale despite correct saved placement; fresh inverse control passes; owned fixtures deleted and session revoked.
 
