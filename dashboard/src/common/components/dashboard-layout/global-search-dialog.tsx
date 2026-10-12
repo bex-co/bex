@@ -48,14 +48,19 @@ export function GlobalSearchDialog({
 }) {
   const { t } = useTranslations();
   const [search, setSearch] = useState("");
+  // Reset on the prop's false→true edge, during render (w4/265): result
+  // selection and the parent's Cmd/Ctrl+K toggle close without onOpenChange,
+  // and an effect would paint the old query for a frame on reopen.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setSearch("");
+  }
 
   return (
     <CommandDialog
       open={open}
-      onOpenChange={(next) => {
-        if (!next) setSearch("");
-        onOpenChange(next);
-      }}
+      onOpenChange={onOpenChange}
       shouldFilter={false}
       label={t("common.topbarSearch")}
     >
