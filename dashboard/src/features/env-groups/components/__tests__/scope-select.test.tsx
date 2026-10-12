@@ -61,4 +61,33 @@ describe("ScopeSelect (w4/215)", () => {
     expect(environmentNameIn(index, "evm-a")).toBe("Alpha / shared");
     expect(environmentNameIn(index, "evm-missing")).toBeUndefined();
   });
+
+  // w4/270: a long "Project / Environment" label widened the Move/Clone
+  // dialogs to ~806px at 390px and ran the trigger and menu off screen.
+  it("wraps a long qualified scope inside the containing width (w4/270)", async () => {
+    const user = userEvent.setup();
+    const long = "qa-project-with-a-long-valid-name-雪";
+    render(
+      <ScopeSelect
+        id="scope"
+        value="evm-a"
+        environments={environments}
+        projects={[project("prj-a", long), project("prj-b", "Beta")]}
+        onValueChange={vi.fn()}
+      />,
+    );
+    const trigger = screen.getByRole("combobox", { name: "Environment" });
+    expect(trigger).toHaveTextContent(`${long} / shared`);
+    expect(trigger).toHaveClass(
+      "max-w-full",
+      "wrap-anywhere",
+      "*:data-[slot=select-value]:line-clamp-none",
+    );
+    await user.click(trigger);
+    const option = screen.getByRole("option", { name: `${long} / shared` });
+    expect(option).toHaveClass("wrap-anywhere");
+    expect(option.closest("[data-slot=select-content]")).toHaveClass(
+      "max-w-(--radix-select-content-available-width)",
+    );
+  });
 });

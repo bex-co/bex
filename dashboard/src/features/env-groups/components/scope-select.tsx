@@ -41,15 +41,26 @@ export function ScopeSelect({
     <div className="space-y-2">
       <Label htmlFor={id}>{t("envGroups.environmentLabel")}</Label>
       <Select value={value} onValueChange={onValueChange} disabled={loading}>
-        <SelectTrigger id={id}>
+        {/* "Project / Environment" names are unbounded user input: wrap the
+            full label (even unbroken segments) inside the containing width
+            instead of the primitive's one-line, fit-content trigger and menu
+            (w4/270). */}
+        <SelectTrigger
+          id={id}
+          className="min-h-9 max-w-full text-left whitespace-normal wrap-anywhere data-[size=default]:h-auto *:data-[slot=select-value]:line-clamp-none"
+        >
           <SelectValue placeholder={t("envGroups.environmentPlaceholder")} />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="max-w-(--radix-select-content-available-width)">
           <SelectItem value={WORKSPACE_SCOPE}>
             {t("envGroups.workspaceScope")}
           </SelectItem>
           {environments.map((environment) => (
-            <SelectItem key={environment.id} value={environment.id}>
+            <SelectItem
+              key={environment.id}
+              value={environment.id}
+              className="wrap-anywhere"
+            >
               {environmentScopeName(environment, projects)}
             </SelectItem>
           ))}
