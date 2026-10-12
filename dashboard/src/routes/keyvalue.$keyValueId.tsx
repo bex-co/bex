@@ -117,7 +117,7 @@ export function KeyValueDetailPage() {
           className="flex flex-wrap items-center gap-3 border-b px-4 py-4 sm:px-6"
         >
           {keyValue ? (
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 max-w-full items-center gap-2">
               <h1 className="truncate text-xl font-semibold">
                 {keyValue.name}
               </h1>
@@ -126,7 +126,7 @@ export function KeyValueDetailPage() {
           ) : (
             <div
               data-skeleton-region="resource-title"
-              className="flex items-center gap-2"
+              className="flex min-w-0 max-w-full items-center gap-2"
             >
               <Skeleton className="h-6 w-48" />
               <Skeleton className="h-5 w-16 rounded-full" />
