@@ -194,45 +194,49 @@ export function InsightsPanel({ id }: { id: string }) {
               {t("databases.insightsNoTopQueries")}
             </p>
           ) : (
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-1 pr-3 font-medium">
-                    {t("databases.insightsColQuery")}
-                  </th>
-                  <th className="pb-1 pr-3 text-right font-medium">
-                    {t("databases.insightsColCalls")}
-                  </th>
-                  <th className="pb-1 pr-3 text-right font-medium">
-                    {t("databases.insightsColTotalTime")}
-                  </th>
-                  <th className="pb-1 text-right font-medium">
-                    {t("databases.insightsColMeanTime")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {insights.topQueries.map((q, i) => (
-                  <tr key={i} className="border-b last:border-0">
-                    <td className="max-w-xs truncate py-1 pr-3 font-mono text-muted-foreground">
-                      <QueryCell
-                        row={q ?? {}}
-                        hiddenLabel={t("databases.insightsQueryHidden")}
-                      />
-                    </td>
-                    <td className="py-1 pr-3 text-right tabular-nums">
-                      {q?.calls}
-                    </td>
-                    <td className="py-1 pr-3 text-right tabular-nums">
-                      {q?.totalTimeMs?.toFixed(1)}ms
-                    </td>
-                    <td className="py-1 text-right tabular-nums">
-                      {q?.meanTimeMs?.toFixed(2)}ms
-                    </td>
+            // Narrow screens pan this table locally instead of crushing the
+            // timing columns into character-wide strips past the card edge.
+            <div data-slot="top-queries-scroll" className="overflow-x-auto">
+              <table className="w-full min-w-[36rem] text-xs">
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="pb-1 pr-3 font-medium">
+                      {t("databases.insightsColQuery")}
+                    </th>
+                    <th className="pb-1 pr-3 text-right font-medium whitespace-nowrap">
+                      {t("databases.insightsColCalls")}
+                    </th>
+                    <th className="pb-1 pr-3 text-right font-medium whitespace-nowrap">
+                      {t("databases.insightsColTotalTime")}
+                    </th>
+                    <th className="pb-1 text-right font-medium whitespace-nowrap">
+                      {t("databases.insightsColMeanTime")}
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {insights.topQueries.map((q, i) => (
+                    <tr key={i} className="border-b last:border-0">
+                      <td className="max-w-xs truncate py-1 pr-3 font-mono text-muted-foreground">
+                        <QueryCell
+                          row={q ?? {}}
+                          hiddenLabel={t("databases.insightsQueryHidden")}
+                        />
+                      </td>
+                      <td className="py-1 pr-3 text-right whitespace-nowrap tabular-nums">
+                        {q?.calls}
+                      </td>
+                      <td className="py-1 pr-3 text-right whitespace-nowrap tabular-nums">
+                        {q?.totalTimeMs?.toFixed(1)}ms
+                      </td>
+                      <td className="py-1 text-right whitespace-nowrap tabular-nums">
+                        {q?.meanTimeMs?.toFixed(2)}ms
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
           {insights.topQueries.some((q) => isMasked(q ?? {})) ? (
             <MaskedNote text={t("databases.insightsMaskedNote")} />
