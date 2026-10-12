@@ -127,14 +127,19 @@ function PageHeaderSkeleton({
 function TableRowsSkeleton({
   rows = 3,
   columns = 4,
+  rowClassName,
 }: {
   rows?: number;
   columns?: number;
+  rowClassName?: string;
 }) {
   return (
     <div className="overflow-hidden rounded-md border">
       <div
-        className="grid gap-4 border-b bg-muted/30 px-4 py-3"
+        className={cn(
+          "grid gap-4 border-b bg-muted/30 px-4 py-3",
+          rowClassName,
+        )}
         style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
       >
         {Array.from({ length: columns }, (_, index) => (
@@ -144,7 +149,10 @@ function TableRowsSkeleton({
       {Array.from({ length: rows }, (_, row) => (
         <div
           key={row}
-          className="grid min-h-14 items-center gap-4 border-b px-4 py-3 last:border-b-0"
+          className={cn(
+            "grid min-h-14 items-center gap-4 border-b px-4 py-3 last:border-b-0",
+            rowClassName,
+          )}
           style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
         >
           {Array.from({ length: columns }, (_, column) => (
@@ -1998,7 +2006,8 @@ export function StaticEdgeRulesEditorSkeleton() {
         </div>
         <Skeleton className="h-8 w-24" />
       </div>
-      <TableRowsSkeleton rows={2} columns={4} />
+      {/* Same 40rem minimum as the ready rule tables, clipped to the card. */}
+      <TableRowsSkeleton rows={2} columns={4} rowClassName="min-w-[40rem]" />
       <div className="flex justify-end">
         <Skeleton className="h-9 w-20" />
       </div>

@@ -221,7 +221,9 @@ export function RoutesEditor({
         </Button>
       </div>
       {draft.length > 0 && (
-        <Table>
+        // A minimum width keeps every rule field readable on a narrow screen;
+        // the table container scrolls horizontally instead of crushing them.
+        <Table className="min-w-[40rem]">
           <TableHeader>
             <TableRow>
               <TableHead className="w-32">{t("services.routeType")}</TableHead>
@@ -365,7 +367,9 @@ export function HeadersEditor({
         </Button>
       </div>
       {draft.length > 0 && (
-        <Table>
+        // A minimum width keeps every rule field readable on a narrow screen;
+        // the table container scrolls horizontally instead of crushing them.
+        <Table className="min-w-[40rem]">
           <TableHeader>
             <TableRow>
               <TableHead className="w-40">{t("services.headerPath")}</TableHead>
