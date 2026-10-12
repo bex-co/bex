@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { EmptyState } from "@/common/components/empty-state";
+import { Button } from "@/common/components/ui/button";
 import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useServiceBase } from "@/features/services/lib/service-base";
@@ -36,7 +37,7 @@ export function DeployDetailPage({
 }: DeployDetailPageProps) {
   const { t } = useTranslations();
   const base = useServiceBase();
-  const { deploy, error, notFound } = useDeploy(serviceId, deployId);
+  const { deploy, error, notFound, refetch } = useDeploy(serviceId, deployId);
 
   // A dead deploy id under a live service redirects to that service's Deploys
   // tab — the nearest live parent — not all the way home (w9/m55). A dead
@@ -82,7 +83,10 @@ export function DeployDetailPage({
         ? {}
         : undefined;
 
-  if (error) {
+  // A Live deploy keeps refreshing (w4/262), so a failed refresh must not
+  // unmount the detail it already shows: only a first-load failure is
+  // whole-page; afterwards the last good detail stays with an inline retry.
+  if (error && !deploy) {
     return (
       <EmptyState
         iconName="AlertCircle"
@@ -99,6 +103,17 @@ export function DeployDetailPage({
   // query immediately), so nothing serializes behind the header round trip.
   return (
     <div className="space-y-6">
+      {error ? (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground"
+        >
+          <span>{t("deploys.detailRefreshError")}</span>
+          <Button variant="outline" size="sm" onClick={refetch}>
+            {t("common.tryAgain")}
+          </Button>
+        </div>
+      ) : null}
       <DeployHeader
         deploy={deploy}
         actions={

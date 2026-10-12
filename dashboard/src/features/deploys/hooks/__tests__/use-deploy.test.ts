@@ -22,10 +22,12 @@ const deploy = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
+const startPolling = vi.fn();
 const stopPolling = vi.fn();
 
 beforeEach(() => {
   mockUseQuery.mockReset();
+  startPolling.mockReset();
   stopPolling.mockReset();
 });
 
@@ -42,6 +44,7 @@ describe("useDeploy", () => {
       loading: false,
       error: undefined,
       previousData: undefined,
+      startPolling,
       stopPolling,
     });
 
@@ -58,7 +61,9 @@ describe("useDeploy", () => {
     expect(stopPolling).not.toHaveBeenCalled();
   });
 
-  it("stops polling once the deploy reaches a terminal status", () => {
+  // w4/262: Live closes the rollout, but a later deploy turns the record
+  // Deactivated — keep reading it at the resource baseline.
+  it("keeps a live deploy refreshing at the 30s baseline", () => {
     mockUseQuery.mockReturnValue({
       data: {
         deploy: deploy({ status: "live", finishedAt: "2026-07-14T00:01:00Z" }),
@@ -66,12 +71,14 @@ describe("useDeploy", () => {
       loading: false,
       error: undefined,
       previousData: undefined,
+      startPolling,
       stopPolling,
     });
 
     renderHook(() => useDeploy("web", "dep-1"));
 
-    expect(stopPolling).toHaveBeenCalledTimes(1);
+    expect(startPolling).toHaveBeenCalledWith(30_000);
+    expect(stopPolling).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -80,12 +87,13 @@ describe("useDeploy", () => {
     "pre_deploy_failed",
     "canceled",
     "deactivated",
-  ])("also stops polling for the %s terminal status", (status) => {
+  ])("stops polling for the settled %s status", (status) => {
     mockUseQuery.mockReturnValue({
       data: { deploy: deploy({ status }) },
       loading: false,
       error: undefined,
       previousData: undefined,
+      startPolling,
       stopPolling,
     });
 
@@ -100,6 +108,7 @@ describe("useDeploy", () => {
       loading: false,
       error: undefined,
       previousData: undefined,
+      startPolling,
       stopPolling,
     });
 
@@ -116,6 +125,7 @@ describe("useDeploy", () => {
       loading: false,
       error: codedGraphQLError("NOT_FOUND", {}, 'deploy "dep-nope" not found'),
       previousData: undefined,
+      startPolling,
       stopPolling,
     });
 
@@ -131,6 +141,7 @@ describe("useDeploy", () => {
       loading: true,
       error: undefined,
       previousData: undefined,
+      startPolling,
       stopPolling,
     });
 
@@ -157,6 +168,7 @@ describe("useDeploy", () => {
         loading: false,
         error: undefined,
         previousData: undefined,
+        startPolling,
         stopPolling,
       });
       renderHook(() => useDeploy("web", "dep-1"));
@@ -180,6 +192,7 @@ describe("useDeploy", () => {
       loading: false,
       error: undefined,
       previousData: undefined,
+      startPolling,
       stopPolling,
     });
     renderHook(() => useDeploy("web", "dep-1"));
