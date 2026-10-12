@@ -191,7 +191,11 @@ describe("CronRunsSection", () => {
     );
   });
 
-  it("keeps the plain confirm copy when no run is active", async () => {
+  // w4/237: history can lag an accepted run (the refetch after a replacement
+  // may hold only terminal rows), so "no active run loaded" is not proof that
+  // triggering replaces nothing. The default copy states the replacement
+  // semantics conditionally, without claiming a run exists.
+  it("still explains replacement when no active run is loaded", async () => {
     hasActiveRun = false;
     const user = userEvent.setup();
     render(<CronRunsSection serviceId="nightly" />);
@@ -199,9 +203,12 @@ describe("CronRunsSection", () => {
     await user.click(screen.getByRole("button", { name: "Trigger Run" }));
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog).toHaveTextContent(
-      "This runs the job's command immediately, outside its schedule.",
+      "This requests a run outside its schedule. It replaces any pending manual run request and cancels any active run before the replacement starts.",
     );
-    expect(dialog.textContent ?? "").not.toContain("cancels it");
+    expect(dialog.textContent ?? "").not.toContain("already in progress");
+
+    await user.click(within(dialog).getByRole("button", { name: "Go Back" }));
+    expect(trigger).not.toHaveBeenCalled();
   });
 
   it("disables Trigger Run on a suspended cron, with the reason (w4/203)", async () => {

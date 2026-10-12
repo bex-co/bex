@@ -2672,8 +2672,10 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Trigger Run confirmation dialog title",
   },
   "services.cronTriggerConfirmBody": {
-    message: "这将立即运行任务命令，不受计划限制。同一时间只能有一个运行。",
-    description: "Trigger Run confirmation dialog body",
+    message:
+      "这将在计划之外请求一次运行。它会替换任何待处理的手动运行请求，并在新运行开始前取消任何正在进行的运行。",
+    description:
+      "Trigger Run confirmation dialog body when no active run is visible (one may still exist, so state the replacement semantics conditionally)",
   },
   "services.cronTriggerConfirmBodyPreempt": {
     message:

@@ -2729,8 +2729,9 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.cronTriggerConfirmBody": {
     message:
-      "This runs the job's command immediately, outside its schedule. Only one run can be active at a time.",
-    description: "Trigger Run confirmation dialog body",
+      "This requests a run outside its schedule. It replaces any pending manual run request and cancels any active run before the replacement starts.",
+    description:
+      "Trigger Run confirmation dialog body when no active run is visible (one may still exist, so state the replacement semantics conditionally)",
   },
   "services.cronTriggerConfirmBodyPreempt": {
     message:
