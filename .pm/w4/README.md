@@ -249,6 +249,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **262** — [A live deploy detail stays Live after a newer release replaces it](262.md) (55m) ← functional QA a239; two old-release transitions leave the badge/time/timeline stale and hide Rollback; fresh REST/GraphQL and page controls agree on Deactivated; owned fixture deleted and session revoked.
+
 - [ ] **261** — [Deploy log search claims 100 matching lines when none match](261.md) (50m) ← functional QA 2026-10-11 a227; fresh desktop/mobile no-match caption contradicts the empty result; raw/filtered API, working older-page control, successful build recovery and owned fixture/session cleanup verified.
 - [ ] **260** — [Environment action menus close during background refresh](260.md) (60m) ← functional QA 2026-10-11 a209/a216/a225; fresh desktop/mobile Export, Add variable and Save options loss through a transient tooltip remount; Copy/Download/import/upload/Save only controls and owned fixture/session cleanup verified.
 
