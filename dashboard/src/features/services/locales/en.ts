@@ -2207,6 +2207,12 @@ const enServices: Record<string, TranslationEntry> = {
       "Service will redeploy with the new build command. Existing requests will be drained before old instances are replaced.",
     description: "Build & Deploy: build-command change confirmation body",
   },
+  "services.buildCommandConfirmBodyStatic": {
+    message:
+      "This starts a rebuild with the new build command. Your site keeps serving its current published version until the new build publishes successfully.",
+    description:
+      "Build & Deploy: static-site build-command change confirmation body (atomic publish, no instances)",
+  },
   "services.buildCommandSuccess": {
     message: "Build Command updated.",
     description: "Toast after setBuildCommand succeeds",

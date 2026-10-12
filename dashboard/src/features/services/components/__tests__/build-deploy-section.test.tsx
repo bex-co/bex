@@ -915,6 +915,45 @@ describe("BuildDeploySection", () => {
     expect(setBuildCommand).toHaveBeenCalledWith("app", "yarn build");
   });
 
+  it("tells a static site its published version keeps serving; Cancel saves nothing (w4/246)", async () => {
+    const user = userEvent.setup();
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/site"
+        branch="main"
+        rootDir={null}
+        buildCommand="npm run build"
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+        showBuildCommand
+        staticSite
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Edit build command" }),
+    );
+    const input = screen.getByDisplayValue("npm run build");
+    await user.clear(input);
+    await user.type(input, "yarn build");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    const dialog = screen.getByRole("alertdialog");
+    expect(
+      within(dialog).getByText(/keeps serving its current published version/),
+    ).toBeInTheDocument();
+    expect(within(dialog).queryByText(/drained/)).not.toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(setBuildCommand).not.toHaveBeenCalled();
+
+    await confirmSave(user);
+    expect(setBuildCommand).toHaveBeenCalledTimes(1);
+    expect(setBuildCommand).toHaveBeenCalledWith("app", "yarn build");
+  });
+
   // Root-dir command prompt prefix (w5/m51).
   it("renders a '<rootDir>/ $' prompt on Build, Start, and Pre-Deploy inputs", () => {
     render(
