@@ -280,7 +280,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **256** — [Historical and live logs use different message-size boundaries](256.md) (55m) ← functional QA 2026-10-11 a176; a same-millisecond 70,065-byte record renders twice on desktop/fresh mobile while the 50,065-byte control renders once; complete compressed JSON proof and owned fixture/session cleanup verified.
 
-- [ ] **255** — [Postgres Insights duplicates table rows when dotted names collide](255.md) (55m) ← functional QA 2026-10-11 a174; desktop and fresh-mobile reorders render eight rows for seven API tables; owned fixture/session cleanup verified.
+- [x] **255** — [Postgres Insights duplicates table rows when dotted names collide](done/255.md) (55m) — **DONE 2026-10-12** (`999ed94cb`, live-verified: 7 API tables → 7 rows through desktop growth, mobile truncate and an in-page scan reorder) ← functional QA 2026-10-11 a174; desktop and fresh-mobile reorders render eight rows for seven API tables; owned fixture/session cleanup verified.
 
 - [x] **254** — [Mobile environment-group breadcrumb links lose their accessible name](done/254.md) (40m) — **DONE 2026-10-12** (`68f0741ab`; icon-only breadcrumb link gets aria-label; live named at 390/1440, Enter reaches /env-groups) ← functional QA 2026-10-11 a171; fresh390 unnamed icon link, working keyboard destination and named desktop/Back controls; owned group deleted and session revoked.
 
