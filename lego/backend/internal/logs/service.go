@@ -1675,15 +1675,22 @@ func parseContainerLogLine(service, pod, container, logType, line string) LogEnt
 	return newLogEntry(service, pod, container, logType, ts, msg)
 }
 
+// capLogMessage applies maxLogMessageBytes. Every reader — live pod stream,
+// fallback, and durable history — returns messages through it, so one emitted
+// record has one message shape (and one dashboard key) on either path (w4/256).
+func capLogMessage(msg string) string {
+	if len(msg) <= maxLogMessageBytes {
+		return msg
+	}
+	return strings.ToValidUTF8(msg[:maxLogMessageBytes], "") + " …[truncated]"
+}
+
 // newLogEntry is one container record, its message capped at
 // maxLogMessageBytes.
 func newLogEntry(service, pod, container, logType, ts, msg string) LogEntry {
-	if len(msg) > maxLogMessageBytes {
-		msg = strings.ToValidUTF8(msg[:maxLogMessageBytes], "") + " …[truncated]"
-	}
 	return LogEntry{
 		Timestamp: ts,
-		Message:   msg,
+		Message:   capLogMessage(msg),
 		Labels: map[string]string{
 			"service":   service,
 			"instance":  pod,

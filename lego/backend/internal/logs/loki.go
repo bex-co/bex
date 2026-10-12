@@ -635,7 +635,12 @@ type lokiLabelValuesResponse struct {
 // adapter render a truthful `type` per line instead of assuming `app`.
 // Unparseable timestamps drop the line rather than fail the query. Each message
 // passes through canonicalHistoryMessage so a historical container record's
-// retained transport terminator matches the live reader's stripped payload.
+// retained transport terminator matches the live reader's stripped payload, then
+// through the live reader's own capLogMessage: an over-cap record would
+// otherwise come back whole from history but truncated from live, and render
+// twice where the two overlap (w4/256). Text search (raw and display, both
+// matched in Go) therefore sees the capped message, as it does on live and the
+// pod-log fallback.
 func parseLokiStreams(lr lokiRangeResponse, q LogQuery) ([]LogEntry, error) {
 	if lr.Status != "" && lr.Status != "success" {
 		return nil, fmt.Errorf("loki status %q", lr.Status)
@@ -653,7 +658,7 @@ func parseLokiStreams(lr lokiRangeResponse, q LogQuery) ([]LogEntry, error) {
 			labels := entryLabels(st.Stream, q)
 			out = append(out, LogEntry{
 				Timestamp: time.Unix(0, ns).UTC().Format(time.RFC3339Nano),
-				Message:   canonicalHistoryMessage(pair[1], labels[LabelType]),
+				Message:   capLogMessage(canonicalHistoryMessage(pair[1], labels[LabelType])),
 				Labels:    labels,
 			})
 		}
