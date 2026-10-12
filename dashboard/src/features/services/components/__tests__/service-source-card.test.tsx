@@ -77,8 +77,7 @@ vi.mock("@/features/git/hooks/use-disconnect-git", () => ({
   useDisconnectGit: () => ({ disconnect: vi.fn(), busy: false }),
 }));
 vi.mock("@/features/capabilities/hooks/use-capabilities", async () => {
-  const { mockCapabilities } =
-    await import("@/test/mocks/capabilities");
+  const { mockCapabilities } = await import("@/test/mocks/capabilities");
   return {
     useCapabilities: () => mockCapabilities({ canCreate: true }),
   };
@@ -211,5 +210,89 @@ describe("ServiceSourceCard", () => {
         branch: "main",
       }),
     );
+  });
+});
+
+// w4/275: bex-api sends an image-backed service's repo as "", which the
+// dirty check read as a repository, so an untouched image draft enabled
+// Update source and re-saved the same image.
+describe("ServiceSourceCard — unchanged image source (w4/275)", () => {
+  const card = (repo: string | null) => (
+    <ServiceSourceCard
+      serviceId="srv-4"
+      repo={repo}
+      branch={repo === null ? null : ""}
+      imagePath="docker.io/library/busybox:1.37.0"
+      registryCredentialId={null}
+    />
+  );
+  const update = () => screen.getByRole("button", { name: "Update source" });
+
+  it.each([
+    ["an empty-string repo", ""],
+    ["a null repo", null],
+  ])(
+    "keeps Update source disabled for %s until the image really changes",
+    async (_label, repo) => {
+      const user = userEvent.setup();
+      render(card(repo));
+
+      await user.click(screen.getByRole("button", { name: "Edit" }));
+      const input = screen.getByDisplayValue(
+        "docker.io/library/busybox:1.37.0",
+      );
+      expect(update()).toBeDisabled();
+
+      await user.type(input, "  ");
+      expect(update()).toBeDisabled();
+
+      await user.clear(input);
+      expect(update()).toBeDisabled();
+
+      await user.type(input, "docker.io/library/busybox:1.36.1");
+      expect(update()).toBeEnabled();
+
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+      await user.click(screen.getByRole("button", { name: "Edit" }));
+      expect(
+        screen.getByDisplayValue("docker.io/library/busybox:1.37.0"),
+      ).toBeInTheDocument();
+      expect(update()).toBeDisabled();
+      expect(setImage).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps a refused image change open for a retry", async () => {
+    const user = userEvent.setup();
+    setImage.mockResolvedValueOnce(false);
+    render(card(""));
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const input = screen.getByDisplayValue("docker.io/library/busybox:1.37.0");
+    await user.clear(input);
+    await user.type(input, "docker.io/library/busybox:1.36.1");
+    await user.click(update());
+
+    await waitFor(() =>
+      expect(setImage).toHaveBeenCalledWith(
+        "srv-4",
+        "docker.io/library/busybox:1.36.1",
+        undefined,
+      ),
+    );
+    expect(
+      screen.getByDisplayValue("docker.io/library/busybox:1.36.1"),
+    ).toBeInTheDocument();
+    expect(update()).toBeEnabled();
+  });
+
+  it("still enables a switch from an empty-string repo image service to a repo", async () => {
+    const user = userEvent.setup();
+    render(card(""));
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("tab", { name: "GitHub" }));
+    await user.click(screen.getByRole("button", { name: /acme\/api/i }));
+    expect(update()).toBeEnabled();
   });
 });
