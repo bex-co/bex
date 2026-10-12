@@ -226,6 +226,14 @@ export function EditableFieldRow({
               size="sm"
               aria-label={label}
               className="flex-1"
+              // A closed trigger cancels on Escape like the Input; an open
+              // popup consumes its own Escape and refocuses here (w4/250).
+              onKeyDown={(event) => {
+                if (event.key === "Escape" && editing && !busy) {
+                  event.preventDefault();
+                  cancel();
+                }
+              }}
             >
               <SelectValue />
             </SelectTrigger>
