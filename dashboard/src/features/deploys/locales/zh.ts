@@ -174,6 +174,11 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy detail page: accurate explanation of a storeless build-log response",
   },
+  "deploys.detailRefreshError": {
+    message: "无法刷新此部署。正在显示上次加载的详情。",
+    description:
+      "Deploy detail page: a background refresh of an already loaded deploy failed; the page keeps the last good details and offers a retry",
+  },
   "deploys.logPartiallyLoaded": {
     message: "此时间范围只加载了一部分。加载更早的日志以搜索更早的行。",
     description:
