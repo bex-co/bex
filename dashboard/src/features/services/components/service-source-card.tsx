@@ -135,12 +135,15 @@ function SourceEditDialog({
       : tab === "github"
         ? selectedRepo !== null
         : isValidGitUrl(gitUrl);
+  // An image-backed service's repo arrives as "" (bex-api), not null, so
+  // source kind is repo presence — as the tab and the card already decide it
+  // (w4/275).
   const dirty =
     tab === "image"
-      ? repo !== null ||
+      ? Boolean(repo) ||
         image.trim() !== (imagePath ?? "").trim() ||
         (credentialId.trim() || null) !== (registryCredentialId?.trim() || null)
-      : repo === null ||
+      : !repo ||
         sourceRepo.trim() !== repo.trim() ||
         (branch.trim() || "main") !== (currentBranch?.trim() || "main");
   const busy = repoBusy || imageBusy;
