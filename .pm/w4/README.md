@@ -249,6 +249,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **267** — [Generate Blueprint accepts selection changes while returning the previous selection's manifest](267.md) (55m) ← functional QA a262; three pending-checkbox replays, including two fresh page loads, return the older group selection while Back retains the edit; normal and service-only controls pass; owned service/group deleted and session revoked.
+
 - [ ] **266** — [Project resource filters lose typed input and revert a just-selected resource type](266.md) (55m) ← functional QA a256; fresh 80–100ms typing repeats drop the first character and restore the old type; warm and settled controls pass; owned groups/project/environments deleted and session revoked.
 
 - [ ] **265** — [Global Search retains its previous query after selection or Ctrl+K close](265.md) (55m) ← functional QA a254; fresh resource, Navigation and keyboard repeats retain the filter while Escape/Close reset; both bypasses traced; owned project deleted and session revoked.
