@@ -109,6 +109,37 @@ describe("NewEnvGroupDialog", () => {
     });
   });
 
+  // At 390px an ordinary service name and its ID sat side by side in the
+  // service label and set the dialog's implicit grid track to 392px in a 308px
+  // column, so fields, cards and Create ran past the frame. The dialog and the
+  // service grid now bound their columns and each label stacks name over a
+  // truncating ID; geometry itself is verified in a real browser.
+  it("bounds its columns and stacks each service's name over its id", () => {
+    render(
+      <NewEnvGroupDialog
+        open
+        onCreated={vi.fn()}
+        services={[
+          {
+            id: "srv-d9bj8s3eg85c7390eb9g",
+            name: "beancount-cms-v2",
+          } as never,
+        ]}
+      />,
+    );
+
+    const checkbox = screen.getByRole("checkbox", {
+      name: /beancount-cms-v2\s*srv-d9bj8s3eg85c7390eb9g/,
+    });
+    const label = document.querySelector(`label[for="${checkbox.id}"]`)!;
+    expect(label).toHaveClass("min-w-0", "flex-1", "flex-col", "items-stretch");
+    for (const text of label.querySelectorAll("span")) {
+      expect(text).toHaveClass("block", "truncate");
+    }
+    expect(label.parentElement!.parentElement).toHaveClass("grid-cols-1");
+    expect(screen.getByRole("dialog")).toHaveClass("grid-cols-[minmax(0,1fr)]");
+  });
+
   // w2/m95 t003: bex owns PORT — in a group it would be dropped for every
   // linked service at once — so the dialog says so as the key is typed.
   it("flags a reserved key inline and refuses to create", async () => {
