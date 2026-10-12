@@ -2158,6 +2158,12 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "服务将使用新的构建命令重新部署。现有请求完成后才会替换旧实例。",
     description: "Build & Deploy: build-command change confirmation body",
   },
+  "services.buildCommandConfirmBodyStatic": {
+    message:
+      "这将使用新的构建命令重新构建。在新版本成功发布之前，站点会继续提供当前已发布的版本。",
+    description:
+      "Build & Deploy: static-site build-command change confirmation body (atomic publish, no instances)",
+  },
   "services.buildCommandSuccess": {
     message: "构建命令已更新。",
     description: "Toast after setBuildCommand succeeds",

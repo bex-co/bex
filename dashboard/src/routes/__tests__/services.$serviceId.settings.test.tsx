@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
   createRouter,
@@ -989,6 +990,52 @@ describe("ServiceSettingsPage", () => {
     expect(screen.queryByText("Docker Command")).not.toBeInTheDocument();
     expect(screen.queryByText("Dockerfile Path")).not.toBeInTheDocument();
   });
+
+  // w4/246: a static rebuild publishes a new revision prefix
+  // atomically (ADR029) — the drain/replace-instances copy is native-only.
+  it.each([
+    [
+      "static_site",
+      "Your site keeps serving its current published version until the new build publishes successfully.",
+      "Existing requests will be drained",
+    ],
+    [
+      "web_service",
+      "Existing requests will be drained before old instances are replaced.",
+      "published version",
+    ],
+  ])(
+    "describes the %s build-command change accurately",
+    async (type, expected, absent) => {
+      const user = userEvent.setup();
+      serverState.service = svc({
+        type,
+        repo: "https://github.com/acme/site",
+        branch: "main",
+        runtime: "node",
+        builder: "native",
+        buildCommand: "npm run build",
+        publishPath: type === "static_site" ? "dist" : null,
+        routes: [],
+        headers: [],
+      });
+      renderSettings();
+
+      await user.click(
+        await screen.findByRole("button", { name: "Edit build command" }),
+      );
+      const input = screen.getByDisplayValue("npm run build");
+      await user.clear(input);
+      await user.type(input, "npm run build:v2");
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+      const dialog = screen.getByRole("alertdialog");
+      expect(within(dialog).getByText(expected, { exact: false })).toBeTruthy();
+      expect(
+        within(dialog).queryByText(absent, { exact: false }),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it("hides the Instance Type row for a static site (no sized pod, w5/m48)", async () => {
     serverState.service = svc({

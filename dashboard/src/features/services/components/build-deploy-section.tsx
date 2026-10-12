@@ -70,6 +70,11 @@ export interface BuildDeploySectionProps {
   /** True for static_site — shows the Build Command editor (w7/m41). */
   showBuildCommand?: boolean;
   /**
+   * True for static_site: a rebuild publishes a new revision prefix atomically
+   * (ADR029) — no instances to drain or replace — so confirmations say so.
+   */
+  staticSite?: boolean;
+  /**
    * Whether to render a separate "Deploy" card (Pre-Deploy, Start/Docker
    * Command, Auto-Deploy, Deploy Hook) after the "Build" card (Render's split,
    * w5/m52). False for a cron_job, whose deploy concerns live in its own Deploy
@@ -132,6 +137,7 @@ export function BuildDeploySection({
   showDockerfilePath = true,
   buildCommand = null,
   showBuildCommand = false,
+  staticSite = false,
   showDeployCard = true,
   showSourceFields = true,
 }: BuildDeploySectionProps) {
@@ -243,7 +249,11 @@ export function BuildDeploySection({
               confirm={{
                 title: (value) =>
                   t("services.buildCommandConfirmTitle", { value }),
-                body: t("services.buildCommandConfirmBody"),
+                body: t(
+                  staticSite
+                    ? "services.buildCommandConfirmBodyStatic"
+                    : "services.buildCommandConfirmBody",
+                ),
                 emptyValue: t("services.buildCommandConfirmEmpty"),
               }}
               disabled={createDisabled}
