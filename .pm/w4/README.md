@@ -249,6 +249,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **277** — [Valid zero-padded cron schedules display malformed clock times](277.md) (35m) ← functional QA a292; Create and fresh saved Settings show 0009:0005 for an accepted 09:05 UTC schedule, with mobile/Chinese repeat and controls; owned Free cron deleted and session revoked.
+
 - [ ] **276** — [Cron settings can undo a previous save after a late refresh](276.md) (55m) ← functional QA a289; controlled late Server responses revert a saved schedule or command, the next other-field save persists the rollback, and native cron output confirms the older command; owned fixture deleted and session revoked.
 
 - [x] **275** — [Unchanged image sources enable Update source and report a successful change](done/275.md) (35m) — **DONE 2026-10-12** (`86af4f59e`, live-verified at 1440 and 390: an unchanged or padded image keeps Update source disabled, a real tag enables it, and nothing is written) ← functional QA a285; fresh desktop/mobile image editors are falsely dirty on the API's empty repo; unchanged Save reports success, while real tag Save/manual deploy and Cancel pass; own Free fixture deleted and session revoked.
