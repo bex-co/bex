@@ -1012,6 +1012,11 @@ func view(r store.ServiceEventRow, service string) Event {
 		ev.Details.CommitURL = r.CommitURL
 		ev.Details.Status = r.FactStatus
 		ev.Details.CronJobRunID = r.FactRunID
+		if ev.Type == TypeCronJobRunStarted && r.FactRunID == "" {
+			if name, ok := store.CronRunNameFromStartedKey(r.Key); ok {
+				ev.Details.CronJobRunID = ids.Derive(ids.CronRun, name)
+			}
+		}
 		ev.Details.ExitCode = r.FactExitCode
 	}
 	return ev

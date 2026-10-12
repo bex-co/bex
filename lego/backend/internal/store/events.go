@@ -152,8 +152,9 @@ type ServiceEventRow struct {
 	// started/observed kinds. A distinct column from the deploy-arm Status above,
 	// which carries a deploy row's terminal status (w7/m66).
 	FactStatus string
-	// FactExitCode and FactRunID belong to cron_job_run_ended (w4/m114): the
-	// failed run's container exit status, and the run's public crr- id.
+	// FactExitCode belongs to cron_job_run_ended (w4/m114): the failed run's
+	// container exit status. FactRunID is the run's public crr- id on cron
+	// starts (w4/259) and ends.
 	FactExitCode *int32
 	FactRunID    string
 }
