@@ -33,6 +33,12 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Internal-address section label in the service connection menu (Render's Connect → Internal tab)",
   },
+  "services.connectInternalSleepNote": {
+    message:
+      "Free web services sleep when idle, and internal requests can't wake them. If this service is asleep, request its public URL first.",
+    description:
+      "Connect → Internal note for a free public web service: only public traffic wakes it (ADR003), so a sibling's internal call fails while it sleeps (w4/252)",
+  },
   "services.headerServiceAddress": {
     message: "Service Address",
     description:
@@ -283,7 +289,8 @@ const enServices: Record<string, TranslationEntry> = {
       "Notice while an in-flight deploy already carries the saved settings, so no further deploy is needed (w4/m184)",
   },
   "services.statusSleepingHint": {
-    message: "Sleeping to save resources — wakes on the next request.",
+    message:
+      "Sleeping to save resources — wakes on the next request to its public URL.",
     description:
       "Hint next to the Sleeping badge explaining free-tier auto-sleep + wake-on-request",
   },
@@ -1200,7 +1207,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.settingsIdleTimeoutHint": {
     message:
-      "Free services sleep after this long without inbound requests or WebSocket messages, then wake on the next request.",
+      "Free services sleep after this long without public HTTP requests or WebSocket messages, then wake on the next public request. Internal requests from other services neither keep them awake nor wake them.",
     description: "Settings tab: idle-timeout control help text (bex extension)",
   },
   "services.settingsIdleTimeoutPaid": {

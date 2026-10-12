@@ -33,6 +33,12 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Internal-address section label in the service connection menu (Render's Connect → Internal tab)",
   },
+  "services.connectInternalSleepNote": {
+    message:
+      "免费 Web 服务空闲时会休眠，内部请求无法将其唤醒。如果该服务正在休眠，请先访问其公开 URL。",
+    description:
+      "Connect → Internal note for a free public web service: only public traffic wakes it (ADR003), so a sibling's internal call fails while it sleeps (w4/252)",
+  },
   "services.headerServiceAddress": {
     message: "服务地址",
     description:
@@ -277,7 +283,7 @@ const zhServices: Record<string, TranslationEntry> = {
       "Notice while an in-flight deploy already carries the saved settings, so no further deploy is needed (w4/m184)",
   },
   "services.statusSleepingHint": {
-    message: "为节省资源已休眠 —— 下次请求时自动唤醒。",
+    message: "为节省资源已休眠 —— 下次访问其公开 URL 时自动唤醒。",
     description:
       "Hint next to the Sleeping badge explaining free-tier auto-sleep + wake-on-request",
   },
@@ -1174,7 +1180,7 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.settingsIdleTimeoutHint": {
     message:
-      "免费服务在这段时间内没有收到请求或 WebSocket 消息时休眠，下次请求时自动唤醒。",
+      "免费服务在这段时间内没有收到公开 HTTP 请求或 WebSocket 消息时休眠，下次收到公开请求时自动唤醒。来自其他服务的内部请求既不会保持其运行，也不会将其唤醒。",
     description: "Settings tab: idle-timeout control help text (bex extension)",
   },
   "services.settingsIdleTimeoutPaid": {
