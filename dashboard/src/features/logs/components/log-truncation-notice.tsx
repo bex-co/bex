@@ -12,6 +12,7 @@ export function LogTruncationNotice({
   loadingOlder,
   onLoadOlder,
   partial = false,
+  message,
 }: {
   loadingOlder: boolean;
   onLoadOlder: () => void;
@@ -21,6 +22,12 @@ export function LogTruncationNotice({
    * is unsearched rather than capped (w4/m140).
    */
   partial?: boolean;
+  /**
+   * Replaces the default caption, for a surface whose filters run locally over
+   * loaded lines rather than on the server, where "matching" would be false
+   * (w4/261). Takes precedence over `partial`.
+   */
+  message?: string;
 }) {
   const { t } = useTranslations();
   return (
@@ -29,7 +36,8 @@ export function LogTruncationNotice({
       className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground"
     >
       <span>
-        {partial ? t("logs.partialSearchNotice") : t("logs.truncatedNotice")}
+        {message ??
+          (partial ? t("logs.partialSearchNotice") : t("logs.truncatedNotice"))}
       </span>
       <Button
         size="sm"

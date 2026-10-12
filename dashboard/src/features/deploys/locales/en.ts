@@ -175,6 +175,12 @@ const enDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy detail page: accurate explanation of a storeless build-log response",
   },
+  "deploys.logPartiallyLoaded": {
+    message:
+      "Only part of this time range is loaded. Load older to search earlier lines.",
+    description:
+      "Deploy log viewer banner while older history remains unloaded. The panel's search and type/instance filters run over loaded lines only, so it must not claim a number of matches",
+  },
   "deploys.logStepEndMissing": {
     message:
       "This deploy was canceled before its pre-deploy step finished, and the step's completion time wasn't recorded, so its later output may fall outside this window. Choose a wider range in Log options to see it.",
