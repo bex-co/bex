@@ -288,6 +288,11 @@ const zhDeploys: Record<string, TranslationEntry> = {
     message: "加载更多",
     description: "Deploys tab: button fetching the next page of deploy history",
   },
+  "deploys.listLoadMoreError": {
+    message: "无法加载更早的部署记录。",
+    description:
+      "Deploys tab: toast when reading an older page of deploy history fails",
+  },
   "deploys.logOptions": {
     message: "日志选项",
     description:
