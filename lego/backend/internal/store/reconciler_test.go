@@ -235,6 +235,15 @@ func TestCronRunFactsAreObservedAndStable(t *testing.T) {
 		running[0].SourceKey != "cron:srv-cron:nightly-100:started" || running[0].Status != "" {
 		t.Fatalf("running facts = %+v, want one stable started fact", running)
 	}
+	// w4/259: the start names its run's public id while the run is active —
+	// the same id the run object and its ended fact derive.
+	runID := ids.Derive(ids.CronRun, "nightly-100")
+	if running[0].RunID != runID {
+		t.Fatalf("started RunID = %q, want %q", running[0].RunID, runID)
+	}
+	if name, ok := CronRunNameFromStartedKey("fact:" + running[0].SourceKey); !ok || name != "nightly-100" {
+		t.Fatalf("started source key does not read back: %q %v", name, ok)
+	}
 
 	for _, tc := range []struct {
 		mechanism string
@@ -248,7 +257,8 @@ func TestCronRunFactsAreObservedAndStable(t *testing.T) {
 			Name: "nightly-100", StartedAt: started, FinishedAt: finished, Status: tc.mechanism,
 		})
 		if len(facts) != 2 || facts[1].Type != EventFactCronRunEnded ||
-			facts[1].SourceKey != "cron:srv-cron:nightly-100:ended" || facts[1].Status != tc.want {
+			facts[1].SourceKey != "cron:srv-cron:nightly-100:ended" || facts[1].Status != tc.want ||
+			facts[0].RunID != runID || facts[1].RunID != runID {
 			t.Errorf("terminal %s facts = %+v, want ended(%s)", tc.mechanism, facts, tc.want)
 		}
 	}

@@ -241,6 +241,8 @@ func toRenderEvent(e Event) renderEvent {
 		// unlike manual scaling's generic from/to pair.
 		d.FromInstances = e.Details.FromCount
 		d.ToInstances = e.Details.ToCount
+	case TypeCronJobRunStarted:
+		d.CronJobRunID = e.Details.CronJobRunID
 	case TypeCronJobRunEnded:
 		d.CronJobRunID = e.Details.CronJobRunID
 		d.Reason = toCronRunReason(e.Details)

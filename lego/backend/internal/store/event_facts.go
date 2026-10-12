@@ -153,9 +153,10 @@ type ServiceEventFact struct {
 	// pre_deploy_ended, job_run_ended): one of EventStatus* or "" for the
 	// started/observed kinds that have no outcome. Closed set (w7/m66).
 	Status string
-	// ExitCode and RunID are cron_job_run_ended details (w4/m114): a failed
-	// run's container exit status (with ReasonCode non_zero_exit or oom_killed)
-	// and the run's public crr- id.
+	// ExitCode is a cron_job_run_ended detail (w4/m114): a failed run's
+	// container exit status (with ReasonCode non_zero_exit or oom_killed).
+	// RunID is the run's public crr- id on both cron_job_run_started (w4/259)
+	// and cron_job_run_ended.
 	ExitCode *int32
 	RunID    string
 }

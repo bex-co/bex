@@ -23,12 +23,14 @@ import (
 	"log"
 	"maps"
 	"slices"
+	"strings"
 	"sync/atomic"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -524,10 +526,12 @@ func cronRunFacts(appID string, run appv1alpha1.CronRun) []ServiceEventFact {
 	var facts []ServiceEventFact
 	if started, ok := parseObservedTime(run.StartedAt); ok {
 		facts = append(facts, ServiceEventFact{
-			SourceKey: "cron:" + appID + ":" + run.Name + ":started",
+			SourceKey: cronRunSourceKey(appID, run.Name, cronRunStarted),
 			AppID:     appID,
 			Type:      EventFactCronRunStarted,
 			At:        started,
+			// The run's public id exists from the moment it starts (w4/259).
+			RunID: ids.Derive(ids.CronRun, run.Name),
 		})
 	}
 	finished, ok := parseObservedTime(run.FinishedAt)
@@ -546,7 +550,7 @@ func cronRunFacts(appID string, run appv1alpha1.CronRun) []ServiceEventFact {
 		return facts
 	}
 	ended := ServiceEventFact{
-		SourceKey: "cron:" + appID + ":" + run.Name + ":ended",
+		SourceKey: cronRunSourceKey(appID, run.Name, "ended"),
 		AppID:     appID,
 		Type:      EventFactCronRunEnded,
 		At:        finished,
@@ -557,6 +561,36 @@ func cronRunFacts(appID string, run appv1alpha1.CronRun) []ServiceEventFact {
 		ended.ReasonCode, ended.ExitCode = cronRunReasonCodes[run.FailureReason], run.ExitCode
 	}
 	return append(facts, ended)
+}
+
+const cronRunStarted = "started"
+
+// cronRunSourceKey is a cron run transition's fact source key. Its feed row's
+// Key is "fact:" + this (ListServiceEvents), which CronRunNameFromStartedKey
+// reads back.
+func cronRunSourceKey(appID, runName, phase string) string {
+	return "cron:" + appID + ":" + runName + ":" + phase
+}
+
+// CronRunNameFromStartedKey recovers the run (Job) name from a cron-start feed
+// row's Key. Starts recorded before w4/259 stored no run id, and the source key
+// is insert-once, so the feed derives their id from the key instead. Anything
+// not exactly "fact:cron:<appID>:<job name>:started" yields no name: a
+// malformed key never manufactures an association.
+func CronRunNameFromStartedKey(key string) (string, bool) {
+	rest, ok := strings.CutPrefix(key, "fact:cron:")
+	if !ok {
+		return "", false
+	}
+	if rest, ok = strings.CutSuffix(rest, ":"+cronRunStarted); !ok {
+		return "", false
+	}
+	// i <= 0: no separator, or an empty app id.
+	i := strings.LastIndexByte(rest, ':')
+	if i <= 0 || len(validation.IsDNS1123Subdomain(rest[i+1:])) > 0 {
+		return "", false
+	}
+	return rest[i+1:], true
 }
 
 // cronRunReasonCodes maps the operator's CronRun.FailureReason onto the closed

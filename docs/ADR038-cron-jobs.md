@@ -139,6 +139,8 @@ A failed run says why. While the failed Job's Pod still exists, the operator rec
 
 The ended fact stores this as a closed reason code (`non_zero_exit`, `oom_killed`, `evicted`, `timed_out`; migration 0141) with the exit code and the run's `crr-` id. `cron_job_run_ended` details then carry Render's "Cron Job Run Ended" fields: `cronJobRunId` and a `reason` object (`evicted`, `nonZeroExit`, `oomKilled.memoryLimit`, `timedOutSeconds`) on REST and MCP. GraphQL carries `cronJobRunId`, `reasonCode` and `exitCode`. The dashboard Activity row reads "The run exited with status 3." A run whose cause was not observed keeps `status: failed` with no reason.
 
+The started fact stores the same `crr-` id from the moment the run starts, so `cron_job_run_started` details carry Render's required `cronJobRunId` on REST, MCP and GraphQL, equal to the run object's id and its eventual ended event's (w4/259). Starts recorded before that change have a blank stored id and an insert-once source key; the feed derives their id from the canonical `cron:<appID>:<job name>:started` key, and any other key yields no id. Started events never carry a `reason`.
+
 Two known divergences remain:
 
 - bex does not record the memory limit a run was killed at, so `oomKilled.memoryLimit` is present but empty.
