@@ -58,9 +58,8 @@ func NewLokiSource(base string, hc *http.Client) LogHistorySource {
 		q.Search = normalizeLogText(q.Search)
 		start, end := lokiRange(q, time.Now())
 		query := lokiQueryFor(namespace, q)
-		// A display search reads raw pages and matches in scanLokiWindow, so each
-		// request asks for a scan page of raw lines rather than the caller's page
-		// of matches.
+		// A local text search reads raw pages and matches in Go, so each request
+		// asks for a scan page of raw lines rather than the caller's page of matches.
 		pageQ := q
 		pageQ.Limit = lokiFetchLimit(q)
 		if q.displaySearch() && !q.End.IsZero() {
@@ -84,7 +83,14 @@ func NewLokiSource(base string, hc *http.Client) LogHistorySource {
 			if err := lokiGet(ctx, hc, u, &lr); err != nil {
 				return nil, err
 			}
-			return parseLokiStreams(lr, pageQ)
+			entries, err := parseLokiStreams(lr, pageQ)
+			if err != nil {
+				return nil, err
+			}
+			if q.localTextSearch() && !q.displaySearch() {
+				entries = slices.DeleteFunc(entries, func(e LogEntry) bool { return !q.matchesText(e.Message) })
+			}
+			return entries, nil
 		}
 		return scanLokiWindow(ctx, q, start, end, lokiScansLines(q), lokiScanBudget, fetch)
 	}
@@ -128,18 +134,19 @@ func lokiScansLines(q LogQuery) bool {
 	return len(q.Search) > 0 || len(q.Path) > 0 || len(q.Host) > 0
 }
 
-// lokiDisplayScanPage is how many raw lines one request of a display-mode
-// search reads (w4/m189). Loki cannot match the displayed text — an escape
-// inside the needle breaks a raw substring — so such a search reads raw pages
-// and matches in Go. A page larger than Render's 100-line cap keeps a week's
-// scan to fewer round trips; it stays under Loki's default
-// max_entries_limit_per_query (5000).
+// lokiDisplayScanPage is how many raw lines one request of a local text search
+// reads (w4/m189, w8/m58). Loki cannot match the displayed text — an escape
+// inside the needle breaks a raw substring — and its raw case-insensitive regexp
+// simplifier is not a safe Unicode superset, so text searches read raw pages and
+// match in Go. A page larger than Render's 100-line cap keeps a week's scan to
+// fewer round trips; it stays under Loki's default max_entries_limit_per_query
+// (5000).
 const lokiDisplayScanPage = 1000
 
 // lokiFetchLimit is the line cap of one query_range request: the caller's page
-// of matches, or a raw scan page for a display search.
+// of matches, or a raw scan page for a local text search.
 func lokiFetchLimit(q LogQuery) int64 {
-	if q.displaySearch() {
+	if q.localTextSearch() {
 		return lokiDisplayScanPage
 	}
 	return lokiLimit(q)
@@ -484,32 +491,19 @@ func lokiTypeMatcher(q LogQuery) string {
 	}
 }
 
-// lokiQueryFor builds the full LogQL for a query: the stream selector, the
-// case-insensitive text line filter, and the request-only line filters (`path`,
-// `host`) parsed out of the JSON access line with LogQL's `json` stage — the
-// query-time half of the cardinality budget's "unbounded fields stay in the line".
+// lokiQueryFor builds the full LogQL for a query: the stream selector and the
+// request-only line filters (`path`, `host`) parsed out of the JSON access line
+// with LogQL's `json` stage — the query-time half of the cardinality budget's
+// "unbounded fields stay in the line". Text matching is applied in Go after raw
+// pages return; Loki's case-insensitive regexp simplifier is not a safe Unicode
+// superset of the API's literal matching contract.
+//
 // An app log line has no RequestPath/RequestHost (and typically isn't JSON at all),
 // so either filter also narrows the read to request logs, which is exactly Render's
 // "filter request logs by their path/host".
 // Search must be normalized by the source boundary.
 func lokiQueryFor(namespace string, q LogQuery) string {
 	query := lokiSelectorFor(namespace, q)
-	if len(q.Search) > 0 {
-		terms := make([]string, len(q.Search))
-		for i, term := range q.Search {
-			terms[i] = regexp.QuoteMeta(term)
-		}
-		pattern := "(?i)" + strings.Join(terms, "|")
-		if q.displaySearch() {
-			// A display search matches exactly after the read (scanLokiWindow);
-			// Loki only prefilters to a superset. A line with no ESC or CR displays
-			// as stored, so the raw match is exact for it; any line carrying either
-			// may hide or split a term and must reach the Go matcher.
-			pattern = "(?i)(?:" + strings.Join(terms, "|") + `)|\x1b|\r`
-		}
-		// Escape each literal before alternation; caller text never becomes regex.
-		query += fmt.Sprintf(" |~ %q", pattern)
-	}
 	if len(q.Path) == 0 && len(q.Host) == 0 {
 		return query
 	}

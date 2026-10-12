@@ -62,10 +62,10 @@ func TestLokiQueryFor(t *testing.T) {
 			want: `{namespace="default", app="web", type="request"}`,
 		},
 		{
-			name: "text search adds a case-insensitive line filter",
+			name: "text search keeps Loki query broad and matches locally",
 			ns:   "default",
 			q:    LogQuery{App: "web", Types: []string{LogTypeApp}, Search: []string{"ERROR boot"}},
-			want: `{namespace="default", app="web", container="app"} |~ "(?i)error boot"`,
+			want: `{namespace="default", app="web", container="app"}`,
 		},
 		{
 			// Bounded fields are label matchers — the cheap, indexed half.
@@ -149,12 +149,12 @@ func TestLokiQueryFor(t *testing.T) {
 			want: `{namespace="default", app="web", type="request", method=~"^(GET|PO\\.T)$"}`,
 		},
 		{
-			// A regex metacharacter in the search is quoted to a literal, so `.*`
-			// matches the literal text, not "anything".
-			name: "search regex metachars are quoted to literals",
+			// A regex metacharacter in the search still matches literally in the Go
+			// matcher; it is never interpolated into the LogQL query.
+			name: "search regex metachars do not enter LogQL",
 			ns:   "default",
 			q:    LogQuery{App: "web", Types: []string{LogTypeApp}, Search: []string{".*"}},
-			want: `{namespace="default", app="web", container="app"} |~ "(?i)\\.\\*"`,
+			want: `{namespace="default", app="web", container="app"}`,
 		},
 	}
 	for _, c := range cases {
@@ -452,14 +452,14 @@ func TestLokiSourceRequestAndDecode(t *testing.T) {
 
 	// The request pushed the filters/bounds/limit to Loki (real time range).
 	got := f.lastValues
-	if q := got.Get("query"); q != `{namespace="default", app="web", container=~"app|"} |~ "(?i)hel"` {
+	if q := got.Get("query"); q != `{namespace="default", app="web", container=~"app|"}` {
 		t.Errorf("query pushed to loki wrong: %s", q)
 	}
 	if got.Get("direction") != "backward" {
 		t.Errorf("direction = %q, want backward", got.Get("direction"))
 	}
-	if got.Get("limit") != "50" {
-		t.Errorf("limit = %q, want 50", got.Get("limit"))
+	if got.Get("limit") != "1000" {
+		t.Errorf("limit = %q, want 1000", got.Get("limit"))
 	}
 	if s, _ := strconv.ParseInt(got.Get("start"), 10, 64); s != since.UnixNano() {
 		t.Errorf("start = %q, want %d", got.Get("start"), since.UnixNano())
@@ -467,6 +467,67 @@ func TestLokiSourceRequestAndDecode(t *testing.T) {
 	// Loki's end is exclusive; a caller's End is inclusive (w8/043).
 	if e, _ := strconv.ParseInt(got.Get("end"), 10, 64); e != end.UnixNano()+1 {
 		t.Errorf("end = %q, want %d", got.Get("end"), end.UnixNano()+1)
+	}
+}
+
+func TestLokiSourceAppliesUnicodeTextSearchLocally(t *testing.T) {
+	f := newFakeLoki(lokiResp(map[string]any{
+		"stream": `{"app":"web","pod":"web-1","container":"app"}`,
+		"values": `[["1751673601000000000","QA CAFÉ Ελληνικά"],["1751673602000000000","QA café ελληνικά"],["1751673603000000000","QA lambda λ"],["1751673604000000000","QA plain"]]`,
+	}))
+	defer f.srv.Close()
+
+	src := NewLokiSource(f.srv.URL, f.srv.Client())
+	entries, err := src(context.Background(), "default", LogQuery{App: "web", Search: []string{"ι"}, Limit: 100})
+	if err != nil {
+		t.Fatalf("source: %v", err)
+	}
+	var msgs []string
+	for _, e := range entries {
+		msgs = append(msgs, e.Message)
+	}
+	if fmt.Sprint(msgs) != "[QA CAFÉ Ελληνικά QA café ελληνικά]" {
+		t.Fatalf("messages = %v", msgs)
+	}
+	if strings.Contains(f.lastValues.Get("query"), " |~ ") {
+		t.Fatalf("unicode text search must not use Loki regexp prefilter: %s", f.lastValues.Get("query"))
+	}
+}
+
+func TestLokiSourceLocalTextSearchReachesMatchBehindRawPage(t *testing.T) {
+	var values strings.Builder
+	values.WriteString("[")
+	base := time.Date(2026, 7, 5, 0, 0, 0, 0, time.UTC)
+	for i := 0; i < 1000; i++ {
+		if i > 0 {
+			values.WriteString(",")
+		}
+		fmt.Fprintf(&values, "[%q,%q]", strconv.FormatInt(base.Add(time.Duration(i)*time.Second).UnixNano(), 10), fmt.Sprintf("filler-%04d", i))
+	}
+	values.WriteString("]")
+	calls := 0
+	f := &fakeLoki{status: http.StatusOK}
+	f.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		f.lastValues = r.URL.Query()
+		body := lokiResp(map[string]any{"stream": `{"app":"web","pod":"web-1","container":"app"}`, "values": values.String()})
+		if calls == 2 {
+			body = lokiResp(map[string]any{"stream": `{"app":"web","pod":"web-1","container":"app"}`, "values": `[["1751677200000000000","older CAFÉ Ελληνικά"]]`})
+		}
+		_, _ = w.Write([]byte(body))
+	}))
+	defer f.srv.Close()
+
+	src := NewLokiSource(f.srv.URL, f.srv.Client())
+	entries, err := src(context.Background(), "default", LogQuery{App: "web", Search: []string{"ι"}, Limit: 100})
+	if err != nil {
+		t.Fatalf("source: %v", err)
+	}
+	if calls < 2 {
+		t.Fatalf("calls = %d, want scan to continue past one full raw page", calls)
+	}
+	if len(entries) != 1 || entries[0].Message != "older CAFÉ Ελληνικά" {
+		t.Fatalf("entries = %+v", entries)
 	}
 }
 
@@ -527,7 +588,7 @@ func TestManagedPostgresHistoryIsDatabaseScoped(t *testing.T) {
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("Postgres history = %+v, err=%v", entries, err)
 	}
-	if got := f.lastValues.Get("query"); got != `{namespace="default", database="`+postgresID+`"} |~ "(?i)select"` {
+	if got := f.lastValues.Get("query"); got != `{namespace="default", database="`+postgresID+`"}` {
 		t.Fatalf("Postgres selector = %q", got)
 	}
 	if entries[0].Labels["service"] != postgresID || entries[0].Labels[LabelType] != "postgres" {

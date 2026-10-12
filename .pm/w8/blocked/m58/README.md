@@ -1,17 +1,17 @@
 # w8 · m58 — Preserve Unicode matches in log history
 
-**Worker:** worker8 **Goal:** normalized Unicode log matches survive raw and display history through the unchanged CLI and shared API **Status:** todo
+**Worker:** worker8 **Goal:** normalized Unicode log matches survive raw and display history through the unchanged CLI and shared API **Status:** blocked — local backend fix/tests are complete; remaining gate is production deployment plus native Bex/Render acceptance receipts and cleanup.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Make the Loki text prefilter preserve normalized Unicode matches | 50m | — |
-| t002 | Verify shared history callers and resource families | 30m | t001 |
-| t003 | Render parity and live native CLI acceptance | 20m | t002 |
-| t004 | Simplify | 10m | t003 |
-| t005 | Meaningful Unicode and pagination regression coverage | 35m | t003 |
-| t006 | Closeout | 10m | t005 |
+| t001 | Make the Loki text prefilter preserve normalized Unicode matches — **DONE 2026-10-12** | 50m | — |
+| t002 | Verify shared history callers and resource families — **DONE 2026-10-12** | 30m | t001 |
+| t003 | Render parity and live native CLI acceptance — **BLOCKED: needs production deployment plus fresh native Bex/Render receipts and cleanup** | 20m | t002 |
+| t004 | Simplify — **DONE 2026-10-12** | 10m | t003 |
+| t005 | Meaningful Unicode and pagination regression coverage — **DONE 2026-10-12** | 35m | t003 |
+| t006 | Closeout — **BLOCKED: needs t003 live acceptance evidence before milestone can close** | 10m | t005 |
 
 ## Definition of done
 
@@ -22,6 +22,12 @@ Also reproduce the sweep-96 table: Russian and Greek-rho words return two capita
 Managed Postgres acceptance: emit the three sweep-100 markers through native SQL and verify both clients return three for the marker prefix, two for iota and one for lambda using supported datastore filters. Do not introduce app-only type filters.
 
 Managed Key Value acceptance: use the native EVAL marker commands in sweep 101 and require both clients to return three prefix records, two iota records and one lambda record; preserve native terminal completion and original bytes.
+
+## Progress / block
+
+- **2026-10-12:** local backend implementation completed. Text matching now stays out of Loki's Unicode-unsafe regexp simplifier and is applied by the shared Go matcher over bounded raw scan pages. Evidence: [`evidence/implementation-closeout.md`](evidence/implementation-closeout.md).
+- Validation passed: `cd lego/backend && go test ./internal/logs` and `cd lego/backend && go test ./...`.
+- **Blocked:** production-deployed acceptance is still required. Replay the native Bex and unmodified Render CLI App/Postgres/Key Value cases after deploy, capture requests/responses and cleanup, then close t003/t006 and move the milestone to done.
 
 ## Source + Goal linkage
 

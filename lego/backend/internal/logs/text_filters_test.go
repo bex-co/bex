@@ -25,7 +25,6 @@ import (
 	"net/url"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -105,21 +104,12 @@ func TestTextFilterUnionAcrossAdaptersAndPodSources(t *testing.T) {
 	}
 }
 
-func TestTextFilterLiteralsAgreeWithLoki(t *testing.T) {
+func TestTextFilterLiteralsMatchLocallyAndStayOutOfLogQL(t *testing.T) {
 	terms := []string{"", `A.*`, `B|C`, `"} |= "`, `x\y`, " spaced ", `a.*`}
 	q := LogQuery{App: "web", Search: terms}.normalized()
 	query := lokiQueryFor("default", q)
-	_, quoted, ok := strings.Cut(query, " |~ ")
-	if !ok {
-		t.Fatalf("no line predicate: %s", query)
-	}
-	pattern, err := strconv.Unquote(quoted)
-	if err != nil {
-		t.Fatalf("unsafe LogQL string %q: %v", quoted, err)
-	}
-	re, err := regexp.Compile(pattern)
-	if err != nil {
-		t.Fatal(err)
+	if strings.Contains(query, " |~ ") {
+		t.Fatalf("text search must stay out of LogQL and match locally: %s", query)
 	}
 	for _, tc := range []struct {
 		message string
@@ -129,10 +119,7 @@ func TestTextFilterLiteralsAgreeWithLoki(t *testing.T) {
 		{"alphabet", false}, {"B", false}, {"C", false}, {"spaced", false}, {"unrelated", false},
 	} {
 		if got := q.keep(LogEntry{Message: tc.message}); got != tc.want {
-			t.Errorf("pod %q = %v, want %v", tc.message, got, tc.want)
-		}
-		if got := re.MatchString(tc.message); got != tc.want {
-			t.Errorf("Loki %q = %v, want %v (%s)", tc.message, got, tc.want, query)
+			t.Errorf("local %q = %v, want %v", tc.message, got, tc.want)
 		}
 	}
 	for _, terms := range [][]string{nil, {"", ""}} {
