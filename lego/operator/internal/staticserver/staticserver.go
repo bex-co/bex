@@ -31,6 +31,7 @@ limitations under the License.
 package staticserver
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -39,6 +40,7 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"golang.org/x/sync/semaphore"
 	"golang.org/x/sync/singleflight"
@@ -336,7 +338,9 @@ func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site,
 	// against the in-flight memory budget even after the fetch gate released
 	// its reservation. HEAD responses carry no body and need no lease. On
 	// exhaustion shed with 503 (before any success header is written) rather
-	// than buffering past the budget.
+	// than buffering past the budget. The lease is taken before ServeContent
+	// evaluates preconditions, so a bodyless 304/412 briefly holds it too —
+	// cheaper than re-parsing entity tags here.
 	if r.Method != http.MethodHead {
 		lease := int64(len(obj.Body))
 		if !h.liveBodies.TryAcquire(lease) {
@@ -352,11 +356,11 @@ func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site,
 	// Custom headers win over the defaults above (last-write for a given key).
 	applyHeaders(hdr, site.Headers, requestPath)
 
-	w.WriteHeader(http.StatusOK)
-	if r.Method == http.MethodHead {
-		return
-	}
-	_, _ = w.Write(obj.Body)
+	// ServeContent evaluates the request against a saved ETag rule (304 for a
+	// matching If-None-Match, 412 for a failed If-Match — RFC 9110 §13) and
+	// serves byte ranges; HEAD gets headers only. The zero modtime keeps it
+	// from inventing a Last-Modified validator (w4/272).
+	http.ServeContent(w, r, servedPath, time.Time{}, bytes.NewReader(obj.Body))
 }
 
 // safeRedirectTarget validates the final, expanded Location at the output sink.

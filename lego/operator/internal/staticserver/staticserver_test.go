@@ -19,6 +19,7 @@ package staticserver
 import (
 	"context"
 	"errors"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -89,8 +90,13 @@ func newTestHandler(t *testing.T, site Site, objs map[string]Object) (*Handler, 
 }
 
 func do(h *Handler, method, path string) *httptest.ResponseRecorder {
+	return doWith(h, method, path, nil)
+}
+
+func doWith(h *Handler, method, path string, header http.Header) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(method, "http://"+testHost+path, nil)
 	req.Host = testHost
+	maps.Copy(req.Header, header)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	return rec
