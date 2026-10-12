@@ -249,6 +249,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **278** — [Padding an unchanged port starts unnecessary deployments](278.md) (35m) ← functional QA a294; fresh desktop/mobile numeric-equivalent saves send port 3000 and each roll a new Live revision; genuine 3001 change, invalid inputs, Cancel and shutdown numeric control pass; own Free fixture deleted and session revoked.
+
 - [ ] **277** — [Valid zero-padded cron schedules display malformed clock times](277.md) (35m) ← functional QA a292; Create and fresh saved Settings show 0009:0005 for an accepted 09:05 UTC schedule, with mobile/Chinese repeat and controls; owned Free cron deleted and session revoked.
 
 - [ ] **276** — [Cron settings can undo a previous save after a late refresh](276.md) (55m) ← functional QA a289; controlled late Server responses revert a saved schedule or command, the next other-field save persists the rollback, and native cron output confirms the older command; owned fixture deleted and session revoked.
