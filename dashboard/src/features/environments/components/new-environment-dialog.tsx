@@ -56,8 +56,8 @@ export function NewEnvironmentDialog({
 
   async function handleSubmit() {
     if (!canSubmit) return;
-    // The create hook refetches the Environments list by name, so the new
-    // environment appears in the panel once this closes — no callback needed.
+    // The create hook resolves only after a post-save Environments read, so
+    // the new environment is listed once this closes — no callback needed.
     const id = await create(name.trim());
     if (id) handleOpenChange(false);
   }

@@ -4,8 +4,15 @@ import { CombinedGraphQLErrors } from "@apollo/client/errors";
 
 const mutate = vi.fn();
 const mockUseMutation = vi.fn((..._args: unknown[]) => [mutate]);
+// The post-create list refresh (w4/231) is covered against a real client in
+// create-environment-lists-new.test.tsx; here it simply succeeds.
+const refetchQueries = vi.fn(() =>
+  Object.assign(Promise.resolve([]), { results: [] }),
+);
+const query = vi.fn(() => Promise.resolve({ data: { environments: [] } }));
 vi.mock("@apollo/client/react", () => ({
   useMutation: (...args: unknown[]) => mockUseMutation(...args),
+  useApolloClient: () => ({ refetchQueries, query }),
 }));
 
 const toastSuccess = vi.fn();
@@ -14,6 +21,7 @@ vi.mock("sonner", () => ({
   toast: {
     success: (...args: unknown[]) => toastSuccess(...args),
     error: (...args: unknown[]) => toastError(...args),
+    warning: vi.fn(),
   },
 }));
 
