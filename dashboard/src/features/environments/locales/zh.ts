@@ -88,6 +88,11 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     message: "已创建环境“{name}”。",
     description: "Toast shown after an environment is created",
   },
+  "environments.createRefreshFailed": {
+    message: "环境“{name}”已创建，但列表刷新失败。请重试或重新加载以查看。",
+    description:
+      "Warning after the environment was created but re-reading the list failed; creation must not be retried or reported as failed (w4/231)",
+  },
   "environments.createError": {
     message: "创建环境“{name}”失败。",
     description: "Toast shown when creating an environment fails",

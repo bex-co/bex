@@ -95,6 +95,12 @@ const enEnvironments: Record<string, TranslationEntry> = {
     message: 'Environment "{name}" created.',
     description: "Toast shown after an environment is created",
   },
+  "environments.createRefreshFailed": {
+    message:
+      'Environment "{name}" created, but the list couldn\'t refresh. Try again or reload to see it.',
+    description:
+      "Warning after the environment was created but re-reading the list failed; creation must not be retried or reported as failed (w4/231)",
+  },
   "environments.createError": {
     message: 'Failed to create environment "{name}".',
     description: "Toast shown when creating an environment fails",
