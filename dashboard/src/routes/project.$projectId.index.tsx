@@ -30,6 +30,10 @@ import {
 import { ProjectOverviewPageSkeleton } from "@/common/components/route-skeletons";
 import { ResourceLoadError } from "@/common/components/resource-load-error";
 
+function filterKey(filter: ProjectResourceFilterState): string {
+  return JSON.stringify([filter.environmentId, filter.query, filter.kind]);
+}
+
 export const Route = createFileRoute("/project/$projectId/")({
   component: ProjectPage,
   pendingComponent: ProjectOverviewPageSkeleton,
@@ -52,13 +56,31 @@ export function ProjectPage() {
   const navigate = Route.useNavigate();
   const router = useRouter();
   const { t } = useTranslations();
-  const resourceFilter: ProjectResourceFilterState = {
+  const urlFilter: ProjectResourceFilterState = {
     environmentId: search.env ?? null,
     query: search.q ?? "",
     kind: search.kind ?? "all",
   };
+  // The URL publishes in a router transition, so render from a synchronous
+  // draft until the URL catches up, or the typed input rolls back (w4/266).
+  // A URL this page didn't issue is an external navigation and wins.
+  const [draft, setDraft] = useState<{
+    filter: ProjectResourceFilterState;
+    issued: string[];
+  } | null>(null);
+  const urlKey = filterKey(urlFilter);
+  const draftLive =
+    draft !== null &&
+    urlKey !== filterKey(draft.filter) &&
+    draft.issued.includes(urlKey);
+  if (draft && !draftLive) setDraft(null);
+  const resourceFilter = draftLive ? draft.filter : urlFilter;
 
   function setResourceFilter(next: ProjectResourceFilterState) {
+    setDraft((current) => ({
+      filter: next,
+      issued: [...(current?.issued ?? [urlKey]), filterKey(next)],
+    }));
     void navigate({
       search: {
         env: next.environmentId ?? undefined,
