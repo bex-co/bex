@@ -249,6 +249,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **263** — [Completed Key Value environment move keeps the old source row](263.md) (55m) ← functional QA a243; two completed moves accept an older list, leaving source row/count stale despite correct saved placement; fresh inverse control passes; owned fixtures deleted and session revoked.
+
 - [ ] **262** — [A live deploy detail stays Live after a newer release replaces it](262.md) (55m) ← functional QA a239; two old-release transitions leave the badge/time/timeline stale and hide Rollback; fresh REST/GraphQL and page controls agree on Deactivated; owned fixture deleted and session revoked.
 
 - [ ] **261** — [Deploy log search claims 100 matching lines when none match](261.md) (50m) ← functional QA 2026-10-11 a227; fresh desktop/mobile no-match caption contradicts the empty result; raw/filtered API, working older-page control, successful build recovery and owned fixture/session cleanup verified.
