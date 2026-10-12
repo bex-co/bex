@@ -13,6 +13,12 @@ import {
   mutationErrorMessage,
 } from "@/common/lib/graphql-error";
 import { skipPollWhenHidden, useConvergingPoll } from "@/common/lib/polling";
+import {
+  NO_APPENDED,
+  appendPage,
+  joinAppendedPages,
+  type AppendedPages,
+} from "@/common/lib/appended-pages";
 import type { CronRunView } from "@/features/services/types";
 
 const PAGE_SIZE = 5;
@@ -38,68 +44,6 @@ export interface UseCronRunsResult {
   triggerError: string | null;
   clearTriggerError: () => void;
   trigger: () => Promise<boolean>;
-}
-
-/** The `loadMore`-appended pages, tagged with the service they were read for. */
-interface AppendedPages {
-  serviceId: string;
-  rows: CronRunView[];
-  /**
-   * The id the FIRST appended page was read from — the row the tail hangs off.
-   * While it is still on page 1, head and tail are contiguous; once it is not,
-   * the refreshed head has moved past it and the two no longer join up.
-   */
-  anchorId: string;
-  /** Size of the most recently appended page (null ⇒ none appended yet). */
-  lastPageSize: number | null;
-}
-
-const NO_APPENDED: AppendedPages = {
-  serviceId: "",
-  rows: [],
-  anchorId: "",
-  lastPageSize: null,
-};
-
-/**
- * Merge page 1 with appended history, dropping duplicates by id.
- *
- * The appended tail is dropped in two cases, both of which mean it no longer
- * joins the refreshed head:
- *
- *   - **Overlap** — page 1 already contains an appended row, so keeping both
- *     would list it twice (the reconciliation `mergeDeployPages` performs for
- *     Deploys, w4/073).
- *   - **Gap** — the anchor the tail was read from has fallen off page 1, which
- *     is what a new arrival does: head [9…5] + tail [4…1] becomes head [10…6],
- *     and crr-5 belongs to neither. Concatenating anyway would silently hide a
- *     run in the middle of the history, with `hasMore` already false so Load
- *     more could not bring it back.
- *
- * Dropping restores the plain first page and, with it, a working Load more —
- * the tail is re-fetchable, which a hole in the middle is not. It also bounds
- * what is held: rows are never accumulated beyond the authoritative history.
- */
-export function mergeCronRunPages(
-  firstPage: CronRunView[],
-  appended: CronRunView[],
-  anchorId = "",
-): { rows: CronRunView[]; dropAppended: boolean } {
-  const firstIds = new Set(firstPage.map((run) => run.id));
-  const overlaps = appended.some((run) => firstIds.has(run.id));
-  const gapped =
-    appended.length > 0 && anchorId !== "" && !firstIds.has(anchorId);
-  if (overlaps || gapped) {
-    return { rows: firstPage, dropAppended: true };
-  }
-  const seen = new Set(firstIds);
-  const rows = [...firstPage];
-  for (const run of appended) {
-    if (seen.has(run.id)) continue;
-    seen.add(run.id);
-    rows.push(run);
-  }
-  return { rows, dropAppended: false };
 }
 
 type RawCronRun = NonNullable<CronJobRunsQuery["cronJobRuns"]>[number];
@@ -142,7 +86,7 @@ export function useCronRuns(serviceId: string): UseCronRunsResult {
   const { t } = useTranslations();
   const client = useApolloClient();
   const [appendedState, setAppendedState] =
-    useState<AppendedPages>(NO_APPENDED);
+    useState<AppendedPages<CronRunView>>(NO_APPENDED);
   const [loadingMore, setLoadingMore] = useState(false);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
   const { data, loading, error, refetch, startPolling, stopPolling } = useQuery(
@@ -187,19 +131,15 @@ export function useCronRuns(serviceId: string): UseCronRunsResult {
     [hasFetched, fetched, retained, serviceId],
   );
 
-  const { runs, scoped } = useMemo(() => {
-    // Appends are tagged with the service they were read for, so navigating to
-    // another cron drops them instead of stacking one job's tail under
-    // another's first page.
-    const pages =
-      appendedState.serviceId === serviceId ? appendedState : NO_APPENDED;
-    const { rows, dropAppended } = mergeCronRunPages(
-      firstPage,
-      pages.rows,
-      pages.anchorId,
-    );
-    return { runs: rows, scoped: dropAppended ? NO_APPENDED : pages };
-  }, [appendedState, serviceId, firstPage]);
+  // Tagged with the service and the head boundary (w4/138, w4/230).
+  const {
+    rows: runs,
+    hasMore,
+    next,
+  } = useMemo(
+    () => joinAppendedPages(firstPage, appendedState, serviceId, PAGE_SIZE),
+    [appendedState, serviceId, firstPage],
+  );
 
   const hasActiveRun = runs.some((run) =>
     ACTIVE_STATUSES.has(run.status.toLowerCase()),
@@ -209,48 +149,29 @@ export function useCronRuns(serviceId: string): UseCronRunsResult {
   // what discovers a scheduled run in a settled history.
   useConvergingPoll(startPolling, stopPolling, hasActiveRun);
 
-  const hasMore =
-    scoped.lastPageSize === null
-      ? firstPage.length === PAGE_SIZE
-      : scoped.lastPageSize === PAGE_SIZE;
-
   const loadMore = useCallback(async () => {
-    if (loadingMore || runs.length === 0) return;
-    const key = serviceId;
-    const cursor = runs[runs.length - 1]?.id;
-    if (!cursor) return;
+    if (loadingMore || !next) return;
     setLoadingMore(true);
     try {
       const result = await client.query({
         query: CronJobRunsDocument,
-        variables: { serviceId, cursor, limit: PAGE_SIZE },
+        variables: { serviceId, cursor: next.cursor, limit: PAGE_SIZE },
         fetchPolicy: "network-only",
         errorPolicy: "all",
       });
-      const page = toRuns(result.data?.cronJobRuns);
-      // Defensive only — the exclusive keyset cursor shouldn't hand back an id
-      // already loaded. Bounded to the current tail, not the full history.
-      const seenTail = new Set(runs.slice(-PAGE_SIZE).map((run) => run.id));
-      setAppendedState((prev) => {
-        const carried = prev.serviceId === key ? prev : NO_APPENDED;
-        return {
-          serviceId: key,
-          rows: [
-            ...carried.rows,
-            ...page.filter((run) => !seenTail.has(run.id)),
-          ],
-          // The anchor is the FIRST page's cursor and never moves as more
-          // pages are appended: it marks where the tail joins the head.
-          anchorId: carried.anchorId || cursor,
-          lastPageSize: page.length,
-        };
-      });
+      // An unreadable page is a failure, never a successful empty one that
+      // would claim the history is exhausted.
+      if (!result.data?.cronJobRuns) {
+        throw result.error ?? new Error("no cron runs page");
+      }
+      const page = toRuns(result.data.cronJobRuns);
+      setAppendedState((prev) => appendPage(prev, next, page));
     } catch {
       toast.error(t("services.cronRunsLoadError"));
     } finally {
       setLoadingMore(false);
     }
-  }, [client, loadingMore, runs, serviceId, t]);
+  }, [client, loadingMore, next, serviceId, t]);
 
   const cancel = useCallback(
     async (runId: string) => {
