@@ -459,7 +459,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.confirmSuspendDetail": {
     message:
-      "请确认你要暂停 {name}。所有活动连接都将断开；数据会被保留，你可以随时恢复。",
+      "请确认你要暂停 {name}。所有活动连接都将断开，你可以随时恢复。数据保留取决于持久化模式：关闭时会丢失所有数据；仅快照保留截至最近一次快照的数据；日志 + 快照保留约截至最后一秒的写入。",
     description: "Suspend-confirmation consequences and named instance",
   },
   "keyvalue.confirmSuspendPrompt": {
