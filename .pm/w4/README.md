@@ -249,7 +249,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
-- [ ] **275** — [Unchanged image sources enable Update source and report a successful change](275.md) (35m) ← functional QA a285; fresh desktop/mobile image editors are falsely dirty on the API's empty repo; unchanged Save reports success, while real tag Save/manual deploy and Cancel pass; own Free fixture deleted and session revoked.
+- [x] **275** — [Unchanged image sources enable Update source and report a successful change](done/275.md) (35m) — **DONE 2026-10-12** (`86af4f59e`, live-verified at 1440 and 390: an unchanged or padded image keeps Update source disabled, a real tag enables it, and nothing is written) ← functional QA a285; fresh desktop/mobile image editors are falsely dirty on the API's empty repo; unchanged Save reports success, while real tag Save/manual deploy and Cancel pass; own Free fixture deleted and session revoked.
 
 - [x] **274** — [Untouched Build Filters keeps old paths after refresh and can undo a newer save](done/274.md) (55m) — **DONE 2026-10-12** (`5092f6805`, live-verified at 1440 and the 390 static alias: an untouched editor adopts separately saved paths and stays clean; a dirty draft survives and Cancel adopts the latest) ← functional QA a284; two-tab included/ignored edits leave a pristine editor stale, explicit Save restores the old filters; mobile repeat and dirty-draft/Cancel controls captured; own static fixture deleted and session revoked.
 
