@@ -325,30 +325,37 @@ func TestRestartSelectsTheSettledServingRelease(t *testing.T) {
 // When the serving release cannot be established, Restart is refused before
 // anything changes instead of restarting the older Live configuration.
 func TestRestartRefusesAnUnresolvableServingRelease(t *testing.T) {
-	for name, edit := range map[string]func(*appv1alpha1.App, *fakeStore, client.Client){
-		"no deploy row": func(a *appv1alpha1.App, _ *fakeStore, _ client.Client) {
+	for name, tc := range map[string]struct {
+		edit func(*appv1alpha1.App, *fakeStore, client.Client)
+		want string
+	}{
+		"no deploy row": {func(a *appv1alpha1.App, _ *fakeStore, _ client.Client) {
 			a.Status.ActiveRevision, a.Status.ReleaseGeneration = "rev-3", 3
-		},
-		"newer release in flight": func(a *appv1alpha1.App, _ *fakeStore, _ client.Client) {
+		}, untrackedRelease},
+		"newer release in flight": {func(a *appv1alpha1.App, _ *fakeStore, _ client.Client) {
 			a.Status.ReleaseGeneration = 3
-		},
-		"no active image": func(a *appv1alpha1.App, _ *fakeStore, _ client.Client) {
+		}, retryShortly},
+		"no active image": {func(a *appv1alpha1.App, _ *fakeStore, _ client.Client) {
 			a.Status.Image = ""
-		},
-		"record evicted": func(_ *appv1alpha1.App, _ *fakeStore, cl client.Client) {
+		}, retryShortly},
+		"record evicted": {func(_ *appv1alpha1.App, _ *fakeStore, cl client.Client) {
 			_ = cl.Delete(context.Background(), servingRecord("web", 2, ""))
-		},
+		}, retryShortly},
 	} {
 		t.Run(name, func(t *testing.T) {
 			svc, cl, ds := servingFixture(t, store.TriggerRollback, nil)
 			a := getApp(t, cl, "web")
-			edit(a, ds, cl)
+			tc.edit(a, ds, cl)
 			if err := cl.Update(context.Background(), a); err != nil {
 				t.Fatal(err)
 			}
 			before := getApp(t, cl, "web")
-			if _, err := svc.Restart(context.Background(), "web"); !errors.Is(err, core.ErrConflict) {
-				t.Fatalf("Restart = %v, want a retryable conflict", err)
+			_, err := svc.Restart(context.Background(), "web")
+			if !errors.Is(err, core.ErrConflict) {
+				t.Fatalf("Restart = %v, want a conflict", err)
+			}
+			if msg := err.Error(); !strings.HasSuffix(msg, "; "+tc.want) {
+				t.Fatalf("Restart refusal = %q, want recovery %q", msg, tc.want)
 			}
 			after := getApp(t, cl, "web")
 			if after.Spec.RestartedAt != before.Spec.RestartedAt || after.Spec.ReleaseConfig != nil || len(ds.byApp["srv-1"]) != 2 {
