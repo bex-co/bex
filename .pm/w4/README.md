@@ -249,6 +249,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **270** — [Long environment scopes hide group-dialog titles and actions](270.md) (55m) ← functional QA a270; fresh mobile/desktop Clone and sibling Move overflow their frames, Create's picker/menu also clip; exact clone data and Workspace controls pass; owned project/environment/groups deleted and session revoked.
+
 - [ ] **269** — [Try again cannot recover dashboard routes after a bundle update](269.md) (55m) ← functional QA a269; two retries and a repeated project navigation retain a failed old chunk, while a fresh tab and same-URL reload recover the saved project; native MIME controls retained; owned project deleted and session revoked.
 
 - [ ] **268** — [Untouched static-rule editors become dirty on refresh and can overwrite newer saved rules](268.md) (55m) ← functional QA a267; fresh desktop/mobile Headers and sibling Routes replays retain stale untouched rows after correct refreshes, explicit Header Save rolls back the served value; Cancel/dirty-draft controls pass; owned static site deleted and session revoked.
