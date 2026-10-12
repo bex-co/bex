@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { EnvImportDialog } from "../env-import-dialog";
 
@@ -53,5 +53,31 @@ describe("EnvImportDialog", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       /Line 1: the name must be letters, digits, and underscores/,
     );
+  });
+
+  // w4/273: an uploaded file reaches the parser untouched, so the opening
+  // line's in-quote whitespace survives.
+  it("keeps opening-line whitespace inside a multi-line quote from an uploaded file", async () => {
+    const user = userEvent.setup();
+    const onImport = vi.fn();
+    render(<EnvImportDialog open onOpenChange={vi.fn()} onImport={onImport} />);
+
+    const contents = 'export QA_V="line1  \nline2"\n';
+    const dotenv = new File([contents], ".env", { type: "text/plain" });
+    // jsdom's File lacks text(); the dialog reads the file with it.
+    Object.defineProperty(dotenv, "text", {
+      value: vi.fn().mockResolvedValue(contents),
+    });
+    await user.upload(
+      document.querySelector<HTMLInputElement>('input[type="file"]')!,
+      dotenv,
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("textbox")).toHaveValue(contents),
+    );
+    await user.click(screen.getByRole("button", { name: "Add variables" }));
+    expect(onImport).toHaveBeenCalledWith([
+      { key: "QA_V", value: "line1  \nline2", line: 1 },
+    ]);
   });
 });
