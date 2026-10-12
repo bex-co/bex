@@ -85,4 +85,30 @@ describe("parseDotenv", () => {
       { key: "two", value: "2", line: 2 },
     ]);
   });
+
+  // w4/273: whitespace on a multi-line value's opening line sits inside the
+  // quote; it was trimmed away before the value was assembled.
+  it("keeps whitespace on the opening line of a multi-line quoted value", () => {
+    const text = [
+      'QA_DOUBLE="first  ',
+      "second 雪  ",
+      'last  "',
+      "QA_SINGLE='a\t ",
+      "b'",
+      '  export QA_FILE="first   ',
+      'x"',
+      'QA_BLANK="   ',
+      '"',
+      "QA_TRIMMED=  plain  ",
+      'QA_ONE_LINE="  kept  "  ',
+    ].join("\n");
+    expect(parseDotenv(text)).toEqual([
+      { key: "QA_DOUBLE", value: "first  \nsecond 雪  \nlast  ", line: 1 },
+      { key: "QA_SINGLE", value: "a\t \nb", line: 4 },
+      { key: "QA_FILE", value: "first   \nx", line: 6 },
+      { key: "QA_BLANK", value: "   \n", line: 8 },
+      { key: "QA_TRIMMED", value: "plain", line: 10 },
+      { key: "QA_ONE_LINE", value: "  kept  ", line: 11 },
+    ]);
+  });
 });

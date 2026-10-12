@@ -63,7 +63,9 @@ export function parseDotenv(text: string): DotenvEntry[] {
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = index + 1;
-    let input = lines[index].trim();
+    // Trim only the indentation: trailing whitespace on an opening line may
+    // sit inside a quote that continues on the next line (w4/273).
+    let input = lines[index].trimStart();
     if (!input || input.startsWith("#")) continue;
     if (input.startsWith("export ") || input.startsWith("export\t")) {
       input = input.slice(6).trimStart();
