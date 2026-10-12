@@ -99,11 +99,14 @@ var metricsParameterInputType = graphql.NewInputObject(graphql.InputObjectConfig
 var metricsQueryInputType = graphql.NewInputObject(graphql.InputObjectConfig{
 	Name: "MetricsQueryInput",
 	Fields: graphql.InputObjectConfigFieldMap{
-		"filters":            &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(metricsFilterInputType)))},
-		"start":              &graphql.InputObjectFieldConfig{Type: graphql.String},
-		"end":                &graphql.InputObjectFieldConfig{Type: graphql.String},
-		"name":               &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
-		"resolution":         &graphql.InputObjectFieldConfig{Type: graphql.Int},
+		"filters": &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(metricsFilterInputType)))},
+		"start":   &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"end":     &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"name":    &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"resolution": &graphql.InputObjectFieldConfig{
+			Type:        graphql.Int,
+			Description: "Step in seconds; default 60. BANDWIDTH (bex) refuses a step below 60 or a window shorter than 60 seconds.",
+		},
 		"parameters":         &graphql.InputObjectFieldConfig{Type: graphql.NewList(metricsParameterInputType)},
 		"aggregateBy":        &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.String)},
 		"aggregationMethod":  &graphql.InputObjectFieldConfig{Type: graphql.String},

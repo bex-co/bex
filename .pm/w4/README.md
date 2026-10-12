@@ -293,7 +293,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **242** — [New environment-group form clips its fields and actions on mobile](242.md) (55m) ← functional QA 2026-10-10 a114; fresh 390px form has 356px client / 440px scroll width, desktop control fits, no resource mutations, session cleanup verified.
 
-- [ ] **241** — [Short custom Metrics ranges report zero bandwidth despite retained samples](241.md) (55m) ← functional QA 2026-10-10 a70; identical five-minute window is zero at 3s and positive at 30/60s, owned fixture/session cleanup verified.
+- [x] **241** — [Short custom Metrics ranges report zero bandwidth despite retained samples](done/241.md) (55m) — **DONE 2026-10-12** (60s bandwidth minimum: named 400 below it on GraphQL/MCP/REST window; dashboard requests bandwidth at max(60, step); live replay pending deploy) ← functional QA 2026-10-10 a70; identical five-minute window is zero at 3s and positive at 30/60s, owned fixture/session cleanup verified.
 
 - [x] **240** — [Switching source tabs discards the Public Git Branch draft](done/240.md) (55m) — **DONE 2026-10-11** (`77e941359`, live-verified at 390×844/1440×1000) ← functional QA 2026-10-10 a64; unchanged URL and settings survive, Branch clears on a fresh source-tab round trip, owned fixture/session cleanup verified.
 

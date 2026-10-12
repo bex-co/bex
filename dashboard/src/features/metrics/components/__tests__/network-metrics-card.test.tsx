@@ -86,11 +86,11 @@ describe("NetworkMetricsCard", () => {
       "http_requests",
       expect.objectContaining(WINDOW),
     );
-    expect(mockUseMetrics).toHaveBeenCalledWith(
-      "beancount-cms",
-      "bandwidth",
-      WINDOW,
-    );
+    // Bandwidth keeps the window but never steps below the API's 60s minimum.
+    expect(mockUseMetrics).toHaveBeenCalledWith("beancount-cms", "bandwidth", {
+      ...WINDOW,
+      resolutionSeconds: 60,
+    });
     expect(mockUseMetrics).toHaveBeenCalledWith(
       "beancount-cms",
       "http_latency",
@@ -160,6 +160,48 @@ describe("NetworkMetricsCard", () => {
 
     for (const label of ["p50", "p90", "p99"]) {
       expect(screen.getByText(label)).toBeInTheDocument();
+    }
+  });
+
+  // w4/241: a five-minute custom range resolves to a 3s step; a 3s byte bucket
+  // falls between 15s counter scrapes and read as a flat zero chart.
+  it("requests bandwidth at no finer than 60s while the other charts keep the window's step", () => {
+    mockUseMetrics.mockReturnValue(emptyResult());
+    const fiveMinutes = {
+      startTime: "2026-10-10T16:10:00.000Z",
+      endTime: "2026-10-10T16:15:00.000Z",
+      resolutionSeconds: 3,
+      pollIntervalMs: 0,
+    };
+    const { unmount } = render(
+      <NetworkMetricsCard resource="beancount-cms" window={fiveMinutes} />,
+    );
+
+    const optionsFor = (metric: string) => {
+      const opts = mockUseMetrics.mock.calls
+        .filter(([, m]) => m === metric)
+        .map(([, , o]) => o);
+      expect(opts.length).toBeGreaterThan(0);
+      return opts;
+    };
+    for (const opts of optionsFor("bandwidth")) {
+      expect(opts).toEqual({ ...fiveMinutes, resolutionSeconds: 60 });
+    }
+    for (const metric of ["http_requests", "http_latency"]) {
+      for (const opts of optionsFor(metric)) {
+        expect(opts).toMatchObject({ ...fiveMinutes, resolutionSeconds: 3 });
+      }
+    }
+    unmount();
+
+    // A coarser window step is kept as-is.
+    mockUseMetrics.mockClear();
+    const twelveHours = { ...fiveMinutes, resolutionSeconds: 300 };
+    render(
+      <NetworkMetricsCard resource="beancount-cms" window={twelveHours} />,
+    );
+    for (const opts of optionsFor("bandwidth")) {
+      expect(opts).toEqual(twelveHours);
     }
   });
 
