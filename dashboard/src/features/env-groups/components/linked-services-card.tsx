@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
+import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -50,6 +51,9 @@ export function LinkedServicesCard({
           serviceMatchesGroupScope(serviceEnvironmentById, service.id, group),
       )
     : [];
+  // An unresolved scope index is empty, not evidence of drift: hold a neutral
+  // detail line until it settles rather than claiming every link is legacy.
+  const scopePending = !scopeReady && !error;
 
   async function handleLink() {
     if (!selected) return;
@@ -129,8 +133,16 @@ export function LinkedServicesCard({
                       <p className="truncate text-xs text-muted-foreground">
                         {serviceId}
                       </p>
+                    ) : scopePending ? (
+                      <div
+                        className="flex h-4 items-center"
+                        data-testid="linked-row-pending"
+                      >
+                        <Skeleton className="h-3 w-40 max-w-full" />
+                      </div>
                     ) : null}
-                    {!serviceMatchesGroupScope(
+                    {scopeReady &&
+                    !serviceMatchesGroupScope(
                       serviceEnvironmentById,
                       serviceId,
                       group,

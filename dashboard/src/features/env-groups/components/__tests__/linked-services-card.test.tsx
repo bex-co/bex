@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { useState } from "react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import {
   RouterProvider,
   createMemoryHistory,
@@ -15,34 +16,51 @@ function service(id: string, name: string): ServiceView {
   return { id, name } as unknown as ServiceView;
 }
 
-function renderCard(props: {
+type CardProps = {
   group: EnvGroupView;
   services: ServiceView[];
   serviceEnvironmentById: ReadonlyMap<string, string>;
-}) {
-  const root = createRootRoute();
-  const route = createRoute({
-    getParentRoute: () => root,
-    path: "/",
-    component: () => (
+  scopeReady?: boolean;
+  error?: Error;
+};
+
+function renderCard(initial: CardProps) {
+  let setProps: (update: (prev: CardProps) => CardProps) => void = () => {};
+  function Harness() {
+    const [props, set] = useState(initial);
+    setProps = set;
+    return (
       <LinkedServicesCard
         group={props.group}
         services={props.services}
         linkGroup={vi.fn()}
-        unlinkGroup={vi.fn()}
-        busy={false}
+        unlinkGroup={unlinkGroup}
+        busy={!(props.scopeReady ?? true)}
+        error={props.error}
         serviceEnvironmentById={props.serviceEnvironmentById}
-        scopeReady
+        scopeReady={props.scopeReady ?? true}
       />
-    ),
+    );
+  }
+  const root = createRootRoute();
+  const route = createRoute({
+    getParentRoute: () => root,
+    path: "/",
+    component: Harness,
   });
   const router = createRouter({
     routeTree: root.addChildren([route]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
     context: { client: {} as never, session: null },
   });
-  return render(<RouterProvider router={router} />);
+  return {
+    ...render(<RouterProvider router={router} />),
+    update: (patch: Partial<CardProps>) =>
+      act(() => setProps((prev) => ({ ...prev, ...patch }))),
+  };
 }
+
+const unlinkGroup = vi.fn(async () => true);
 
 const WORKSPACE_GROUP: EnvGroupView = {
   id: "eg-1",
@@ -122,5 +140,77 @@ describe("LinkedServicesCard — row control names (w4/150)", () => {
     expect(
       screen.getByRole("button", { name: "Unlink api" }),
     ).toBeInTheDocument();
+  });
+});
+
+// w4/257: on a fresh load the scope index is empty until its
+// query resolves, and every linked row of an Environment-scoped group read as
+// "Legacy link outside this group's Environment" for several seconds.
+describe("LinkedServicesCard — scope index still loading (w4/257)", () => {
+  const ENV_GROUP: EnvGroupView = {
+    ...WORKSPACE_GROUP,
+    environmentId: "env-prod",
+    serviceLinks: ["srv-web"],
+  };
+
+  it("makes no incompatibility claim until the index resolves, then none for a match", async () => {
+    const { update } = renderCard({
+      group: ENV_GROUP,
+      services: [],
+      serviceEnvironmentById: new Map(),
+      scopeReady: false,
+    });
+
+    await screen.findByRole("link", { name: "srv-web" });
+    expect(screen.queryByText(/Legacy link/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId("linked-row-pending")).toBeInTheDocument();
+
+    update({
+      services: [service("srv-web", "storefront")],
+      serviceEnvironmentById: new Map([["srv-web", "env-prod"]]),
+      scopeReady: true,
+    });
+
+    expect(
+      await screen.findByRole("link", { name: "storefront" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("srv-web")).toBeInTheDocument();
+    expect(screen.queryByText(/Legacy link/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("linked-row-pending")).not.toBeInTheDocument();
+  });
+
+  it("warns once a genuine mismatch settles, and Unlink still works", async () => {
+    const { update } = renderCard({
+      group: ENV_GROUP,
+      services: [service("srv-web", "storefront")],
+      serviceEnvironmentById: new Map(),
+      scopeReady: false,
+    });
+    await screen.findByRole("link", { name: "storefront" });
+    expect(screen.queryByText(/Legacy link/i)).not.toBeInTheDocument();
+
+    update({
+      serviceEnvironmentById: new Map([["srv-web", "env-staging"]]),
+      scopeReady: true,
+    });
+
+    expect(await screen.findByText(/Legacy link/i)).toBeInTheDocument();
+    unlinkGroup.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Unlink storefront" }));
+    expect(unlinkGroup).toHaveBeenCalledWith("eg-1", "srv-web");
+  });
+
+  it("leaves a failed index read to the error alert, with no warning or placeholder", async () => {
+    renderCard({
+      group: ENV_GROUP,
+      services: [],
+      serviceEnvironmentById: new Map(),
+      scopeReady: false,
+      error: new Error("environment index failed"),
+    });
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByText(/Legacy link/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("linked-row-pending")).not.toBeInTheDocument();
   });
 });
