@@ -299,6 +299,11 @@ const enDeploys: Record<string, TranslationEntry> = {
     message: "Load more",
     description: "Deploys tab: button fetching the next page of deploy history",
   },
+  "deploys.listLoadMoreError": {
+    message: "Couldn't load older deploys.",
+    description:
+      "Deploys tab: toast when reading an older page of deploy history fails",
+  },
   "deploys.logOptions": {
     message: "Log options",
     description:
