@@ -1,6 +1,6 @@
 # w8 · m58 — Preserve Unicode matches in log history
 
-**Worker:** worker8 **Goal:** normalized Unicode log matches survive raw and display history through the unchanged CLI and shared API **Status:** blocked — local backend fix/tests are complete; remaining gate is production deployment plus native Bex/Render acceptance receipts and cleanup.
+**Worker:** worker8 **Goal:** normalized Unicode log matches survive raw and display history through the unchanged CLI and shared API **Status:** blocked — local backend fix/tests are complete and partial App live acceptance passes; remaining gates are the full App matrix, Postgres/Key Value and cross-surface native acceptance.
 
 ## Tasks (in order)
 
@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | t001 | Make the Loki text prefilter preserve normalized Unicode matches — **DONE 2026-10-12** | 50m | — |
 | t002 | Verify shared history callers and resource families — **DONE 2026-10-12** | 30m | t001 |
-| t003 | Render parity and live native CLI acceptance — **BLOCKED: needs production deployment plus fresh native Bex/Render receipts and cleanup** | 20m | t002 |
+| t003 | Render parity and live native CLI acceptance — **BLOCKED: partial App live receipts pass; complete App and managed Postgres/Key Value acceptance still needed** | 20m | t002 |
 | t004 | Simplify — **DONE 2026-10-12** | 10m | t003 |
 | t005 | Meaningful Unicode and pagination regression coverage — **DONE 2026-10-12** | 35m | t003 |
 | t006 | Closeout — **BLOCKED: needs t003 live acceptance evidence before milestone can close** | 10m | t005 |
@@ -24,6 +24,8 @@ Managed Postgres acceptance: emit the three sweep-100 markers through native SQL
 Managed Key Value acceptance: use the native EVAL marker commands in sweep 101 and require both clients to return three prefix records, two iota records and one lambda record; preserve native terminal completion and original bytes.
 
 ## Progress / block
+
+- **2026-10-12, live sweep176:** [partial App acceptance](evidence/live-app-sweep176/README.md) passes 28 native text cases plus 12 timestamp/direction/limit controls across both clients, and six REST raw/display comparisons. Fresh App and its one child were enumerated and cleaned; detail/list/public404 and baseline6/quota termination0 confirmed. Exact deployed SHA remains unknown. Full App/table/pagination/instance/GraphQL and managed Postgres/Key Value gates remain; t003/t006 stay blocked.
 
 - **2026-10-12:** local backend implementation completed. Text matching now stays out of Loki's Unicode-unsafe regexp simplifier and is applied by the shared Go matcher over bounded raw scan pages. Evidence: [`evidence/implementation-closeout.md`](evidence/implementation-closeout.md).
 - Validation passed: `cd lego/backend && go test ./internal/logs` and `cd lego/backend && go test ./...`.
