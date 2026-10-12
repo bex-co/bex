@@ -398,6 +398,12 @@ function ResourceSection({
     [result.series],
   );
 
+  // Raw lines from several instances have no one "latest" value — the first
+  // series is often a retired instance (w4/258) — so the header shows a value
+  // only when exactly one series has points: one instance, or an aggregate.
+  const withPoints = series.filter((s) => s.points.length > 0);
+  const usageValue = withPoints.length === 1 ? latestValue(withPoints) : null;
+
   // The Total tab's dashed reference line is only truthful for a uniform
   // limit; mixed limits have no one applicable value, so the line is omitted
   // and the header says so.
@@ -440,11 +446,7 @@ function ResourceSection({
             </span>
           )}
           {emptyMessage === null && (
-            <LatestValue
-              result={result}
-              unit={unit}
-              value={latestValue(series)}
-            />
+            <LatestValue result={result} unit={unit} value={usageValue} />
           )}
         </div>
       }
