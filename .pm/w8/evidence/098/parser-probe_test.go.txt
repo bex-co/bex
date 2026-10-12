@@ -1,0 +1,18 @@
+package apps
+import("encoding/json";"os";"testing"; validation "k8s.io/apimachinery/pkg/util/validation")
+func TestQAKVReferenceCurrent175(t *testing.T){
+ type input struct{Label string `json:"label"`;Document map[string]any `json:"document"`;Expected bool `json:"expected_valid_hypothesis"`}
+ type observation struct{Label string `json:"label"`;CompilerProblems int `json:"compiler_problems"`;ParserError string `json:"parser_error"`;ReferenceType string `json:"reference_type"`;KVRefs int `json:"kv_refs"`;ResolverError string `json:"resolver_error"`;SecretName string `json:"synthetic_secret_name,omitempty"`;SecretKey string `json:"secret_key"`;KeyValidationErrors []string `json:"key_validation_errors"`;ResolvedValue string `json:"resolved_value,omitempty"`}
+ raw,err:=os.ReadFile(os.Getenv("QA175_INPUT"));if err!=nil{t.Fatal(err)};var in []input;if err=json.Unmarshal(raw,&in);err!=nil{t.Fatal(err)};out:=[]observation{}
+ for _,x:=range in{
+  o:=observation{Label:x.Label};manifest,err:=json.Marshal(x.Document);if err!=nil{t.Fatal(err)};source,ir,problems:=CompileBlueprintIR(string(manifest));o.CompilerProblems=len(problems);if len(problems)!=0{t.Fatalf("%s compiler: %+v",x.Label,problems)}
+  decoded,err:=decodeCompiledBlueprintManifest(source);if err!=nil{t.Fatal(err)};targetName:=decoded.Services[1].Name;sourceName:=decoded.Services[0].Name;o.ReferenceType=decoded.Services[1].EnvVars[0].FromService.Type
+  st,err:=parseCompiledStack(blueprintParseOverrides{},source,ir);if err!=nil{o.ParserError=err.Error();if x.Expected||x.Label=="kv-env-key-complete"||x.Label=="redis-env-key-complete"{t.Fatalf("%s unexpected parser error: %v",x.Label,err)};out=append(out,o);continue}
+  var target *parsedService;for i:=range st.services{if st.services[i].req.Name==targetName{target=&st.services[i]}};if target==nil{t.Fatal("target missing")};o.KVRefs=len(target.kvRefs)
+  if o.KVRefs>0{if o.KVRefs!=1{t.Fatal("unexpected reference count")};v,err:=resolveKeyValueRef(target.kvRefs[0],map[string]string{sourceName:"qa175-local-object"});if err!=nil{o.ResolverError=err.Error();t.Fatalf("%s resolver: %v",x.Label,err)};if v.ValueFrom==nil||v.ValueFrom.SecretKeyRef==nil{t.Fatal("selector missing")};o.SecretName=v.ValueFrom.SecretKeyRef.Name;o.SecretKey=v.ValueFrom.SecretKeyRef.Key;o.KeyValidationErrors=validation.IsConfigMapKey(o.SecretKey)
+   bad:=x.Label=="kv-env-key-complete"||x.Label=="redis-env-key-complete";if bad{if o.SecretKey!=""||len(o.KeyValidationErrors)==0{t.Fatalf("%s expected current empty key",x.Label)}}else{if o.SecretKey==""||len(o.KeyValidationErrors)>0{t.Fatalf("%s valid property broken",x.Label)}}
+  }else{for _,v:=range target.req.Env{if v.Name=="QA_TARGET"{o.ResolvedValue=v.Value}};if o.ResolvedValue!="source-175"{t.Fatalf("%s literal value=%q",x.Label,o.ResolvedValue)}}
+  out=append(out,o)
+ }
+ encoded,err:=json.MarshalIndent(out,"","  ");if err!=nil{t.Fatal(err)};if err=os.WriteFile(os.Getenv("QA175_RESULT"),append(encoded,'\n'),0600);err!=nil{t.Fatal(err)}
+}

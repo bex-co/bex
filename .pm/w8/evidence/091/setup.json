@@ -1,0 +1,132 @@
+{
+  "source_head": "7a93270cf6a9bc05bacfe881d9a572e232e6795e",
+  "setup_inventory": {
+    "method": "GET",
+    "path": "/v1/projects?ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.632,
+    "response": "[]",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4908a4e2c07ebe9-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "project": {
+    "id": "prj-db5ut0s9vsac73cmf0n0",
+    "name": "qa-20261011-7de445-selected",
+    "environment_ids": [
+      "evm-db5ut0s9vsac73cmf0ng"
+    ]
+  },
+  "creation_proof": [
+    {
+      "sweep": 138,
+      "type": "project",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "nonce": "7de445",
+      "name": "qa-20261011-7de445-selected",
+      "time": "2026-10-11T20:16:02.893054+00:00",
+      "command": {
+        "method": "POST",
+        "path": "/v1/projects",
+        "body": {
+          "name": "qa-20261011-7de445-selected",
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "environments": [
+            {
+              "name": "qa-20261011-7de445-selected-empty"
+            }
+          ]
+        }
+      },
+      "baseline_project_ids": [],
+      "dependency_ids": [
+        "evm-db5ut0s9vsac73cmf0ng"
+      ],
+      "create_result": {
+        "method": "POST",
+        "path": "/v1/projects",
+        "body": "{\"name\": \"qa-20261011-7de445-selected\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"environments\": [{\"name\": \"qa-20261011-7de445-selected-empty\"}]}",
+        "status": "201",
+        "elapsed": 0.785,
+        "response": "{\"id\": \"prj-db5ut0s9vsac73cmf0n0\", \"name\": \"qa-20261011-7de445-selected\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"[REDACTED]\", \"type\": \"team\"}, \"environmentIds\": [\"evm-db5ut0s9vsac73cmf0ng\"], \"createdAt\": \"2026-10-11T20:16:03.730086Z\", \"updatedAt\": \"2026-10-11T20:16:03.730086Z\"}",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4908a542fc31828-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "id": "prj-db5ut0s9vsac73cmf0n0",
+      "create_response": {
+        "id": "prj-db5ut0s9vsac73cmf0n0",
+        "name": "qa-20261011-7de445-selected",
+        "owner": {
+          "id": "tea-daif693dqjvc73e7as3g",
+          "name": "bex-canary",
+          "email": "[REDACTED]",
+          "type": "team"
+        },
+        "environmentIds": [
+          "evm-db5ut0s9vsac73cmf0ng"
+        ],
+        "createdAt": "2026-10-11T20:16:03.730086Z",
+        "updatedAt": "2026-10-11T20:16:03.730086Z"
+      },
+      "dependent_inventory": {
+        "method": "POST",
+        "path": "/graphql",
+        "body": "{\"query\": \"query($id:String!){project(id:$id){id ownerId serviceIds databaseIds keyValueIds}}\", \"variables\": {\"id\": \"prj-db5ut0s9vsac73cmf0n0\"}}",
+        "status": "200",
+        "elapsed": 0.259,
+        "response": "{\"data\": {\"project\": {\"databaseIds\": [], \"id\": \"prj-db5ut0s9vsac73cmf0n0\", \"keyValueIds\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"serviceIds\": []}}}",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4908a605ba6ad81-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "sweep": 138,
+      "type": "environment",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "id": "evm-db5ut0s9vsac73cmf0ng",
+      "nonce": "7de445",
+      "name": "qa-20261011-7de445-selected-empty",
+      "time": "2026-10-11T20:16:03.958190+00:00",
+      "parent_id": "prj-db5ut0s9vsac73cmf0n0",
+      "create_proof": {
+        "method": "POST",
+        "path": "/v1/projects",
+        "status": "201",
+        "parent_id": "prj-db5ut0s9vsac73cmf0n0",
+        "returned_environment_ids": [
+          "evm-db5ut0s9vsac73cmf0ng"
+        ]
+      },
+      "dependency_ids": [],
+      "readback_proof": {
+        "method": "GET",
+        "path": "/v1/environments/evm-db5ut0s9vsac73cmf0ng",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.829,
+        "response": "{\"id\": \"evm-db5ut0s9vsac73cmf0ng\", \"projectId\": \"prj-db5ut0s9vsac73cmf0n0\", \"name\": \"qa-20261011-7de445-selected-empty\", \"serviceIds\": [], \"databaseIds\": [], \"keyValueIds\": [], \"databasesIds\": [], \"redisIds\": [], \"envGroupIds\": [], \"protectedStatus\": \"unprotected\", \"networkIsolationEnabled\": false, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"Allow all (default)\"}, {\"cidrBlock\": \"::/0\", \"description\": \"Allow all (default)\"}]}",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4908a5abcda8775-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    }
+  ],
+  "harness_qualifications": [
+    "Setup/cleanup were derived from the sweep112 helper and initially retained its numeric sweep label on two exact new fixture records. Corrected to138 after reconciling nonce, workspace, returned IDs and creation proof; no mutation repeated. Initial native error matching omitted the actual generic name-validation panel; two such driver timeouts and one EIO completion race were excluded, then all six fresh final cases exited0 without timeout."
+  ]
+}

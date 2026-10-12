@@ -1,0 +1,308 @@
+{
+  "fixtures": {
+    "/v1/projects": [],
+    "/v1/users": {
+      "id": "usr-local-fixture",
+      "name": "Local fixture",
+      "email": "qa@example.invalid"
+    },
+    "/v1/services/srv-12345678901234567890/instances": [
+      {
+        "id": "srv-12345678901234567890-first111",
+        "createdAt": "2026-10-11T20:00:00Z"
+      },
+      {
+        "id": "srv-12345678901234567890-second22",
+        "createdAt": "2026-10-11T19:59:00Z"
+      }
+    ],
+    "/v1/services/srv-12345678901234567890": {
+      "id": "srv-12345678901234567890",
+      "name": "local-qa-instance-picker",
+      "type": "web_service",
+      "suspended": "not_suspended",
+      "serviceDetails": {
+        "runtime": "python",
+        "plan": "starter",
+        "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+      }
+    },
+    "/v1/services/srv-12345678901234567890/deploys": [
+      {
+        "deploy": {
+          "id": "dep-12345678901234567890",
+          "status": "live"
+        }
+      }
+    ],
+    "/v1/services": [
+      {
+        "service": {
+          "id": "srv-12345678901234567890",
+          "name": "local-qa-instance-picker",
+          "type": "web_service",
+          "suspended": "not_suspended",
+          "serviceDetails": {
+            "runtime": "python",
+            "plan": "starter",
+            "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+          }
+        }
+      }
+    ],
+    "/v1/owners": [
+      {
+        "owner": {
+          "id": "tea-12345678901234567890",
+          "name": "local-qa",
+          "type": "team"
+        }
+      }
+    ]
+  },
+  "origin": "loopback random port",
+  "server_requests": [
+    {
+      "method": "GET",
+      "path": "/v1/users",
+      "status": 200,
+      "response": {
+        "id": "usr-local-fixture",
+        "name": "Local fixture",
+        "email": "qa@example.invalid"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v1/services?type=web_service,private_service,background_worker&ownerId=tea-12345678901234567890&includePreviews=false&limit=100",
+      "status": 200,
+      "response": [
+        {
+          "service": {
+            "id": "srv-12345678901234567890",
+            "name": "local-qa-instance-picker",
+            "type": "web_service",
+            "suspended": "not_suspended",
+            "serviceDetails": {
+              "runtime": "python",
+              "plan": "starter",
+              "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/projects?ownerId=tea-12345678901234567890&limit=100",
+      "status": 200,
+      "response": []
+    },
+    {
+      "method": "GET",
+      "path": "/v1/services/srv-12345678901234567890/instances",
+      "status": 200,
+      "response": [
+        {
+          "id": "srv-12345678901234567890-first111",
+          "createdAt": "2026-10-11T20:00:00Z"
+        },
+        {
+          "id": "srv-12345678901234567890-second22",
+          "createdAt": "2026-10-11T19:59:00Z"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/services/srv-12345678901234567890",
+      "status": 200,
+      "response": {
+        "id": "srv-12345678901234567890",
+        "name": "local-qa-instance-picker",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "serviceDetails": {
+          "runtime": "python",
+          "plan": "starter",
+          "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v1/services/srv-12345678901234567890/deploys",
+      "status": 200,
+      "response": [
+        {
+          "deploy": {
+            "id": "dep-12345678901234567890",
+            "status": "live"
+          }
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/services?type=web_service,private_service,background_worker&ownerId=tea-12345678901234567890&includePreviews=false&limit=100",
+      "status": 200,
+      "response": [
+        {
+          "service": {
+            "id": "srv-12345678901234567890",
+            "name": "local-qa-instance-picker",
+            "type": "web_service",
+            "suspended": "not_suspended",
+            "serviceDetails": {
+              "runtime": "python",
+              "plan": "starter",
+              "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/services/srv-12345678901234567890/instances",
+      "status": 200,
+      "response": [
+        {
+          "id": "srv-12345678901234567890-first111",
+          "createdAt": "2026-10-11T20:00:00Z"
+        },
+        {
+          "id": "srv-12345678901234567890-second22",
+          "createdAt": "2026-10-11T19:59:00Z"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/projects?ownerId=tea-12345678901234567890&limit=100",
+      "status": 200,
+      "response": []
+    },
+    {
+      "method": "GET",
+      "path": "/v1/users",
+      "status": 200,
+      "response": {
+        "id": "usr-local-fixture",
+        "name": "Local fixture",
+        "email": "qa@example.invalid"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v1/services?type=web_service,private_service,background_worker&ownerId=tea-12345678901234567890&includePreviews=false&limit=100",
+      "status": 200,
+      "response": [
+        {
+          "service": {
+            "id": "srv-12345678901234567890",
+            "name": "local-qa-instance-picker",
+            "type": "web_service",
+            "suspended": "not_suspended",
+            "serviceDetails": {
+              "runtime": "python",
+              "plan": "starter",
+              "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/projects?ownerId=tea-12345678901234567890&limit=100",
+      "status": 200,
+      "response": []
+    },
+    {
+      "method": "GET",
+      "path": "/v1/services/srv-12345678901234567890/instances",
+      "status": 200,
+      "response": [
+        {
+          "id": "srv-12345678901234567890-first111",
+          "createdAt": "2026-10-11T20:00:00Z"
+        },
+        {
+          "id": "srv-12345678901234567890-second22",
+          "createdAt": "2026-10-11T19:59:00Z"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/services/srv-12345678901234567890",
+      "status": 200,
+      "response": {
+        "id": "srv-12345678901234567890",
+        "name": "local-qa-instance-picker",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "serviceDetails": {
+          "runtime": "python",
+          "plan": "starter",
+          "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v1/services/srv-12345678901234567890/deploys",
+      "status": 200,
+      "response": [
+        {
+          "deploy": {
+            "id": "dep-12345678901234567890",
+            "status": "live"
+          }
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/services?type=web_service,private_service,background_worker&ownerId=tea-12345678901234567890&includePreviews=false&limit=100",
+      "status": 200,
+      "response": [
+        {
+          "service": {
+            "id": "srv-12345678901234567890",
+            "name": "local-qa-instance-picker",
+            "type": "web_service",
+            "suspended": "not_suspended",
+            "serviceDetails": {
+              "runtime": "python",
+              "plan": "starter",
+              "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/services/srv-12345678901234567890/instances",
+      "status": 200,
+      "response": [
+        {
+          "id": "srv-12345678901234567890-first111",
+          "createdAt": "2026-10-11T20:00:00Z"
+        },
+        {
+          "id": "srv-12345678901234567890-second22",
+          "createdAt": "2026-10-11T19:59:00Z"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/projects?ownerId=tea-12345678901234567890&limit=100",
+      "status": 200,
+      "response": []
+    }
+  ]
+}

@@ -1,0 +1,309 @@
+{
+  "sweep": 139,
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "name": "qa-20261011-9f1a1a-yamltail",
+  "nonce": "9f1a1a",
+  "marker": "QA139_9f1a1a",
+  "type": "web_service",
+  "time": "2026-10-11T20:27:42.997510+00:00",
+  "role": "native YAML live-tail document boundary",
+  "command": [
+    "bex",
+    "services",
+    "create",
+    "--name",
+    "qa-20261011-9f1a1a-yamltail",
+    "--type",
+    "web_service",
+    "--runtime",
+    "python",
+    "--repo",
+    "https://github.com/bex-co/bex",
+    "--branch",
+    "main",
+    "--root-directory",
+    "examples/hello-go",
+    "--build-command",
+    "python3 --version",
+    "--start-command",
+    "python3 -u -c 'import http.server,os,sys\nTAG='\"'\"'QA139_9f1a1a'\"'\"'\nseen=set()\nclass Handler(http.server.BaseHTTPRequestHandler):\n def log_message(self,*args):pass\n def do_GET(self):\n  if self.path=='\"'\"'/'\"'\"':body=TAG+'\"'\"'-ready'\"'\"'\n  elif self.path.startswith('\"'\"'/emit/'\"'\"'):\n   batch=self.path.rsplit('\"'\"'/'\"'\"',1)[-1]\n   if batch not in ('\"'\"'yaml'\"'\"','\"'\"'json'\"'\"'):self.send_error(404);return\n   if batch not in seen:\n    seen.add(batch)\n    print(TAG+'\"'\"'-'\"'\"'+batch+'\"'\"'-A: \"雪\" [first]'\"'\"',flush=True)\n    print(TAG+'\"'\"'-'\"'\"'+batch+'\"'\"'-B: value=two,three'\"'\"',flush=True)\n   body=TAG+'\"'\"'-'\"'\"'+batch+'\"'\"'-emitted'\"'\"'\n  else:self.send_error(404);return\n  data=body.encode();self.send_response(200);self.send_header('\"'\"'Content-Length'\"'\"',str(len(data)));self.end_headers();self.wfile.write(data)\nhttp.server.ThreadingHTTPServer(('\"'\"'0.0.0.0'\"'\"',int(os.environ.get('\"'\"'PORT'\"'\"','\"'\"'3000'\"'\"'))),Handler).serve_forever()\n'",
+    "--health-check-path",
+    "/",
+    "--plan",
+    "free",
+    "--region",
+    "frankfurt",
+    "--auto-deploy=false",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "capacity_proof": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.326,
+    "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4909b683af57b82-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "program": "import http.server,os,sys\nTAG='QA139_9f1a1a'\nseen=set()\nclass Handler(http.server.BaseHTTPRequestHandler):\n def log_message(self,*args):pass\n def do_GET(self):\n  if self.path=='/':body=TAG+'-ready'\n  elif self.path.startswith('/emit/'):\n   batch=self.path.rsplit('/',1)[-1]\n   if batch not in ('yaml','json'):self.send_error(404);return\n   if batch not in seen:\n    seen.add(batch)\n    print(TAG+'-'+batch+'-A: \"雪\" [first]',flush=True)\n    print(TAG+'-'+batch+'-B: value=two,three',flush=True)\n   body=TAG+'-'+batch+'-emitted'\n  else:self.send_error(404);return\n  data=body.encode();self.send_response(200);self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)\nhttp.server.ThreadingHTTPServer(('0.0.0.0',int(os.environ.get('PORT','3000'))),Handler).serve_forever()\n",
+  "create_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261011-9f1a1a-yamltail",
+      "--type",
+      "web_service",
+      "--runtime",
+      "python",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/hello-go",
+      "--build-command",
+      "python3 --version",
+      "--start-command",
+      "python3 -u -c 'import http.server,os,sys\nTAG='\"'\"'QA139_9f1a1a'\"'\"'\nseen=set()\nclass Handler(http.server.BaseHTTPRequestHandler):\n def log_message(self,*args):pass\n def do_GET(self):\n  if self.path=='\"'\"'/'\"'\"':body=TAG+'\"'\"'-ready'\"'\"'\n  elif self.path.startswith('\"'\"'/emit/'\"'\"'):\n   batch=self.path.rsplit('\"'\"'/'\"'\"',1)[-1]\n   if batch not in ('\"'\"'yaml'\"'\"','\"'\"'json'\"'\"'):self.send_error(404);return\n   if batch not in seen:\n    seen.add(batch)\n    print(TAG+'\"'\"'-'\"'\"'+batch+'\"'\"'-A: \"雪\" [first]'\"'\"',flush=True)\n    print(TAG+'\"'\"'-'\"'\"'+batch+'\"'\"'-B: value=two,three'\"'\"',flush=True)\n   body=TAG+'\"'\"'-'\"'\"'+batch+'\"'\"'-emitted'\"'\"'\n  else:self.send_error(404);return\n  data=body.encode();self.send_response(200);self.send_header('\"'\"'Content-Length'\"'\"',str(len(data)));self.end_headers();self.wfile.write(data)\nhttp.server.ThreadingHTTPServer(('\"'\"'0.0.0.0'\"'\"',int(os.environ.get('\"'\"'PORT'\"'\"','\"'\"'3000'\"'\"'))),Handler).serve_forever()\n'",
+      "--health-check-path",
+      "/",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.743,
+    "stdout": "{\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"main\", \"createdAt\": \"2026-10-11T20:27:44Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db5v2g4hj6ks739l0p10\", \"id\": \"srv-db5v2g4hj6ks739l0p10\", \"name\": \"qa-20261011-9f1a1a-yamltail\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/bex-co/bex\", \"rootDir\": \"examples/hello-go\", \"serviceDetails\": {\"env\": \"python\", \"envSpecificDetails\": {\"buildCommand\": \"python3 --version\", \"preDeployCommand\": \"\", \"startCommand\": \"python3 -u -c 'import http.server,os,sys\\nTAG='\\\"'\\\"'QA139_9f1a1a'\\\"'\\\"'\\nseen=set()\\nclass Handler(http.server.BaseHTTPRequestHandler):\\n def log_message(self,*args):pass\\n def do_GET(self):\\n  if self.path=='\\\"'\\\"'/'\\\"'\\\"':body=TAG+'\\\"'\\\"'-ready'\\\"'\\\"'\\n  elif self.path.startswith('\\\"'\\\"'/emit/'\\\"'\\\"'):\\n   batch=self.path.rsplit('\\\"'\\\"'/'\\\"'\\\"',1)[-1]\\n   if batch not in ('\\\"'\\\"'yaml'\\\"'\\\"','\\\"'\\\"'json'\\\"'\\\"'):self.send_error(404);return\\n   if batch not in seen:\\n    seen.add(batch)\\n    print(TAG+'\\\"'\\\"'-'\\\"'\\\"'+batch+'\\\"'\\\"'-A: \\\"雪\\\" [first]'\\\"'\\\"',flush=True)\\n    print(TAG+'\\\"'\\\"'-'\\\"'\\\"'+batch+'\\\"'\\\"'-B: value=two,three'\\\"'\\\"',flush=True)\\n   body=TAG+'\\\"'\\\"'-'\\\"'\\\"'+batch+'\\\"'\\\"'-emitted'\\\"'\\\"'\\n  else:self.send_error(404);return\\n  data=body.encode();self.send_response(200);self.send_header('\\\"'\\\"'Content-Length'\\\"'\\\"',str(len(data)));self.end_headers();self.wfile.write(data)\\nhttp.server.ThreadingHTTPServer(('\\\"'\\\"'0.0.0.0'\\\"'\\\"',int(os.environ.get('\\\"'\\\"'PORT'\\\"'\\\"','\\\"'\\\"'3000'\\\"'\\\"'))),Handler).serve_forever()\\n'\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261011-9f1a1a-yamltail:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"python\", \"url\": \"https://qa-20261011-9f1a1a-yamltail.onbex.co\"}, \"slug\": \"qa-20261011-9f1a1a-yamltail\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-11T20:27:44.686610915Z\"}",
+    "stderr": ""
+  },
+  "id": "srv-db5v2g4hj6ks739l0p10",
+  "create_response": {
+    "autoDeploy": "no",
+    "autoDeployTrigger": "off",
+    "branch": "main",
+    "createdAt": "2026-10-11T20:27:44Z",
+    "dashboardUrl": "https://dashboard.bex.co/web/srv-db5v2g4hj6ks739l0p10",
+    "id": "srv-db5v2g4hj6ks739l0p10",
+    "name": "qa-20261011-9f1a1a-yamltail",
+    "notifyOnFail": "default",
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "repo": "https://github.com/bex-co/bex",
+    "rootDir": "examples/hello-go",
+    "serviceDetails": {
+      "env": "python",
+      "envSpecificDetails": {
+        "buildCommand": "python3 --version",
+        "preDeployCommand": "",
+        "startCommand": "python3 -u -c 'import http.server,os,sys\nTAG='\"'\"'QA139_9f1a1a'\"'\"'\nseen=set()\nclass Handler(http.server.BaseHTTPRequestHandler):\n def log_message(self,*args):pass\n def do_GET(self):\n  if self.path=='\"'\"'/'\"'\"':body=TAG+'\"'\"'-ready'\"'\"'\n  elif self.path.startswith('\"'\"'/emit/'\"'\"'):\n   batch=self.path.rsplit('\"'\"'/'\"'\"',1)[-1]\n   if batch not in ('\"'\"'yaml'\"'\"','\"'\"'json'\"'\"'):self.send_error(404);return\n   if batch not in seen:\n    seen.add(batch)\n    print(TAG+'\"'\"'-'\"'\"'+batch+'\"'\"'-A: \"雪\" [first]'\"'\"',flush=True)\n    print(TAG+'\"'\"'-'\"'\"'+batch+'\"'\"'-B: value=two,three'\"'\"',flush=True)\n   body=TAG+'\"'\"'-'\"'\"'+batch+'\"'\"'-emitted'\"'\"'\n  else:self.send_error(404);return\n  data=body.encode();self.send_response(200);self.send_header('\"'\"'Content-Length'\"'\"',str(len(data)));self.end_headers();self.wfile.write(data)\nhttp.server.ThreadingHTTPServer(('\"'\"'0.0.0.0'\"'\"',int(os.environ.get('\"'\"'PORT'\"'\"','\"'\"'3000'\"'\"'))),Handler).serve_forever()\n'"
+      },
+      "healthCheckPath": "/",
+      "internalAddress": "qa-20261011-9f1a1a-yamltail:3000",
+      "maintenanceMode": {
+        "enabled": false,
+        "uri": ""
+      },
+      "maxShutdownDelaySeconds": 30,
+      "numInstances": 1,
+      "plan": "free",
+      "port": 3000,
+      "region": "fsn1",
+      "renderSubdomainPolicy": "enabled",
+      "runtime": "python",
+      "url": "https://qa-20261011-9f1a1a-yamltail.onbex.co"
+    },
+    "slug": "qa-20261011-9f1a1a-yamltail",
+    "suspended": "not_suspended",
+    "suspenders": [],
+    "type": "web_service",
+    "updatedAt": "2026-10-11T20:27:44.686610915Z"
+  },
+  "deploy_children": [
+    {
+      "commit": {
+        "id": "9d8c43e0a0ab8a9101d0262f36c017df7ef4e08e",
+        "message": "docs(pm): park w4/m200 blocked on the patched-kubelet snapshot bake approval"
+      },
+      "createdAt": "2026-10-11T20:27:44.488916Z",
+      "finishedAt": "2026-10-11T20:29:58.850189Z",
+      "id": "dep-db5v2g4hj6ks739l0p1g",
+      "startedAt": "2026-10-11T20:28:58.883471Z",
+      "status": "live",
+      "trigger": "other",
+      "updatedAt": "2026-10-11T20:29:58.85019Z"
+    }
+  ],
+  "children_enumeration_evidence": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "deploys",
+      "list",
+      "srv-db5v2g4hj6ks739l0p10",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.472,
+    "stdout": "[{\"commit\": {\"id\": \"9d8c43e0a0ab8a9101d0262f36c017df7ef4e08e\", \"message\": \"docs(pm): park w4/m200 blocked on the patched-kubelet snapshot bake approval\"}, \"createdAt\": \"2026-10-11T20:27:44.488916Z\", \"finishedAt\": \"2026-10-11T20:29:58.850189Z\", \"id\": \"dep-db5v2g4hj6ks739l0p1g\", \"startedAt\": \"2026-10-11T20:28:58.883471Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-11T20:29:58.85019Z\"}]",
+    "stderr": ""
+  },
+  "runtime_observations": [
+    {
+      "at": "2026-10-11T20:28:07.787043+00:00",
+      "exit": 0,
+      "status": "404",
+      "marker_exact": false,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-11T20:28:54.603758+00:00",
+      "exit": 0,
+      "status": "404",
+      "marker_exact": false,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-11T20:29:36.041834+00:00",
+      "exit": 0,
+      "status": "404",
+      "marker_exact": false,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-11T20:30:28.096299+00:00",
+      "exit": 0,
+      "status": "200",
+      "marker_exact": true,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-11T20:30:56.551062+00:00",
+      "exit": 0,
+      "status": "200",
+      "marker_exact": true,
+      "stderr": ""
+    }
+  ],
+  "tail_processes": [
+    {
+      "role": "bex",
+      "mode": "yaml",
+      "pid": 36578,
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db5v2g4hj6ks739l0p10",
+        "--type",
+        "app",
+        "--text",
+        "QA139_9f1a1a-yaml",
+        "--tail",
+        "--confirm",
+        "-o",
+        "yaml"
+      ],
+      "state": "reaped; copied config removed",
+      "exit": -2,
+      "forced_kill": false
+    },
+    {
+      "role": "render",
+      "mode": "yaml",
+      "pid": 36579,
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db5v2g4hj6ks739l0p10",
+        "--type",
+        "app",
+        "--text",
+        "QA139_9f1a1a-yaml",
+        "--tail",
+        "--confirm",
+        "-o",
+        "yaml"
+      ],
+      "state": "reaped; copied config removed",
+      "exit": -2,
+      "forced_kill": false
+    },
+    {
+      "role": "bex",
+      "mode": "json",
+      "pid": 36588,
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db5v2g4hj6ks739l0p10",
+        "--type",
+        "app",
+        "--text",
+        "QA139_9f1a1a-json",
+        "--tail",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "reaped; copied config removed",
+      "exit": -2,
+      "forced_kill": false
+    },
+    {
+      "role": "render",
+      "mode": "json",
+      "pid": 36591,
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db5v2g4hj6ks739l0p10",
+        "--type",
+        "app",
+        "--text",
+        "QA139_9f1a1a-json",
+        "--tail",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "reaped; copied config removed",
+      "exit": -2,
+      "forced_kill": false
+    }
+  ],
+  "tail_emissions": [
+    {
+      "mode": "yaml",
+      "status": "200",
+      "exit": 0,
+      "body": "QA139_9f1a1a-yaml-emitted",
+      "stderr": ""
+    },
+    {
+      "mode": "json",
+      "status": "200",
+      "exit": 0,
+      "body": "QA139_9f1a1a-json-emitted",
+      "stderr": ""
+    }
+  ]
+}

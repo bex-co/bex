@@ -1,0 +1,69 @@
+{
+  "envVarFromService": {
+    "type": "object",
+    "description": "An environment variable that references a property or environment variable of another service.",
+    "properties": {
+      "key": {
+        "type": "string",
+        "description": "The name of the environment variable."
+      },
+      "fromService": {
+        "type": "object",
+        "description": "Reference to another service.",
+        "properties": {
+          "type": {
+            "$ref": "#/definitions/serviceType",
+            "description": "The type of the service to reference."
+          },
+          "name": {
+            "type": "string",
+            "description": "The name of the service to reference."
+          },
+          "property": {
+            "$ref": "#/definitions/serviceEnvVarProperty"
+          },
+          "envVarKey": {
+            "type": "string",
+            "description": "The environment variable key to reference from the service."
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ]
+      }
+    },
+    "required": [
+      "key",
+      "fromService"
+    ],
+    "additionalProperties": false
+  },
+  "serviceType": {
+    "type": "string",
+    "description": "The type of service for environment variable references.",
+    "enum": [
+      "web",
+      "cron",
+      "worker",
+      "pserv",
+      "workflow",
+      "static",
+      "dpg",
+      "job",
+      "redis",
+      "keyvalue"
+    ]
+  },
+  "serviceEnvVarProperty": {
+    "type": "string",
+    "enum": [
+      "host",
+      "port",
+      "hostport",
+      "slug",
+      "connectionString"
+    ],
+    "description": "The property of the service to reference."
+  }
+}

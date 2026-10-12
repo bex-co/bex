@@ -1,0 +1,98 @@
+[
+  {
+    "at": "2026-10-11T21:14:56.145384+00:00",
+    "case": "yaml-seed-empty",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa143-b0a6b3a0e154c5fb84e5d67913423527",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa143-b0a6b3a0e154c5fb84e5d67913423527\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa143-b0a6b3a0e154c5fb84e5d67913423527\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep143-yaml-seed-empty.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\nservices:\n- type: web\n  runtime: image\n  plan: free\n  image:\n    url: docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\n  name: qa143-544da4-caller\n  envVars:\n  - key: COPY_VALUE\n    fromService:\n      name: qa143-544da4-target\n      type: web\n      envVarKey: SOURCE_VALUE\n- type: web\n  runtime: image\n  plan: free\n  image:\n    url: docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\n  name: qa143-544da4-target\n  envVars:\n  - key: SOURCE_VALUE\n    value: ''\n    sync: false\n\r\n--qa143-b0a6b3a0e154c5fb84e5d67913423527--\r\n",
+      "headers": {
+        "Authorization": "Bearer [this-run human grant]",
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+        "Content-Type": "multipart/form-data; boundary=qa143-b0a6b3a0e154c5fb84e5d67913423527"
+      },
+      "query": ""
+    },
+    "status": "200",
+    "elapsed": 0.355,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a490e093acfc97d9-SJC"
+    },
+    "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa143-544da4-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa143-544da4-target\\\", which has no such plainly-defined variable\",\"line\":9,\"column\":3,\"path\":\"services[0].envVars\"}]}\n",
+    "qualification": "Separate diagnostic multipart replay, not intercepted native traffic."
+  },
+  {
+    "at": "2026-10-11T21:14:56.556464+00:00",
+    "case": "yaml-seed-space",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa143-df388a081af178f462652d2b8df5acf3",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa143-df388a081af178f462652d2b8df5acf3\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa143-df388a081af178f462652d2b8df5acf3\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep143-yaml-seed-space.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\nservices:\n- type: web\n  runtime: image\n  plan: free\n  image:\n    url: docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\n  name: qa143-544da4-caller\n  envVars:\n  - key: COPY_VALUE\n    fromService:\n      name: qa143-544da4-target\n      type: web\n      envVarKey: SOURCE_VALUE\n- type: web\n  runtime: image\n  plan: free\n  image:\n    url: docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\n  name: qa143-544da4-target\n  envVars:\n  - key: SOURCE_VALUE\n    value: ' '\n    sync: false\n\r\n--qa143-df388a081af178f462652d2b8df5acf3--\r\n",
+      "headers": {
+        "Authorization": "Bearer [this-run human grant]",
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+        "Content-Type": "multipart/form-data; boundary=qa143-df388a081af178f462652d2b8df5acf3"
+      },
+      "query": ""
+    },
+    "status": "200",
+    "elapsed": 0.41,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a490e0955c89c8bd-SJC"
+    },
+    "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa143-544da4-caller\",\"qa143-544da4-target\"],\"syncFalseVars\":[\"SOURCE_VALUE\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa143-544da4-caller\",\"sourcePath\":\"#/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa143-544da4-target\",\"sourcePath\":\"#/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+    "qualification": "Separate diagnostic multipart replay, not intercepted native traffic."
+  },
+  {
+    "at": "2026-10-11T21:14:56.953625+00:00",
+    "case": "yaml-provider-only",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa143-dfe3f1c23030604383ee545547fcf5cf",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa143-dfe3f1c23030604383ee545547fcf5cf\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa143-dfe3f1c23030604383ee545547fcf5cf\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep143-yaml-provider-only.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\nservices:\n- type: web\n  runtime: image\n  plan: free\n  image:\n    url: docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\n  name: qa143-544da4-target\n  envVars:\n  - key: SOURCE_VALUE\n    value: ''\n    sync: false\n\r\n--qa143-dfe3f1c23030604383ee545547fcf5cf--\r\n",
+      "headers": {
+        "Authorization": "Bearer [this-run human grant]",
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+        "Content-Type": "multipart/form-data; boundary=qa143-dfe3f1c23030604383ee545547fcf5cf"
+      },
+      "query": ""
+    },
+    "status": "200",
+    "elapsed": 0.396,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a490e097f9c534c3-SJC"
+    },
+    "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa143-544da4-target\"],\"syncFalseVars\":[\"SOURCE_VALUE\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa143-544da4-target\",\"sourcePath\":\"#/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+    "qualification": "Separate diagnostic multipart replay, not intercepted native traffic."
+  }
+]

@@ -1,0 +1,245 @@
+{
+  "source_head": "aeeba21e7cd5a56a0f59d5a0ffe7d17fa457aff0",
+  "containers": [
+    {
+      "name": "bex-log-shipper-c98a63f82f3d",
+      "intent": [
+        "docker",
+        "create",
+        "--pull=never",
+        "--label",
+        "co.bex.qa.sweep174=bex-log-shipper-c98a63f82f3d",
+        "--name",
+        "bex-log-shipper-c98a63f82f3d",
+        "--network",
+        "none",
+        "grafana/alloy@sha256:6ab34b8201f0e8b0c4346be4934c9965723af3f7f21dd9a65fd73f270f69b451",
+        "run",
+        "--storage.path=/tmp/alloy",
+        "/tmp/config.alloy"
+      ],
+      "at": "2026-10-12T04:02:01.808320+00:00",
+      "name_absent": true,
+      "state": "deleted",
+      "create": {
+        "exit": 0,
+        "stdout": "c1016edffd0c75a5a3ca3537e98d7c09fa7dca0d3db4d13605de9835785eb9ee\n",
+        "stderr": ""
+      },
+      "id": "c1016edffd0c75a5a3ca3537e98d7c09fa7dca0d3db4d13605de9835785eb9ee",
+      "cleanup_exit": 0,
+      "after_inspect_exit": 1
+    },
+    {
+      "name": "bex-log-shipper-58776a2a0e9b",
+      "intent": [
+        "docker",
+        "create",
+        "--pull=never",
+        "--label",
+        "co.bex.qa.sweep174=bex-log-shipper-58776a2a0e9b",
+        "--name",
+        "bex-log-shipper-58776a2a0e9b",
+        "--network",
+        "none",
+        "grafana/alloy@sha256:6ab34b8201f0e8b0c4346be4934c9965723af3f7f21dd9a65fd73f270f69b451",
+        "run",
+        "--storage.path=/tmp/alloy",
+        "/tmp/config.alloy"
+      ],
+      "at": "2026-10-12T04:02:04.322967+00:00",
+      "name_absent": true,
+      "state": "deleted",
+      "create": {
+        "exit": 0,
+        "stdout": "5beb824006de8d4647031eb67188080aa17acc8840ba38f00be0f5fe7451e317\n",
+        "stderr": ""
+      },
+      "id": "5beb824006de8d4647031eb67188080aa17acc8840ba38f00be0f5fe7451e317",
+      "cleanup_exit": 0,
+      "after_inspect_exit": 1
+    }
+  ],
+  "pipelines": [
+    {
+      "pipeline": "app_logs",
+      "at": "2026-10-12T04:02:02.939324+00:00",
+      "rows": [
+        {
+          "line": "{\"level\":\"debug\",\"message\":\"QA174_dc1b01 JSON_DEBUG\"}",
+          "labels": {
+            "app": "web",
+            "container": "app",
+            "level": "debug",
+            "namespace": "tenant",
+            "pod": "web-1",
+            "type": "app",
+            "__ts": "2026-10-05T00:00:00Z"
+          },
+          "expected_bucket": "debug"
+        },
+        {
+          "line": "{\"level\":\"info\",\"message\":\"QA174_dc1b01 JSON_INFO\"}",
+          "labels": {
+            "app": "web",
+            "container": "app",
+            "level": "info",
+            "namespace": "tenant",
+            "pod": "web-1",
+            "type": "app",
+            "__ts": "2026-10-05T00:00:01.000000001Z"
+          },
+          "expected_bucket": "info"
+        },
+        {
+          "line": "{\"level\":\"notice\",\"message\":\"QA174_dc1b01 JSON_NOTICE\"}",
+          "labels": {
+            "app": "web",
+            "container": "app",
+            "level": "info",
+            "namespace": "tenant",
+            "pod": "web-1",
+            "type": "app",
+            "__ts": "2026-10-05T00:00:02.000000002Z"
+          },
+          "expected_bucket": "info"
+        },
+        {
+          "line": "{\"level\":\"warning\",\"message\":\"QA174_dc1b01 JSON_WARNING\"}",
+          "labels": {
+            "app": "web",
+            "container": "app",
+            "level": "warning",
+            "namespace": "tenant",
+            "pod": "web-1",
+            "type": "app",
+            "__ts": "2026-10-05T00:00:03.000000003Z"
+          },
+          "expected_bucket": "warning"
+        },
+        {
+          "line": "{\"level\":\"error\",\"message\":\"QA174_dc1b01 JSON_ERROR\"}",
+          "labels": {
+            "app": "web",
+            "container": "app",
+            "level": "error",
+            "namespace": "tenant",
+            "pod": "web-1",
+            "type": "app",
+            "__ts": "2026-10-05T00:00:04.000000004Z"
+          },
+          "expected_bucket": "error"
+        },
+        {
+          "line": "{\"level\":\"critical\",\"message\":\"QA174_dc1b01 JSON_CRITICAL\"}",
+          "labels": {
+            "app": "web",
+            "container": "app",
+            "level": "error",
+            "namespace": "tenant",
+            "pod": "web-1",
+            "type": "app",
+            "__ts": "2026-10-05T00:00:05.000000005Z"
+          },
+          "expected_bucket": "error"
+        },
+        {
+          "line": "{\"level\":\"alert\",\"message\":\"QA174_dc1b01 JSON_ALERT\"}",
+          "labels": {
+            "app": "web",
+            "container": "app",
+            "level": "unknown",
+            "namespace": "tenant",
+            "pod": "web-1",
+            "type": "app",
+            "__ts": "2026-10-05T00:00:06.000000006Z"
+          },
+          "expected_bucket": "error"
+        },
+        {
+          "line": "{\"level\":\"emergency\",\"message\":\"QA174_dc1b01 JSON_EMERGENCY\"}",
+          "labels": {
+            "app": "web",
+            "container": "app",
+            "level": "unknown",
+            "namespace": "tenant",
+            "pod": "web-1",
+            "type": "app",
+            "__ts": "2026-10-05T00:00:07.000000007Z"
+          },
+          "expected_bucket": "error"
+        },
+        {
+          "line": "{\"severity\":\"ALERT\",\"message\":\"QA174_dc1b01 JSON_SEVERITY_ALERT\"}",
+          "labels": {
+            "app": "web",
+            "container": "app",
+            "level": "unknown",
+            "namespace": "tenant",
+            "pod": "web-1",
+            "type": "app",
+            "__ts": "2026-10-05T00:00:08.000000008Z"
+          },
+          "expected_bucket": "error"
+        },
+        {
+          "line": "{\"severity\":\"EMERGENCY\",\"message\":\"QA174_dc1b01 JSON_SEVERITY_EMERGENCY\"}",
+          "labels": {
+            "app": "web",
+            "container": "app",
+            "level": "unknown",
+            "namespace": "tenant",
+            "pod": "web-1",
+            "type": "app",
+            "__ts": "2026-10-05T00:00:09.000000009Z"
+          },
+          "expected_bucket": "error"
+        },
+        {
+          "line": "level=alert msg=QA174_dc1b01_FMT_alert",
+          "labels": {
+            "app": "web",
+            "container": "app",
+            "level": "unknown",
+            "namespace": "tenant",
+            "pod": "web-1",
+            "type": "app",
+            "__ts": "2026-10-05T00:00:10.00000001Z"
+          },
+          "expected_bucket": "error"
+        },
+        {
+          "line": "severity=EMERGENCY msg=QA174_dc1b01_FMT_EMERGENCY",
+          "labels": {
+            "app": "web",
+            "container": "app",
+            "level": "unknown",
+            "namespace": "tenant",
+            "pod": "web-1",
+            "type": "app",
+            "__ts": "2026-10-05T00:00:11.000000011Z"
+          },
+          "expected_bucket": "error"
+        },
+        {
+          "line": "QA174_dc1b01 CONTROL plain",
+          "labels": {
+            "app": "web",
+            "container": "app",
+            "level": "unknown",
+            "namespace": "tenant",
+            "pod": "web-1",
+            "type": "app",
+            "__ts": "2026-10-05T00:00:12.000000012Z"
+          },
+          "expected_bucket": "unknown"
+        }
+      ],
+      "complete_rows": 13,
+      "raw_output": "{\"ts\":\"2026-10-12T04:02:02.483190714Z\",\"level\":\"info\",\"boringcrypto_enabled\":false}\n{\"ts\":\"2026-10-12T04:02:02.48176713Z\",\"level\":\"info\",\"source\":{\"function\":\"github.com/KimMachineGun/automemlimit/memlimit.SetGoMemLimitWithOpts\",\"file\":\"/go/pkg/mod/github.com/!kim!machine!gun/automemlimit@v0.7.1/memlimit/memlimit.go\",\"line\":175},\"msg\":\"memory is not limited, skipping\",\"package\":\"github.com/KimMachineGun/automemlimit/memlimit\"}\n{\"ts\":\"2026-10-12T04:02:02.48322338Z\",\"level\":\"info\",\"msg\":\"no peer discovery configured: both join and discover peers are empty\",\"service\":\"cluster\"}\n{\"ts\":\"2026-10-12T04:02:02.48322538Z\",\"level\":\"info\",\"msg\":\"running usage stats reporter\"}\n{\"ts\":\"2026-10-12T04:02:02.483226714Z\",\"level\":\"info\",\"msg\":\"starting complete graph evaluation\",\"controller_path\":\"/\",\"controller_id\":\"\",\"trace_id\":\"1dd87eaff42a1f59ade300fe72ff174e\"}\n{\"ts\":\"2026-10-12T04:02:02.483234797Z\",\"level\":\"info\",\"msg\":\"finished node evaluation\",\"controller_path\":\"/\",\"controller_id\":\"\",\"trace_id\":\"1dd87eaff42a1f59ade300fe72ff174e\",\"node_id\":\"logging\",\"duration\":59833}\n{\"ts\":\"2026-10-12T04:02:02.483239214Z\",\"level\":\"info\",\"msg\":\"finished node evaluation\",\"controller_path\":\"/\",\"controller_id\":\"\",\"trace_id\":\"1dd87eaff42a1f59ade300fe72ff174e\",\"node_id\":\"otel\",\"duration\":792}\n{\"ts\":\"2026-10-12T04:02:02.483249047Z\",\"level\":\"info\",\"msg\":\"finished node evaluation\",\"controller_path\":\"/\",\"controller_id\":\"\",\"trace_id\":\"1dd87eaff42a1f59ade300fe72ff174e\",\"node_id\":\"labelstore\",\"duration\":2250}\n{\"ts\":\"2026-10-12T04:02:02.483286922Z\",\"level\":\"info\",\"msg\":\"finished node evaluation\",\"controller_path\":\"/\",\"controller_id\":\"\",\"trace_id\":\"1dd87eaff42a1f59ade300fe72ff174e\",\"node_id\":\"loki.echo.test\",\"duration\":18875}\n{\"ts\":\"2026-10-12T04:02:02.483939589Z\",\"level\":\"info\",\"msg\":\"finished node evaluation\",\"controller_path\":\"/\",\"controller_id\":\"\",\"trace_id\":\"1dd87eaff42a1f59ade300fe72ff174e\",\"node_id\":\"loki.process.app_logs\",\"duration\":646459}\n{\"ts\":\"2026-10-12T04:02:02.48454938Z\",\"level\":\"info\",\"msg\":\"finished node evaluation\",\"controller_path\":\"/\",\"controller_id\":\"\",\"trace_id\":\"1dd87eaff42a1f59ade300fe72ff174e\",\"node_id\":\"loki.source.file.test\",\"duration\":572750}\n{\"ts\":\"2026-10-12T04:02:02.484572172Z\",\"level\":\"info\",\"msg\":\"finished node evaluation\",\"controller_path\":\"/\",\"controller_id\":\"\",\"trace_id\":\"1dd87eaff42a1f59ade300fe72ff174e\",\"node_id\":\"tracing\",\"duration\":5250}\n{\"ts\":\"2026-10-12T04:02:02.484604922Z\",\"level\":\"info\",\"msg\":\"finished node evaluation\",\"controller_path\":\"/\",\"controller_id\":\"\",\"trace_id\":\"1dd87eaff42a1f59ade300fe72ff174e\",\"node_id\":\"remotecfg\",\"duration\":28625}\n{\"ts\":\"2026-10-12T04:02:02.484620005Z\",\"level\":\"info\",\"msg\":\"applying non-TLS config to HTTP server\",\"service\":\"http\"}\n{\"ts\":\"2026-10-12T04:02:02.484627714Z\",\"level\":\"info\",\"msg\":\"finished node evaluation\",\"controller_path\":\"/\",\"controller_id\":\"\",\"trace_id\":\"1dd87eaff42a1f59ade300fe72ff174e\",\"node_id\":\"http\",\"duration\":13041}\n{\"ts\":\"2026-10-12T04:02:02.484637047Z\",\"level\":\"info\",\"msg\":\"finished node evaluation\",\"controller_path\":\"/\",\"controller_id\":\"\",\"trace_id\":\"1dd87eaff42a1f59ade300fe72ff174e\",\"node_id\":\"cluster\",\"duration\":1625}\n{\"ts\":\"2026-10-12T04:02:02.484650797Z\",\"level\":\"info\",\"msg\":\"finished node evaluation\",\"controller_path\":\"/\",\"controller_id\":\"\",\"trace_id\":\"1dd87eaff42a1f59ade300fe72ff174e\",\"node_id\":\"livedebugging\",\"duration\":5833}\n{\"ts\":\"2026-10-12T04:02:02.48465938Z\",\"level\":\"info\",\"msg\":\"finished node evaluation\",\"controller_path\":\"/\",\"controller_id\":\"\",\"trace_id\":\"1dd87eaff42a1f59ade300fe72ff174e\",\"node_id\":\"ui\",\"duration\":1375}\n{\"ts\":\"2026-10-12T04:02:02.484667672Z\",\"level\":\"info\",\"msg\":\"finished complete graph evaluation\",\"controller_path\":\"/\",\"controller_id\":\"\",\"trace_id\":\"1dd87eaff42a1f59ade300fe72ff174e\",\"duration\":1573041}\n{\"ts\":\"2026-10-12T04:02:02.484729255Z\",\"level\":\"info\",\"msg\":\"scheduling loaded components and services\"}\n{\"ts\":\"2026-10-12T04:02:02.484912964Z\",\"level\":\"info\",\"msg\":\"starting cluster node\",\"service\":\"cluster\",\"peers_count\":0,\"peers\":\"\",\"advertise_addr\":\"127.0.0.1:12345\",\"minimum_cluster_size\":0,\"minimum_size_wait_timeout\":0}\n{\"ts\":\"2026-10-12T04:02:02.485074505Z\",\"level\":\"info\",\"msg\":\"peers changed\",\"service\":\"cluster\",\"peers_count\":1,\"min_cluster_size\":0,\"peers\":\"c1016edffd0c\"}\n{\"ts\":\"2026-10-12T04:02:02.485077797Z\",\"level\":\"info\",\"msg\":\"tail routine: started\",\"component_path\":\"/\",\"component_id\":\"loki.source.file.test\",\"component\":\"tailer\",\"path\":\"/tmp/lines.log\"}\n{\"ts\":\"2026-10-12T04:02:02.485152672Z\",\"level\":\"info\",\"msg\":\"Seeked /tmp/lines.log - &{Offset:0 Whence:0}\",\"component_path\":\"/\",\"component_id\":\"loki.source.file.test\",\"component\":\"tailer\"}\n{\"ts\":\"2026-10-12T04:02:02.48599213Z\",\"level\":\"info\",\"component_path\":\"/\",\"component_id\":\"loki.echo.test\",\"receiver\":\"loki.echo.test\",\"entry\":\"{\\\"level\\\":\\\"debug\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_DEBUG\\\"}\",\"entry_timestamp\":\"2026-10-05T00:00:00Z\",\"labels\":\"{app=\\\"web\\\", container=\\\"app\\\", level=\\\"debug\\\", namespace=\\\"tenant\\\", pod=\\\"web-1\\\", type=\\\"app\\\"}\",\"structured_metadata\":\"{}\"}\n{\"ts\":\"2026-10-12T04:02:02.486029214Z\",\"level\":\"info\",\"component_path\":\"/\",\"component_id\":\"loki.echo.test\",\"receiver\":\"loki.echo.test\",\"entry\":\"{\\\"level\\\":\\\"info\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_INFO\\\"}\",\"entry_timestamp\":\"2026-10-05T00:00:01.000000001Z\",\"labels\":\"{app=\\\"web\\\", container=\\\"app\\\", level=\\\"info\\\", namespace=\\\"tenant\\\", pod=\\\"web-1\\\", type=\\\"app\\\"}\",\"structured_metadata\":\"{}\"}\n{\"ts\":\"2026-10-12T04:02:02.486043005Z\",\"level\":\"info\",\"component_path\":\"/\",\"component_id\":\"loki.echo.test\",\"receiver\":\"loki.echo.test\",\"entry\":\"{\\\"level\\\":\\\"notice\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_NOTICE\\\"}\",\"entry_timestamp\":\"2026-10-05T00:00:02.000000002Z\",\"labels\":\"{app=\\\"web\\\", container=\\\"app\\\", level=\\\"info\\\", namespace=\\\"tenant\\\", pod=\\\"web-1\\\", type=\\\"app\\\"}\",\"structured_metadata\":\"{}\"}\n{\"ts\":\"2026-10-12T04:02:02.486056922Z\",\"level\":\"info\",\"component_path\":\"/\",\"component_id\":\"loki.echo.test\",\"receiver\":\"loki.echo.test\",\"entry\":\"{\\\"level\\\":\\\"warning\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_WARNING\\\"}\",\"entry_timestamp\":\"2026-10-05T00:00:03.000000003Z\",\"labels\":\"{app=\\\"web\\\", container=\\\"app\\\", level=\\\"warning\\\", namespace=\\\"tenant\\\", pod=\\\"web-1\\\", type=\\\"app\\\"}\",\"structured_metadata\":\"{}\"}\n{\"ts\":\"2026-10-12T04:02:02.486072672Z\",\"level\":\"info\",\"component_path\":\"/\",\"component_id\":\"loki.echo.test\",\"receiver\":\"loki.echo.test\",\"entry\":\"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ERROR\\\"}\",\"entry_timestamp\":\"2026-10-05T00:00:04.000000004Z\",\"labels\":\"{app=\\\"web\\\", container=\\\"app\\\", level=\\\"error\\\", namespace=\\\"tenant\\\", pod=\\\"web-1\\\", type=\\\"app\\\"}\",\"structured_metadata\":\"{}\"}\n{\"ts\":\"2026-10-12T04:02:02.48610888Z\",\"level\":\"info\",\"component_path\":\"/\",\"component_id\":\"loki.echo.test\",\"receiver\":\"loki.echo.test\",\"entry\":\"{\\\"level\\\":\\\"critical\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_CRITICAL\\\"}\",\"entry_timestamp\":\"2026-10-05T00:00:05.000000005Z\",\"labels\":\"{app=\\\"web\\\", container=\\\"app\\\", level=\\\"error\\\", namespace=\\\"tenant\\\", pod=\\\"web-1\\\", type=\\\"app\\\"}\",\"structured_metadata\":\"{}\"}\n{\"ts\":\"2026-10-12T04:02:02.486186672Z\",\"level\":\"info\",\"component_path\":\"/\",\"component_id\":\"loki.echo.test\",\"receiver\":\"loki.echo.test\",\"entry\":\"{\\\"level\\\":\\\"alert\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ALERT\\\"}\",\"entry_timestamp\":\"2026-10-05T00:00:06.000000006Z\",\"labels\":\"{app=\\\"web\\\", container=\\\"app\\\", level=\\\"unknown\\\", namespace=\\\"tenant\\\", pod=\\\"web-1\\\", type=\\\"app\\\"}\",\"structured_metadata\":\"{}\"}\n{\"ts\":\"2026-10-12T04:02:02.486280505Z\",\"level\":\"info\",\"component_path\":\"/\",\"component_id\":\"loki.echo.test\",\"receiver\":\"loki.echo.test\",\"entry\":\"{\\\"level\\\":\\\"emergency\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_EMERGENCY\\\"}\",\"entry_timestamp\":\"2026-10-05T00:00:07.000000007Z\",\"labels\":\"{app=\\\"web\\\", container=\\\"app\\\", level=\\\"unknown\\\", namespace=\\\"tenant\\\", pod=\\\"web-1\\\", type=\\\"app\\\"}\",\"structured_metadata\":\"{}\"}\n{\"ts\":\"2026-10-12T04:02:02.486339089Z\",\"level\":\"info\",\"component_path\":\"/\",\"component_id\":\"loki.echo.test\",\"receiver\":\"loki.echo.test\",\"entry\":\"{\\\"severity\\\":\\\"ALERT\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_SEVERITY_ALERT\\\"}\",\"entry_timestamp\":\"2026-10-05T00:00:08.000000008Z\",\"labels\":\"{app=\\\"web\\\", container=\\\"app\\\", level=\\\"unknown\\\", namespace=\\\"tenant\\\", pod=\\\"web-1\\\", type=\\\"app\\\"}\",\"structured_metadata\":\"{}\"}\n{\"ts\":\"2026-10-12T04:02:02.486430922Z\",\"level\":\"info\",\"component_path\":\"/\",\"component_id\":\"loki.echo.test\",\"receiver\":\"loki.echo.test\",\"entry\":\"{\\\"severity\\\":\\\"EMERGENCY\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_SEVERITY_EMERGENCY\\\"}\",\"entry_timestamp\":\"2026-10-05T00:00:09.000000009Z\",\"labels\":\"{app=\\\"web\\\", container=\\\"app\\\", level=\\\"unknown\\\", namespace=\\\"tenant\\\", pod=\\\"web-1\\\", type=\\\"app\\\"}\",\"structured_metadata\":\"{}\"}\n{\"ts\":\"2026-10-12T04:02:02.486517839Z\",\"level\":\"info\",\"component_path\":\"/\",\"component_id\":\"loki.echo.test\",\"receiver\":\"loki.echo.test\",\"entry\":\"QA174_dc1b01 CONTROL plain\",\"entry_timestamp\":\"2026-10-05T00:00:12.000000012Z\",\"labels\":\"{app=\\\"web\\\", container=\\\"app\\\", level=\\\"unknown\\\", namespace=\\\"tenant\\\", pod=\\\"web-1\\\", type=\\\"app\\\"}\",\"structured_metadata\":\"{}\"}\n{\"ts\":\"2026-10-12T04:02:02.486528839Z\",\"level\":\"info\",\"component_path\":\"/\",\"component_id\":\"loki.echo.test\",\"receiver\":\"loki.echo.test\",\"entry\":\"level=alert msg=QA174_dc1b01_FMT_alert\",\"entry_timestamp\":\"2026-10-05T00:00:10.00000001Z\",\"labels\":\"{app=\\\"web\\\", container=\\\"app\\\", level=\\\"unknown\\\", namespace=\\\"tenant\\\", pod=\\\"web-1\\\", type=\\\"app\\\"}\",\"structured_metadata\":\"{}\"}\n{\"ts\":\"2026-10-12T04:02:02.486534714Z\",\"level\":\"info\",\"component_path\":\"/\",\"component_id\":\"loki.echo.test\",\"receiver\":\"loki.echo.test\",\"entry\":\"severity=EMERGENCY msg=QA174_dc1b01_FMT_EMERGENCY\",\"entry_timestamp\":\"2026-10-05T00:00:11.000000011Z\",\"labels\":\"{app=\\\"web\\\", container=\\\"app\\\", level=\\\"unknown\\\", namespace=\\\"tenant\\\", pod=\\\"web-1\\\", type=\\\"app\\\"}\",\"structured_metadata\":\"{}\"}\n{\"ts\":\"2026-10-12T04:02:02.48653988Z\",\"level\":\"info\",\"component_path\":\"/\",\"component_id\":\"loki.echo.test\",\"receiver\":\"loki.echo.test\",\"entry\":\"bex-log-shipper-done-e5c0fad5e5f54bd9a964c13a40f2864a\",\"entry_timestamp\":\"2026-10-05T00:00:13.000000013Z\",\"labels\":\"{app=\\\"web\\\", container=\\\"app\\\", level=\\\"unknown\\\", namespace=\\\"tenant\\\", pod=\\\"web-1\\\", type=\\\"app\\\"}\",\"structured_metadata\":\"{}\"}\n{\"ts\":\"2026-10-12T04:02:02.488783755Z\",\"level\":\"info\",\"msg\":\"now listening for http traffic\",\"service\":\"http\",\"addr\":\"127.0.0.1:12345\"}"
+    }
+  ],
+  "qualification": "Actual current Helm-rendered source pipelines in cached upstream Alloy1.11.2. Alternate local diagnostic; exact patched production collector image not tested.",
+  "collector_image": "grafana/alloy@sha256:6ab34b8201f0e8b0c4346be4934c9965723af3f7f21dd9a65fd73f270f69b451",
+  "platform_trial_qualification": "Excluded: harness supplied CRI-framed lines to the platform pipeline, whose Kubernetes API source provides raw messages. App pipeline result valid; both local containers deleted."
+}

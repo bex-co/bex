@@ -1,0 +1,5 @@
+{
+  "Replace": {
+    "<REPO>/lego/backend/internal/core/qa171_nul_admission_test.go": "<QA_TMP>/sweep171-core-probe_test.go"
+  }
+}

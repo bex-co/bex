@@ -1,0 +1,1013 @@
+{
+  "kind": "actual live native subprocesses, released Bex and unmodified same-pin Render, both targeting Bex",
+  "cases": [
+    {
+      "stage": "ordinary-names",
+      "case": "named-control",
+      "client": "bex",
+      "family": "postgres",
+      "expected_success": true,
+      "command": [
+        "bex",
+        "postgres",
+        "list",
+        "--project",
+        "qa-20261011-093206-selected",
+        "--environment",
+        "qa-20261011-093206-selected-empty",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "list",
+          "--project",
+          "qa-20261011-093206-selected",
+          "--environment",
+          "qa-20261011-093206-selected-empty",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.886,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "data": []
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "ordinary-names",
+      "case": "named-control",
+      "client": "bex",
+      "family": "keyvalues",
+      "expected_success": true,
+      "command": [
+        "bex",
+        "keyvalues",
+        "list",
+        "--project",
+        "qa-20261011-093206-selected",
+        "--environment",
+        "qa-20261011-093206-selected-empty",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--project",
+          "qa-20261011-093206-selected",
+          "--environment",
+          "qa-20261011-093206-selected-empty",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.55,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "data": []
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "ordinary-names",
+      "case": "named-control",
+      "client": "render",
+      "family": "postgres",
+      "expected_success": true,
+      "command": [
+        "render",
+        "postgres",
+        "list",
+        "--project",
+        "qa-20261011-093206-selected",
+        "--environment",
+        "qa-20261011-093206-selected-empty",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "postgres",
+          "list",
+          "--project",
+          "qa-20261011-093206-selected",
+          "--environment",
+          "qa-20261011-093206-selected-empty",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.759,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "data": []
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "ordinary-names",
+      "case": "named-control",
+      "client": "render",
+      "family": "keyvalues",
+      "expected_success": true,
+      "command": [
+        "render",
+        "keyvalues",
+        "list",
+        "--project",
+        "qa-20261011-093206-selected",
+        "--environment",
+        "qa-20261011-093206-selected-empty",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "keyvalues",
+          "list",
+          "--project",
+          "qa-20261011-093206-selected",
+          "--environment",
+          "qa-20261011-093206-selected-empty",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.054,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "data": []
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "project-id-shaped-name",
+      "case": "id-shaped-project-name",
+      "client": "bex",
+      "family": "postgres",
+      "expected_success": false,
+      "command": [
+        "bex",
+        "postgres",
+        "list",
+        "--project",
+        "prj-00000000000000093206",
+        "--environment",
+        "evm-db60hghtodic73duutk0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "list",
+          "--project",
+          "prj-00000000000000093206",
+          "--environment",
+          "evm-db60hghtodic73duutk0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.515,
+        "stdout": "",
+        "stderr": "Error: project \"prj-00000000000000093206\" not found: unexpected response: 404 Not Found\n"
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "project-id-shaped-name",
+      "case": "actual-project-id",
+      "client": "bex",
+      "family": "postgres",
+      "expected_success": true,
+      "command": [
+        "bex",
+        "postgres",
+        "list",
+        "--project",
+        "prj-db60hghtodic73duutjg",
+        "--environment",
+        "qa-20261011-093206-selected-empty",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "list",
+          "--project",
+          "prj-db60hghtodic73duutjg",
+          "--environment",
+          "qa-20261011-093206-selected-empty",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.665,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "data": []
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "project-id-shaped-name",
+      "case": "id-shaped-project-name",
+      "client": "bex",
+      "family": "keyvalues",
+      "expected_success": false,
+      "command": [
+        "bex",
+        "keyvalues",
+        "list",
+        "--project",
+        "prj-00000000000000093206",
+        "--environment",
+        "evm-db60hghtodic73duutk0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--project",
+          "prj-00000000000000093206",
+          "--environment",
+          "evm-db60hghtodic73duutk0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.555,
+        "stdout": "",
+        "stderr": "Error: project \"prj-00000000000000093206\" not found: unexpected response: 404 Not Found\n"
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "project-id-shaped-name",
+      "case": "actual-project-id",
+      "client": "bex",
+      "family": "keyvalues",
+      "expected_success": true,
+      "command": [
+        "bex",
+        "keyvalues",
+        "list",
+        "--project",
+        "prj-db60hghtodic73duutjg",
+        "--environment",
+        "qa-20261011-093206-selected-empty",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--project",
+          "prj-db60hghtodic73duutjg",
+          "--environment",
+          "qa-20261011-093206-selected-empty",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.68,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "data": []
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "project-id-shaped-name",
+      "case": "id-shaped-project-name",
+      "client": "render",
+      "family": "postgres",
+      "expected_success": false,
+      "command": [
+        "render",
+        "postgres",
+        "list",
+        "--project",
+        "prj-00000000000000093206",
+        "--environment",
+        "evm-db60hghtodic73duutk0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "postgres",
+          "list",
+          "--project",
+          "prj-00000000000000093206",
+          "--environment",
+          "evm-db60hghtodic73duutk0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.555,
+        "stdout": "",
+        "stderr": "Error: project \"prj-00000000000000093206\" not found: unexpected response: 404 Not Found\n"
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "project-id-shaped-name",
+      "case": "actual-project-id",
+      "client": "render",
+      "family": "postgres",
+      "expected_success": true,
+      "command": [
+        "render",
+        "postgres",
+        "list",
+        "--project",
+        "prj-db60hghtodic73duutjg",
+        "--environment",
+        "qa-20261011-093206-selected-empty",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "postgres",
+          "list",
+          "--project",
+          "prj-db60hghtodic73duutjg",
+          "--environment",
+          "qa-20261011-093206-selected-empty",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.529,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "data": []
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "project-id-shaped-name",
+      "case": "id-shaped-project-name",
+      "client": "render",
+      "family": "keyvalues",
+      "expected_success": false,
+      "command": [
+        "render",
+        "keyvalues",
+        "list",
+        "--project",
+        "prj-00000000000000093206",
+        "--environment",
+        "evm-db60hghtodic73duutk0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "keyvalues",
+          "list",
+          "--project",
+          "prj-00000000000000093206",
+          "--environment",
+          "evm-db60hghtodic73duutk0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.549,
+        "stdout": "",
+        "stderr": "Error: project \"prj-00000000000000093206\" not found: unexpected response: 404 Not Found\n"
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "project-id-shaped-name",
+      "case": "actual-project-id",
+      "client": "render",
+      "family": "keyvalues",
+      "expected_success": true,
+      "command": [
+        "render",
+        "keyvalues",
+        "list",
+        "--project",
+        "prj-db60hghtodic73duutjg",
+        "--environment",
+        "qa-20261011-093206-selected-empty",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "keyvalues",
+          "list",
+          "--project",
+          "prj-db60hghtodic73duutjg",
+          "--environment",
+          "qa-20261011-093206-selected-empty",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.337,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "data": []
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "environment-id-shaped-name",
+      "case": "id-shaped-environment-name",
+      "client": "bex",
+      "family": "postgres",
+      "expected_success": false,
+      "command": [
+        "bex",
+        "postgres",
+        "list",
+        "--project",
+        "prj-db60hghtodic73duutjg",
+        "--environment",
+        "evm-00000000000000093206",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "list",
+          "--project",
+          "prj-db60hghtodic73duutjg",
+          "--environment",
+          "evm-00000000000000093206",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.887,
+        "stdout": "",
+        "stderr": "Error: environment \"evm-00000000000000093206\" not found: unexpected response: 404 Not Found\n"
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "environment-id-shaped-name",
+      "case": "both-actual-ids",
+      "client": "bex",
+      "family": "postgres",
+      "expected_success": true,
+      "command": [
+        "bex",
+        "postgres",
+        "list",
+        "--project",
+        "prj-db60hghtodic73duutjg",
+        "--environment",
+        "evm-db60hghtodic73duutk0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "list",
+          "--project",
+          "prj-db60hghtodic73duutjg",
+          "--environment",
+          "evm-db60hghtodic73duutk0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.244,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "data": []
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "environment-id-shaped-name",
+      "case": "id-shaped-environment-name",
+      "client": "bex",
+      "family": "keyvalues",
+      "expected_success": false,
+      "command": [
+        "bex",
+        "keyvalues",
+        "list",
+        "--project",
+        "prj-db60hghtodic73duutjg",
+        "--environment",
+        "evm-00000000000000093206",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--project",
+          "prj-db60hghtodic73duutjg",
+          "--environment",
+          "evm-00000000000000093206",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.742,
+        "stdout": "",
+        "stderr": "Error: environment \"evm-00000000000000093206\" not found: unexpected response: 404 Not Found\n"
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "environment-id-shaped-name",
+      "case": "both-actual-ids",
+      "client": "bex",
+      "family": "keyvalues",
+      "expected_success": true,
+      "command": [
+        "bex",
+        "keyvalues",
+        "list",
+        "--project",
+        "prj-db60hghtodic73duutjg",
+        "--environment",
+        "evm-db60hghtodic73duutk0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--project",
+          "prj-db60hghtodic73duutjg",
+          "--environment",
+          "evm-db60hghtodic73duutk0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.873,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "data": []
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "environment-id-shaped-name",
+      "case": "id-shaped-environment-name",
+      "client": "render",
+      "family": "postgres",
+      "expected_success": false,
+      "command": [
+        "render",
+        "postgres",
+        "list",
+        "--project",
+        "prj-db60hghtodic73duutjg",
+        "--environment",
+        "evm-00000000000000093206",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "postgres",
+          "list",
+          "--project",
+          "prj-db60hghtodic73duutjg",
+          "--environment",
+          "evm-00000000000000093206",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.748,
+        "stdout": "",
+        "stderr": "Error: environment \"evm-00000000000000093206\" not found: unexpected response: 404 Not Found\n"
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "environment-id-shaped-name",
+      "case": "both-actual-ids",
+      "client": "render",
+      "family": "postgres",
+      "expected_success": true,
+      "command": [
+        "render",
+        "postgres",
+        "list",
+        "--project",
+        "prj-db60hghtodic73duutjg",
+        "--environment",
+        "evm-db60hghtodic73duutk0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "postgres",
+          "list",
+          "--project",
+          "prj-db60hghtodic73duutjg",
+          "--environment",
+          "evm-db60hghtodic73duutk0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.875,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "data": []
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "environment-id-shaped-name",
+      "case": "id-shaped-environment-name",
+      "client": "render",
+      "family": "keyvalues",
+      "expected_success": false,
+      "command": [
+        "render",
+        "keyvalues",
+        "list",
+        "--project",
+        "prj-db60hghtodic73duutjg",
+        "--environment",
+        "evm-00000000000000093206",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "keyvalues",
+          "list",
+          "--project",
+          "prj-db60hghtodic73duutjg",
+          "--environment",
+          "evm-00000000000000093206",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.754,
+        "stdout": "",
+        "stderr": "Error: environment \"evm-00000000000000093206\" not found: unexpected response: 404 Not Found\n"
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "environment-id-shaped-name",
+      "case": "both-actual-ids",
+      "client": "render",
+      "family": "keyvalues",
+      "expected_success": true,
+      "command": [
+        "render",
+        "keyvalues",
+        "list",
+        "--project",
+        "prj-db60hghtodic73duutjg",
+        "--environment",
+        "evm-db60hghtodic73duutk0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "keyvalues",
+          "list",
+          "--project",
+          "prj-db60hghtodic73duutjg",
+          "--environment",
+          "evm-db60hghtodic73duutk0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.741,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "data": []
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "near-miss-names",
+      "case": "19-character-suffix-control",
+      "client": "bex",
+      "family": "postgres",
+      "expected_success": true,
+      "command": [
+        "bex",
+        "postgres",
+        "list",
+        "--project",
+        "prj-0000000000000009320",
+        "--environment",
+        "evm-0000000000000009320",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "list",
+          "--project",
+          "prj-0000000000000009320",
+          "--environment",
+          "evm-0000000000000009320",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.45,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "data": []
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "near-miss-names",
+      "case": "19-character-suffix-control",
+      "client": "bex",
+      "family": "keyvalues",
+      "expected_success": true,
+      "command": [
+        "bex",
+        "keyvalues",
+        "list",
+        "--project",
+        "prj-0000000000000009320",
+        "--environment",
+        "evm-0000000000000009320",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--project",
+          "prj-0000000000000009320",
+          "--environment",
+          "evm-0000000000000009320",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.65,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "data": []
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "near-miss-names",
+      "case": "19-character-suffix-control",
+      "client": "render",
+      "family": "postgres",
+      "expected_success": true,
+      "command": [
+        "render",
+        "postgres",
+        "list",
+        "--project",
+        "prj-0000000000000009320",
+        "--environment",
+        "evm-0000000000000009320",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "postgres",
+          "list",
+          "--project",
+          "prj-0000000000000009320",
+          "--environment",
+          "evm-0000000000000009320",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.783,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "data": []
+      },
+      "observed_expected_pattern": true
+    },
+    {
+      "stage": "near-miss-names",
+      "case": "19-character-suffix-control",
+      "client": "render",
+      "family": "keyvalues",
+      "expected_success": true,
+      "command": [
+        "render",
+        "keyvalues",
+        "list",
+        "--project",
+        "prj-0000000000000009320",
+        "--environment",
+        "evm-0000000000000009320",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native selector read intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "keyvalues",
+          "list",
+          "--project",
+          "prj-0000000000000009320",
+          "--environment",
+          "evm-0000000000000009320",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.602,
+        "stdout": "{\n  \"data\": []\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "data": []
+      },
+      "observed_expected_pattern": true
+    }
+  ]
+}

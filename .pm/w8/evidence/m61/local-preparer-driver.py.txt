@@ -1,0 +1,31 @@
+import datetime,json,pathlib,secrets,subprocess
+p=pathlib.Path(__file__).parent
+prep=json.loads((p/'sweep163-native-source.json').read_text())['literal_preparer']
+records=[]
+for label,path,entry in [('complete-path','/usr/local/bin:/usr/bin:/bin',prep['command'][0]),('custom-path-command-resolution','/usr/local/bin',prep['command'][0]),('custom-path-absolute-shell-control','/usr/local/bin','/bin/sh')]:
+ nonce=secrets.token_hex(8)
+ name='qa-cli-w8-163-prep-'+nonce
+ pre=subprocess.run(['docker','container','inspect',name],capture_output=True,text=True,timeout=5)
+ assert pre.returncode!=0
+ r={'label':label,'container_name':name,'nonce':nonce,'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'path':path,'entrypoint':entry,'state':'local owned intent persisted'}
+ records.append(r)
+ f=p/'sweep163-preparer-local.json';f.write_text(json.dumps(records,indent=2)+'\n');f.chmod(0o600)
+ args=['docker','run','--rm','--name',name,'--label','qa-cli-w8-owner='+nonce,'--network','none','--read-only','--user','65532:65532','--tmpfs','/native:rw,mode=0777']
+ for env in prep['env']:
+  val=path if env['name']=='PATH' else env.get('value','')
+  args+=['--env',env['name']+'='+val]
+ args+=['--entrypoint',entry,prep['image'],*prep['command'][1:],*prep['args']]
+ try:
+  result=subprocess.run(args,capture_output=True,text=True,timeout=18)
+  r.update(exit=result.returncode,stdout=result.stdout,stderr=result.stderr,state='completed')
+ except subprocess.TimeoutExpired:r.update(exit='timeout',state='bounded timeout')
+ inspect=subprocess.run(['docker','container','inspect','--format','{{index .Config.Labels "qa-cli-w8-owner"}}',name],capture_output=True,text=True,timeout=5)
+ if inspect.returncode==0:
+  assert inspect.stdout.strip()==nonce
+  removed=subprocess.run(['docker','rm','-f',name],capture_output=True,text=True,timeout=10)
+  r['owned_cleanup_exit']=removed.returncode
+ inspect=subprocess.run(['docker','container','inspect',name],capture_output=True,text=True,timeout=5)
+ r['container_absent']=inspect.returncode!=0
+ f.write_text(json.dumps(records,indent=2)+'\n');f.chmod(0o600)
+ print(json.dumps(r),flush=True)
+ assert r['container_absent']

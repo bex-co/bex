@@ -1,0 +1,712 @@
+{
+  "sweep": 171,
+  "source_head": "97ce481c8eabb13025c118ea9fa96d0aa83832d3",
+  "nonce": "e47724",
+  "marker": "QA171_e47724",
+  "mutation": "Blueprint validation only; no group or workload created",
+  "results": [
+    {
+      "client": "bex",
+      "container": "service-literal",
+      "variant": "nul",
+      "document": {
+        "services": [
+          {
+            "name": "qa171-e47724-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA171_e47724\u0000after"
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep171-service-literal-nul.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep171-service-literal-nul.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.605,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa171-e47724-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa171-e47724-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "container": "service-literal",
+      "variant": "newline-control",
+      "document": {
+        "services": [
+          {
+            "name": "qa171-e47724-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA171_e47724\nafter"
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep171-service-literal-newline-control.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep171-service-literal-newline-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.394,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa171-e47724-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa171-e47724-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "container": "service-seed",
+      "variant": "nul",
+      "document": {
+        "services": [
+          {
+            "name": "qa171-e47724-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA171_e47724\u0000after",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep171-service-seed-nul.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep171-service-seed-nul.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.44,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa171-e47724-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa171-e47724-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "container": "service-seed",
+      "variant": "newline-control",
+      "document": {
+        "services": [
+          {
+            "name": "qa171-e47724-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA171_e47724\nafter",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep171-service-seed-newline-control.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep171-service-seed-newline-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.483,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa171-e47724-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa171-e47724-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "container": "group-literal",
+      "variant": "nul",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa171-e47724-group",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA171_e47724\u0000after"
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep171-group-literal-nul.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep171-group-literal-nul.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.871,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa171-e47724-group\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa171-e47724-group"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "container": "group-literal",
+      "variant": "newline-control",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa171-e47724-group",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA171_e47724\nafter"
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep171-group-literal-newline-control.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep171-group-literal-newline-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.89,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa171-e47724-group\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa171-e47724-group"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "container": "service-literal",
+      "variant": "nul",
+      "document": {
+        "services": [
+          {
+            "name": "qa171-e47724-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA171_e47724\u0000after"
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep171-service-literal-nul.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep171-service-literal-nul.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.939,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa171-e47724-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa171-e47724-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "container": "service-literal",
+      "variant": "newline-control",
+      "document": {
+        "services": [
+          {
+            "name": "qa171-e47724-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA171_e47724\nafter"
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep171-service-literal-newline-control.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep171-service-literal-newline-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.386,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa171-e47724-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa171-e47724-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "container": "service-seed",
+      "variant": "nul",
+      "document": {
+        "services": [
+          {
+            "name": "qa171-e47724-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA171_e47724\u0000after",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep171-service-seed-nul.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep171-service-seed-nul.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.341,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa171-e47724-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa171-e47724-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "container": "service-seed",
+      "variant": "newline-control",
+      "document": {
+        "services": [
+          {
+            "name": "qa171-e47724-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA171_e47724\nafter",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep171-service-seed-newline-control.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep171-service-seed-newline-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.321,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa171-e47724-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa171-e47724-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "container": "group-literal",
+      "variant": "nul",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa171-e47724-group",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA171_e47724\u0000after"
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep171-group-literal-nul.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep171-group-literal-nul.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.926,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa171-e47724-group\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa171-e47724-group"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "container": "group-literal",
+      "variant": "newline-control",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa171-e47724-group",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA171_e47724\nafter"
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep171-group-literal-newline-control.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep171-group-literal-newline-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.846,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa171-e47724-group\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa171-e47724-group"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    }
+  ],
+  "question": "Does native validation accept a literal containing byte0, which process environment consumers cannot represent?",
+  "classification": "confirmed production Blueprint false-positive validation; local runtime refusal and generated-loader byte loss; live apply unverified",
+  "copied_render_config_removed": true
+}

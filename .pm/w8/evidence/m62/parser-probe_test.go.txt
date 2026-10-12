@@ -1,0 +1,32 @@
+package apps
+
+import (
+ "encoding/json"
+ "os"
+ "strings"
+ "testing"
+)
+
+func TestQANULParsedValuesCurrent171(t *testing.T) {
+ type input struct { Label string `json:"label"`; Kind string `json:"kind"`; Document map[string]any `json:"document"` }
+ type observation struct { Label string `json:"label"`; CompilerProblems int `json:"compiler_problems"`; TypedExact bool `json:"typed_exact"`; Value string `json:"value"`; NULs int `json:"nul_count"` }
+ raw, err := os.ReadFile(os.Getenv("QA171_PARSER_INPUT")); if err != nil {t.Fatal(err)}
+ var in []input; if err:=json.Unmarshal(raw,&in); err!=nil {t.Fatal(err)}
+ rows:=[]observation{}
+ for _, c := range in {
+  manifest, err := json.Marshal(c.Document); if err!=nil {t.Fatal(err)}
+  source,ir,problems:=CompileBlueprintIR(string(manifest)); if len(problems)!=0 {t.Fatalf("%s: compiler refused: %+v",c.Label,problems)}
+  st,err:=parseCompiledStack(blueprintParseOverrides{},source,ir); if err!=nil {t.Fatalf("%s: typed parser refused: %v",c.Label,err)}
+  value:=""; expected:=""
+  if c.Kind=="group-literal" {
+   value=st.envGroups[0].literals["QA_LITERAL"]; expected=c.Document["envVarGroups"].([]any)[0].(map[string]any)["envVars"].([]any)[0].(map[string]any)["value"].(string)
+  } else {
+   expected=c.Document["services"].([]any)[0].(map[string]any)["envVars"].([]any)[0].(map[string]any)["value"].(string)
+   if c.Kind=="service-seed" {value=st.services[0].seedLiterals["QA_LITERAL"]} else {for _, v:=range st.services[0].req.Env {if v.Name=="QA_LITERAL" {value=v.Value}}}
+  }
+  if value!=expected {t.Fatalf("%s current byte retention differs",c.Label)}
+  rows=append(rows,observation{c.Label,len(problems),value==expected,value,strings.Count(value,"\x00")})
+ }
+ out,err:=json.MarshalIndent(rows,"","  ");if err!=nil {t.Fatal(err)}
+ if err:=os.WriteFile(os.Getenv("QA171_PARSER_RESULT"),append(out,'\n'),0600);err!=nil {t.Fatal(err)}
+}

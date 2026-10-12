@@ -1,0 +1,29 @@
+{
+  "services": [
+    {
+      "name": "qa175-94d0fe-source",
+      "type": "keyvalue",
+      "plan": "free",
+      "ipAllowList": []
+    },
+    {
+      "name": "qa175-94d0fe-target",
+      "type": "web",
+      "runtime": "image",
+      "image": {
+        "url": "nginx:1"
+      },
+      "plan": "free",
+      "envVars": [
+        {
+          "key": "QA_TARGET",
+          "fromService": {
+            "type": "keyvalue",
+            "name": "qa175-94d0fe-source",
+            "envVarKey": "QA_UNDECLARED"
+          }
+        }
+      ]
+    }
+  ]
+}

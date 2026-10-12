@@ -1,0 +1,136 @@
+[
+  {
+    "label": "ordinary-control",
+    "name": "qa-cli-w8-171-env-cf3db4b2",
+    "nonce": "cf3db4b2",
+    "at": "2026-10-12T02:23:54.538094+00:00",
+    "image": "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4",
+    "input_length": 18,
+    "input_sha256": "cb9e5bf57977c2f0478c5dc277d14f63a5dc83bcc5c7dd0d77e8765d12952c57",
+    "input_nul_count": 0,
+    "name_absence_proof": {
+      "at": "2026-10-12T02:23:54.451651+00:00",
+      "exit": 1,
+      "stdout": "\n",
+      "stderr": "Error response from daemon: No such container: qa-cli-w8-171-env-cf3db4b2\n"
+    },
+    "intent": [
+      "docker",
+      "create",
+      "--pull=never",
+      "--name",
+      "qa-cli-w8-171-env-cf3db4b2",
+      "--network",
+      "none",
+      "--read-only",
+      "--label",
+      "co.bex.qa.sweep171=cf3db4b2",
+      "--env-file",
+      "<QA_TMP>/sweep171-local-ordinary-control.env",
+      "--entrypoint",
+      "/usr/local/bin/python3",
+      "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4",
+      "-c",
+      "import os,json,hashlib; v=os.environ[\"QA_LITERAL\"].encode(); print(json.dumps({\"length\":len(v),\"sha256\":hashlib.sha256(v).hexdigest(),\"nul_count\":v.count(bytes([0]))}))"
+    ],
+    "state": "local container deleted",
+    "create_result": {
+      "at": "2026-10-12T02:23:54.538519+00:00",
+      "exit": 0,
+      "stdout": "ef03bc9072574188d146f306be3a3d8662d22241a0f4e59ece49fd2ed83d9a16\n",
+      "stderr": ""
+    },
+    "id": "ef03bc9072574188d146f306be3a3d8662d22241a0f4e59ece49fd2ed83d9a16",
+    "start_result": {
+      "at": "2026-10-12T02:23:55.328912+00:00",
+      "exit": 0,
+      "stdout": "{\"length\": 18, \"sha256\": \"cb9e5bf57977c2f0478c5dc277d14f63a5dc83bcc5c7dd0d77e8765d12952c57\", \"nul_count\": 0}\n",
+      "stderr": ""
+    },
+    "container_state": {
+      "at": "2026-10-12T02:23:55.638585+00:00",
+      "exit": 0,
+      "stdout": "{\"Status\":\"exited\",\"Running\":false,\"Paused\":false,\"Restarting\":false,\"OOMKilled\":false,\"Dead\":false,\"Pid\":0,\"ExitCode\":0,\"Error\":\"\",\"StartedAt\":\"2026-10-12T02:23:55.379290419Z\",\"FinishedAt\":\"2026-10-12T02:23:55.589172752Z\"}\n",
+      "stderr": ""
+    },
+    "cleanup_result": {
+      "at": "2026-10-12T02:23:55.662134+00:00",
+      "exit": 0,
+      "stdout": "ef03bc9072574188d146f306be3a3d8662d22241a0f4e59ece49fd2ed83d9a16\n",
+      "stderr": ""
+    },
+    "after_cleanup": {
+      "at": "2026-10-12T02:23:55.739930+00:00",
+      "exit": 1,
+      "stdout": "\n",
+      "stderr": "Error response from daemon: No such container: ef03bc9072574188d146f306be3a3d8662d22241a0f4e59ece49fd2ed83d9a16\n"
+    }
+  },
+  {
+    "label": "nul",
+    "name": "qa-cli-w8-171-env-a6d13d48",
+    "nonce": "a6d13d48",
+    "at": "2026-10-12T02:23:55.783600+00:00",
+    "image": "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4",
+    "input_length": 18,
+    "input_sha256": "e28d81fb87d318892b267e70acd31f34fef09683b763b83ed2a9aa59bde0d1a8",
+    "input_nul_count": 1,
+    "name_absence_proof": {
+      "at": "2026-10-12T02:23:55.762497+00:00",
+      "exit": 1,
+      "stdout": "\n",
+      "stderr": "Error response from daemon: No such container: qa-cli-w8-171-env-a6d13d48\n"
+    },
+    "intent": [
+      "docker",
+      "create",
+      "--pull=never",
+      "--name",
+      "qa-cli-w8-171-env-a6d13d48",
+      "--network",
+      "none",
+      "--read-only",
+      "--label",
+      "co.bex.qa.sweep171=a6d13d48",
+      "--env-file",
+      "<QA_TMP>/sweep171-local-nul.env",
+      "--entrypoint",
+      "/usr/local/bin/python3",
+      "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4",
+      "-c",
+      "import os,json,hashlib; v=os.environ[\"QA_LITERAL\"].encode(); print(json.dumps({\"length\":len(v),\"sha256\":hashlib.sha256(v).hexdigest(),\"nul_count\":v.count(bytes([0]))}))"
+    ],
+    "state": "local container deleted",
+    "create_result": {
+      "at": "2026-10-12T02:23:55.784228+00:00",
+      "exit": 0,
+      "stdout": "4efdc4ef205c2af3465be9257a455fe75305ad7923a44cfc4a565df8ba46a6ef\n",
+      "stderr": ""
+    },
+    "id": "4efdc4ef205c2af3465be9257a455fe75305ad7923a44cfc4a565df8ba46a6ef",
+    "start_result": {
+      "at": "2026-10-12T02:23:55.891189+00:00",
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: invalid environment variable \"QA_LITERAL\": contains nul byte (\\x00)\n"
+    },
+    "container_state": {
+      "at": "2026-10-12T02:23:56.059472+00:00",
+      "exit": 0,
+      "stdout": "{\"Status\":\"created\",\"Running\":false,\"Paused\":false,\"Restarting\":false,\"OOMKilled\":false,\"Dead\":false,\"Pid\":0,\"ExitCode\":128,\"Error\":\"failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: invalid environment variable \\\"QA_LITERAL\\\": contains nul byte (\\\\x00)\",\"StartedAt\":\"0001-01-01T00:00:00Z\",\"FinishedAt\":\"0001-01-01T00:00:00Z\"}\n",
+      "stderr": ""
+    },
+    "cleanup_result": {
+      "at": "2026-10-12T02:23:56.083666+00:00",
+      "exit": 0,
+      "stdout": "4efdc4ef205c2af3465be9257a455fe75305ad7923a44cfc4a565df8ba46a6ef\n",
+      "stderr": ""
+    },
+    "after_cleanup": {
+      "at": "2026-10-12T02:23:56.141357+00:00",
+      "exit": 1,
+      "stdout": "\n",
+      "stderr": "Error response from daemon: No such container: 4efdc4ef205c2af3465be9257a455fe75305ad7923a44cfc4a565df8ba46a6ef\n"
+    }
+  }
+]

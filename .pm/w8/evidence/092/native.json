@@ -1,0 +1,2682 @@
+{
+  "sweep": 143,
+  "source_head": "ab2a07ad26f3076d621816da7f1eebf6db08f69f",
+  "api": "https://api.bex.co/v1/",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "bex_release": "0.3.2",
+  "bex_vcs": "a6350da0d6e451e063143432e06c548ba7b5851b",
+  "render_pin": "a764810a768202704e7206eb7b87a47211fcd98e",
+  "deployed_revision": "unobserved",
+  "results": [
+    {
+      "client": "bex",
+      "container": "root",
+      "case": "literal-empty",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa143-544da4-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:08:36.221464+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-root-literal-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.736,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa143-544da4-caller\",\n      \"qa143-544da4-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa143-544da4-caller",
+            "qa143-544da4-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "bex",
+      "container": "root",
+      "case": "seed-empty",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa143-544da4-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:08:37.205011+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-root-seed-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.603,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa143-544da4-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa143-544da4-target\\\", which has no such plainly-defined variable\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa143-544da4-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa143-544da4-target\", which has no such plainly-defined variable",
+            "line": 11,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": true,
+      "matches_expected": false
+    },
+    {
+      "client": "bex",
+      "container": "root",
+      "case": "seed-space",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa143-544da4-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": " ",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:08:38.056573+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-root-seed-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.782,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa143-544da4-caller\",\n      \"qa143-544da4-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa143-544da4-caller",
+            "qa143-544da4-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "bex",
+      "container": "root",
+      "case": "seed-value",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa143-544da4-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "qa143-544da4",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:08:39.095619+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-root-seed-value.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.387,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa143-544da4-caller\",\n      \"qa143-544da4-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa143-544da4-caller",
+            "qa143-544da4-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "bex",
+      "container": "root",
+      "case": "prompt-only",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa143-544da4-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:08:39.741595+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-root-prompt-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.381,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa143-544da4-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa143-544da4-target\\\", which has no such plainly-defined variable\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa143-544da4-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa143-544da4-target\", which has no such plainly-defined variable",
+            "line": 11,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": false,
+      "matches_expected": true
+    },
+    {
+      "client": "bex",
+      "container": "root",
+      "case": "seed-empty-reversed",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "",
+                "sync": false
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa143-544da4-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:08:40.381782+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-root-seed-empty-reversed.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.613,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa143-544da4-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa143-544da4-target\\\", which has no such plainly-defined variable\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa143-544da4-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa143-544da4-target\", which has no such plainly-defined variable",
+            "line": 27,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": true,
+      "matches_expected": false
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "case": "literal-empty",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa143-544da4-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:08:41.249565+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-root-literal-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.478,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa143-544da4-caller\",\n      \"qa143-544da4-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa143-544da4-caller",
+            "qa143-544da4-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "case": "seed-empty",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa143-544da4-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:08:41.991285+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-root-seed-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.292,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa143-544da4-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa143-544da4-target\\\", which has no such plainly-defined variable\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa143-544da4-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa143-544da4-target\", which has no such plainly-defined variable",
+            "line": 11,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": true,
+      "matches_expected": false
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "case": "seed-space",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa143-544da4-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": " ",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:08:42.533818+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-root-seed-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.706,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa143-544da4-caller\",\n      \"qa143-544da4-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa143-544da4-caller",
+            "qa143-544da4-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "case": "seed-value",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa143-544da4-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "qa143-544da4",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:08:43.505639+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-root-seed-value.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.341,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa143-544da4-caller\",\n      \"qa143-544da4-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa143-544da4-caller",
+            "qa143-544da4-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "case": "prompt-only",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa143-544da4-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:08:44.091057+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-root-prompt-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.287,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa143-544da4-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa143-544da4-target\\\", which has no such plainly-defined variable\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa143-544da4-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa143-544da4-target\", which has no such plainly-defined variable",
+            "line": 11,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": false,
+      "matches_expected": true
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "case": "seed-empty-reversed",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "",
+                "sync": false
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa143-544da4-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:08:44.635087+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-root-seed-empty-reversed.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.297,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa143-544da4-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa143-544da4-target\\\", which has no such plainly-defined variable\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa143-544da4-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa143-544da4-target\", which has no such plainly-defined variable",
+            "line": 27,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": true,
+      "matches_expected": false
+    },
+    {
+      "client": "bex",
+      "container": "ungrouped",
+      "case": "literal-empty",
+      "document": {
+        "ungrouped": {
+          "services": [
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-caller",
+              "envVars": [
+                {
+                  "key": "COPY_VALUE",
+                  "fromService": {
+                    "name": "qa143-544da4-target",
+                    "type": "web",
+                    "envVarKey": "SOURCE_VALUE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-target",
+              "envVars": [
+                {
+                  "key": "SOURCE_VALUE",
+                  "value": ""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "at": "2026-10-11T21:09:41.765818+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-ungrouped-literal-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.584,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa143-544da4-caller\",\n      \"qa143-544da4-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa143-544da4-caller",
+            "qa143-544da4-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "bex",
+      "container": "ungrouped",
+      "case": "seed-empty",
+      "document": {
+        "ungrouped": {
+          "services": [
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-caller",
+              "envVars": [
+                {
+                  "key": "COPY_VALUE",
+                  "fromService": {
+                    "name": "qa143-544da4-target",
+                    "type": "web",
+                    "envVarKey": "SOURCE_VALUE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-target",
+              "envVars": [
+                {
+                  "key": "SOURCE_VALUE",
+                  "value": "",
+                  "sync": false
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "at": "2026-10-11T21:09:42.592493+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-ungrouped-seed-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.519,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"service \\\"qa143-544da4-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa143-544da4-target\\\", which has no such plainly-defined variable\",\n      \"line\": 12,\n      \"path\": \"ungrouped.services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 20,
+            "error": "service \"qa143-544da4-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa143-544da4-target\", which has no such plainly-defined variable",
+            "line": 12,
+            "path": "ungrouped.services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": true,
+      "matches_expected": false
+    },
+    {
+      "client": "bex",
+      "container": "ungrouped",
+      "case": "seed-space",
+      "document": {
+        "ungrouped": {
+          "services": [
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-caller",
+              "envVars": [
+                {
+                  "key": "COPY_VALUE",
+                  "fromService": {
+                    "name": "qa143-544da4-target",
+                    "type": "web",
+                    "envVarKey": "SOURCE_VALUE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-target",
+              "envVars": [
+                {
+                  "key": "SOURCE_VALUE",
+                  "value": " ",
+                  "sync": false
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "at": "2026-10-11T21:09:43.362132+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-ungrouped-seed-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.495,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa143-544da4-caller\",\n      \"qa143-544da4-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa143-544da4-caller",
+            "qa143-544da4-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "render",
+      "container": "ungrouped",
+      "case": "literal-empty",
+      "document": {
+        "ungrouped": {
+          "services": [
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-caller",
+              "envVars": [
+                {
+                  "key": "COPY_VALUE",
+                  "fromService": {
+                    "name": "qa143-544da4-target",
+                    "type": "web",
+                    "envVarKey": "SOURCE_VALUE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-target",
+              "envVars": [
+                {
+                  "key": "SOURCE_VALUE",
+                  "value": ""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "at": "2026-10-11T21:09:44.100052+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-ungrouped-literal-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.806,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa143-544da4-caller\",\n      \"qa143-544da4-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa143-544da4-caller",
+            "qa143-544da4-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "render",
+      "container": "ungrouped",
+      "case": "seed-empty",
+      "document": {
+        "ungrouped": {
+          "services": [
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-caller",
+              "envVars": [
+                {
+                  "key": "COPY_VALUE",
+                  "fromService": {
+                    "name": "qa143-544da4-target",
+                    "type": "web",
+                    "envVarKey": "SOURCE_VALUE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-target",
+              "envVars": [
+                {
+                  "key": "SOURCE_VALUE",
+                  "value": "",
+                  "sync": false
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "at": "2026-10-11T21:09:45.151595+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-ungrouped-seed-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.336,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"service \\\"qa143-544da4-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa143-544da4-target\\\", which has no such plainly-defined variable\",\n      \"line\": 12,\n      \"path\": \"ungrouped.services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 20,
+            "error": "service \"qa143-544da4-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa143-544da4-target\", which has no such plainly-defined variable",
+            "line": 12,
+            "path": "ungrouped.services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": true,
+      "matches_expected": false
+    },
+    {
+      "client": "render",
+      "container": "ungrouped",
+      "case": "seed-space",
+      "document": {
+        "ungrouped": {
+          "services": [
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-caller",
+              "envVars": [
+                {
+                  "key": "COPY_VALUE",
+                  "fromService": {
+                    "name": "qa143-544da4-target",
+                    "type": "web",
+                    "envVarKey": "SOURCE_VALUE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-target",
+              "envVars": [
+                {
+                  "key": "SOURCE_VALUE",
+                  "value": " ",
+                  "sync": false
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "at": "2026-10-11T21:09:45.754689+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-ungrouped-seed-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.783,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa143-544da4-caller\",\n      \"qa143-544da4-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa143-544da4-caller",
+            "qa143-544da4-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "bex",
+      "container": "project",
+      "case": "literal-empty",
+      "document": {
+        "projects": [
+          {
+            "name": "qa143-544da4-project",
+            "environments": [
+              {
+                "name": "qa143-544da4-env",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa143-544da4-caller",
+                    "envVars": [
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa143-544da4-target",
+                          "type": "web",
+                          "envVarKey": "SOURCE_VALUE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa143-544da4-target",
+                    "envVars": [
+                      {
+                        "key": "SOURCE_VALUE",
+                        "value": ""
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:10:51.755495+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-project-literal-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.515,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa143-544da4-caller\",\n      \"qa143-544da4-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa143-544da4-caller",
+            "qa143-544da4-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "bex",
+      "container": "project",
+      "case": "seed-empty",
+      "document": {
+        "projects": [
+          {
+            "name": "qa143-544da4-project",
+            "environments": [
+              {
+                "name": "qa143-544da4-env",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa143-544da4-caller",
+                    "envVars": [
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa143-544da4-target",
+                          "type": "web",
+                          "envVarKey": "SOURCE_VALUE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa143-544da4-target",
+                    "envVars": [
+                      {
+                        "key": "SOURCE_VALUE",
+                        "value": "",
+                        "sync": false
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:10:52.512297+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-project-seed-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.309,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 26,\n      \"error\": \"service \\\"qa143-544da4-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa143-544da4-target\\\", which has no such plainly-defined variable\",\n      \"line\": 17,\n      \"path\": \"projects[0].environments[0].services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 26,
+            "error": "service \"qa143-544da4-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa143-544da4-target\", which has no such plainly-defined variable",
+            "line": 17,
+            "path": "projects[0].environments[0].services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": true,
+      "matches_expected": false
+    },
+    {
+      "client": "bex",
+      "container": "project",
+      "case": "seed-space",
+      "document": {
+        "projects": [
+          {
+            "name": "qa143-544da4-project",
+            "environments": [
+              {
+                "name": "qa143-544da4-env",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa143-544da4-caller",
+                    "envVars": [
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa143-544da4-target",
+                          "type": "web",
+                          "envVarKey": "SOURCE_VALUE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa143-544da4-target",
+                    "envVars": [
+                      {
+                        "key": "SOURCE_VALUE",
+                        "value": " ",
+                        "sync": false
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:10:53.073713+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-project-seed-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.388,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa143-544da4-caller\",\n      \"qa143-544da4-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa143-544da4-caller",
+            "qa143-544da4-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "render",
+      "container": "project",
+      "case": "literal-empty",
+      "document": {
+        "projects": [
+          {
+            "name": "qa143-544da4-project",
+            "environments": [
+              {
+                "name": "qa143-544da4-env",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa143-544da4-caller",
+                    "envVars": [
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa143-544da4-target",
+                          "type": "web",
+                          "envVarKey": "SOURCE_VALUE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa143-544da4-target",
+                    "envVars": [
+                      {
+                        "key": "SOURCE_VALUE",
+                        "value": ""
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:10:53.712976+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-project-literal-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.435,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa143-544da4-caller\",\n      \"qa143-544da4-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa143-544da4-caller",
+            "qa143-544da4-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "render",
+      "container": "project",
+      "case": "seed-empty",
+      "document": {
+        "projects": [
+          {
+            "name": "qa143-544da4-project",
+            "environments": [
+              {
+                "name": "qa143-544da4-env",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa143-544da4-caller",
+                    "envVars": [
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa143-544da4-target",
+                          "type": "web",
+                          "envVarKey": "SOURCE_VALUE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa143-544da4-target",
+                    "envVars": [
+                      {
+                        "key": "SOURCE_VALUE",
+                        "value": "",
+                        "sync": false
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:10:54.399868+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-project-seed-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.294,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 26,\n      \"error\": \"service \\\"qa143-544da4-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa143-544da4-target\\\", which has no such plainly-defined variable\",\n      \"line\": 17,\n      \"path\": \"projects[0].environments[0].services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 26,
+            "error": "service \"qa143-544da4-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa143-544da4-target\", which has no such plainly-defined variable",
+            "line": 17,
+            "path": "projects[0].environments[0].services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": true,
+      "matches_expected": false
+    },
+    {
+      "client": "render",
+      "container": "project",
+      "case": "seed-space",
+      "document": {
+        "projects": [
+          {
+            "name": "qa143-544da4-project",
+            "environments": [
+              {
+                "name": "qa143-544da4-env",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa143-544da4-caller",
+                    "envVars": [
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa143-544da4-target",
+                          "type": "web",
+                          "envVarKey": "SOURCE_VALUE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa143-544da4-target",
+                    "envVars": [
+                      {
+                        "key": "SOURCE_VALUE",
+                        "value": " ",
+                        "sync": false
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:10:54.950942+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-project-seed-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.373,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa143-544da4-caller\",\n      \"qa143-544da4-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa143-544da4-caller",
+            "qa143-544da4-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "bex",
+      "container": "yaml",
+      "case": "provider-only",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:13:54.653682+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-yaml-provider-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.481,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa143-544da4-target\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa143-544da4-target"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "bex",
+      "container": "yaml",
+      "case": "seed-empty",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa143-544da4-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:13:55.422108+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-yaml-seed-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.305,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"qa143-544da4-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa143-544da4-target\\\", which has no such plainly-defined variable\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"qa143-544da4-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa143-544da4-target\", which has no such plainly-defined variable",
+            "line": 9,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": true,
+      "matches_expected": false
+    },
+    {
+      "client": "bex",
+      "container": "yaml",
+      "case": "seed-space",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa143-544da4-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": " ",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:13:55.990080+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-yaml-seed-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.646,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa143-544da4-caller\",\n      \"qa143-544da4-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa143-544da4-caller",
+            "qa143-544da4-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "render",
+      "container": "yaml",
+      "case": "provider-only",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:13:57.024831+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-yaml-provider-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.384,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa143-544da4-target\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa143-544da4-target"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "render",
+      "container": "yaml",
+      "case": "seed-empty",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa143-544da4-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:13:57.662730+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-yaml-seed-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.305,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"qa143-544da4-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa143-544da4-target\\\", which has no such plainly-defined variable\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"qa143-544da4-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa143-544da4-target\", which has no such plainly-defined variable",
+            "line": 9,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": true,
+      "matches_expected": false
+    },
+    {
+      "client": "render",
+      "container": "yaml",
+      "case": "seed-space",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa143-544da4-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa143-544da4-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": " ",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-11T21:13:58.219133+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-yaml-seed-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.425,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa143-544da4-caller\",\n      \"qa143-544da4-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa143-544da4-caller",
+            "qa143-544da4-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    }
+  ],
+  "excluded_initial_readable_yaml": {
+    "qualification": "PyYAML reused the identical image object as an alias, which the product correctly refuses. Entire initial six-case readable batch excluded; the JSON-syntax YAML matrix had independent objects and is unaffected.",
+    "results": [
+      {
+        "client": "bex",
+        "container": "yaml",
+        "case": "provider-only",
+        "document": {
+          "services": [
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-target",
+              "envVars": [
+                {
+                  "key": "SOURCE_VALUE",
+                  "value": "",
+                  "sync": false
+                }
+              ]
+            }
+          ]
+        },
+        "at": "2026-10-11T21:13:18.393202+00:00",
+        "state": "native completed",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-yaml-provider-only.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.942,
+          "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa143-544da4-target\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "plan": {
+            "services": [
+              "qa143-544da4-target"
+            ],
+            "totalActions": 1
+          },
+          "valid": true
+        },
+        "expected_valid": true,
+        "matches_expected": true
+      },
+      {
+        "client": "bex",
+        "container": "yaml",
+        "case": "seed-empty",
+        "document": {
+          "services": [
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-caller",
+              "envVars": [
+                {
+                  "key": "COPY_VALUE",
+                  "fromService": {
+                    "name": "qa143-544da4-target",
+                    "type": "web",
+                    "envVarKey": "SOURCE_VALUE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-target",
+              "envVars": [
+                {
+                  "key": "SOURCE_VALUE",
+                  "value": "",
+                  "sync": false
+                }
+              ]
+            }
+          ]
+        },
+        "at": "2026-10-11T21:13:19.583997+00:00",
+        "state": "native completed",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-yaml-seed-empty.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.442,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 10,\n      \"error\": \"YAML aliases are not supported in Blueprints\",\n      \"line\": 17,\n      \"path\": \"services[1].image\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 10,
+              "error": "YAML aliases are not supported in Blueprints",
+              "line": 17,
+              "path": "services[1].image"
+            }
+          ],
+          "valid": false
+        },
+        "expected_valid": true,
+        "matches_expected": false
+      },
+      {
+        "client": "bex",
+        "container": "yaml",
+        "case": "seed-space",
+        "document": {
+          "services": [
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-caller",
+              "envVars": [
+                {
+                  "key": "COPY_VALUE",
+                  "fromService": {
+                    "name": "qa143-544da4-target",
+                    "type": "web",
+                    "envVarKey": "SOURCE_VALUE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-target",
+              "envVars": [
+                {
+                  "key": "SOURCE_VALUE",
+                  "value": " ",
+                  "sync": false
+                }
+              ]
+            }
+          ]
+        },
+        "at": "2026-10-11T21:13:20.270945+00:00",
+        "state": "native completed",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-yaml-seed-space.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.373,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 10,\n      \"error\": \"YAML aliases are not supported in Blueprints\",\n      \"line\": 17,\n      \"path\": \"services[1].image\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 10,
+              "error": "YAML aliases are not supported in Blueprints",
+              "line": 17,
+              "path": "services[1].image"
+            }
+          ],
+          "valid": false
+        },
+        "expected_valid": true,
+        "matches_expected": false
+      },
+      {
+        "client": "render",
+        "container": "yaml",
+        "case": "provider-only",
+        "document": {
+          "services": [
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-target",
+              "envVars": [
+                {
+                  "key": "SOURCE_VALUE",
+                  "value": "",
+                  "sync": false
+                }
+              ]
+            }
+          ]
+        },
+        "at": "2026-10-11T21:13:20.900470+00:00",
+        "state": "native completed",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "blueprints",
+            "validate",
+            "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-yaml-provider-only.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.531,
+          "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa143-544da4-target\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "plan": {
+            "services": [
+              "qa143-544da4-target"
+            ],
+            "totalActions": 1
+          },
+          "valid": true
+        },
+        "expected_valid": true,
+        "matches_expected": true
+      },
+      {
+        "client": "render",
+        "container": "yaml",
+        "case": "seed-empty",
+        "document": {
+          "services": [
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-caller",
+              "envVars": [
+                {
+                  "key": "COPY_VALUE",
+                  "fromService": {
+                    "name": "qa143-544da4-target",
+                    "type": "web",
+                    "envVarKey": "SOURCE_VALUE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-target",
+              "envVars": [
+                {
+                  "key": "SOURCE_VALUE",
+                  "value": "",
+                  "sync": false
+                }
+              ]
+            }
+          ]
+        },
+        "at": "2026-10-11T21:13:21.685301+00:00",
+        "state": "native completed",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "blueprints",
+            "validate",
+            "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-yaml-seed-empty.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.659,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 10,\n      \"error\": \"YAML aliases are not supported in Blueprints\",\n      \"line\": 17,\n      \"path\": \"services[1].image\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 10,
+              "error": "YAML aliases are not supported in Blueprints",
+              "line": 17,
+              "path": "services[1].image"
+            }
+          ],
+          "valid": false
+        },
+        "expected_valid": true,
+        "matches_expected": false
+      },
+      {
+        "client": "render",
+        "container": "yaml",
+        "case": "seed-space",
+        "document": {
+          "services": [
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-caller",
+              "envVars": [
+                {
+                  "key": "COPY_VALUE",
+                  "fromService": {
+                    "name": "qa143-544da4-target",
+                    "type": "web",
+                    "envVarKey": "SOURCE_VALUE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa143-544da4-target",
+              "envVars": [
+                {
+                  "key": "SOURCE_VALUE",
+                  "value": " ",
+                  "sync": false
+                }
+              ]
+            }
+          ]
+        },
+        "at": "2026-10-11T21:13:22.605638+00:00",
+        "state": "native completed",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "blueprints",
+            "validate",
+            "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep143-yaml-seed-space.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.396,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 10,\n      \"error\": \"YAML aliases are not supported in Blueprints\",\n      \"line\": 17,\n      \"path\": \"services[1].image\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 10,
+              "error": "YAML aliases are not supported in Blueprints",
+              "line": 17,
+              "path": "services[1].image"
+            }
+          ],
+          "valid": false
+        },
+        "expected_valid": true,
+        "matches_expected": false
+      }
+    ]
+  },
+  "qualification": "Native Blueprint validation only; both clients target Bex. First 24 manifests use JSON syntax accepted as YAML; final six are ordinary YAML without aliases. Native HTTP not intercepted. No Render-production validation, resource create/apply or runtime env value claim."
+}

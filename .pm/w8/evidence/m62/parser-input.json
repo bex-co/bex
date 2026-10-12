@@ -1,0 +1,130 @@
+[
+  {
+    "label": "service-literal/nul",
+    "kind": "service-literal",
+    "document": {
+      "services": [
+        {
+          "name": "qa171-e47724-web",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_LITERAL",
+              "value": "QA171_e47724\u0000after"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "label": "service-literal/newline-control",
+    "kind": "service-literal",
+    "document": {
+      "services": [
+        {
+          "name": "qa171-e47724-web",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_LITERAL",
+              "value": "QA171_e47724\nafter"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "label": "service-seed/nul",
+    "kind": "service-seed",
+    "document": {
+      "services": [
+        {
+          "name": "qa171-e47724-web",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_LITERAL",
+              "value": "QA171_e47724\u0000after",
+              "sync": false
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "label": "service-seed/newline-control",
+    "kind": "service-seed",
+    "document": {
+      "services": [
+        {
+          "name": "qa171-e47724-web",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_LITERAL",
+              "value": "QA171_e47724\nafter",
+              "sync": false
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "label": "group-literal/nul",
+    "kind": "group-literal",
+    "document": {
+      "envVarGroups": [
+        {
+          "name": "qa171-e47724-group",
+          "envVars": [
+            {
+              "key": "QA_LITERAL",
+              "value": "QA171_e47724\u0000after"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "label": "group-literal/newline-control",
+    "kind": "group-literal",
+    "document": {
+      "envVarGroups": [
+        {
+          "name": "qa171-e47724-group",
+          "envVars": [
+            {
+              "key": "QA_LITERAL",
+              "value": "QA171_e47724\nafter"
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

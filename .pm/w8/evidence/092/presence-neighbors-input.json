@@ -1,0 +1,263 @@
+[
+  {
+    "container": "service",
+    "variant": "literal-empty",
+    "document": {
+      "services": [
+        {
+          "name": "qa152-10e6aa-web",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "key": "VALUE",
+              "value": ""
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "container": "service",
+    "variant": "generated-only",
+    "document": {
+      "services": [
+        {
+          "name": "qa152-10e6aa-web",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "key": "VALUE",
+              "generateValue": true
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "container": "service",
+    "variant": "generated-plus-empty",
+    "document": {
+      "services": [
+        {
+          "name": "qa152-10e6aa-web",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "key": "VALUE",
+              "value": "",
+              "generateValue": true
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "container": "service",
+    "variant": "generated-plus-space",
+    "document": {
+      "services": [
+        {
+          "name": "qa152-10e6aa-web",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "key": "VALUE",
+              "value": " ",
+              "generateValue": true
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "container": "service",
+    "variant": "disabled-generation-empty",
+    "document": {
+      "services": [
+        {
+          "name": "qa152-10e6aa-web",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "key": "VALUE",
+              "value": "",
+              "generateValue": false
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "container": "environment-group",
+    "variant": "literal-empty",
+    "document": {
+      "envVarGroups": [
+        {
+          "name": "qa152-10e6aa-group",
+          "envVars": [
+            {
+              "key": "VALUE",
+              "value": ""
+            }
+          ]
+        }
+      ],
+      "services": [
+        {
+          "name": "qa152-10e6aa-web",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "container": "environment-group",
+    "variant": "generated-only",
+    "document": {
+      "envVarGroups": [
+        {
+          "name": "qa152-10e6aa-group",
+          "envVars": [
+            {
+              "key": "VALUE",
+              "generateValue": true
+            }
+          ]
+        }
+      ],
+      "services": [
+        {
+          "name": "qa152-10e6aa-web",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "container": "environment-group",
+    "variant": "generated-plus-empty",
+    "document": {
+      "envVarGroups": [
+        {
+          "name": "qa152-10e6aa-group",
+          "envVars": [
+            {
+              "key": "VALUE",
+              "value": "",
+              "generateValue": true
+            }
+          ]
+        }
+      ],
+      "services": [
+        {
+          "name": "qa152-10e6aa-web",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "container": "environment-group",
+    "variant": "generated-plus-space",
+    "document": {
+      "envVarGroups": [
+        {
+          "name": "qa152-10e6aa-group",
+          "envVars": [
+            {
+              "key": "VALUE",
+              "value": " ",
+              "generateValue": true
+            }
+          ]
+        }
+      ],
+      "services": [
+        {
+          "name": "qa152-10e6aa-web",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "container": "environment-group",
+    "variant": "disabled-generation-empty",
+    "document": {
+      "envVarGroups": [
+        {
+          "name": "qa152-10e6aa-group",
+          "envVars": [
+            {
+              "key": "VALUE",
+              "value": "",
+              "generateValue": false
+            }
+          ]
+        }
+      ],
+      "services": [
+        {
+          "name": "qa152-10e6aa-web",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          }
+        }
+      ]
+    }
+  }
+]

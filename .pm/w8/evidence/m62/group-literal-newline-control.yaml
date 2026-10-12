@@ -1,0 +1,13 @@
+{
+  "envVarGroups": [
+    {
+      "name": "qa171-e47724-group",
+      "envVars": [
+        {
+          "key": "QA_LITERAL",
+          "value": "QA171_e47724\nafter"
+        }
+      ]
+    }
+  ]
+}

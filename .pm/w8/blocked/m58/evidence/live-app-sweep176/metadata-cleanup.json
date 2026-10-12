@@ -1,0 +1,46 @@
+{
+  "at": "2026-10-12T21:22:19.587081+00:00",
+  "source_head": "45339ad77a522fbf167b26da8afae3f6872a8afb",
+  "deployed_revision": "unknown",
+  "bex_release": "v0.3.2",
+  "render_version": "v2.27.0",
+  "upstream_commit": "a764810a768202704e7206eb7b87a47211fcd98e",
+  "api_origin": "https://api.bex.co/v1/",
+  "auth": "human OAuth",
+  "native_text_checks": 28,
+  "native_boundary_checks": 12,
+  "excluded_reverse_display_order_assertions": 1,
+  "baseline_records": 15,
+  "api_only_checks": 6,
+  "actual_matcher_cases": 14,
+  "owned_service_deleted": "srv-db6kqe15i38c73fd5mc0",
+  "server_child_enumerated": "dep-db6kqe15i38c73fd5mcg",
+  "cli_delete_exit": 0,
+  "cli_delete_elapsed": 1.47,
+  "detail_after_delete": "404",
+  "current_service_count": 6,
+  "quota": {
+    "services": {
+      "used": 6,
+      "terminating": 0,
+      "limit": 25
+    },
+    "postgres": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    },
+    "keyValues": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    }
+  },
+  "cleanup_state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+  "local_containers_created": 0,
+  "copied_render_config_absent": true,
+  "new_finding": false,
+  "milestone_complete": false,
+  "product_changes": false,
+  "uncommitted": true
+}

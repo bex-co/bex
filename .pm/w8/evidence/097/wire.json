@@ -1,0 +1,102 @@
+[
+  {
+    "at": "2026-10-12T04:04:39.352379+00:00",
+    "method": "GET",
+    "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&resource=srv-db65j8eui45s738uptug&type=app&text=QA174_dc1b01&level=alert&limit=100&direction=backward",
+    "request_query": [
+      [
+        "ownerId",
+        "tea-daif693dqjvc73e7as3g"
+      ],
+      [
+        "resource",
+        "srv-db65j8eui45s738uptug"
+      ],
+      [
+        "type",
+        "app"
+      ],
+      [
+        "text",
+        "QA174_dc1b01"
+      ],
+      [
+        "level",
+        "alert"
+      ],
+      [
+        "limit",
+        "100"
+      ],
+      [
+        "direction",
+        "backward"
+      ]
+    ],
+    "result": {
+      "method": "GET",
+      "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&resource=srv-db65j8eui45s738uptug&type=app&text=QA174_dc1b01&level=alert&limit=100&direction=backward",
+      "body": null,
+      "status": "200",
+      "elapsed": 3.133,
+      "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T03:04:39.231219458Z\",\"nextEndTime\":\"2026-10-12T03:55:24.052340695Z\",\"logs\":[{\"id\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7\",\"message\":\"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ERROR\\\"}\",\"timestamp\":\"2026-10-12T03:55:24.052340696Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db65j8eui45s738uptug\"},{\"name\":\"instance\",\"value\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"error\"}]},{\"id\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05\",\"message\":\"{\\\"level\\\":\\\"critical\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_CRITICAL\\\"}\",\"timestamp\":\"2026-10-12T03:55:24.052481393Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db65j8eui45s738uptug\"},{\"name\":\"instance\",\"value\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"error\"}]}]}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49338aecc87cee9-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "qualification": "Equivalent owned-resource API diagnostic; native traffic not intercepted"
+  },
+  {
+    "at": "2026-10-12T04:04:42.042643+00:00",
+    "method": "GET",
+    "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&resource=srv-db65j8eui45s738uptug&type=app&text=QA174_dc1b01&level=unknown&limit=100&direction=backward",
+    "request_query": [
+      [
+        "ownerId",
+        "tea-daif693dqjvc73e7as3g"
+      ],
+      [
+        "resource",
+        "srv-db65j8eui45s738uptug"
+      ],
+      [
+        "type",
+        "app"
+      ],
+      [
+        "text",
+        "QA174_dc1b01"
+      ],
+      [
+        "level",
+        "unknown"
+      ],
+      [
+        "limit",
+        "100"
+      ],
+      [
+        "direction",
+        "backward"
+      ]
+    ],
+    "result": {
+      "method": "GET",
+      "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&resource=srv-db65j8eui45s738uptug&type=app&text=QA174_dc1b01&level=unknown&limit=100&direction=backward",
+      "body": null,
+      "status": "200",
+      "elapsed": 2.637,
+      "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T03:04:41.940719781Z\",\"nextEndTime\":\"2026-10-12T03:55:24.052639184Z\",\"logs\":[{\"id\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f\",\"message\":\"{\\\"level\\\":\\\"alert\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ALERT\\\"}\",\"timestamp\":\"2026-10-12T03:55:24.052639185Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db65j8eui45s738uptug\"},{\"name\":\"instance\",\"value\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f\",\"message\":\"{\\\"level\\\":\\\"emergency\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_EMERGENCY\\\"}\",\"timestamp\":\"2026-10-12T03:55:24.052657566Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db65j8eui45s738uptug\"},{\"name\":\"instance\",\"value\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8\",\"message\":\"{\\\"severity\\\":\\\"ALERT\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_SEVERITY_ALERT\\\"}\",\"timestamp\":\"2026-10-12T03:55:24.052663029Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db65j8eui45s738uptug\"},{\"name\":\"instance\",\"value\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a\",\"message\":\"{\\\"severity\\\":\\\"EMERGENCY\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_SEVERITY_EMERGENCY\\\"}\",\"timestamp\":\"2026-10-12T03:55:24.052885509Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db65j8eui45s738uptug\"},{\"name\":\"instance\",\"value\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175\",\"message\":\"level=alert msg=QA174_dc1b01_FMT_alert\",\"timestamp\":\"2026-10-12T03:55:24.053033866Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db65j8eui45s738uptug\"},{\"name\":\"instance\",\"value\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a\",\"message\":\"severity=EMERGENCY msg=QA174_dc1b01_FMT_EMERGENCY\",\"timestamp\":\"2026-10-12T03:55:24.053440965Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db65j8eui45s738uptug\"},{\"name\":\"instance\",\"value\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053474341Z-597703ce\",\"message\":\"QA174_dc1b01 CONTROL plain\",\"timestamp\":\"2026-10-12T03:55:24.053474341Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db65j8eui45s738uptug\"},{\"name\":\"instance\",\"value\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49338c28ef34c71-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "qualification": "Equivalent owned-resource API diagnostic; native traffic not intercepted"
+  }
+]

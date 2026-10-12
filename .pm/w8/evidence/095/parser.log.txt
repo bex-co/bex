@@ -1,0 +1,54 @@
+=== RUN   TestQA155EmptyGroupParserDiagnostic
+[
+  {
+    "container": "root",
+    "generated_keys": null,
+    "key_present": true,
+    "parsed_group_name": "qa155e-3b7e21-group",
+    "synthetic_value": "",
+    "variant": "empty-literal"
+  },
+  {
+    "container": "root",
+    "generated_keys": null,
+    "key_present": true,
+    "parsed_group_name": "qa155e-3b7e21-group",
+    "synthetic_value": " ",
+    "variant": "space-literal"
+  },
+  {
+    "container": "ungrouped",
+    "generated_keys": null,
+    "key_present": true,
+    "parsed_group_name": "qa155e-3b7e21-group",
+    "synthetic_value": "",
+    "variant": "empty-literal"
+  },
+  {
+    "container": "ungrouped",
+    "generated_keys": null,
+    "key_present": true,
+    "parsed_group_name": "qa155e-3b7e21-group",
+    "synthetic_value": " ",
+    "variant": "space-literal"
+  },
+  {
+    "container": "project-environment",
+    "generated_keys": null,
+    "key_present": true,
+    "parsed_group_name": "qa155e-3b7e21-group",
+    "synthetic_value": "",
+    "variant": "empty-literal"
+  },
+  {
+    "container": "project-environment",
+    "generated_keys": null,
+    "key_present": true,
+    "parsed_group_name": "qa155e-3b7e21-group",
+    "synthetic_value": " ",
+    "variant": "space-literal"
+  }
+]
+--- PASS: TestQA155EmptyGroupParserDiagnostic (0.01s)
+PASS
+ok  	github.com/bex-co/bex/lego/backend/internal/apps	0.893s

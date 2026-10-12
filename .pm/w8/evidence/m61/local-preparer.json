@@ -1,0 +1,41 @@
+[
+  {
+    "label": "complete-path",
+    "container_name": "qa-cli-w8-163-prep-2382c5c70367d276",
+    "nonce": "2382c5c70367d276",
+    "at": "2026-10-12T00:30:31.296545+00:00",
+    "path": "/usr/local/bin:/usr/bin:/bin",
+    "entrypoint": "sh",
+    "state": "completed",
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "container_absent": true
+  },
+  {
+    "label": "custom-path-command-resolution",
+    "container_name": "qa-cli-w8-163-prep-ec31c407b16d16dc",
+    "nonce": "ec31c407b16d16dc",
+    "at": "2026-10-12T00:30:31.798405+00:00",
+    "path": "/usr/local/bin",
+    "entrypoint": "sh",
+    "state": "completed",
+    "exit": 127,
+    "stdout": "",
+    "stderr": "docker: Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: exec: \"sh\": executable file not found in $PATH\n\nRun 'docker run --help' for more information\n",
+    "container_absent": true
+  },
+  {
+    "label": "custom-path-absolute-shell-control",
+    "container_name": "qa-cli-w8-163-prep-3d0e8f73a6c37cd4",
+    "nonce": "3d0e8f73a6c37cd4",
+    "at": "2026-10-12T00:30:32.081688+00:00",
+    "path": "/usr/local/bin",
+    "entrypoint": "/bin/sh",
+    "state": "completed",
+    "exit": 127,
+    "stdout": "",
+    "stderr": "/bin/sh: printenv: not found\n/bin/sh: base64: not found\n/bin/sh: tr: not found\n",
+    "container_absent": true
+  }
+]

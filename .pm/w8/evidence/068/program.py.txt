@@ -1,0 +1,18 @@
+import http.server,os,sys
+TAG='QA139_TEMPLATE'
+seen=set()
+class Handler(http.server.BaseHTTPRequestHandler):
+ def log_message(self,*args):pass
+ def do_GET(self):
+  if self.path=='/':body=TAG+'-ready'
+  elif self.path.startswith('/emit/'):
+   batch=self.path.rsplit('/',1)[-1]
+   if batch not in ('yaml','json'):self.send_error(404);return
+   if batch not in seen:
+    seen.add(batch)
+    print(TAG+'-'+batch+'-A: "雪" [first]',flush=True)
+    print(TAG+'-'+batch+'-B: value=two,three',flush=True)
+   body=TAG+'-'+batch+'-emitted'
+  else:self.send_error(404);return
+  data=body.encode();self.send_response(200);self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
+http.server.ThreadingHTTPServer(('0.0.0.0',int(os.environ.get('PORT','3000'))),Handler).serve_forever()

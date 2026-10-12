@@ -1,0 +1,38 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+package envgroups
+import("context";"encoding/json";"fmt";"os";"testing")
+func TestQA155EmptyLiteralApplyDiagnostic(t *testing.T){
+ type record struct{Case string `json:"case"`; KeyPresent bool `json:"key_present"`; Value string `json:"synthetic_value"`; StableID bool `json:"stable_id"`}
+ var records []record
+ for _,tc:=range []struct{name string;before,after map[string]string}{
+ {"new-empty",nil,map[string]string{"QA_EMPTY":""}},
+ {"existing-add-empty",map[string]string{"QA_EXISTING":"kept"},map[string]string{"QA_EMPTY":""}},
+ {"existing-add-space",map[string]string{"QA_EXISTING":"kept"},map[string]string{"QA_EMPTY":" "}},
+ {"existing-clear",map[string]string{"QA_EMPTY":"before"},map[string]string{"QA_EMPTY":""}},
+ {"existing-empty-noop",map[string]string{"QA_EMPTY":""},map[string]string{"QA_EMPTY":""}},
+ {"existing-mixed-add",map[string]string{"QA_EXISTING":"kept"},map[string]string{"QA_EMPTY":"","QA_OTHER":"added"}},
+ }{
+ st:=newFakeStore();svc:=newService(st);ctx:=context.Background();old:=""
+ if tc.before!=nil{if err:=svc.ApplyEnvGroup(ctx,"qa155-diagnostic",tc.before,nil);err!=nil{t.Fatal(err)};old,_,_,_=svc.findGroupByName(ctx,"qa155-diagnostic")}
+ if err:=svc.ApplyEnvGroup(ctx,"qa155-diagnostic",tc.after,nil);err!=nil{t.Fatal(err)}
+ gid,_,found,err:=svc.findGroupByName(ctx,"qa155-diagnostic");if err!=nil||!found{t.Fatalf("lookup: %v %v",found,err)}
+ got,ok:=st.m[st.key(ctx,envPath(gid))]["QA_EMPTY"];records=append(records,record{tc.name,ok,got,old==""||old==gid})
+ }
+ data,err:=json.MarshalIndent(records,"","  ");if err!=nil{t.Fatal(err)}
+ if err:=os.WriteFile("<QA_TMP>/sweep155-empty-apply-probe.json",append(data,'\n'),0600);err!=nil{t.Fatal(err)}
+ fmt.Println(string(data))
+}

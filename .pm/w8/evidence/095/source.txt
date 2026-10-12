@@ -1,0 +1,281 @@
+lego/backend/internal/envgroups/service.go
+557: // prepareCreateEnv validates and resolves Render's literal-or-generated input
+558: // before CreateEnvGroup mints an id. Duplicate keys follow the existing
+559: // replace-all semantics: the last declaration wins.
+560: func prepareCreateEnv(vars []CreateEnvVarInput) (map[string]string, error) {
+561: 	env := make(map[string]string, len(vars))
+562: 	for _, input := range vars {
+563: 		key := strings.TrimSpace(input.Key)
+564: 		if err := core.CheckEnvKey(key); err != nil {
+565: 			return nil, err
+566: 		}
+567: 		hasValue := input.ValueSet || input.Value != ""
+568: 		if input.GenerateValue == hasValue {
+569: 			return nil, core.InvalidEnvVarValueInput(key)
+570: 		}
+571: 		value := input.Value
+572: 		if input.GenerateValue {
+573: 			var err error
+574: 			value, err = core.GenerateValue()
+575: 			if err != nil {
+576: 				return nil, err
+577: 			}
+578: 		}
+579: 		env[key] = value
+580: 	}
+581: 	return env, nil
+582: }
+583: 
+584: // prepareCreateFiles validates every filename without ever including its
+585: // content in an error. Duplicate names use the final supplied content.
+586: func prepareCreateFiles(files []SecretFileView) (map[string]string, error) {
+
+lego/backend/internal/envgroups/service.go
+1509: func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[string]string, generates []string) error {
+1510: 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+1511: 		return err
+1512: 	}
+1513: 	if s.Store == nil {
+1514: 		return core.ErrSecretsUnavailable
+1515: 	}
+1516: 	name = strings.TrimSpace(name)
+1517: 	if name == "" {
+1518: 		return fmt.Errorf("%w: env group name is required", core.ErrBadRequest)
+1519: 	}
+1520: 	gid, m, found, err := s.findGroupByName(ctx, name)
+1521: 	if err != nil {
+1522: 		return err
+1523: 	}
+1524: 	if !found {
+1525: 		gid = id.New(id.EnvGroup)
+1526: 		workspace, _ := s.Tenant(ctx) // "" with the store off, matching CreateEnvGroup
+1527: 		if err := s.envGroupQuota(ctx, workspace); err != nil {
+1528: 			return err
+1529: 		}
+1530: 		if err := s.claimGroupName(ctx, workspace, name, gid); err != nil {
+1531: 			return err
+1532: 		}
+1533: 		now := s.now()
+1534: 		m = meta{name: name, workspace: workspace, createdAt: now, updatedAt: now}
+1535: 		inputs := make([]CreateEnvVarInput, 0, len(literals)+len(generates))
+1536: 		for _, key := range core.SortedKeys(literals) {
+1537: 			inputs = append(inputs, CreateEnvVarInput{Key: key, Value: literals[key], ValueSet: true})
+1538: 		}
+1539: 		for _, key := range generates {
+1540: 			inputs = append(inputs, CreateEnvVarInput{Key: key, GenerateValue: true})
+1541: 		}
+1542: 		env, prepareErr := prepareCreateEnv(inputs)
+1543: 		if prepareErr != nil {
+1544: 			_ = s.releaseGroupName(context.WithoutCancel(ctx), workspace, name, gid)
+1545: 			return prepareErr
+1546: 		}
+1547: 		// No services to link on a Blueprint-minted group, so nothing can be
+1548: 		// auto-deploy-gated here.
+1549: 		if _, err := s.persistCreate(ctx, gid, m, env, map[string]string{}, nil); err != nil {
+1550: 			return errors.Join(err, s.releaseGroupName(context.WithoutCancel(ctx), workspace, name, gid))
+1551: 		}
+1552: 		return nil
+1553: 	}
+1554: 	env, err := s.getGroupMap(ctx, m.workspace, envPath(gid))
+1555: 	if err != nil {
+1556: 		return err
+1557: 	}
+1558: 	writes := make([]EnvVarPatch, 0, len(literals)+len(generates))
+1559: 	for _, key := range core.SortedKeys(literals) {
+1560: 		if err := core.CheckEnvKey(key); err != nil {
+1561: 			return err
+1562: 		}
+1563: 		if env[key] != literals[key] {
+1564: 			writes = append(writes, EnvVarPatch{Key: key, Value: literals[key], ValueSet: true})
+1565: 		}
+1566: 	}
+1567: 	for _, key := range generates {
+1568: 		if err := core.CheckEnvKey(key); err != nil {
+1569: 			return err
+1570: 		}
+1571: 		if _, ok := env[key]; ok {
+1572: 			continue // generate-once: an existing value persists across syncs
+1573: 		}
+1574: 		writes = append(writes, EnvVarPatch{Key: key, GenerateValue: true})
+1575: 	}
+1576: 	if len(writes) == 0 {
+1577: 		return nil
+1578: 	}
+1579: 	if m, err = s.migrateGroupLinks(ctx, gid, m); err != nil {
+1580: 		return err
+1581: 	}
+1582: 	_, err = s.patchEnvironmentAuthorized(ctx, gid, m, EnvironmentPatch{EnvVars: writes, SaveMode: SaveModeDeploy})
+1583: 	return err
+1584: }
+1585: 
+1586: // LinkEnvGroup links the named group to a service for the blueprint apply path
+1587: // (w1/m35's `fromGroup`). Unknown group name is an error (the apply pre-flights
+1588: // existence, but this guards the direct call too) — findGroupByName's workspace
+1589: // scoping (w6/m24) means a same-named group in another workspace reports as
+1590: // unknown here, not linked. Idempotent: an already-linked service is not
+1591: // re-patched, so a stack re-apply neither churns the spec nor rolls the pod.
+
+lego/backend/internal/apps/deploy.go
+834: func (s *Service) applyStackEnvGroups(ctx context.Context, envGroups []parsedEnvGroup, assignments map[string]core.EnvironmentAssignment, res *StackResult) error {
+835: 	if len(envGroups) == 0 {
+836: 		return nil // nothing declared — and the EnvGroups seam may not be wired
+837: 	}
+838: 	for _, g := range envGroups {
+839: 		if err := requireDeployAuthority(ctx, s); err != nil {
+840: 			return err
+841: 		}
+842: 		if err := s.EnvGroups.ApplyEnvGroup(ctx, g.name, g.literals, g.generates); err != nil {
+843: 			return fmt.Errorf("env group %q: %w", g.name, err)
+844: 		}
+845: 		if g.grouping != "" {
+846: 			if assignment := assignments[g.grouping]; assignment.ID != "" {
+847: 				if err := requireDeployAuthority(ctx, s); err != nil {
+848: 					return err
+
+lego/backend/internal/apps/deploy.go
+2136: func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
+2137: 	name := strings.TrimSpace(g.Name)
+2138: 	if name == "" {
+2139: 		return parsedEnvGroup{}, fmt.Errorf("%w: an envVarGroups entry is missing its name", core.ErrBadRequest)
+2140: 	}
+2141: 	pg := parsedEnvGroup{name: name, literals: map[string]string{}}
+2142: 	for _, e := range g.EnvVars {
+2143: 		if e.Key == "" {
+2144: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q has an env var without a key", core.ErrBadRequest, name)
+2145: 		}
+2146: 		if !core.ValidEnvKey(e.Key) {
+2147: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: invalid environment variable name (%s)",
+2148: 				core.ErrBadRequest, name, e.Key, core.EnvKeyRule)
+2149: 		}
+2150: 		if core.IsReservedEnvKey(e.Key) {
+2151: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: %s",
+2152: 				core.ErrBadRequest, name, e.Key, core.ReservedEnvKeySentence(e.Key))
+2153: 		}
+2154: 		switch {
+2155: 		case e.FromGroup != "", e.FromDatabase != nil, e.FromService != nil:
+2156: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q var %q: a group cannot reference services or other groups", core.ErrBadRequest, name, e.Key)
+2157: 		case e.Sync != nil && !*e.Sync:
+2158: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q var %q: sync:false is not allowed inside an env group", core.ErrBadRequest, name, e.Key)
+2159: 		case e.GenerateValue:
+2160: 			if e.Value != "" {
+2161: 				return parsedEnvGroup{}, fmt.Errorf("%w: env group %q var %q sets both value and generateValue", core.ErrBadRequest, name, e.Key)
+2162: 			}
+2163: 			pg.generates = append(pg.generates, e.Key)
+2164: 		default:
+2165: 			pg.literals[e.Key] = e.Value
+2166: 		}
+2167: 	}
+2168: 	return pg, nil
+2169: }
+2170: 
+
+lego/backend/internal/envgroups/patch.go
+175: 	// Preflight the complete merged maps before claiming the revision. The
+176: 	// claim itself is an OpenBao mutation, so quota failures must not leave a
+177: 	// busy group behind and must be independent of which patch form was used.
+178: 	oldEnv, err := s.getGroupMap(ctx, m.workspace, envPath(gid))
+179: 	if err != nil {
+180: 		return EnvironmentPatchResult{}, err
+181: 	}
+182: 	oldFiles, err := s.getGroupMap(ctx, m.workspace, filesPath(gid))
+183: 	if err != nil {
+184: 		return EnvironmentPatchResult{}, err
+185: 	}
+186: 	env, files := core.CloneStringMap(oldEnv), core.CloneStringMap(oldFiles)
+187: 	if err := core.ApplyEnvVarPatch(env, patch.EnvVars); err != nil {
+188: 		return EnvironmentPatchResult{}, err
+189: 	}
+190: 	if err := core.ApplySecretFilePatch(files, patch.SecretFiles); err != nil {
+191: 		return EnvironmentPatchResult{}, err
+192: 	}
+193: 	// Same rule the service batch patch got in w1/m147: a group already over the
+194: 	// cap can shrink but not grow. Checking the patched map alone refused the
+195: 	// delete-only patch that is the only way back under the cap.
+196: 	if err := secrets.ValidatePatchEnvMapQuota(oldEnv, env); err != nil {
+197: 		return EnvironmentPatchResult{}, err
+198: 	}
+199: 	if err := secrets.ValidatePatchFilesMapQuota(oldFiles, files); err != nil {
+200: 		return EnvironmentPatchResult{}, err
+201: 	}
+202: 	changedEnv := !maps.Equal(oldEnv, env)
+203: 	changedFiles := !maps.Equal(oldFiles, files)
+204: 
+205: 	// Persist recovery evidence before the busy claim (w4/m98).
+206: 	opID, err := s.preparePatchOperation(ctx, m.workspace, gid, generation, oldEnv, oldFiles, env, files, changedEnv, changedFiles)
+207: 	if err != nil {
+208: 		return EnvironmentPatchResult{}, core.ErrSecretsUnavailable
+
+lego/backend/internal/core/environmentpatch.go
+72: // ApplyEnvVarPatch applies validated sparse operations to env in request
+73: // order. The caller owns transactionality; this helper owns the shared
+74: // secrecy-preserving rename/delete/generation semantics.
+75: func ApplyEnvVarPatch(env map[string]string, writes []EnvVarPatch) error {
+76: 	ops := make([]mapPatchOp, len(writes))
+77: 	for i, write := range writes {
+78: 		write := write
+79: 		hasValue := write.ValueSet || write.Value != ""
+80: 		ops[i] = mapPatchOp{
+81: 			key:        write.Key,
+82: 			fromKey:    write.FromKey,
+83: 			remove:     write.Delete,
+84: 			hasPayload: write.GenerateValue || hasValue,
+85: 			value: func(key string) (string, error) {
+86: 				if write.GenerateValue == hasValue {
+87: 					return "", InvalidEnvVarValueInput(key)
+88: 				}
+89: 				if write.GenerateValue {
+90: 					return GenerateValue()
+91: 				}
+92: 				return write.Value, nil
+93: 			},
+94: 		}
+95: 	}
+96: 	return applyMapPatch(env, ops, mapPatchWording{
+97: 		key:             envVarKey,
+98: 		renameConflicts: "delete, value, or generateValue",
+99: 		deleteConflicts: "a value or generateValue",
+
+lego/backend/internal/apps/blueprint.go
+1078: 		if err := s.Blueprints.SetBlueprintSyncNote(ctx, run.ID, takeoverNote); err != nil {
+1079: 			// The connection is real either way; an unrecorded note is worth a
+1080: 			// line in the log, not a failed create.
+1081: 			log.Printf("blueprint %s: recording the reconnection note: %v", b.ID, err)
+1082: 		}
+1083: 	}
+1084: 
+1085: 	prepareReq.Confirm = req.Confirm
+1086: 	prepareReq.BlueprintID = b.ID
+1087: 	prepareReq.BlueprintGeneration = b.ExecutionGeneration
+1088: 	prepareReq.BlueprintRunID = run.ID
+1089: 	// The apply reads the workspace again: admission serializes this
+1090: 	// Blueprint's applies, and one admitted before it may have created a
+1091: 	// resource since the plan read them.
+1092: 	snap := s.newWorkspaceSnapshot(ctx)
+1093: 	_, applyErr := s.deployParsedStack(ctx, prepareReq, parsed, snap)
+1094: 
+1095: 	b, cerr := s.completeAdmittedSync(ctx, b, run, applyErr, "create")
+1096: 	if cerr != nil {
+1097: 		return BlueprintView{}, cerr
+1098: 	}
+1099: 	// The apply succeeded, so its last write, the ownership stamp, left snap
+1100: 	// as the apply left the workspace.
+
+lego/backend/internal/apps/blueprint.go
+1415: 	var stack StackResult
+1416: 	if applyErr == nil {
+1417: 		var detached []blueprintDetachment
+1418: 		if detached, err = s.blueprintDetachments(ctx, b.TenantID, b.ID, *prepared, func() (*blueprintActionResolver, error) {
+1419: 			return newBlueprintActionResolver(ctx, s, parsedStack{}, snap)
+1420: 		}); err != nil {
+1421: 			return settleStage(err)
+1422: 		}
+1423: 		baseline = make([]BlueprintResource, 0, len(detached))
+1424: 		for _, resource := range detached {
+1425: 			baseline = append(baseline, resource.BlueprintResource)
+1426: 		}
+1427: 		stack, applyErr = s.deployParsedStack(ctx, deployReq, *prepared, snap)
+1428: 	}
+1429: 
+1430: 	b, cerr := s.completeAdmittedSync(ctx, b, run, applyErr, "sync")
+1431: 	if cerr != nil {
+1432: 		return SyncBlueprintResult{}, cerr

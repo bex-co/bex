@@ -1,0 +1,454 @@
+[
+  {
+    "label": "copy-web",
+    "document": {
+      "services": [
+        {
+          "name": "qa173-4b9e73-source",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_SOURCE",
+              "value": "source-173"
+            }
+          ]
+        },
+        {
+          "name": "qa173-4b9e73-target",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_TARGET",
+              "fromService": {
+                "type": "web",
+                "name": "qa173-4b9e73-source",
+                "envVarKey": "QA_SOURCE"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "label": "port-web",
+    "document": {
+      "services": [
+        {
+          "name": "qa173-4b9e73-source",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_SOURCE",
+              "value": "source-173"
+            }
+          ]
+        },
+        {
+          "name": "qa173-4b9e73-target",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_TARGET",
+              "fromService": {
+                "type": "web",
+                "name": "qa173-4b9e73-source",
+                "property": "port"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "label": "copy-pserv",
+    "document": {
+      "services": [
+        {
+          "name": "qa173-4b9e73-source",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_SOURCE",
+              "value": "source-173"
+            }
+          ]
+        },
+        {
+          "name": "qa173-4b9e73-target",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_TARGET",
+              "fromService": {
+                "type": "pserv",
+                "name": "qa173-4b9e73-source",
+                "envVarKey": "QA_SOURCE"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "label": "port-pserv",
+    "document": {
+      "services": [
+        {
+          "name": "qa173-4b9e73-source",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_SOURCE",
+              "value": "source-173"
+            }
+          ]
+        },
+        {
+          "name": "qa173-4b9e73-target",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_TARGET",
+              "fromService": {
+                "type": "pserv",
+                "name": "qa173-4b9e73-source",
+                "property": "port"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "label": "copy-worker",
+    "document": {
+      "services": [
+        {
+          "name": "qa173-4b9e73-source",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_SOURCE",
+              "value": "source-173"
+            }
+          ]
+        },
+        {
+          "name": "qa173-4b9e73-target",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_TARGET",
+              "fromService": {
+                "type": "worker",
+                "name": "qa173-4b9e73-source",
+                "envVarKey": "QA_SOURCE"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "label": "port-worker",
+    "document": {
+      "services": [
+        {
+          "name": "qa173-4b9e73-source",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_SOURCE",
+              "value": "source-173"
+            }
+          ]
+        },
+        {
+          "name": "qa173-4b9e73-target",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_TARGET",
+              "fromService": {
+                "type": "worker",
+                "name": "qa173-4b9e73-source",
+                "property": "port"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "label": "copy-cron",
+    "document": {
+      "services": [
+        {
+          "name": "qa173-4b9e73-source",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_SOURCE",
+              "value": "source-173"
+            }
+          ]
+        },
+        {
+          "name": "qa173-4b9e73-target",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_TARGET",
+              "fromService": {
+                "type": "cron",
+                "name": "qa173-4b9e73-source",
+                "envVarKey": "QA_SOURCE"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "label": "port-cron",
+    "document": {
+      "services": [
+        {
+          "name": "qa173-4b9e73-source",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_SOURCE",
+              "value": "source-173"
+            }
+          ]
+        },
+        {
+          "name": "qa173-4b9e73-target",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_TARGET",
+              "fromService": {
+                "type": "cron",
+                "name": "qa173-4b9e73-source",
+                "property": "port"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "label": "copy-matching-cron",
+    "document": {
+      "services": [
+        {
+          "name": "qa173-4b9e73-source",
+          "type": "cron",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_SOURCE",
+              "value": "source-173"
+            }
+          ],
+          "schedule": "0 0 1 1 *"
+        },
+        {
+          "name": "qa173-4b9e73-target",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_TARGET",
+              "fromService": {
+                "name": "qa173-4b9e73-source",
+                "type": "cron",
+                "envVarKey": "QA_SOURCE"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "label": "copy-matching-worker-plan-control",
+    "document": {
+      "services": [
+        {
+          "name": "qa173-4b9e73-source",
+          "type": "worker",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "starter",
+          "envVars": [
+            {
+              "key": "QA_SOURCE",
+              "value": "source-173"
+            }
+          ]
+        },
+        {
+          "name": "qa173-4b9e73-target",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_TARGET",
+              "fromService": {
+                "name": "qa173-4b9e73-source",
+                "type": "worker",
+                "envVarKey": "QA_SOURCE"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "label": "copy-worker-target-misdeclared-web-plan-control",
+    "document": {
+      "services": [
+        {
+          "name": "qa173-4b9e73-source",
+          "type": "worker",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "starter",
+          "envVars": [
+            {
+              "key": "QA_SOURCE",
+              "value": "source-173"
+            }
+          ]
+        },
+        {
+          "name": "qa173-4b9e73-target",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_TARGET",
+              "fromService": {
+                "name": "qa173-4b9e73-source",
+                "type": "web",
+                "envVarKey": "QA_SOURCE"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

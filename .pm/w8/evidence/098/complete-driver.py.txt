@@ -1,0 +1,19 @@
+import datetime,json,pathlib,secrets,shutil,subprocess,sys
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('<REPO>/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());client=sys.argv[1];assert client in ('bex','render');cfg=p/'render-config/cli.yaml';assert not cfg.exists();key='sweep175_keyvalue_env_refs'
+if key not in c:
+ assert client=='bex' and c['sync175_result']==0;nonce=secrets.token_hex(3);c[key]={'sweep':175,'source_head':c['head'],'nonce':nonce,'mutation':'Blueprint validation only; no Key Value or workload created','results':[],'question':'Does validation reject a Key Value envVarKey reference that its actual apply resolver cannot resolve?'}
+x=c[key];assert not any(z['client']==client and z['label'].endswith('-complete') for z in x['results'])
+def save():
+ c['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(c,indent=2)+'\n');cp.chmod(0o600);f=p/'sweep175-keyvalue-env-refs.json';f.write_text(json.dumps(x,indent=2)+'\n');f.chmod(0o600)
+save()
+if client=='render':shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+try:
+ a='qa175-'+x['nonce']+'-source';b='qa175-'+x['nonce']+'-target'
+ cases=[('kv-env-key','keyvalue',{'envVarKey':'QA_UNDECLARED'},False),('redis-env-key','redis',{'envVarKey':'QA_UNDECLARED'},False),('kv-missing-property','keyvalue',{},False),('kv-host','keyvalue',{'property':'host'},True),('kv-port','keyvalue',{'property':'port'},True),('kv-connection','keyvalue',{'property':'connectionString'},True),('kv-hostport','keyvalue',{'property':'hostport'},False),('kv-both','keyvalue',{'envVarKey':'QA_UNDECLARED','property':'host'},False)]
+ for label,typ,fields,expected in cases:
+  label+='-complete';source={'name':a,'type':typ,'plan':'free','ipAllowList':[]}
+  if typ=='web':source.update(runtime='image',image={'url':'nginx:1'},envVars=[{'key':'QA_SOURCE','value':'source-175'}])
+  doc={'services':[source,{'name':b,'type':'web','runtime':'image','image':{'url':'nginx:1'},'plan':'free','envVars':[{'key':'QA_TARGET','fromService':{'type':typ,'name':a,**fields}}]}]};f=p/('sweep175-'+label+'.yaml');f.write_text(json.dumps(doc,indent=2)+'\n');f.chmod(0o600);args=['blueprints','validate',str(f),'--confirm','-o','json'];z={'client':client,'label':label,'expected_valid_hypothesis':expected,'document':doc,'intent':[client,*args],'state':'validation intent persisted'};x['results'].append(z);save();r=json.loads(subprocess.check_output(['python3',str(p/('run.py' if client=='bex' else 'run-render.py')),*([] if client=='render' else ['--release']),*args],text=True));z['result']=r;z['decoded']=json.loads(r['stdout']) if r['stdout'] else None;z['consumer_consistent']=z['decoded'] is not None and r['exit']==(0 if z['decoded']['valid'] else 1) and not r['stderr'];save();print(json.dumps({'client':client,'label':label,'valid':z['decoded'].get('valid') if z['decoded'] else None,'exit':r['exit'],'elapsed':r['elapsed'],'errors':z['decoded'].get('errors') if z['decoded'] else None,'consistent':z['consumer_consistent']}),flush=True)
+finally:
+ if client=='render':cfg.unlink(missing_ok=True);x['copied_render_config_removed']=True
+ save()

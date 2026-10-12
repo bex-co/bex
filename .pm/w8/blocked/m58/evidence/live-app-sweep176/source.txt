@@ -1,0 +1,219 @@
+Source HEAD: 45339ad77a522fbf167b26da8afae3f6872a8afb
+
+lego/backend/internal/logs/service.go:333
+333: 	terms := make([]string, 0, len(values))
+334: 	for _, term := range values {
+335: 		if term != "" {
+336: 			terms = append(terms, strings.ToLower(term))
+337: 		}
+338: 	}
+339: 	slices.Sort(terms)
+340: 	return slices.Compact(terms)
+341: }
+
+lego/backend/internal/logs/service.go:482
+482: // matchesText reports whether message contains any normalized Search term, in
+483: // the query's TextMode. No terms matches everything.
+484: func (q LogQuery) matchesText(message string) bool {
+485: 	if len(q.Search) == 0 {
+486: 		return true
+487: 	}
+488: 	if q.TextMode == TextModeDisplay {
+489: 		message = displayText(message)
+490: 	}
+491: 	message = strings.ToLower(message)
+492: 	return slices.ContainsFunc(q.Search, func(term string) bool { return strings.Contains(message, term) })
+493: }
+494: 
+495: // keep reports whether an entry satisfies the search/time/level filters. Assumes
+496: // normalized() has run.
+497: func (q LogQuery) keep(e LogEntry) bool {
+498: 	if q.levelFilter != nil && !q.levelFilter.MatchString(e.Labels[LabelLevel]) {
+499: 		return false
+500: 	}
+501: 	if !q.matchesText(e.Message) {
+502: 		return false
+503: 	}
+504: 	if !q.Since.IsZero() || !q.End.IsZero() {
+505: 		if t, err := time.Parse(time.RFC3339Nano, e.Timestamp); err == nil {
+506: 			if !q.Since.IsZero() && t.Before(q.Since) {
+507: 				return false
+508: 			}
+509: 			if !q.End.IsZero() && t.After(q.End) {
+510: 				return false
+511: 			}
+
+lego/backend/internal/logs/render.go:130
+130: // lines, applies the limit as a total, and resolves the paging cursors.
+131: //
+132: // A durable-history scan that ran out of time (*ScanIncompleteError) is not an
+133: // error here: its covered part is a valid page, and hasMore with the cursor at
+134: // the coverage edge lets the caller page on into the rest of the window
+135: // instead of a week-long search dying at the HTTP write deadline (w4/m140).
+136: // Across several resources, the least-covered one bounds the page, and lines
+137: // beyond that edge are dropped so the next page does not repeat them.
+138: func (s *Service) queryLogPage(ctx context.Context, resources []string, q LogQuery) (logPage, error) {
+139: 	n := q.normalized()
+140: 	forward := n.Direction == DirectionForward
+141: 	var all []LogEntry
+142: 	var edge *time.Time
+143: 	for _, id := range resources {
+144: 		q.App = id
+145: 		entries, err := s.QueryLogs(ctx, q)
+146: 		var partial *ScanIncompleteError
+147: 		if errors.As(err, &partial) {
+148: 			entries, err = partial.Entries, nil
+149: 			if to := partial.ScannedTo; edge == nil || (forward && to.Before(*edge)) || (!forward && to.After(*edge)) {
+150: 				edge = &to
+151: 			}
+152: 		}
+153: 		if err != nil {
+154: 			return logPage{}, err
+155: 		}
+156: 		all = append(all, entries...)
+157: 	}
+158: 	if edge != nil {
+159: 		all = slices.DeleteFunc(all, func(e LogEntry) bool {
+160: 			t, err := time.Parse(time.RFC3339Nano, e.Timestamp)
+161: 			if err != nil {
+162: 				return false
+163: 			}
+164: 			if forward {
+165: 				return !t.Before(*edge)
+166: 			}
+167: 			return t.Before(*edge)
+168: 		})
+169: 	}
+170: 	sort.SliceStable(all, func(i, j int) bool { return core.TimestampLess(all[i].Timestamp, all[j].Timestamp) })
+171: 	all = n.capToLimit(all) // the limit is a total across resources, not per resource
+172: 	page := logPage{Entries: all}
+173: 	page.HasMore, page.NextStartTime, page.NextEndTime = pageCursors(all, n.Limit, n.Since, n.End, n.Direction)
+174: 	if edge != nil && !page.HasMore {
+
+lego/backend/internal/logs/loki.go:68
+68: 			// lands on it (which could re-read the same full page forever).
+69: 			end = end.Add(time.Nanosecond)
+70: 			pageQ.End = time.Time{}
+71: 		}
+72: 		fetch := func(ctx context.Context, from, to time.Time) ([]LogEntry, error) {
+73: 			u := fmt.Sprintf("%s/loki/api/v1/query_range?%s", base, url.Values{
+74: 				"query": {query},
+75: 				"start": {strconv.FormatInt(from.UnixNano(), 10)},
+76: 				"end":   {lokiEndParam(pageQ, to)},
+77: 				"limit": {strconv.FormatInt(pageQ.Limit, 10)},
+78: 				// Render's direction decides which end of the window `limit` keeps:
+79: 				// backward (default) the newest lines, forward the oldest.
+80: 				"direction": {lokiDirection(q)},
+81: 			}.Encode())
+82: 			var lr lokiRangeResponse
+83: 			if err := lokiGet(ctx, hc, u, &lr); err != nil {
+84: 				return nil, err
+85: 			}
+86: 			entries, err := parseLokiStreams(lr, pageQ)
+87: 			if err != nil {
+88: 				return nil, err
+89: 			}
+90: 			if q.localTextSearch() && !q.displaySearch() {
+91: 				entries = slices.DeleteFunc(entries, func(e LogEntry) bool { return !q.matchesText(e.Message) })
+92: 			}
+93: 			return entries, nil
+94: 		}
+95: 		return scanLokiWindow(ctx, q, start, end, lokiScansLines(q), lokiScanBudget, fetch)
+96: 	}
+
+Pinned Render cmd/logs.go:128
+128: func nonInteractiveLogs(logLoader *views.LogLoader, format *command.Output, cmd *cobra.Command, input views.LogInput) error {
+129: 	result, err := logLoader.LoadLogData(cmd.Context(), input)
+130: 	if err != nil {
+131: 		return err
+132: 	}
+133: 
+134: 	if result.Logs != nil {
+135: 		for _, log := range result.Logs.Logs {
+136: 			if err := writeLog(*format, cmd.OutOrStdout(), &log); err != nil {
+137: 				return err
+138: 			}
+139: 		}
+140: 	}
+141: 
+142: 	if result.LogChannel != nil {
+143: 		for {
+144: 			log, ok := <-result.LogChannel
+145: 			if !ok {
+146: 				break
+147: 			}
+
+Pinned Render pkg/tui/views/logloader.go:149
+149: 
+150: 	resourceIDs, err := l.getResourceIDsFromIDOrNames(ctx, in.ResourceIDs)
+151: 	if err != nil {
+152: 		return nil, err
+153: 	}
+154: 
+155: 	return &client.ListLogsParams{
+156: 		Resource:   resourceIDs,
+157: 		OwnerId:    ownerID,
+158: 		Instance:   pointers.FromArray(in.Instance),
+159: 		Limit:      pointers.From(in.Limit),
+160: 		StartTime:  startTime,
+161: 		EndTime:    endTime,
+162: 		Text:       pointers.FromArray(in.Text),
+163: 		Level:      pointers.FromArray(in.Level),
+164: 		Type:       pointers.FromArray(in.Type),
+165: 		Host:       pointers.FromArray(in.Host),
+166: 		StatusCode: pointers.FromArray(in.StatusCode),
+167: 		Method:     pointers.FromArray(in.Method),
+168: 		Path:       pointers.FromArray(in.Path),
+169: 		Direction:  pointers.From(mapDirection(in.Direction)),
+170: 		Task:       pointers.FromArray(in.TaskID),
+171: 		TaskRun:    pointers.FromArray(in.TaskRunID),
+172: 	}, nil
+173: }
+
+Pinned Render pkg/logs/repo.go:26
+26: func (l *LogRepo) ListLogs(ctx context.Context, params *client.ListLogsParams) (*client.Logs200Response, error) {
+27: 	logs, err := l.c.ListLogsWithResponse(ctx, params)
+28: 	if err != nil {
+29: 		return nil, err
+30: 	}
+31: 
+32: 	if err := client.ErrorFromResponse(logs); err != nil {
+33: 		return nil, err
+34: 	}
+35: 
+36: 	return logs.JSON200, nil
+37: }
+38: 
+
+Pinned Render pkg/client/client_gen.go:12743
+12743: 		if params.Text != nil {
+12744: 
+12745: 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "text", *params.Text, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+12746: 				return nil, err
+12747: 			} else {
+12748: 				for _, qp := range strings.Split(queryFrag, "&") {
+12749: 					rawQueryFragments = append(rawQueryFragments, qp)
+12750: 				}
+12751: 			}
+12752: 
+12753: 		}
+
+Pinned Render pkg/tui/logs.go:172
+172: 	case LoadDataMsg[*LogResult]:
+173: 		if msg.Data.Logs != nil {
+174: 			// If loading more logs, append or prepend based on direction
+175: 			if m.isLoadingMore {
+176: 				newContent := formatLogs(msg.Data.Logs.Logs)
+177: 
+178: 				if m.direction == lclient.Backward {
+179: 					// Backward direction: paginated scroll prepends older logs
+180: 					m.content = append(newContent, m.content...)
+181: 					// Set content first so the viewport knows the new valid
+182: 					// range, then adjust the viewport to maintain the current
+183: 					// scroll position. It's fine for SetContent to be called
+184: 					// again outside of this block.
+185: 					m.viewport.SetContent(strings.Join(m.content, "\n"))
+186: 					m.viewport.SetYOffset(m.viewport.YOffset + len(newContent))
+187: 				} else {
+188: 					// Forward direction: paginated scroll appends newer logs
+189: 					m.content = append(m.content, newContent...)

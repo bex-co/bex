@@ -1,0 +1,107 @@
+[
+  {
+    "symbol": "CompileBlueprintIR",
+    "file": "lego/backend/internal/apps/blueprint.go",
+    "line": 657,
+    "function": "func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexYAML, blueprintID string) (BlueprintValidation, error) {",
+    "source": "source, ir, problems := CompileBlueprintIR(bexYAML)"
+  },
+  {
+    "symbol": "parseCompiledStack",
+    "file": "lego/backend/internal/apps/blueprint.go",
+    "line": 661,
+    "function": "func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexYAML, blueprintID string) (BlueprintValidation, error) {",
+    "source": "st, err := parseCompiledStack(blueprintParseOverrides{repo: repo, branch: branch}, source, ir)"
+  },
+  {
+    "symbol": "compileStack",
+    "file": "lego/backend/internal/apps/blueprint.go",
+    "line": 1034,
+    "function": "func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req CreateBlueprintRequest) (BlueprintView, error) {",
+    "source": "parsed, ir, parseErr := compileStack(prepareReq)"
+  },
+  {
+    "symbol": "compileStack",
+    "file": "lego/backend/internal/apps/blueprint.go",
+    "line": 1225,
+    "function": "func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, run store.BlueprintSync, manifest string, snap *workspaceSnapshot) (store.Blueprint, *parsedStack, error) {",
+    "source": "parsed, ir, err := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: manifest})"
+  },
+  {
+    "symbol": "compileStack",
+    "file": "lego/backend/internal/apps/blueprint.go",
+    "line": 1407,
+    "function": "func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confirm string, reviewed *ReviewedBlueprintSource) (SyncBlueprintResult, error) {",
+    "source": "parsed, ir, err := compileStack(deployReq)"
+  },
+  {
+    "symbol": "CompileBlueprintIR",
+    "file": "lego/backend/internal/apps/blueprint.go",
+    "line": 1602,
+    "function": "func (s *Service) reclaimBlueprintGroupings(ctx context.Context, tenantID, manifest string) error {",
+    "source": "source, ir, problems := CompileBlueprintIR(manifest)"
+  },
+  {
+    "symbol": "parseCompiledStack",
+    "file": "lego/backend/internal/apps/blueprint.go",
+    "line": 1607,
+    "function": "func (s *Service) reclaimBlueprintGroupings(ctx context.Context, tenantID, manifest string) error {",
+    "source": "st, err := parseCompiledStack(blueprintParseOverrides{}, source, ir)"
+  },
+  {
+    "symbol": "CompileBlueprintIR",
+    "file": "lego/backend/internal/apps/blueprint.go",
+    "line": 1758,
+    "function": "func (s *Service) resolveBlueprintResources(ctx context.Context, b store.Blueprint) []BlueprintResource {",
+    "source": "_, ir, problems := CompileBlueprintIR(b.Manifest)"
+  },
+  {
+    "symbol": "CompileBlueprintIR",
+    "file": "lego/backend/internal/apps/blueprint_generate.go",
+    "line": 236,
+    "function": "func (s *Service) GenerateBlueprint(ctx context.Context, req GenerateBlueprintRequest) (GenerateBlueprintResult, error) {",
+    "source": "source, ir, problems := CompileBlueprintIR(manifest)"
+  },
+  {
+    "symbol": "parseCompiledStack",
+    "file": "lego/backend/internal/apps/blueprint_generate.go",
+    "line": 240,
+    "function": "func (s *Service) GenerateBlueprint(ctx context.Context, req GenerateBlueprintRequest) (GenerateBlueprintResult, error) {",
+    "source": "if _, err := parseCompiledStack(blueprintParseOverrides{}, source, ir); err != nil {"
+  },
+  {
+    "symbol": "compileStack",
+    "file": "lego/backend/internal/apps/deploy.go",
+    "line": 663,
+    "function": "func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResult, error) {",
+    "source": "st, ir, err := compileStack(req)"
+  },
+  {
+    "symbol": "compileStack",
+    "file": "lego/backend/internal/apps/deploy.go",
+    "line": 1675,
+    "function": "func parseStack(req DeployRequest) (parsedStack, error) {",
+    "source": "st, _, err := compileStack(req)"
+  },
+  {
+    "symbol": "CompileBlueprintIR",
+    "file": "lego/backend/internal/apps/deploy.go",
+    "line": 1683,
+    "function": "func compileStack(req DeployRequest) (parsedStack, BlueprintIR, error) {",
+    "source": "source, ir, problems := CompileBlueprintIR(req.Manifest)"
+  },
+  {
+    "symbol": "parseCompiledStack",
+    "file": "lego/backend/internal/apps/deploy.go",
+    "line": 1687,
+    "function": "func compileStack(req DeployRequest) (parsedStack, BlueprintIR, error) {",
+    "source": "st, err := parseCompiledStack(blueprintParseOverrides{repo: req.Repo, branch: req.Branch, envVarValues: req.EnvVarValues}, source, ir)"
+  },
+  {
+    "symbol": "parseService",
+    "file": "lego/backend/internal/apps/deploy.go",
+    "line": 1895,
+    "function": "func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSource, ir BlueprintIR) (parsedStack, error) {",
+    "source": "req, se, err := parseService(overrides, a.value)"
+  }
+]

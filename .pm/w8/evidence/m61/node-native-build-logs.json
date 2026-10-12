@@ -1,0 +1,2325 @@
+{
+  "native": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db63a3dqamec73fj0s8g",
+      "--type",
+      "build",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.87,
+    "stdout": "{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:06.218366061Z-56ca2e55\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#3 DONE 0.5s\",\n  \"timestamp\": \"2026-10-12T01:20:06.218366061Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:06.464913846Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-12T01:20:06.464913846Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:06.464967126Z-401920c7\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#4 [internal] load metadata for docker.io/library/node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0\",\n  \"timestamp\": \"2026-10-12T01:20:06.464967126Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.215194241Z-ebeb1268\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#4 DONE 0.9s\",\n  \"timestamp\": \"2026-10-12T01:20:07.215194241Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.316091396Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-12T01:20:07.316091396Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.316155907Z-8a027014\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#5 [internal] load .dockerignore\",\n  \"timestamp\": \"2026-10-12T01:20:07.316155907Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.316163251Z-f3a8c0b1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#5 transferring context: 2B done\",\n  \"timestamp\": \"2026-10-12T01:20:07.316163251Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.316169162Z-283c8272\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#5 DONE 0.0s\",\n  \"timestamp\": \"2026-10-12T01:20:07.316169162Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.316174652Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-12T01:20:07.316174652Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.316180673Z-c06f4262\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#6 [internal] load build context\",\n  \"timestamp\": \"2026-10-12T01:20:07.316180673Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.316187055Z-d57daf6b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#6 DONE 0.0s\",\n  \"timestamp\": \"2026-10-12T01:20:07.316187055Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.316192235Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-12T01:20:07.316192235Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.316198647Z-6da1907f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 [stage-0 1/5] FROM docker.io/library/node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0\",\n  \"timestamp\": \"2026-10-12T01:20:07.316198647Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.425223565Z-418ceca1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 ...\",\n  \"timestamp\": \"2026-10-12T01:20:07.425223565Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.425263169Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-12T01:20:07.425263169Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.42526903Z-53cdba9f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 [internal] preparing inline document\",\n  \"timestamp\": \"2026-10-12T01:20:07.42526903Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.425273829Z-15036ed4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 DONE 0.1s\",\n  \"timestamp\": \"2026-10-12T01:20:07.425273829Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.425277586Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-12T01:20:07.425277586Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.425282705Z-c06f4262\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#6 [internal] load build context\",\n  \"timestamp\": \"2026-10-12T01:20:07.425282705Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.425287134Z-001ebcd8\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#6 transferring context: 2.17kB 0.0s done\",\n  \"timestamp\": \"2026-10-12T01:20:07.425287134Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.425291312Z-dd7ffa9a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#6 DONE 0.1s\",\n  \"timestamp\": \"2026-10-12T01:20:07.425291312Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.425295569Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-12T01:20:07.425295569Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.425300338Z-6da1907f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 [stage-0 1/5] FROM docker.io/library/node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0\",\n  \"timestamp\": \"2026-10-12T01:20:07.425300338Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.425304907Z-a30eae5a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 resolve docker.io/library/node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0 0.0s done\",\n  \"timestamp\": \"2026-10-12T01:20:07.425304907Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.647665528Z-875aad42\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:ff3af2d57dad62b99528bcd9ec88451cc1063d1dc82ec836d8ea8eae45882127 1.25MB / 1.25MB 0.1s done\",\n  \"timestamp\": \"2026-10-12T01:20:07.647665528Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.79900969Z-90cb9ebe\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:c0724ad5cdeb9a82f251b26c18da30fbc3c37b67ed5e22f6c6236bcd5db58ce0 448B / 448B 0.2s done\",\n  \"timestamp\": \"2026-10-12T01:20:07.79900969Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.799059795Z-dd3fa7d5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:fe9402ec4126302563df7c2e402c32285eec80ad6df87e8eb05cb2b18ba5e8cb 0B / 59.82MB 0.2s\",\n  \"timestamp\": \"2026-10-12T01:20:07.799059795Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.799064303Z-6386e2df\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:eb338db91b24383f8c9a8e78b22989ba9684aeb3f3fd09a8122b4dae6643c8c4 0B / 3.32kB 0.2s\",\n  \"timestamp\": \"2026-10-12T01:20:07.799064303Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.799068451Z-098b32fc\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 0B / 211.71MB 0.2s\",\n  \"timestamp\": \"2026-10-12T01:20:07.799068451Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.952501197Z-6a5b261e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:eb338db91b24383f8c9a8e78b22989ba9684aeb3f3fd09a8122b4dae6643c8c4 3.32kB / 3.32kB 0.4s done\",\n  \"timestamp\": \"2026-10-12T01:20:07.952501197Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.952570276Z-88789b44\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:c6c71fff0869aa9bd48cf80d66e30b83adc9a3fe5e77dd9aaf266282c6ec64ff 0B / 66.72MB 0.2s\",\n  \"timestamp\": \"2026-10-12T01:20:07.952570276Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.099929436Z-c2cffd93\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:fe9402ec4126302563df7c2e402c32285eec80ad6df87e8eb05cb2b18ba5e8cb 23.07MB / 59.82MB 0.5s\",\n  \"timestamp\": \"2026-10-12T01:20:08.099929436Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.099986573Z-2ad217f8\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 30.41MB / 211.71MB 0.5s\",\n  \"timestamp\": \"2026-10-12T01:20:08.099986573Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.099991642Z-06cde1e4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:c6c71fff0869aa9bd48cf80d66e30b83adc9a3fe5e77dd9aaf266282c6ec64ff 23.07MB / 66.72MB 0.3s\",\n  \"timestamp\": \"2026-10-12T01:20:08.099991642Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.099997092Z-6ee2b3e0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:a4edf9c328e814bd91b20c8e2211065489ebf15a16c7663d68a880660dfc897d 0B / 23.87MB 0.2s\",\n  \"timestamp\": \"2026-10-12T01:20:08.099997092Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.201221811Z-f5b57d93\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:fe9402ec4126302563df7c2e402c32285eec80ad6df87e8eb05cb2b18ba5e8cb 47.19MB / 59.82MB 0.6s\",\n  \"timestamp\": \"2026-10-12T01:20:08.201221811Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.201251737Z-8db97158\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:a4edf9c328e814bd91b20c8e2211065489ebf15a16c7663d68a880660dfc897d 16.78MB / 23.87MB 0.3s\",\n  \"timestamp\": \"2026-10-12T01:20:08.201251737Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.349253059Z-adba6ebe\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:fe9402ec4126302563df7c2e402c32285eec80ad6df87e8eb05cb2b18ba5e8cb 59.82MB / 59.82MB 0.8s\",\n  \"timestamp\": \"2026-10-12T01:20:08.349253059Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.349295189Z-7bbcb752\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 54.53MB / 211.71MB 0.6s\",\n  \"timestamp\": \"2026-10-12T01:20:08.349295189Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.349299446Z-fee866ce\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:c6c71fff0869aa9bd48cf80d66e30b83adc9a3fe5e77dd9aaf266282c6ec64ff 66.72MB / 66.72MB 0.6s\",\n  \"timestamp\": \"2026-10-12T01:20:08.349299446Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.546168569Z-687bdca9\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:fe9402ec4126302563df7c2e402c32285eec80ad6df87e8eb05cb2b18ba5e8cb 59.82MB / 59.82MB 0.9s done\",\n  \"timestamp\": \"2026-10-12T01:20:08.546168569Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.546213444Z-9712c24f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 85.98MB / 211.71MB 0.8s\",\n  \"timestamp\": \"2026-10-12T01:20:08.546213444Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.54621694Z-cd2f5b59\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:c6c71fff0869aa9bd48cf80d66e30b83adc9a3fe5e77dd9aaf266282c6ec64ff 66.72MB / 66.72MB 0.7s done\",\n  \"timestamp\": \"2026-10-12T01:20:08.54621694Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.546220086Z-a9e16e73\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:a4edf9c328e814bd91b20c8e2211065489ebf15a16c7663d68a880660dfc897d 23.87MB / 23.87MB 0.4s done\",\n  \"timestamp\": \"2026-10-12T01:20:08.546220086Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.546223964Z-1bc1643b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:8cb71386cfcfc55b27b559f73c6d5c0cdcb93b83be8281314116e271cc42cea6 6.29MB / 48.52MB 0.2s\",\n  \"timestamp\": \"2026-10-12T01:20:08.546223964Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.695825394Z-3c64467d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 117.44MB / 211.71MB 0.9s\",\n  \"timestamp\": \"2026-10-12T01:20:08.695825394Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.69588199Z-1a800f2d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:8cb71386cfcfc55b27b559f73c6d5c0cdcb93b83be8281314116e271cc42cea6 33.55MB / 48.52MB 0.3s\",\n  \"timestamp\": \"2026-10-12T01:20:08.69588199Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.839426425Z-91398343\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 146.21MB / 211.71MB 1.1s\",\n  \"timestamp\": \"2026-10-12T01:20:08.839426425Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.839464926Z-7820c72d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:8cb71386cfcfc55b27b559f73c6d5c0cdcb93b83be8281314116e271cc42cea6 48.52MB / 48.52MB 0.4s done\",\n  \"timestamp\": \"2026-10-12T01:20:08.839464926Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.998318565Z-f04f73d1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 208.67MB / 211.71MB 1.4s\",\n  \"timestamp\": \"2026-10-12T01:20:08.998318565Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.998343703Z-474d9b0c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 extracting sha256:8cb71386cfcfc55b27b559f73c6d5c0cdcb93b83be8281314116e271cc42cea6\",\n  \"timestamp\": \"2026-10-12T01:20:08.998343703Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:09.335916981Z-77c3a9ab\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 211.71MB / 211.71MB 1.5s done\",\n  \"timestamp\": \"2026-10-12T01:20:09.335916981Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:10.435534239Z-6284e22c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 extracting sha256:8cb71386cfcfc55b27b559f73c6d5c0cdcb93b83be8281314116e271cc42cea6 1.6s done\",\n  \"timestamp\": \"2026-10-12T01:20:10.435534239Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:10.435564757Z-0238a7ae\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 DONE 3.1s\",\n  \"timestamp\": \"2026-10-12T01:20:10.435564757Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:10.586200804Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-12T01:20:10.586200804Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:10.586242712Z-6da1907f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 [stage-0 1/5] FROM docker.io/library/node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0\",\n  \"timestamp\": \"2026-10-12T01:20:10.586242712Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:10.586247271Z-4745ddaa\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 extracting sha256:a4edf9c328e814bd91b20c8e2211065489ebf15a16c7663d68a880660dfc897d\",\n  \"timestamp\": \"2026-10-12T01:20:10.586247271Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:11.578483901Z-8fefe03f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 extracting sha256:a4edf9c328e814bd91b20c8e2211065489ebf15a16c7663d68a880660dfc897d 1.1s done\",\n  \"timestamp\": \"2026-10-12T01:20:11.578483901Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:11.578537481Z-ba37fa27\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 DONE 4.3s\",\n  \"timestamp\": \"2026-10-12T01:20:11.578537481Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:11.729106302Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-12T01:20:11.729106302Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:11.729150576Z-6da1907f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 [stage-0 1/5] FROM docker.io/library/node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0\",\n  \"timestamp\": \"2026-10-12T01:20:11.729150576Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:11.729155325Z-15802acd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 extracting sha256:c6c71fff0869aa9bd48cf80d66e30b83adc9a3fe5e77dd9aaf266282c6ec64ff\",\n  \"timestamp\": \"2026-10-12T01:20:11.729155325Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:14.481050827Z-a1acf0d1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 extracting sha256:c6c71fff0869aa9bd48cf80d66e30b83adc9a3fe5e77dd9aaf266282c6ec64ff 2.9s done\",\n  \"timestamp\": \"2026-10-12T01:20:14.481050827Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:14.481091442Z-841456d5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 DONE 7.2s\",\n  \"timestamp\": \"2026-10-12T01:20:14.481091442Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:14.631489234Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-12T01:20:14.631489234Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:14.631537325Z-6da1907f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 [stage-0 1/5] FROM docker.io/library/node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0\",\n  \"timestamp\": \"2026-10-12T01:20:14.631537325Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:14.631543846Z-f8f787de\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 extracting sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03\",\n  \"timestamp\": \"2026-10-12T01:20:14.631543846Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:21.528804117Z-4054963a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 extracting sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 7.0s done\",\n  \"timestamp\": \"2026-10-12T01:20:21.528804117Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:21.528871113Z-12e2d42f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 DONE 14.2s\",\n  \"timestamp\": \"2026-10-12T01:20:21.528871113Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:21.719226096Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-12T01:20:21.719226096Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:21.719281469Z-6da1907f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 [stage-0 1/5] FROM docker.io/library/node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0\",\n  \"timestamp\": \"2026-10-12T01:20:21.719281469Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:21.719289475Z-edcbf35e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 extracting sha256:eb338db91b24383f8c9a8e78b22989ba9684aeb3f3fd09a8122b4dae6643c8c4 0.0s done\",\n  \"timestamp\": \"2026-10-12T01:20:21.719289475Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:21.719296648Z-e6f598bf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 extracting sha256:fe9402ec4126302563df7c2e402c32285eec80ad6df87e8eb05cb2b18ba5e8cb\",\n  \"timestamp\": \"2026-10-12T01:20:21.719296648Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:23.867174872Z-e8ffa921\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 extracting sha256:fe9402ec4126302563df7c2e402c32285eec80ad6df87e8eb05cb2b18ba5e8cb 2.3s done\",\n  \"timestamp\": \"2026-10-12T01:20:23.867174872Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:23.867216149Z-7f64af72\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 DONE 16.5s\",\n  \"timestamp\": \"2026-10-12T01:20:23.867216149Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:23.980989972Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-12T01:20:23.980989972Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:23.981081634Z-6da1907f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 [stage-0 1/5] FROM docker.io/library/node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0\",\n  \"timestamp\": \"2026-10-12T01:20:23.981081634Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:23.981095029Z-6a3e7aa6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 extracting sha256:ff3af2d57dad62b99528bcd9ec88451cc1063d1dc82ec836d8ea8eae45882127 0.1s done\",\n  \"timestamp\": \"2026-10-12T01:20:23.981095029Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:23.981101311Z-4c96590a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 extracting sha256:c0724ad5cdeb9a82f251b26c18da30fbc3c37b67ed5e22f6c6236bcd5db58ce0 0.0s done\",\n  \"timestamp\": \"2026-10-12T01:20:23.981101311Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:23.981107422Z-8f604b74\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#7 DONE 16.7s\",\n  \"timestamp\": \"2026-10-12T01:20:23.981107422Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.090821933Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-12T01:20:24.090821933Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.090869421Z-2a2406fc\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#9 [stage-0 2/5] WORKDIR /opt/render/project/src\",\n  \"timestamp\": \"2026-10-12T01:20:24.090869421Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.0908747Z-ebbd71e6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#9 DONE 0.0s\",\n  \"timestamp\": \"2026-10-12T01:20:24.0908747Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.090878627Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-12T01:20:24.090878627Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.090883617Z-05323528\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#10 [stage-0 3/5] COPY . .\",\n  \"timestamp\": \"2026-10-12T01:20:24.090883617Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.090887595Z-3a92bf70\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#10 DONE 0.0s\",\n  \"timestamp\": \"2026-10-12T01:20:24.090887595Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.090891231Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-12T01:20:24.090891231Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.09089574Z-842dfcb1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#11 [stage-0 4/5] COPY \\u003c\\u003cBEX_LOAD_ENV /opt/bex/load-env\",\n  \"timestamp\": \"2026-10-12T01:20:24.09089574Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.090900248Z-073270cf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#11 DONE 0.0s\",\n  \"timestamp\": \"2026-10-12T01:20:24.090900248Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.244170119Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-12T01:20:24.244170119Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.244249067Z-5f22c537\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#12 [stage-0 5/5] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\\\"/bin/bash\\\",\\\"-c\\\",\\\". /opt/bex/load-env\\\\n/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\\\"]\",\n  \"timestamp\": \"2026-10-12T01:20:24.244249067Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.24425621Z-de0a64c3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#12 ERROR: process \\\"/bin/bash -c . /opt/bex/load-env\\\\n/usr/local/bin/node -e 'const crypto=require('\\\\\\\"'\\\\\\\"'crypto'\\\\\\\"'\\\\\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\\\\\"'\\\\\\\"''\\\\\\\"'\\\\\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\\\\\"'\\\\\\\"'QA_NOTE'\\\\\\\"'\\\\\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\\\\\"'\\\\\\\"'sha256'\\\\\\\"'\\\\\\\"').update(note).digest('\\\\\\\"'\\\\\\\"'hex'\\\\\\\"'\\\\\\\"')};}\\\\nrequire('\\\\\\\"'\\\\\\\"'fs'\\\\\\\"'\\\\\\\"').writeFileSync('\\\\\\\"'\\\\\\\"'qa-built.json'\\\\\\\"'\\\\\\\"',JSON.stringify({marker:\\\\\\\"QA166_7b8b2e\\\\\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\\\\\"'\\\\\\\"'QA166_USER_BUILD_RAN'\\\\\\\"'\\\\\\\"');'\\\" did not complete successfully: exit code: 1\",\n  \"timestamp\": \"2026-10-12T01:20:24.24425621Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.286533447Z-67c666bb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"------\",\n  \"timestamp\": \"2026-10-12T01:20:24.286533447Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.286581077Z-1d245a01\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \" \\u003e [stage-0 5/5] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\\\"/bin/bash\\\",\\\"-c\\\",\\\". /opt/bex/load-env\\\\n/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\\\"]:\",\n  \"timestamp\": \"2026-10-12T01:20:24.286581077Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.286612015Z-67c666bb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"------\",\n  \"timestamp\": \"2026-10-12T01:20:24.286612015Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.288437584Z-b15bb924\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"error: failed to solve: process \\\"/bin/bash -c . /opt/bex/load-env\\\\n/usr/local/bin/node -e 'const crypto=require('\\\\\\\"'\\\\\\\"'crypto'\\\\\\\"'\\\\\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\\\\\"'\\\\\\\"''\\\\\\\"'\\\\\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\\\\\"'\\\\\\\"'QA_NOTE'\\\\\\\"'\\\\\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\\\\\"'\\\\\\\"'sha256'\\\\\\\"'\\\\\\\"').update(note).digest('\\\\\\\"'\\\\\\\"'hex'\\\\\\\"'\\\\\\\"')};}\\\\nrequire('\\\\\\\"'\\\\\\\"'fs'\\\\\\\"'\\\\\\\"').writeFileSync('\\\\\\\"'\\\\\\\"'qa-built.json'\\\\\\\"'\\\\\\\"',JSON.stringify({marker:\\\\\\\"QA166_7b8b2e\\\\\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\\\\\"'\\\\\\\"'QA166_USER_BUILD_RAN'\\\\\\\"'\\\\\\\"');'\\\" did not complete successfully: exit code: 1\",\n  \"timestamp\": \"2026-10-12T01:20:24.288437584Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-moh6deb3h102t8r307mf-2026-10-12T01:20:34.8758Z-9141219b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-moh6deb3h102t8r307mf\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Build failed: build failed in the docker build step:\",\n  \"timestamp\": \"2026-10-12T01:20:34.8758Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-moh6deb3h102t8r307mf-2026-10-12T01:20:34.8758Z-dde7ffcf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-moh6deb3h102t8r307mf\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e ------\",\n  \"timestamp\": \"2026-10-12T01:20:34.8758Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-moh6deb3h102t8r307mf-2026-10-12T01:20:34.8758Z-fca061ba\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-moh6deb3h102t8r307mf\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e error: build command '/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\",\n  \"timestamp\": \"2026-10-12T01:20:34.8758Z\"\n}{\n  \"id\": \"srv-db63a3dqamec73fj0s8g-moh6deb3h102t8r307mf-2026-10-12T01:20:34.8758Z-bc241675\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db63a3dqamec73fj0s8g-moh6deb3h102t8r307mf\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e require('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'' exited with code 1\",\n  \"timestamp\": \"2026-10-12T01:20:34.8758Z\"\n}",
+    "stderr": ""
+  },
+  "objects": [
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:06.218366061Z-56ca2e55",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#3 DONE 0.5s",
+      "timestamp": "2026-10-12T01:20:06.218366061Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:06.464913846Z-811c9dc5",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "",
+      "timestamp": "2026-10-12T01:20:06.464913846Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:06.464967126Z-401920c7",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#4 [internal] load metadata for docker.io/library/node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
+      "timestamp": "2026-10-12T01:20:06.464967126Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.215194241Z-ebeb1268",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#4 DONE 0.9s",
+      "timestamp": "2026-10-12T01:20:07.215194241Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.316091396Z-811c9dc5",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "",
+      "timestamp": "2026-10-12T01:20:07.316091396Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.316155907Z-8a027014",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#5 [internal] load .dockerignore",
+      "timestamp": "2026-10-12T01:20:07.316155907Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.316163251Z-f3a8c0b1",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#5 transferring context: 2B done",
+      "timestamp": "2026-10-12T01:20:07.316163251Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.316169162Z-283c8272",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#5 DONE 0.0s",
+      "timestamp": "2026-10-12T01:20:07.316169162Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.316174652Z-811c9dc5",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "",
+      "timestamp": "2026-10-12T01:20:07.316174652Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.316180673Z-c06f4262",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#6 [internal] load build context",
+      "timestamp": "2026-10-12T01:20:07.316180673Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.316187055Z-d57daf6b",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#6 DONE 0.0s",
+      "timestamp": "2026-10-12T01:20:07.316187055Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.316192235Z-811c9dc5",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "",
+      "timestamp": "2026-10-12T01:20:07.316192235Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.316198647Z-6da1907f",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 [stage-0 1/5] FROM docker.io/library/node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
+      "timestamp": "2026-10-12T01:20:07.316198647Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.425223565Z-418ceca1",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 ...",
+      "timestamp": "2026-10-12T01:20:07.425223565Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.425263169Z-811c9dc5",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "",
+      "timestamp": "2026-10-12T01:20:07.425263169Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.42526903Z-53cdba9f",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#8 [internal] preparing inline document",
+      "timestamp": "2026-10-12T01:20:07.42526903Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.425273829Z-15036ed4",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#8 DONE 0.1s",
+      "timestamp": "2026-10-12T01:20:07.425273829Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.425277586Z-811c9dc5",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "",
+      "timestamp": "2026-10-12T01:20:07.425277586Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.425282705Z-c06f4262",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#6 [internal] load build context",
+      "timestamp": "2026-10-12T01:20:07.425282705Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.425287134Z-001ebcd8",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#6 transferring context: 2.17kB 0.0s done",
+      "timestamp": "2026-10-12T01:20:07.425287134Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.425291312Z-dd7ffa9a",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#6 DONE 0.1s",
+      "timestamp": "2026-10-12T01:20:07.425291312Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.425295569Z-811c9dc5",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "",
+      "timestamp": "2026-10-12T01:20:07.425295569Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.425300338Z-6da1907f",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 [stage-0 1/5] FROM docker.io/library/node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
+      "timestamp": "2026-10-12T01:20:07.425300338Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.425304907Z-a30eae5a",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 resolve docker.io/library/node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0 0.0s done",
+      "timestamp": "2026-10-12T01:20:07.425304907Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.647665528Z-875aad42",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:ff3af2d57dad62b99528bcd9ec88451cc1063d1dc82ec836d8ea8eae45882127 1.25MB / 1.25MB 0.1s done",
+      "timestamp": "2026-10-12T01:20:07.647665528Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.79900969Z-90cb9ebe",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:c0724ad5cdeb9a82f251b26c18da30fbc3c37b67ed5e22f6c6236bcd5db58ce0 448B / 448B 0.2s done",
+      "timestamp": "2026-10-12T01:20:07.79900969Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.799059795Z-dd3fa7d5",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:fe9402ec4126302563df7c2e402c32285eec80ad6df87e8eb05cb2b18ba5e8cb 0B / 59.82MB 0.2s",
+      "timestamp": "2026-10-12T01:20:07.799059795Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.799064303Z-6386e2df",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:eb338db91b24383f8c9a8e78b22989ba9684aeb3f3fd09a8122b4dae6643c8c4 0B / 3.32kB 0.2s",
+      "timestamp": "2026-10-12T01:20:07.799064303Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.799068451Z-098b32fc",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 0B / 211.71MB 0.2s",
+      "timestamp": "2026-10-12T01:20:07.799068451Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.952501197Z-6a5b261e",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:eb338db91b24383f8c9a8e78b22989ba9684aeb3f3fd09a8122b4dae6643c8c4 3.32kB / 3.32kB 0.4s done",
+      "timestamp": "2026-10-12T01:20:07.952501197Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:07.952570276Z-88789b44",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:c6c71fff0869aa9bd48cf80d66e30b83adc9a3fe5e77dd9aaf266282c6ec64ff 0B / 66.72MB 0.2s",
+      "timestamp": "2026-10-12T01:20:07.952570276Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.099929436Z-c2cffd93",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:fe9402ec4126302563df7c2e402c32285eec80ad6df87e8eb05cb2b18ba5e8cb 23.07MB / 59.82MB 0.5s",
+      "timestamp": "2026-10-12T01:20:08.099929436Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.099986573Z-2ad217f8",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 30.41MB / 211.71MB 0.5s",
+      "timestamp": "2026-10-12T01:20:08.099986573Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.099991642Z-06cde1e4",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:c6c71fff0869aa9bd48cf80d66e30b83adc9a3fe5e77dd9aaf266282c6ec64ff 23.07MB / 66.72MB 0.3s",
+      "timestamp": "2026-10-12T01:20:08.099991642Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.099997092Z-6ee2b3e0",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:a4edf9c328e814bd91b20c8e2211065489ebf15a16c7663d68a880660dfc897d 0B / 23.87MB 0.2s",
+      "timestamp": "2026-10-12T01:20:08.099997092Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.201221811Z-f5b57d93",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:fe9402ec4126302563df7c2e402c32285eec80ad6df87e8eb05cb2b18ba5e8cb 47.19MB / 59.82MB 0.6s",
+      "timestamp": "2026-10-12T01:20:08.201221811Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.201251737Z-8db97158",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:a4edf9c328e814bd91b20c8e2211065489ebf15a16c7663d68a880660dfc897d 16.78MB / 23.87MB 0.3s",
+      "timestamp": "2026-10-12T01:20:08.201251737Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.349253059Z-adba6ebe",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:fe9402ec4126302563df7c2e402c32285eec80ad6df87e8eb05cb2b18ba5e8cb 59.82MB / 59.82MB 0.8s",
+      "timestamp": "2026-10-12T01:20:08.349253059Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.349295189Z-7bbcb752",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 54.53MB / 211.71MB 0.6s",
+      "timestamp": "2026-10-12T01:20:08.349295189Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.349299446Z-fee866ce",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:c6c71fff0869aa9bd48cf80d66e30b83adc9a3fe5e77dd9aaf266282c6ec64ff 66.72MB / 66.72MB 0.6s",
+      "timestamp": "2026-10-12T01:20:08.349299446Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.546168569Z-687bdca9",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:fe9402ec4126302563df7c2e402c32285eec80ad6df87e8eb05cb2b18ba5e8cb 59.82MB / 59.82MB 0.9s done",
+      "timestamp": "2026-10-12T01:20:08.546168569Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.546213444Z-9712c24f",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 85.98MB / 211.71MB 0.8s",
+      "timestamp": "2026-10-12T01:20:08.546213444Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.54621694Z-cd2f5b59",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:c6c71fff0869aa9bd48cf80d66e30b83adc9a3fe5e77dd9aaf266282c6ec64ff 66.72MB / 66.72MB 0.7s done",
+      "timestamp": "2026-10-12T01:20:08.54621694Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.546220086Z-a9e16e73",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:a4edf9c328e814bd91b20c8e2211065489ebf15a16c7663d68a880660dfc897d 23.87MB / 23.87MB 0.4s done",
+      "timestamp": "2026-10-12T01:20:08.546220086Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.546223964Z-1bc1643b",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:8cb71386cfcfc55b27b559f73c6d5c0cdcb93b83be8281314116e271cc42cea6 6.29MB / 48.52MB 0.2s",
+      "timestamp": "2026-10-12T01:20:08.546223964Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.695825394Z-3c64467d",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 117.44MB / 211.71MB 0.9s",
+      "timestamp": "2026-10-12T01:20:08.695825394Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.69588199Z-1a800f2d",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:8cb71386cfcfc55b27b559f73c6d5c0cdcb93b83be8281314116e271cc42cea6 33.55MB / 48.52MB 0.3s",
+      "timestamp": "2026-10-12T01:20:08.69588199Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.839426425Z-91398343",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 146.21MB / 211.71MB 1.1s",
+      "timestamp": "2026-10-12T01:20:08.839426425Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.839464926Z-7820c72d",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:8cb71386cfcfc55b27b559f73c6d5c0cdcb93b83be8281314116e271cc42cea6 48.52MB / 48.52MB 0.4s done",
+      "timestamp": "2026-10-12T01:20:08.839464926Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.998318565Z-f04f73d1",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 208.67MB / 211.71MB 1.4s",
+      "timestamp": "2026-10-12T01:20:08.998318565Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:08.998343703Z-474d9b0c",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 extracting sha256:8cb71386cfcfc55b27b559f73c6d5c0cdcb93b83be8281314116e271cc42cea6",
+      "timestamp": "2026-10-12T01:20:08.998343703Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:09.335916981Z-77c3a9ab",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 211.71MB / 211.71MB 1.5s done",
+      "timestamp": "2026-10-12T01:20:09.335916981Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:10.435534239Z-6284e22c",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 extracting sha256:8cb71386cfcfc55b27b559f73c6d5c0cdcb93b83be8281314116e271cc42cea6 1.6s done",
+      "timestamp": "2026-10-12T01:20:10.435534239Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:10.435564757Z-0238a7ae",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 DONE 3.1s",
+      "timestamp": "2026-10-12T01:20:10.435564757Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:10.586200804Z-811c9dc5",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "",
+      "timestamp": "2026-10-12T01:20:10.586200804Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:10.586242712Z-6da1907f",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 [stage-0 1/5] FROM docker.io/library/node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
+      "timestamp": "2026-10-12T01:20:10.586242712Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:10.586247271Z-4745ddaa",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 extracting sha256:a4edf9c328e814bd91b20c8e2211065489ebf15a16c7663d68a880660dfc897d",
+      "timestamp": "2026-10-12T01:20:10.586247271Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:11.578483901Z-8fefe03f",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 extracting sha256:a4edf9c328e814bd91b20c8e2211065489ebf15a16c7663d68a880660dfc897d 1.1s done",
+      "timestamp": "2026-10-12T01:20:11.578483901Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:11.578537481Z-ba37fa27",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 DONE 4.3s",
+      "timestamp": "2026-10-12T01:20:11.578537481Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:11.729106302Z-811c9dc5",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "",
+      "timestamp": "2026-10-12T01:20:11.729106302Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:11.729150576Z-6da1907f",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 [stage-0 1/5] FROM docker.io/library/node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
+      "timestamp": "2026-10-12T01:20:11.729150576Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:11.729155325Z-15802acd",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 extracting sha256:c6c71fff0869aa9bd48cf80d66e30b83adc9a3fe5e77dd9aaf266282c6ec64ff",
+      "timestamp": "2026-10-12T01:20:11.729155325Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:14.481050827Z-a1acf0d1",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 extracting sha256:c6c71fff0869aa9bd48cf80d66e30b83adc9a3fe5e77dd9aaf266282c6ec64ff 2.9s done",
+      "timestamp": "2026-10-12T01:20:14.481050827Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:14.481091442Z-841456d5",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 DONE 7.2s",
+      "timestamp": "2026-10-12T01:20:14.481091442Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:14.631489234Z-811c9dc5",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "",
+      "timestamp": "2026-10-12T01:20:14.631489234Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:14.631537325Z-6da1907f",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 [stage-0 1/5] FROM docker.io/library/node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
+      "timestamp": "2026-10-12T01:20:14.631537325Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:14.631543846Z-f8f787de",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 extracting sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03",
+      "timestamp": "2026-10-12T01:20:14.631543846Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:21.528804117Z-4054963a",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 extracting sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 7.0s done",
+      "timestamp": "2026-10-12T01:20:21.528804117Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:21.528871113Z-12e2d42f",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 DONE 14.2s",
+      "timestamp": "2026-10-12T01:20:21.528871113Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:21.719226096Z-811c9dc5",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "",
+      "timestamp": "2026-10-12T01:20:21.719226096Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:21.719281469Z-6da1907f",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 [stage-0 1/5] FROM docker.io/library/node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
+      "timestamp": "2026-10-12T01:20:21.719281469Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:21.719289475Z-edcbf35e",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 extracting sha256:eb338db91b24383f8c9a8e78b22989ba9684aeb3f3fd09a8122b4dae6643c8c4 0.0s done",
+      "timestamp": "2026-10-12T01:20:21.719289475Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:21.719296648Z-e6f598bf",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 extracting sha256:fe9402ec4126302563df7c2e402c32285eec80ad6df87e8eb05cb2b18ba5e8cb",
+      "timestamp": "2026-10-12T01:20:21.719296648Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:23.867174872Z-e8ffa921",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 extracting sha256:fe9402ec4126302563df7c2e402c32285eec80ad6df87e8eb05cb2b18ba5e8cb 2.3s done",
+      "timestamp": "2026-10-12T01:20:23.867174872Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:23.867216149Z-7f64af72",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 DONE 16.5s",
+      "timestamp": "2026-10-12T01:20:23.867216149Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:23.980989972Z-811c9dc5",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "",
+      "timestamp": "2026-10-12T01:20:23.980989972Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:23.981081634Z-6da1907f",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 [stage-0 1/5] FROM docker.io/library/node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
+      "timestamp": "2026-10-12T01:20:23.981081634Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:23.981095029Z-6a3e7aa6",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 extracting sha256:ff3af2d57dad62b99528bcd9ec88451cc1063d1dc82ec836d8ea8eae45882127 0.1s done",
+      "timestamp": "2026-10-12T01:20:23.981095029Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:23.981101311Z-4c96590a",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 extracting sha256:c0724ad5cdeb9a82f251b26c18da30fbc3c37b67ed5e22f6c6236bcd5db58ce0 0.0s done",
+      "timestamp": "2026-10-12T01:20:23.981101311Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:23.981107422Z-8f604b74",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#7 DONE 16.7s",
+      "timestamp": "2026-10-12T01:20:23.981107422Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.090821933Z-811c9dc5",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "",
+      "timestamp": "2026-10-12T01:20:24.090821933Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.090869421Z-2a2406fc",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#9 [stage-0 2/5] WORKDIR /opt/render/project/src",
+      "timestamp": "2026-10-12T01:20:24.090869421Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.0908747Z-ebbd71e6",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#9 DONE 0.0s",
+      "timestamp": "2026-10-12T01:20:24.0908747Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.090878627Z-811c9dc5",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "",
+      "timestamp": "2026-10-12T01:20:24.090878627Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.090883617Z-05323528",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#10 [stage-0 3/5] COPY . .",
+      "timestamp": "2026-10-12T01:20:24.090883617Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.090887595Z-3a92bf70",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#10 DONE 0.0s",
+      "timestamp": "2026-10-12T01:20:24.090887595Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.090891231Z-811c9dc5",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "",
+      "timestamp": "2026-10-12T01:20:24.090891231Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.09089574Z-842dfcb1",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#11 [stage-0 4/5] COPY <<BEX_LOAD_ENV /opt/bex/load-env",
+      "timestamp": "2026-10-12T01:20:24.09089574Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.090900248Z-073270cf",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#11 DONE 0.0s",
+      "timestamp": "2026-10-12T01:20:24.090900248Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.244170119Z-811c9dc5",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "",
+      "timestamp": "2026-10-12T01:20:24.244170119Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.244249067Z-5f22c537",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#12 [stage-0 5/5] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\n/usr/local/bin/node -e 'const crypto=require('\"'\"'crypto'\"'\"');function snapshot(){const note=process.env.QA_NOTE||'\"'\"''\"'\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\"'\"'QA_NOTE'\"'\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\"'\"'sha256'\"'\"').update(note).digest('\"'\"'hex'\"'\"')};}\\nrequire('\"'\"'fs'\"'\"').writeFileSync('\"'\"'qa-built.json'\"'\"',JSON.stringify({marker:\"QA166_7b8b2e\",snapshot:snapshot(),built_at:Date.now()}));console.log('\"'\"'QA166_USER_BUILD_RAN'\"'\"');'\"]",
+      "timestamp": "2026-10-12T01:20:24.244249067Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.24425621Z-de0a64c3",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "#12 ERROR: process \"/bin/bash -c . /opt/bex/load-env\\n/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\" did not complete successfully: exit code: 1",
+      "timestamp": "2026-10-12T01:20:24.24425621Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.286533447Z-67c666bb",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "------",
+      "timestamp": "2026-10-12T01:20:24.286533447Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.286581077Z-1d245a01",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": " > [stage-0 5/5] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\n/usr/local/bin/node -e 'const crypto=require('\"'\"'crypto'\"'\"');function snapshot(){const note=process.env.QA_NOTE||'\"'\"''\"'\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\"'\"'QA_NOTE'\"'\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\"'\"'sha256'\"'\"').update(note).digest('\"'\"'hex'\"'\"')};}\\nrequire('\"'\"'fs'\"'\"').writeFileSync('\"'\"'qa-built.json'\"'\"',JSON.stringify({marker:\"QA166_7b8b2e\",snapshot:snapshot(),built_at:Date.now()}));console.log('\"'\"'QA166_USER_BUILD_RAN'\"'\"');'\"]:",
+      "timestamp": "2026-10-12T01:20:24.286581077Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.286612015Z-67c666bb",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "------",
+      "timestamp": "2026-10-12T01:20:24.286612015Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7-2026-10-12T01:20:24.288437584Z-b15bb924",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-aso9ol6ka3clo820k6s7"
+        },
+        {
+          "name": "container",
+          "value": "buildkit"
+        }
+      ],
+      "message": "error: failed to solve: process \"/bin/bash -c . /opt/bex/load-env\\n/usr/local/bin/node -e 'const crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function snapshot(){const note=process.env.QA_NOTE||'\\\"'\\\"''\\\"'\\\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\\\"'\\\"'QA_NOTE'\\\"'\\\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(note).digest('\\\"'\\\"'hex'\\\"'\\\"')};}\\nrequire('\\\"'\\\"'fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA166_7b8b2e\\\",snapshot:snapshot(),built_at:Date.now()}));console.log('\\\"'\\\"'QA166_USER_BUILD_RAN'\\\"'\\\"');'\" did not complete successfully: exit code: 1",
+      "timestamp": "2026-10-12T01:20:24.288437584Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-moh6deb3h102t8r307mf-2026-10-12T01:20:34.8758Z-9141219b",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-moh6deb3h102t8r307mf"
+        },
+        {
+          "name": "container",
+          "value": "platform"
+        }
+      ],
+      "message": "==> Build failed: build failed in the docker build step:",
+      "timestamp": "2026-10-12T01:20:34.8758Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-moh6deb3h102t8r307mf-2026-10-12T01:20:34.8758Z-dde7ffcf",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-moh6deb3h102t8r307mf"
+        },
+        {
+          "name": "container",
+          "value": "platform"
+        }
+      ],
+      "message": "==> ------",
+      "timestamp": "2026-10-12T01:20:34.8758Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-moh6deb3h102t8r307mf-2026-10-12T01:20:34.8758Z-fca061ba",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-moh6deb3h102t8r307mf"
+        },
+        {
+          "name": "container",
+          "value": "platform"
+        }
+      ],
+      "message": "==> error: build command '/usr/local/bin/node -e 'const crypto=require('\"'\"'crypto'\"'\"');function snapshot(){const note=process.env.QA_NOTE||'\"'\"''\"'\"';return {path:process.env.PATH,note_present:Object.prototype.hasOwnProperty.call(process.env,'\"'\"'QA_NOTE'\"'\"'),note_length:Buffer.byteLength(note),note_sha256:crypto.createHash('\"'\"'sha256'\"'\"').update(note).digest('\"'\"'hex'\"'\"')};}",
+      "timestamp": "2026-10-12T01:20:34.8758Z"
+    },
+    {
+      "id": "srv-db63a3dqamec73fj0s8g-moh6deb3h102t8r307mf-2026-10-12T01:20:34.8758Z-bc241675",
+      "labels": [
+        {
+          "name": "type",
+          "value": "build"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db63a3dqamec73fj0s8g"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db63a3dqamec73fj0s8g-moh6deb3h102t8r307mf"
+        },
+        {
+          "name": "container",
+          "value": "platform"
+        }
+      ],
+      "message": "==> require('\"'\"'fs'\"'\"').writeFileSync('\"'\"'qa-built.json'\"'\"',JSON.stringify({marker:\"QA166_7b8b2e\",snapshot:snapshot(),built_at:Date.now()}));console.log('\"'\"'QA166_USER_BUILD_RAN'\"'\"');'' exited with code 1",
+      "timestamp": "2026-10-12T01:20:34.8758Z"
+    }
+  ],
+  "qualification": "100-record native JSON object stream captured after failure and before recovery; same own service build logs, not a deploy-specific request."
+}

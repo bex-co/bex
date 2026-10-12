@@ -1,0 +1,48 @@
+[
+  {
+    "request": {
+      "case": "empty selector",
+      "method": "GET",
+      "path": "/v1/services?name=&ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+      "qualification": "Actual pinned generated request builder only; does not send HTTP and is not intercepted native wire."
+    },
+    "response": {
+      "method": "GET",
+      "path": "/v1/services?name=&ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+      "body": null,
+      "status": "400",
+      "elapsed": 0.308,
+      "response": "{\"error\": \"invalid query parameter \\\"name\\\"\", \"id\": \"bad_request\", \"message\": \"invalid query parameter \\\"name\\\"\"}",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49092542a80eb2c-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "qualification": "Separate API diagnosis of actual pinned generated shape; native requests were not intercepted."
+  },
+  {
+    "request": {
+      "case": "absent nonempty name",
+      "method": "GET",
+      "path": "/v1/services?name=qa-20261011-7de445-absent&ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+      "qualification": "Actual pinned generated request builder only; does not send HTTP and is not intercepted native wire."
+    },
+    "response": {
+      "method": "GET",
+      "path": "/v1/services?name=qa-20261011-7de445-absent&ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.308,
+      "response": "[]",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49092563cafdf26-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "qualification": "Separate API diagnosis of actual pinned generated shape; native requests were not intercepted."
+  }
+]

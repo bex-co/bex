@@ -1,0 +1,33 @@
+import base64, datetime, json, pathlib, secrets, subprocess
+p=pathlib.Path(__file__).parent
+plan=json.loads((p/'sweep163-local-plan.json').read_text())
+records=[]
+cases=[
+ ('complete-path-before-note',[('PATH','/usr/local/bin:/usr/bin:/bin'),('QA_NOTE','qa163-note')],0),
+ ('custom-path-before-note',[('PATH','/usr/local/bin'),('QA_NOTE','qa163-note')],1),
+ ('custom-path-only',[('PATH','/usr/local/bin')],0),
+ ('custom-path-after-note-diagnostic-order',[('QA_NOTE','qa163-note'),('PATH','/usr/local/bin')],0),
+]
+for label,entries,expected_exit in cases:
+ f=p/('sweep163-bundle-'+label+'.txt')
+ f.write_text(''.join(k+'='+base64.b64encode(v.encode()).decode()+'\n' for k,v in entries))
+ f.chmod(0o600)
+ name='qa-cli-w8-163-local-'+secrets.token_hex(3)
+ r={'label':label,'container_name':name,'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'entries':entries,'expected_exit':expected_exit,'state':'local container intent recorded'}
+ records.append(r)
+ out=p/'sweep163-local.json'
+ out.write_text(json.dumps(records,indent=2)+'\n');out.chmod(0o600)
+ args=['docker','run','--rm','--name',name,'--network','none','--read-only','--mount','type=bind,src='+str(f)+',dst=/run/secrets/render-env,readonly','--mount','type=bind,src='+plan['loader_file']+',dst=/opt/bex/load-env,readonly','--entrypoint',plan['run'][0],plan['image'],*plan['run'][1:]]
+ try:
+  result=subprocess.run(args,capture_output=True,text=True,timeout=18)
+  r.update(exit=result.returncode,stdout=result.stdout,stderr=result.stderr,state='completed')
+ except subprocess.TimeoutExpired:
+  r.update(exit='timeout',state='local bounded timeout')
+  removed=subprocess.run(['docker','rm','-f',name],text=True,capture_output=True,timeout=10)
+  r['timeout_cleanup_exit']=removed.returncode
+ inspect=subprocess.run(['docker','container','inspect','--format','{{.State.Status}}',name],capture_output=True,text=True,timeout=5)
+ r['container_absent']=inspect.returncode!=0
+ r['expected_observation']=r['exit']==expected_exit and r['container_absent']
+ out.write_text(json.dumps(records,indent=2)+'\n');out.chmod(0o600)
+ print(json.dumps(r),flush=True)
+ assert r['expected_observation']

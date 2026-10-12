@@ -1,0 +1,17 @@
+import base64,datetime,hashlib,json,pathlib,re,secrets,subprocess
+p=pathlib.Path(__file__).parent;f=p/'sweep171-local-loader.json';assert not f.exists();image='python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4';records=[]
+def save():f.write_text(json.dumps(records,indent=2)+'\n');f.chmod(0o600)
+def run(args,timeout=18):
+ t=datetime.datetime.now(datetime.timezone.utc);r=subprocess.run(args,text=True,capture_output=True,timeout=timeout);return {'at':t.isoformat(),'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}
+program='import os,json,hashlib; v=os.environ["QA_LITERAL"].encode(); print(json.dumps({"length":len(v),"sha256":hashlib.sha256(v).hexdigest(),"nul_count":v.count(bytes([0]))}))'
+for label,sep in [('ordinary-control',b'-'),('nul',b'\0')]:
+ nonce=secrets.token_hex(4);name='qa-cli-w8-171-loader-'+nonce;value=b'qa171-before'+sep+b'after';envfile=p/('sweep171-loader-'+label+'.bundle');envfile.write_bytes(b'QA_LITERAL='+base64.b64encode(value)+b'\n');envfile.chmod(0o600);probe=run(['docker','container','inspect','--format','{{.Id}}',name],5);assert probe['exit']!=0
+ args=['docker','create','--pull=never','--name',name,'--network','none','--read-only','--label','co.bex.qa.sweep171='+nonce,'--mount','type=bind,src='+str(envfile)+',dst=/run/secrets/render-env,readonly','--mount','type=bind,src='+str(p/'sweep171-loader.sh')+',dst=/opt/bex/load-env,readonly','--entrypoint','/bin/bash',image,'-c','. /opt/bex/load-env\n/usr/local/bin/python3 -c '+__import__('shlex').quote(program)];z={'label':label,'name':name,'nonce':nonce,'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'image':image,'input_length':len(value),'input_sha256':hashlib.sha256(value).hexdigest(),'input_nul_count':value.count(b'\0'),'name_absence_proof':probe,'intent':args,'state':'local container create intent persisted'};records.append(z);save();created=run(args);z['create_result']=created;save();cid=created['stdout'].strip();owned=created['exit']==0 and re.fullmatch('[0-9a-f]{64}',cid)
+ if not owned:
+  z['state']='local create refused; no returned container ID';z['reconcile']=run(['docker','container','inspect','--format','{{.Id}}',name],5);save();print(json.dumps({'case':label,'create_exit':created['exit'],'returned_id':False,'stderr':created['stderr'],'object_absent':z['reconcile']['exit']!=0}),flush=True);continue
+ z['id']=cid;z['state']='owned local ID with create proof';save()
+ try:
+  z['start_result']=run(['docker','start','--attach',cid],18);z['container_state']=run(['docker','container','inspect','--format','{{json .State}}',cid],5);z['state']='local start result captured';save()
+ finally:
+  z['cleanup_result']=run(['docker','rm','--force',cid],8);z['after_cleanup']=run(['docker','container','inspect','--format','{{.Id}}',cid],5);z['state']='local container deleted' if z['cleanup_result']['exit']==0 and z['after_cleanup']['exit']!=0 else 'owned local cleanup pending';save()
+ print(json.dumps({'case':label,'create_exit':created['exit'],'start_exit':z['start_result']['exit'],'stdout':z['start_result']['stdout'],'stderr':z['start_result']['stderr'],'cleanup':z['state']}),flush=True)

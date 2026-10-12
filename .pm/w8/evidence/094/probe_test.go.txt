@@ -1,0 +1,13 @@
+package apps
+import("context";"encoding/json";"os";"testing")
+func TestQA153GroupNameProbe(t *testing.T){
+ raw,err:=os.ReadFile(os.Getenv("QA153_INPUT_FILE"));if err!=nil{t.Fatal(err)}
+ var input struct{Name string `json:"name"`;ID string `json:"id"`;Cases []struct{Container string `json:"container"`;Variant string `json:"variant"`;Document map[string]any `json:"document"`} `json:"cases"`};if err=json.Unmarshal(raw,&input);err!=nil{t.Fatal(err)}
+ for _,q:=range input.Cases{
+  manifest,_:=json.Marshal(q.Document);_,ir,problems:=CompileBlueprintIR(string(manifest));if len(problems)>0{t.Fatalf("compiler: %v",problems)};st,err:=parseStack(DeployRequest{Manifest:string(manifest)});if err!=nil{t.Fatal(err)}
+  if len(st.envGroups)!=1||st.envGroups[0].name!=input.Name{t.Fatal("parsed identity differs from owned stored name")}
+  resolver:=&blueprintActionResolver{envGroups:map[string]string{input.Name:input.ID},parsed:st};plan,err:=PlanBlueprintIR(context.Background(),ir,resolver);if err!=nil{t.Fatal(err)};if len(plan.Actions)!=1{t.Fatal("wrong action count")};a:=plan.Actions[0]
+  record:=map[string]any{"container":q.Container,"variant":q.Variant,"compiler_errors":len(problems),"parsed_group_name":st.envGroups[0].name,"ir_group_name":ir.Resources[0].Name,"action":a,"metadata_provenance":"in-memory exact owned non-secret name/ID map; actual production compiler/parser/planner, no platform call or apply"};b,_:=json.Marshal(record);t.Log("QA153JSON "+string(b))
+  want:="create";if q.Variant=="exact"{want="update"};if string(a.Operation)!=want{t.Fatalf("unexpected existing behavior: %s",a.Operation)}
+ }
+}

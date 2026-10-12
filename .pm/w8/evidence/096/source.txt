@@ -1,0 +1,490 @@
+Source HEAD: abc9ca2bab94c3d8f04dc195832a574aa7673ca5
+
+lego/backend/internal/apps/deploy.go:1837
+1837: 	// Env groups first (validated + name-deduped); a service's fromGroup links one.
+1838: 	groupNames := make(map[string]bool, len(envGroups))
+1839: 	for _, egDecl := range envGroups {
+1840: 		pg, err := parseEnvGroup(egDecl.value)
+1841: 		if err != nil {
+1842: 			problems = append(problems, blueprintResourceError{kind: BlueprintResourceEnvVarGroup, name: egDecl.value.Name, err: err})
+1843: 			continue
+1844: 		}
+1845: 		if err := registerUniqueName(pg.name, groupNames); err != nil {
+1846: 			return parsedStack{}, fmt.Errorf("%w: duplicate env group name %q", core.ErrBadRequest, pg.name)
+1847: 		}
+1848: 		pg.grouping = egDecl.grouping
+1849: 		st.envGroups = append(st.envGroups, pg)
+1850: 	}
+1851: 
+1852: 	// Databases next into the stack (and into the name index services reference).
+1853: 	idx := newStackIndex(len(services), len(databases))
+1854: 	for _, d := range databases {
+1855: 		ds, err := parseDatabase(d.value)
+1856: 		if err != nil {
+1857: 			problems = append(problems, blueprintResourceError{kind: BlueprintResourcePostgres, name: d.value.Name, err: err})
+1858: 			continue
+1859: 		}
+1860: 		if err := registerUniqueName(ds.name, idx.names); err != nil {
+1861: 			return parsedStack{}, err
+1862: 		}
+1863: 		idx.databaseNames[ds.name] = true
+1864: 		idx.databasePoolers[ds.name] = ds.spec.Pooler
+1865: 		ds.grouping = d.grouping
+1866: 		ds.ungrouped = d.ungrouped
+1867: 		ds.fields = fieldsByResource[BlueprintResourcePostgres][ds.name]
+1868: 		st.databases = append(st.databases, ds)
+1869: 	}
+1870: 
+1871: 	// Services: build each CreateRequest, collecting the literal env now and
+1872: 	// deferring reference resolution until all names are known (a fromService may
+1873: 	// reference a service declared later).
+1874: 	type pending struct {
+1875: 		svc     parsedService
+1876: 		refVars []bexEnvVar // fromDatabase / fromService — resolved in pass 2
+1877: 	}
+1878: 	pendings := make([]pending, 0, len(services))
+1879: 	for _, a := range services {
+1880: 		if isKeyValueType(a.value.Type) {
+1881: 			kv, err := parseKeyValue(a.value)
+1882: 			if err == nil {
+1883: 				err = registerUniqueName(kv.name, idx.names)
+1884: 			}
+1885: 			if err != nil {
+1886: 				problems = append(problems, blueprintResourceError{kind: BlueprintResourceKeyValue, name: a.value.Name, err: err})
+1887: 				continue
+1888: 			}
+1889: 			kv.grouping = a.grouping
+1890: 			kv.ungrouped = a.ungrouped
+1891: 			kv.fields = fieldsByResource[BlueprintResourceKeyValue][kv.name]
+1892: 			st.keyValues = append(st.keyValues, kv)
+1893: 			continue
+1894: 		}
+1895: 		req, se, err := parseService(overrides, a.value)
+1896: 		if err == nil {
+1897: 			err = registerUniqueName(req.Name, idx.names)
+1898: 		}
+1899: 		var credName string
+1900: 		if err == nil {
+1901: 			credName, err = blueprintRegistryCredentialName(a.value)
+1902: 		}
+1903: 		if err != nil {
+1904: 			problems = append(problems, blueprintResourceError{kind: BlueprintResourceService, name: a.value.Name, err: err})
+1905: 			continue
+1906: 		}
+1907: 		pendings = append(pendings, pending{
+1908: 			svc:     parsedService{req: req, fields: blueprintServiceFields(fieldsByResource[BlueprintResourceService][req.Name]), groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, promptKeys: se.promptKeys, registryCredentialName: credName, grouping: a.grouping, ungrouped: a.ungrouped},
+1909: 			refVars: se.refVars,
+1910: 		})
+1911: 		idx.serviceKnownEnv[req.Name] = se.known
+1912: 		if req.Type == appv1alpha1.TypeWebService || req.Type == appv1alpha1.TypePrivateService {
+1913: 			port := req.Port
+1914: 			if port <= 0 {
+1915: 				port = appv1alpha1.DefaultPort
+1916: 			}
+1917: 			idx.servicePorts[req.Name] = port
+1918: 		}
+1919: 	}
+1920: 
+1921: 	if len(problems) > 0 {
+1922: 		// Pass 2 resolves references across declarations, so with one already
+1923: 		// refused it could only add cascades ("unknown service"). Return the
+1924: 		// services that did parse, unresolved, so validation can still run
+1925: 		// their own per-service checks; apply stops on the error.
+1926: 		for _, p := range pendings {
+1927: 			st.services = append(st.services, p.svc)
+1928: 		}
+1929: 		return st, problems
+1930: 	}
+1931: 
+1932: 	// Pass 2: classify each pending service's deferred references now that
+1933: 	// every name, port, and known-env is available.
+1934: 	for _, p := range pendings {
+1935: 		svc, err := idx.classifyRefs(p.svc, p.refVars)
+1936: 		if err != nil {
+1937: 			// Attributed to its service so validation can locate the env entry.
+1938: 			return parsedStack{}, blueprintResourceErrors{{kind: BlueprintResourceService, name: p.svc.req.Name, err: err}}
+1939: 		}
+1940: 		st.services = append(st.services, svc)
+1941: 	}
+1942: 	return st, nil
+1943: }
+1944: 
+1945: // flattenProjectDecls walks Render's canonical projects[].environments[]
+
+lego/backend/internal/apps/deploy.go:1995
+1995: 
+1996: // stackIndex is the cross-declaration lookup state parseCompiledStack's pass 1
+1997: // builds and pass 2's reference classification (classifyRefs) consumes.
+1998: type stackIndex struct {
+1999: 	// names is the unique-name index services reference; the services decl
+2000: 	// slice includes both regular services and keyvalue resources.
+2001: 	names map[string]bool
+2002: 	// databaseNames marks the databases declared in this stack;
+2003: 	// databasePoolers records whether each declares connectionPool: pgbouncer.
+2004: 	databaseNames   map[string]bool
+2005: 	databasePoolers map[string]bool
+2006: 	// servicePorts: name -> effective port, for services that expose a k8s Service
+2007: 	// (web/private only — workers, cron jobs and static sites have no Service, so a
+2008: 	// fromService reference to them has no DNS name to resolve). Effective port is
+2009: 	// the declared one, or the 3000 default when omitted.
+2010: 	servicePorts map[string]int32
+2011: 	// serviceKnownEnv: name -> the statically-known env of that service (plain
+2012: 	// literals + sync:false seed values), the resolvable target set for a
+2013: 	// fromService.envVarKey copy (a from*/generateValue var has no parse-time value).
+2014: 	serviceKnownEnv map[string]map[string]string
+2015: }
+2016: 
+2017: func newStackIndex(serviceCount, databaseCount int) *stackIndex {
+2018: 	return &stackIndex{
+2019: 		names:           make(map[string]bool, serviceCount+databaseCount),
+2020: 		databaseNames:   make(map[string]bool, databaseCount),
+2021: 		databasePoolers: make(map[string]bool, databaseCount),
+2022: 		servicePorts:    make(map[string]int32, serviceCount),
+2023: 		serviceKnownEnv: make(map[string]map[string]string, serviceCount),
+2024: 	}
+2025: }
+2026: 
+2027: // classifyRefs resolves one service's deferred reference env vars now that
+2028: // every name, port, and known-env is available. Database references are
+2029: // validated here but retained until apply: only then do we know the immutable
+2030: // dpg-... id that names the CNPG Secret.
+2031: func (idx *stackIndex) classifyRefs(svc parsedService, refVars []bexEnvVar) (parsedService, error) {
+2032: 	for _, r := range refVars {
+2033: 		if r.FromDatabase != nil {
+2034: 			if idx.databaseNames[r.FromDatabase.Name] && r.FromDatabase.Property == dbPropertyConnectionPoolString && !idx.databasePoolers[r.FromDatabase.Name] {
+2035: 				return parsedService{}, poolerRequiredError(svc.req.Name, r.FromDatabase.Name)
+2036: 			}
+2037: 			svc.databaseRefs = append(svc.databaseRefs, r)
+2038: 			continue
+2039: 		}
+2040: 		if r.FromService != nil && isKeyValueType(r.FromService.Type) {
+2041: 			svc.kvRefs = append(svc.kvRefs, r)
+2042: 			continue
+2043: 		}
+2044: 		// One target-existence check for every remaining fromService form
+2045: 		// (host/hostport/port/envVarKey), so the message lives in one place.
+2046: 		allowExistingServiceHost := r.FromService != nil && r.FromService.EnvVarKey == "" && r.FromService.Property == serviceRefPropertyHost
+2047: 		if r.FromService != nil && !idx.names[r.FromService.Name] && !allowExistingServiceHost {
+2048: 			return parsedService{}, fmt.Errorf("%w: service %q: fromService references unknown service %q (declare it under services: in the same file)", core.ErrBadRequest, svc.req.Name, r.FromService.Name)
+2049: 		}
+2050: 		// host, hostport and port all name a declared sibling's network address,
+2051: 		// which only web/private services have; a worker, cron job or static
+2052: 		// site has no port to resolve (it would become "0"/"<slug>:0", w8/081).
+2053: 		// An undeclared host target is resolved out-of-file at apply instead.
+2054: 		if r.FromService != nil && r.FromService.EnvVarKey == "" && idx.names[r.FromService.Name] && serviceRefProperty[r.FromService.Property] {
+2055: 			if _, addressable := idx.servicePorts[r.FromService.Name]; !addressable {
+2056: 				return parsedService{}, fmt.Errorf("%w: service %q: envVars[%q] fromService %s references %q which has no network address (only web/private services are addressable)", core.ErrBadRequest, svc.req.Name, r.Key, r.FromService.Property, r.FromService.Name)
+2057: 			}
+2058: 		}
+2059: 		// host/hostport inject the sibling's slug — minted at create (w4/m19),
+2060: 		// so resolution is deferred to apply like databaseRefs above. The port
+2061: 		// half is already known and resolved into the ref now.
+2062: 		if r.FromService != nil && r.FromService.EnvVarKey == "" &&
+2063: 			(r.FromService.Property == serviceRefPropertyHost || r.FromService.Property == serviceRefPropertyHostPort) {
+2064: 			port := idx.servicePorts[r.FromService.Name]
+2065: 			svc.hostRefs = append(svc.hostRefs, hostRef{
+2066: 				key: r.Key, target: r.FromService.Name, port: port,
+2067: 				hostport: r.FromService.Property == serviceRefPropertyHostPort,
+2068: 			})
+2069: 			continue
+2070: 		}
+2071: 		ev, err := resolveRef(r, idx.servicePorts, idx.serviceKnownEnv)
+2072: 		if err != nil {
+2073: 			return parsedService{}, fmt.Errorf("%w: service %q: %v", core.ErrBadRequest, svc.req.Name, err)
+2074: 		}
+2075: 		svc.req.Env = append(svc.req.Env, ev)
+2076: 	}
+2077: 	return svc, nil
+2078: }
+2079: 
+2080: // decodeCompiledBlueprintManifest is a temporary typed-adapter boundary for
+
+lego/backend/internal/apps/deploy.go:2617
+2617: // generateValue is a contradiction; generateValue can't combine with a reference;
+2618: // a fromService takes EITHER a property (host/port/hostport) OR an envVarKey, not
+2619: // both; a fromDatabase property must map onto the CNPG Secret vocabulary.
+2620: func validateKeyedEnv(e bexEnvVar) error {
+2621: 	if e.Key == "" {
+2622: 		return fmt.Errorf("an envVars entry is missing its key")
+2623: 	}
+2624: 	if e.GenerateValue {
+2625: 		if e.Value != "" {
+2626: 			return fmt.Errorf("sets both value and generateValue — pick one")
+2627: 		}
+2628: 		if e.FromDatabase != nil || e.FromService != nil {
+2629: 			return fmt.Errorf("generateValue cannot be combined with fromDatabase/fromService")
+2630: 		}
+2631: 	}
+2632: 	if e.FromService != nil {
+2633: 		ref := e.FromService
+2634: 		switch {
+2635: 		case ref.EnvVarKey != "":
+2636: 			if ref.Property != "" {
+2637: 				return fmt.Errorf("fromService sets both envVarKey and property — pick one")
+2638: 			}
+2639: 		case isKeyValueType(ref.Type):
+2640: 			if ref.Property == "" {
+2641: 				return fmt.Errorf("fromService keyvalue needs a property (connectionString, host, port, or password)")
+2642: 			}
+2643: 			if _, ok := kvPropertyKey[ref.Property]; !ok {
+2644: 				return fmt.Errorf("fromService keyvalue property %q is not supported (want connectionString, host, port, or password)", ref.Property)
+2645: 			}
+2646: 		case ref.Property == "":
+2647: 			return fmt.Errorf("fromService needs a property (host, port, hostport) or an envVarKey")
+2648: 		case !serviceRefProperty[ref.Property]:
+2649: 			return fmt.Errorf("fromService property %q is not supported (want host, port, or hostport)", ref.Property)
+2650: 		}
+2651: 	}
+2652: 	if e.FromDatabase != nil {
+2653: 		if _, ok := dbPropertyKey[e.FromDatabase.Property]; !ok {
+2654: 			return fmt.Errorf("fromDatabase property %q is not supported (want connectionString, host, port, user, password, or database)", e.FromDatabase.Property)
+2655: 		}
+2656: 	}
+2657: 	return nil
+2658: }
+2659: 
+2660: // resolveDatabaseRef turns a validated fromDatabase entry into a Secret ref
+
+lego/backend/internal/apps/deploy.go:2712
+2712: // resolveRef turns one fromService env entry into a concrete EnvVar now that
+2713: // every service port and parse-time-known env is available. Target existence
+2714: // is already checked once by the caller's shared guard.
+2715: func resolveRef(e bexEnvVar, ports map[string]int32, knownEnv map[string]map[string]string) (appv1alpha1.EnvVar, error) {
+2716: 	switch {
+2717: 	case e.FromService != nil:
+2718: 		ref := e.FromService
+2719: 		// envVarKey copies a sibling service's declared var by value (Render's
+2720: 		// copy-by-value; re-copied on each sync, not live). Same-file resolution:
+2721: 		// the target must be a service (not a database) with a parse-time-known
+2722: 		// value (a plain literal or sync:false var — not itself a reference/generate).
+2723: 		if ref.EnvVarKey != "" {
+2724: 			env, ok := knownEnv[ref.Name]
+2725: 			if !ok {
+2726: 				return appv1alpha1.EnvVar{}, fmt.Errorf("fromService.envVarKey references %q, which is not a service", ref.Name)
+2727: 			}
+2728: 			val, ok := env[ref.EnvVarKey]
+2729: 			if !ok {
+2730: 				return appv1alpha1.EnvVar{}, fmt.Errorf("fromService.envVarKey references env %q on service %q, which has no such plainly-defined variable", ref.EnvVarKey, ref.Name)
+2731: 			}
+2732: 			return appv1alpha1.EnvVar{Name: e.Key, Value: val}, nil
+2733: 		}
+2734: 		// host/hostport are classified into parsedService.hostRefs at parse and
+2735: 		// resolved at apply (the hostname is the sibling's slug, minted at create
+2736: 		// — docs/ADR041-service-addresses.md D3); only port resolves here.
+2737: 		if ref.Property == "port" {
+2738: 			return appv1alpha1.EnvVar{Name: e.Key, Value: strconv.Itoa(int(ports[ref.Name]))}, nil
+2739: 		}
+2740: 	}
+2741: 	return appv1alpha1.EnvVar{}, fmt.Errorf("unsupported env reference")
+2742: }
+2743: 
+2744: // manifestType maps a render.yaml-style service type (+ optional runtime) to the
+
+lego/backend/internal/apps/blueprint.go:650
+650: 		if s.Blueprints == nil {
+651: 			return BlueprintValidation{}, ErrBlueprintsUnavailable
+652: 		}
+653: 		if _, err := s.Blueprints.GetBlueprint(ctx, blueprintID, s.resolveTenantID(ctx)); err != nil {
+654: 			return BlueprintValidation{}, store.MapError(err)
+655: 		}
+656: 	}
+657: 	source, ir, problems := CompileBlueprintIR(bexYAML)
+658: 	if len(problems) > 0 {
+659: 		return BlueprintValidation{Errors: blueprintCompilerValidationErrors(problems)}, nil
+660: 	}
+661: 	st, err := parseCompiledStack(blueprintParseOverrides{repo: repo, branch: branch}, source, ir)
+662: 	// The validation writes nothing, so its checks share one workspace snapshot.
+663: 	snap := s.newWorkspaceSnapshot(ctx)
+664: 	var refused blueprintResourceErrors
+665: 	if errors.As(err, &refused) {
+666: 		// Some declarations were refused; the services that parsed still get
+667: 		// their own checks, which do not depend on the refused ones.
+668: 		if svcErr := s.validateBlueprintServices(ctx, st, snap); svcErr != nil {
+669: 			var more blueprintResourceErrors
+670: 			if !errors.As(svcErr, &more) {
+671: 				return BlueprintValidation{}, svcErr
+672: 			}
+673: 			refused = append(refused, more...)
+674: 		}
+675: 		return BlueprintValidation{Errors: blueprintResourceValidationErrors(source, ir, refused)}, nil
+676: 	}
+677: 	if err == nil {
+678: 		err = s.resolveBlueprintRegistryCredentials(ctx, &st)
+679: 	}
+680: 	if err == nil {
+
+lego/backend/internal/apps/blueprint.go:1599
+1599: 	if s.GroupingReclaim == nil || manifest == "" {
+1600: 		return nil
+1601: 	}
+1602: 	source, ir, problems := CompileBlueprintIR(manifest)
+1603: 	if len(problems) > 0 {
+1604: 		log.Printf("blueprint disconnect: stored manifest no longer compiles; skipping grouping reclaim (workspace %s)", tenantID)
+1605: 		return nil
+1606: 	}
+1607: 	st, err := parseCompiledStack(blueprintParseOverrides{}, source, ir)
+1608: 	if err != nil {
+1609: 		log.Printf("blueprint disconnect: stored manifest no longer parses; skipping grouping reclaim (workspace %s): %v", tenantID, err)
+1610: 		return nil
+1611: 	}
+1612: 	seen := map[store.GroupingPair]bool{}
+1613: 	var pairs []store.GroupingPair
+
+lego/backend/internal/apps/blueprint_generate.go:233
+233: 
+234: 	// Self-check: a generated manifest the platform's own validator rejects
+235: 	// is a generator bug, never a user error — fail loudly.
+236: 	source, ir, problems := CompileBlueprintIR(manifest)
+237: 	if len(problems) > 0 {
+238: 		return GenerateBlueprintResult{}, generateSelfCheckError(problems[0].Message, generatedResourceID(problems[0].Path, req))
+239: 	}
+240: 	if _, err := parseCompiledStack(blueprintParseOverrides{}, source, ir); err != nil {
+241: 		return GenerateBlueprintResult{}, generateSelfCheckError(err.Error(), "")
+242: 	}
+243: 	return GenerateBlueprintResult{Manifest: manifest, Filename: CanonicalBlueprintFilename}, nil
+
+lego/backend/internal/apps/blueprint_ownership.go:648
+648: // that is neither declared in the manifest nor an existing service in the
+649: // workspace (resolved by manifest name, as the apply resolves them, w5/m133).
+650: // Validate reports them (w8/026); the apply refuses them before any write, so
+651: // it never creates the referring service first (w4/206).
+652: func unknownServiceReferences(st parsedStack, existing map[string]*appv1alpha1.App) []string {
+653: 	declared := make(map[string]bool, len(st.services))
+654: 	for _, svc := range st.services {
+655: 		declared[svc.req.Name] = true
+656: 	}
+657: 	var unknown []string
+658: 	for _, svc := range st.services {
+659: 		for _, ref := range svc.hostRefs {
+660: 			if !declared[ref.target] && existing[ref.target] == nil {
+661: 				unknown = append(unknown, fmt.Sprintf("service %q: fromService references unknown service %q (declare it under services: or create it in this workspace first)", svc.req.Name, ref.target))
+662: 			}
+663: 		}
+664: 	}
+665: 	return unknown
+666: }
+667: 
+668: // blueprintReferenceMessage is a resolver refusal without its transport
+669: // sentinel prefix, as validation reports it.
+670: func blueprintReferenceMessage(err error) string {
+671: 	msg := err.Error()
+672: 	for _, prefix := range []string{"bad request: ", "conflict: "} {
+
+Pinned Render cmd/blueprintvalidate.go:96
+96: 	var body bytes.Buffer
+97: 	writer := multipart.NewWriter(&body)
+98: 
+99: 	if err := writer.WriteField("ownerId", workspaceID); err != nil {
+100: 		return fmt.Errorf("failed to write ownerId field: %w", err)
+101: 	}
+102: 
+103: 	part, err := writer.CreateFormFile("file", filepath.Base(absPath))
+104: 	if err != nil {
+105: 		return fmt.Errorf("failed to create form file: %w", err)
+106: 	}
+107: 	if _, err := part.Write(content); err != nil {
+108: 		return fmt.Errorf("failed to write file content: %w", err)
+109: 	}
+110: 
+111: 	if err := writer.Close(); err != nil {
+112: 		return fmt.Errorf("failed to close multipart writer: %w", err)
+113: 	}
+114: 
+115: 	c, err := client.NewDefaultClient()
+116: 	if err != nil {
+117: 		return fmt.Errorf("failed to create client: %w", err)
+118: 	}
+119: 
+120: 	resp, err := c.ValidateBlueprintWithBodyWithResponse(
+121: 		ctx,
+122: 		writer.FormDataContentType(),
+123: 		&body,
+124: 	)
+125: 	if err != nil {
+126: 		return fmt.Errorf("failed to validate Blueprint: %w", err)
+127: 	}
+128: 
+129: 	if resp.StatusCode() != 200 {
+130: 		return fmt.Errorf("validation request failed with status %d: %s", resp.StatusCode(), string(resp.Body))
+131: 	}
+132: 
+133: 	result := resp.JSON200
+134: 	if result == nil {
+135: 		return fmt.Errorf("unexpected response from server: %s", string(resp.Body))
+136: 	}
+137: 
+138: 	if output.Interactive() {
+139: 		return printValidationResultInteractive(absPath, result)
+140: 	}
+141: 
+142: 	// The API returns 200 for both validation outcomes. Preserve its validation
+143: 	// details on stdout before returning an error for an invalid Blueprint.
+144: 	_, err = command.PrintData(cmd, result, func(r *bptypes.ValidateBlueprintResponse) string {
+145: 		jsonBytes, err := json.MarshalIndent(r, "", "  ")
+146: 		if err != nil {
+147: 			return fmt.Sprintf("{\"error\": \"failed to format result: %v\"}\n", err)
+148: 		}
+149: 		return string(jsonBytes) + "\n"
+150: 	})
+151: 	if err != nil {
+152: 		return err
+153: 	}
+154: 	if result.Valid {
+155: 		return nil
+156: 	}
+157: 
+158: 	// The validation response already describes the failure. Return a non-zero
+159: 	// exit without duplicating it through Cobra's stderr output.
+160: 	cmd.Root().SilenceErrors = true
+161: 	return command.NewExitError(1, nil)
+162: }
+163: 
+164: func formatValidationError(e bptypes.ValidationError) string {
+165: 	var location string
+166: 	if e.Line != nil && *e.Line > 0 {
+167: 		location = fmt.Sprintf("line %d", *e.Line)
+168: 		if e.Column != nil && *e.Column > 0 {
+169: 			location += fmt.Sprintf(", column %d", *e.Column)
+
+Pinned Render pkg/client/blueprints/blueprints_gen.go:213
+213: // ValidateBlueprintRequest defines model for validateBlueprintRequest.
+214: type ValidateBlueprintRequest struct {
+215: 	// File The render.yaml file to validate, as a binary file.
+216: 	File openapi_types.File `json:"file"`
+217: 
+218: 	// OwnerId The ID of the workspace to validate against. Obtain your workspace ID from its Settings page in the Render Dashboard.
+219: 	//
+220: 	// Example: tea-cjnxpkdhshc73d12t9i0
+221: 	OwnerId string `json:"ownerId"`
+222: }
+223: 
+224: // ValidateBlueprintResponse defines model for validateBlueprintResponse.
+225: type ValidateBlueprintResponse struct {
+226: 	// Errors A list of validation errors. Only present if `valid` is `false`.
+227: 	Errors *[]ValidationError     `json:"errors,omitempty"`
+228: 	Plan   *ValidationPlanSummary `json:"plan,omitempty"`
+229: 
+230: 	// Valid If `true`, the Blueprint validated successfully. If `false`, at least one validation error occurred.
+231: 	Valid bool `json:"valid"`
+232: }
+233: 
+234: // ValidationError defines model for validationError.
+235: type ValidationError struct {
+236: 	// Column The column number in the YAML file (1-indexed)
+237: 	Column *int `json:"column,omitempty"`
+238: 
+239: 	// Error The error message
+240: 	Error string `json:"error"`
+241: 
+242: 	// Line The line number in the YAML file (1-indexed)
+243: 	Line *int `json:"line,omitempty"`
+244: 
+245: 	// Path The path to the field with the error (e.g., `services[0].plan`)
+246: 	Path *string `json:"path,omitempty"`
+247: }
+248: 
+249: // ValidationPlanSummary defines model for validationPlanSummary.
+250: type ValidationPlanSummary struct {
+251: 	// Databases The names of Render Postgres databases that would be created as part of the Blueprint.
+252: 	Databases *[]string `json:"databases,omitempty"`
+253: 

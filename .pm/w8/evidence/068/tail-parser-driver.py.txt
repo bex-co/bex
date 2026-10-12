@@ -1,0 +1,17 @@
+from pathlib import Path
+import json,subprocess,yaml
+p=Path(__file__).parent;tails=json.loads((p/'sweep139-native-tail.json').read_text());assert len(tails)==4;reports=[];decoder=json.JSONDecoder();paths=[]
+for t in tails:
+ assert t['both_messages_observed'] and not t['forced_kill'] and t['pre_emission_stdout']==''
+ if t['mode']=='yaml':
+  f=p/f"sweep139-{t['client']}-tail.yaml";f.write_text(t['stdout']);paths.append(str(f));docs=list(yaml.safe_load_all(t['stdout']));assert len(docs)==1 and docs[0]['message']==t['expected_messages'][-1];reports.append({'client':t['client'],'format':'yaml','permissive_document_count':len(docs),'permissive_kept_message':docs[0]['message'],'expected_messages':t['expected_messages'],'missing_document_separator':'\n---\n' not in t['stdout']})
+ else:
+  text=t['stdout'];rows=[]
+  while text.strip():r,n=decoder.raw_decode(text.lstrip());rows.append(r);text=text.lstrip()[n:]
+  assert len(rows)==2 and {r['message'] for r in rows}==set(t['expected_messages']) and len({r['id'] for r in rows})==2;reports.append({'client':t['client'],'format':'json','decoded_count':len(rows),'rows':rows})
+strict=[json.loads(s) for s in subprocess.check_output([str(p/'sweep139-yaml-decode'),*paths],text=True).splitlines()]
+for s in strict:assert len(s['documents'])==0 and 'already defined' in s['error'];s['file']=Path(s['file']).name
+assert [z['stdout'] for z in tails if z['mode']=='yaml'][0]==[z['stdout'] for z in tails if z['mode']=='yaml'][1]
+assert [z['stdout'] for z in tails if z['mode']=='json'][0]==[z['stdout'] for z in tails if z['mode']=='json'][1]
+(p/'sweep139-parse.json').write_text(json.dumps({'PyYAML_version':yaml.__version__,'strict_parser':'gopkg.in/yaml.v3 v3.0.1','reports':reports,'strict':strict,'both_clients_byte_identical_per_format':True},indent=2))
+print('Both native YAML tails: zero documents / duplicate-key error under strict parser; permissive parser retains only B. Both JSON tails: two complete exact records.')

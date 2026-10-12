@@ -1,0 +1,19 @@
+import pathlib,json,secrets,subprocess,shutil,datetime
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());assert c['sync152_result']==0 and 'sweep152_envforms' not in c
+nonce=secrets.token_hex(3);prefix='qa152-'+nonce;image='docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592';cfg=p/'render-config/cli.yaml';assert not cfg.exists();g={'sweep':152,'source_head':c['head'],'nonce':nonce,'mutation':'validation only; no generated runtime values or resources','results':[]};c['sweep152_envforms']=g
+variants=[('literal-empty',{'key':'VALUE','value':''},True),('generated-only',{'key':'VALUE','generateValue':True},True),('generated-plus-empty',{'key':'VALUE','value':'','generateValue':True},False),('generated-plus-space',{'key':'VALUE','value':' ','generateValue':True},False),('disabled-generation-empty',{'key':'VALUE','value':'','generateValue':False},True)]
+def save():c['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+save();shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+try:
+ for client in ['bex','render']:
+  for container in ['service','environment-group']:
+   for variant,env,expected in variants:
+    service={'name':prefix+'-web','type':'web','runtime':'image','plan':'free','image':{'url':image}}
+    if container=='service':service['envVars']=[env];document={'services':[service]}
+    else:document={'envVarGroups':[{'name':prefix+'-group','envVars':[env]}],'services':[service]}
+    path=p/('sweep152-'+container+'-'+variant+'.yaml');path.write_text(json.dumps(document,ensure_ascii=False,indent=2)+'\n');path.chmod(0o600)
+    args=['blueprints','validate',str(path),'--confirm','-o','json'];entry={'client':client,'container':container,'variant':variant,'expected_by_existing_semantic_checks':expected,'document':document,'state':'native validation intent persisted'};g['results'].append(entry);save()
+    r=json.loads(subprocess.check_output(['python3',str(p/('run.py' if client=='bex' else 'run-render.py')),*(['--release'] if client=='bex' else []),*args],text=True));entry['result']=r;save()
+    if not r['stdout']:entry['qualification']='no validation body; inspect transport/setup before classifying';save();print(client,container,variant,'no body',r['exit'],flush=True);continue
+    v=json.loads(r['stdout']);entry['decoded']=v;entry['consumer_consistent']=not r['stderr'] and r['exit']==(0 if v['valid'] else 1);entry['semantic_match']=v['valid']==expected;save();print(client,container,variant,'valid',v['valid'],'exit',r['exit'],'semantic_match',entry['semantic_match'],flush=True)
+finally:cfg.unlink(missing_ok=True);g['copied_render_config_removed']=True;save();(p/'sweep152-envforms.json').write_text(json.dumps(g,ensure_ascii=False,indent=2)+'\n')

@@ -1,0 +1,178 @@
+[
+  {
+    "client": "bex",
+    "initial_path_readback": {
+      "method": "GET",
+      "path": "/v1/services/srv-db62h3aktg8c739m65m0/env-vars/PATH",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.393,
+      "response": "{\"key\":\"PATH\",\"value\":\"/usr/local/bin\",\"revision\":\"evr1_AAAAAAAAAAE\"}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a491fb192e9a7e56-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "path_only_setup_intent": {
+      "at": "2026-10-12T00:28:46.171147+00:00",
+      "body": {
+        "envVars": [
+          {
+            "key": "PATH",
+            "value": "/usr/local/bin:/usr/bin:/bin"
+          }
+        ],
+        "saveMode": "save_only"
+      },
+      "qualification": "Owned API control changes only PATH; followup actual native deploy"
+    },
+    "path_only_setup_result": {
+      "method": "PATCH",
+      "path": "/v1/services/srv-db62h3aktg8c739m65m0/environment",
+      "body": "{\"envVars\": [{\"key\": \"PATH\", \"value\": \"/usr/local/bin:/usr/bin:/bin\"}], \"saveMode\": \"save_only\"}",
+      "status": "200",
+      "elapsed": 0.455,
+      "response": "{\"envVarKeys\":[\"PATH\",\"QA_COMPLEX\"],\"secretFileNames\":[\"qa-note.txt\"],\"rolledOut\":false,\"revision\":null}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a491fc862af0ad81-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "readbacks": {
+      "service": {
+        "method": "GET",
+        "path": "/v1/services/srv-db62h3aktg8c739m65m0",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.5,
+        "response": "{\"id\":\"srv-db62h3aktg8c739m65m0\",\"name\":\"qa-20261011-4acbc9-buildbytes\",\"immutableName\":\"qa-20261011-4acbc9-buildbytes\",\"slug\":\"qa-20261011-4acbc9-buildbytes\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db62h3aktg8c739m65m0\",\"createdAt\":\"2026-10-12T00:23:41Z\",\"updatedAt\":\"2026-10-12T00:29:55Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"python\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/python3 -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport json,time\\npathlib.Path(\\\"qa-built.json\\\").write_text(json.dumps({\\\"marker\\\":'\\\"'\\\"'QA163_4acbc9'\\\"'\\\"',\\\"snapshot\\\":snapshot(),\\\"build_path\\\":os.getenv(\\\"PATH\\\"),\\\"built_at\\\":time.time_ns()}))\\n'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport http.server,json,socket\\nbuilt=json.loads(pathlib.Path(\\\"qa-built.json\\\").read_text())\\nclass Handler(http.server.BaseHTTPRequestHandler):\\n    def do_GET(self):\\n        body=json.dumps({\\\"marker\\\":built[\\\"marker\\\"],\\\"built\\\":built,\\\"runtime\\\":snapshot(),\\\"runtime_path\\\":os.getenv(\\\"PATH\\\"),\\\"instance\\\":socket.gethostname()}).encode()\\n        self.send_response(200)\\n        self.send_header(\\\"Content-Type\\\",\\\"application/json\\\")\\n        self.send_header(\\\"Content-Length\\\",str(len(body)))\\n        self.end_headers()\\n        self.wfile.write(body)\\n    def log_message(self,*args): pass\\nhttp.server.ThreadingHTTPServer((\\\"0.0.0.0\\\",int(os.getenv(\\\"PORT\\\",\\\"3000\\\"))),Handler).serve_forever()\\n'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-4acbc9-buildbytes:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"python\",\"url\":\"https://qa-20261011-4acbc9-buildbytes.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-2\",\"urls\":[\"https://qa-20261011-4acbc9-buildbytes.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a492052ee8662832-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "saved_path": {
+        "method": "GET",
+        "path": "/v1/services/srv-db62h3aktg8c739m65m0/env-vars/PATH",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.453,
+        "response": "{\"key\":\"PATH\",\"value\":\"/usr/local/bin:/usr/bin:/bin\",\"revision\":\"evr1_AAAAAAAAAAI\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a49205327d016d29-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "failed_deploy": {
+        "method": "GET",
+        "path": "/v1/services/srv-db62h3aktg8c739m65m0/deploys/dep-db62h3aktg8c739m65mg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.474,
+        "response": "{\"id\":\"dep-db62h3aktg8c739m65mg\",\"serviceId\":\"srv-db62h3aktg8c739m65m0\",\"status\":\"build_failed\",\"trigger\":\"other\",\"bexTrigger\":\"create\",\"commit\":{\"id\":\"35e6d3b42b56d42fe031bc945748ebbbf91588bf\",\"message\":\"docs(pm): file stale live deploy detail (w4/262)\"},\"createdAt\":\"2026-10-12T00:23:41.536955Z\",\"updatedAt\":\"2026-10-12T00:25:36.758137Z\",\"startedAt\":\"2026-10-12T00:24:48.911195Z\",\"finishedAt\":\"2026-10-12T00:25:36.758136Z\",\"failureReason\":\"build failed in the docker build step:\\n------\\nerror: build command '/usr/local/bin/python3 -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport json,time\\npathlib.Path(\\\"qa-built.json\\\").write_text(json.dumps({\\\"marker\\\":'\\\"'\\\"'QA163_4acbc9'\\\"'\\\"',\\\"snapshot\\\":snapshot(),\\\"build_path\\\":os.getenv(\\\"PATH\\\"),\\\"built_at\\\":time.time_ns()}))\\n'' exited with code 1\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4920535ad61d01d-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    }
+  },
+  {
+    "client": "render",
+    "initial_path_readback": {
+      "method": "GET",
+      "path": "/v1/services/srv-db62haskcuvc73d6ndag/env-vars/PATH",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.798,
+      "response": "{\"key\":\"PATH\",\"value\":\"/usr/local/bin\",\"revision\":\"evr1_AAAAAAAAAAE\"}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a491fb1fc935c8bd-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "path_only_setup_intent": {
+      "at": "2026-10-12T00:29:27.979516+00:00",
+      "body": {
+        "envVars": [
+          {
+            "key": "PATH",
+            "value": "/usr/local/bin:/usr/bin:/bin"
+          }
+        ],
+        "saveMode": "save_only"
+      },
+      "qualification": "Owned API control changes only PATH; followup actual native deploy"
+    },
+    "path_only_setup_result": {
+      "method": "PATCH",
+      "path": "/v1/services/srv-db62haskcuvc73d6ndag/environment",
+      "body": "{\"envVars\": [{\"key\": \"PATH\", \"value\": \"/usr/local/bin:/usr/bin:/bin\"}], \"saveMode\": \"save_only\"}",
+      "status": "200",
+      "elapsed": 0.493,
+      "response": "{\"envVarKeys\":[\"PATH\",\"QA_COMPLEX\"],\"secretFileNames\":[\"qa-note.txt\"],\"rolledOut\":false,\"revision\":null}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a491fd8b99a0300b-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "readbacks": {
+      "service": {
+        "method": "GET",
+        "path": "/v1/services/srv-db62haskcuvc73d6ndag",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.66,
+        "response": "{\"id\":\"srv-db62haskcuvc73d6ndag\",\"name\":\"qa-20261011-1bfc95-buildbytes\",\"immutableName\":\"qa-20261011-1bfc95-buildbytes\",\"slug\":\"qa-20261011-1bfc95-buildbytes\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db62haskcuvc73d6ndag\",\"createdAt\":\"2026-10-12T00:24:12Z\",\"updatedAt\":\"2026-10-12T00:31:22Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL REDACTED>\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"python\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/python3 -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport json,time\\npathlib.Path(\\\"qa-built.json\\\").write_text(json.dumps({\\\"marker\\\":'\\\"'\\\"'QA163_1bfc95'\\\"'\\\"',\\\"snapshot\\\":snapshot(),\\\"build_path\\\":os.getenv(\\\"PATH\\\"),\\\"built_at\\\":time.time_ns()}))\\n'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport http.server,json,socket\\nbuilt=json.loads(pathlib.Path(\\\"qa-built.json\\\").read_text())\\nclass Handler(http.server.BaseHTTPRequestHandler):\\n    def do_GET(self):\\n        body=json.dumps({\\\"marker\\\":built[\\\"marker\\\"],\\\"built\\\":built,\\\"runtime\\\":snapshot(),\\\"runtime_path\\\":os.getenv(\\\"PATH\\\"),\\\"instance\\\":socket.gethostname()}).encode()\\n        self.send_response(200)\\n        self.send_header(\\\"Content-Type\\\",\\\"application/json\\\")\\n        self.send_header(\\\"Content-Length\\\",str(len(body)))\\n        self.end_headers()\\n        self.wfile.write(body)\\n    def log_message(self,*args): pass\\nhttp.server.ThreadingHTTPServer((\\\"0.0.0.0\\\",int(os.getenv(\\\"PORT\\\",\\\"3000\\\"))),Handler).serve_forever()\\n'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261011-1bfc95-buildbytes:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"python\",\"url\":\"https://qa-20261011-1bfc95-buildbytes.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-2\",\"urls\":[\"https://qa-20261011-1bfc95-buildbytes.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a49205398e3eeb2a-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "saved_path": {
+        "method": "GET",
+        "path": "/v1/services/srv-db62haskcuvc73d6ndag/env-vars/PATH",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.319,
+        "response": "{\"key\":\"PATH\",\"value\":\"/usr/local/bin:/usr/bin:/bin\",\"revision\":\"evr1_AAAAAAAAAAI\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a492053e0e02cf2e-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "failed_deploy": {
+        "method": "GET",
+        "path": "/v1/services/srv-db62haskcuvc73d6ndag/deploys/dep-db62haskcuvc73d6ndb0",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.318,
+        "response": "{\"id\":\"dep-db62haskcuvc73d6ndb0\",\"serviceId\":\"srv-db62haskcuvc73d6ndag\",\"status\":\"build_failed\",\"trigger\":\"other\",\"bexTrigger\":\"create\",\"commit\":{\"id\":\"35e6d3b42b56d42fe031bc945748ebbbf91588bf\",\"message\":\"docs(pm): file stale live deploy detail (w4/262)\"},\"createdAt\":\"2026-10-12T00:24:11.870533Z\",\"updatedAt\":\"2026-10-12T00:26:06.785399Z\",\"startedAt\":\"2026-10-12T00:25:36.778768Z\",\"finishedAt\":\"2026-10-12T00:26:06.785397Z\",\"failureReason\":\"build failed in the docker build step:\\n------\\nerror: build command '/usr/local/bin/python3 -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport json,time\\npathlib.Path(\\\"qa-built.json\\\").write_text(json.dumps({\\\"marker\\\":'\\\"'\\\"'QA163_1bfc95'\\\"'\\\"',\\\"snapshot\\\":snapshot(),\\\"build_path\\\":os.getenv(\\\"PATH\\\"),\\\"built_at\\\":time.time_ns()}))\\n'' exited with code 1\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a49205406b0beb35-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    }
+  }
+]

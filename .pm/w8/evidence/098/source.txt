@@ -1,0 +1,375 @@
+Source HEAD: a5ad5cda47f3b346a95f000021910a5bc33d88f3
+
+lego/backend/internal/apps/deploy.go:638
+638: // kvPropertyKey maps a render.yaml fromService (type:keyvalue/redis) property to
+639: // the key in the keyvalue credentials Secret (the operator writes uri/host/port/
+640: // password/username; docs/ADR021-keyvalue-management.md).
+641: var kvPropertyKey = map[string]string{
+642: 	"connectionString": "uri",
+643: 	"host":             "host",
+644: 	"port":             "port",
+645: 	"password":         "password",
+646: }
+647: 
+
+lego/backend/internal/apps/deploy.go:1003
+1003: 
+1004: // resolveServiceRefs is one stack service's reference-resolution prelude: the
+1005: // resolved database/key-value env vars and every already-resolvable host ref
+1006: // are appended onto svc.req.Env; the forward host refs (sibling not created
+1007: // yet) are returned for the post-create patch pass.
+1008: func resolveServiceRefs(svc *parsedService, databaseIDs, kvCRNames map[string]string, lookupSlug func(string) string) ([]hostRef, error) {
+1009: 	for _, ref := range svc.databaseRefs {
+1010: 		ev, err := resolveDatabaseRef(ref, databaseIDs)
+1011: 		if err != nil {
+1012: 			return nil, fmt.Errorf("%w: service %q: %v", core.ErrBadRequest, svc.req.Name, err)
+1013: 		}
+1014: 		svc.req.Env = append(svc.req.Env, ev)
+1015: 	}
+1016: 	for _, ref := range svc.kvRefs {
+1017: 		ev, err := resolveKeyValueRef(ref, kvCRNames)
+1018: 		if err != nil {
+1019: 			return nil, fmt.Errorf("%w: service %q: %v", core.ErrBadRequest, svc.req.Name, err)
+1020: 		}
+1021: 		svc.req.Env = append(svc.req.Env, ev)
+1022: 	}
+1023: 	var laterRefs []hostRef
+1024: 	for _, ref := range svc.hostRefs {
+1025: 		slug := lookupSlug(ref.target)
+1026: 		if slug == "" {
+1027: 			laterRefs = append(laterRefs, ref) // forward ref — sibling not created yet
+
+lego/backend/internal/apps/deploy.go:1780
+1780: // flavor (Render accepts both spellings).
+1781: func isKeyValueType(t string) bool {
+1782: 	return t == "keyvalue" || t == "redis"
+1783: }
+1784: 
+1785: // validateEnabledDisabled checks a manifest tri-state toggle ("", enabled,
+
+lego/backend/internal/apps/deploy.go:2031
+2031: func (idx *stackIndex) classifyRefs(svc parsedService, refVars []bexEnvVar) (parsedService, error) {
+2032: 	for _, r := range refVars {
+2033: 		if r.FromDatabase != nil {
+2034: 			if idx.databaseNames[r.FromDatabase.Name] && r.FromDatabase.Property == dbPropertyConnectionPoolString && !idx.databasePoolers[r.FromDatabase.Name] {
+2035: 				return parsedService{}, poolerRequiredError(svc.req.Name, r.FromDatabase.Name)
+2036: 			}
+2037: 			svc.databaseRefs = append(svc.databaseRefs, r)
+2038: 			continue
+2039: 		}
+2040: 		if r.FromService != nil && isKeyValueType(r.FromService.Type) {
+2041: 			svc.kvRefs = append(svc.kvRefs, r)
+2042: 			continue
+2043: 		}
+2044: 		// One target-existence check for every remaining fromService form
+2045: 		// (host/hostport/port/envVarKey), so the message lives in one place.
+2046: 		allowExistingServiceHost := r.FromService != nil && r.FromService.EnvVarKey == "" && r.FromService.Property == serviceRefPropertyHost
+2047: 		if r.FromService != nil && !idx.names[r.FromService.Name] && !allowExistingServiceHost {
+2048: 			return parsedService{}, fmt.Errorf("%w: service %q: fromService references unknown service %q (declare it under services: in the same file)", core.ErrBadRequest, svc.req.Name, r.FromService.Name)
+
+lego/backend/internal/apps/deploy.go:2615
+2615: // validateKeyedEnv validates one keyed env var (every form but the keyless
+2616: // fromGroup). It enforces Render's field rules: a key is required; value +
+2617: // generateValue is a contradiction; generateValue can't combine with a reference;
+2618: // a fromService takes EITHER a property (host/port/hostport) OR an envVarKey, not
+2619: // both; a fromDatabase property must map onto the CNPG Secret vocabulary.
+2620: func validateKeyedEnv(e bexEnvVar) error {
+2621: 	if e.Key == "" {
+2622: 		return fmt.Errorf("an envVars entry is missing its key")
+2623: 	}
+2624: 	if e.GenerateValue {
+2625: 		if e.Value != "" {
+2626: 			return fmt.Errorf("sets both value and generateValue — pick one")
+2627: 		}
+2628: 		if e.FromDatabase != nil || e.FromService != nil {
+2629: 			return fmt.Errorf("generateValue cannot be combined with fromDatabase/fromService")
+2630: 		}
+2631: 	}
+2632: 	if e.FromService != nil {
+2633: 		ref := e.FromService
+2634: 		switch {
+2635: 		case ref.EnvVarKey != "":
+2636: 			if ref.Property != "" {
+2637: 				return fmt.Errorf("fromService sets both envVarKey and property — pick one")
+2638: 			}
+2639: 		case isKeyValueType(ref.Type):
+2640: 			if ref.Property == "" {
+2641: 				return fmt.Errorf("fromService keyvalue needs a property (connectionString, host, port, or password)")
+2642: 			}
+2643: 			if _, ok := kvPropertyKey[ref.Property]; !ok {
+2644: 				return fmt.Errorf("fromService keyvalue property %q is not supported (want connectionString, host, port, or password)", ref.Property)
+2645: 			}
+2646: 		case ref.Property == "":
+2647: 			return fmt.Errorf("fromService needs a property (host, port, hostport) or an envVarKey")
+2648: 		case !serviceRefProperty[ref.Property]:
+2649: 			return fmt.Errorf("fromService property %q is not supported (want host, port, or hostport)", ref.Property)
+2650: 		}
+2651: 	}
+2652: 	if e.FromDatabase != nil {
+2653: 		if _, ok := dbPropertyKey[e.FromDatabase.Property]; !ok {
+2654: 			return fmt.Errorf("fromDatabase property %q is not supported (want connectionString, host, port, user, password, or database)", e.FromDatabase.Property)
+2655: 		}
+2656: 	}
+2657: 	return nil
+2658: }
+2659: 
+2660: // resolveDatabaseRef turns a validated fromDatabase entry into a Secret ref
+
+lego/backend/internal/apps/deploy.go:2690
+2690: // (kv.Status.SecretName = kv.Name, docs/ADR021-keyvalue-management.md).
+2691: func resolveKeyValueRef(e bexEnvVar, kvCRNames map[string]string) (appv1alpha1.EnvVar, error) {
+2692: 	ref := e.FromService
+2693: 	if ref == nil {
+2694: 		return appv1alpha1.EnvVar{}, fmt.Errorf("not a keyvalue reference")
+2695: 	}
+2696: 	crName := kvCRNames[ref.Name]
+2697: 	if crName == "" {
+2698: 		return appv1alpha1.EnvVar{}, fmt.Errorf("fromService references unresolved key value %q", ref.Name)
+2699: 	}
+2700: 	key := kvPropertyKey[ref.Property]
+2701: 	return appv1alpha1.EnvVar{
+2702: 		Name: e.Key,
+2703: 		ValueFrom: &appv1alpha1.EnvVarSource{
+2704: 			SecretKeyRef: &appv1alpha1.SecretKeySelector{
+2705: 				Name: crName,
+2706: 				Key:  key,
+2707: 			},
+2708: 		},
+2709: 	}, nil
+2710: }
+2711: 
+2712: // resolveRef turns one fromService env entry into a concrete EnvVar now that
+2713: // every service port and parse-time-known env is available. Target existence
+2714: // is already checked once by the caller's shared guard.
+
+lego/backend/internal/apps/blueprint.go:618
+618: // ValidateBlueprint parses a Render Blueprint and returns per-entry errors without
+619: // applying anything. An optional blueprint ID includes owned-resource detachments.
+620: // Reads current state when available and requires can_view.
+621: func (s *Service) ValidateBlueprint(ctx context.Context, ownerID, bexYAML, blueprintID string) (BlueprintValidation, error) {
+622: 	ctx, err := s.blueprintRequestScope(ctx, core.RelCanView, blueprintID, ownerID)
+623: 	if err != nil {
+624: 		return BlueprintValidation{}, err
+625: 	}
+626: 	return s.blueprintValidationFor(ctx, "", "", bexYAML, blueprintID)
+
+lego/backend/internal/apps/blueprint.go:657
+657: 	source, ir, problems := CompileBlueprintIR(bexYAML)
+658: 	if len(problems) > 0 {
+659: 		return BlueprintValidation{Errors: blueprintCompilerValidationErrors(problems)}, nil
+660: 	}
+661: 	st, err := parseCompiledStack(blueprintParseOverrides{repo: repo, branch: branch}, source, ir)
+662: 	// The validation writes nothing, so its checks share one workspace snapshot.
+663: 	snap := s.newWorkspaceSnapshot(ctx)
+664: 	var refused blueprintResourceErrors
+665: 	if errors.As(err, &refused) {
+666: 		// Some declarations were refused; the services that parsed still get
+
+lego/backend/internal/apps/blueprint.go:680
+680: 	if err == nil {
+681: 		err = s.validateBlueprintServices(ctx, st, snap)
+682: 	}
+683: 	if err == nil {
+684: 		// w4/118: fromDatabase and fromService→KeyValue resolve against the
+685: 		// WORKSPACE rather than the file, and their checks ran only at apply —
+686: 		// so a manifest naming a database that exists nowhere validated
+687: 		// `valid: true` with a clean plan, while the same manifest's
+688: 		// fromService→service (a same-file-only reference) was rejected. The
+689: 		// resolvers, their wording and their ambiguous-name case already
+690: 		// existed; only the step was wrong.
+691: 		//
+692: 		// fromGroup stays deferred, deliberately. Its check is gated on an
+693: 		// uncached can_view_sensitive re-assert (preflightBlueprintEnv) because
+694: 		// a group link materializes secret values to workload code, and
+695: 		// validateBlueprint is a can_view verb — running it here would either
+696: 		// refuse a viewer's validate or weaken that gate. Recorded in ADR018's
+697: 		// Blueprint row so a manifest author knows which checks are which.
+698: 		if entries := s.validateWorkspaceReferences(ctx, source, ir, st, snap); len(entries) > 0 {
+699: 			return BlueprintValidation{Errors: entries}, nil
+700: 		}
+701: 	}
+702: 	if err == nil && repo != "" && s.Blueprints != nil {
+703: 		// Ownership conflicts surface in the preview/validation result (the
+704: 		// dashboard's create review + pre-sync dialog) so nobody discovers
+705: 		// them at apply time; the apply-path preflight still enforces.
+706: 		if entries := s.previewOwnershipConflicts(ctx, repo, branch, st, snap); len(entries) > 0 {
+707: 			return BlueprintValidation{Errors: entries}, nil
+708: 		}
+709: 	}
+
+lego/backend/internal/apps/blueprint.go:1602
+1602: 	source, ir, problems := CompileBlueprintIR(manifest)
+1603: 	if len(problems) > 0 {
+1604: 		log.Printf("blueprint disconnect: stored manifest no longer compiles; skipping grouping reclaim (workspace %s)", tenantID)
+1605: 		return nil
+1606: 	}
+1607: 	st, err := parseCompiledStack(blueprintParseOverrides{}, source, ir)
+1608: 	if err != nil {
+1609: 		log.Printf("blueprint disconnect: stored manifest no longer parses; skipping grouping reclaim (workspace %s): %v", tenantID, err)
+1610: 		return nil
+
+lego/backend/internal/apps/blueprint_ownership.go:594
+594: func (s *Service) validateWorkspaceReferences(ctx context.Context, source *BlueprintSource, ir BlueprintIR, st parsedStack, snap *workspaceSnapshot) []BlueprintValidationError {
+595: 	if s.Client == nil {
+596: 		return nil
+597: 	}
+598: 	if _, scoped := s.Tenant(ctx); !scoped {
+599: 		return nil
+600: 	}
+601: 	var out []BlueprintValidationError
+602: 	if _, _, err := s.resolveExistingBlueprintReferences(ctx, st, snap); err != nil {
+603: 		var refused blueprintResourceErrors
+604: 		if !errors.As(err, &refused) {
+605: 			// A cluster read failure is not a manifest problem; the apply path
+606: 			// is still the enforcement point.
+607: 			return nil
+608: 		}
+609: 		// One located entry per referencing envVars entry (w8/051): two
+610: 		// services naming the same missing database each get their own.
+
+lego/backend/internal/apps/blueprint_generate.go:235
+235: 	// is a generator bug, never a user error — fail loudly.
+236: 	source, ir, problems := CompileBlueprintIR(manifest)
+237: 	if len(problems) > 0 {
+238: 		return GenerateBlueprintResult{}, generateSelfCheckError(problems[0].Message, generatedResourceID(problems[0].Path, req))
+239: 	}
+240: 	if _, err := parseCompiledStack(blueprintParseOverrides{}, source, ir); err != nil {
+241: 		return GenerateBlueprintResult{}, generateSelfCheckError(err.Error(), "")
+242: 	}
+243: 	return GenerateBlueprintResult{Manifest: manifest, Filename: CanonicalBlueprintFilename}, nil
+244: }
+
+lego/operator/internal/controller/app_controller.go:4740
+4740: func appEnv(app *appv1alpha1.App, port int) []corev1.EnvVar {
+4741: 	env := make([]corev1.EnvVar, 0, len(app.Spec.Env)+1)
+4742: 	for _, e := range app.Spec.Env {
+4743: 		if e.Name == portEnvName {
+4744: 			continue // operator-owned; never let a user shadow it
+4745: 		}
+4746: 		ev := corev1.EnvVar{Name: e.Name, Value: e.Value}
+4747: 		if e.ValueFrom != nil && e.ValueFrom.SecretKeyRef != nil {
+4748: 			ev.Value = ""
+4749: 			ev.ValueFrom = &corev1.EnvVarSource{
+4750: 				SecretKeyRef: &corev1.SecretKeySelector{
+4751: 					LocalObjectReference: corev1.LocalObjectReference{Name: e.ValueFrom.SecretKeyRef.Name},
+4752: 					Key:                  e.ValueFrom.SecretKeyRef.Key,
+4753: 				},
+4754: 			}
+4755: 		}
+4756: 		env = append(env, ev)
+4757: 	}
+4758: 	env = append(env, corev1.EnvVar{Name: portEnvName, Value: strconv.Itoa(port)})
+4759: 	return env
+4760: }
+4761: 
+4762: // envFromSources wires the App's secret-backed env into the container: each linked
+4763: // environment group's "<evg-id>-env" Secret (spec.envFromSecrets) FIRST, then the
+
+lego/types/v1alpha1/app_types.go:1110
+1110: // EnvVarSource selects a single Secret key to source an EnvVar from — the
+1111: // shape a fromDatabase reference resolves to. Mirrors Kubernetes' core EnvVar
+1112: // sourcing (a narrowed EnvVarSource with only the SecretKeyRef selector bex
+1113: // uses today).
+1114: type EnvVarSource struct {
+1115: 	// SecretKeyRef names the Secret + key whose value populates this variable.
+1116: 	// +optional
+1117: 	SecretKeyRef *SecretKeySelector `json:"secretKeyRef,omitempty"`
+1118: }
+1119: 
+1120: // SecretKeySelector names one key of one Secret in the App's namespace.
+1121: type SecretKeySelector struct {
+1122: 	// Name is the Secret name (e.g. a Database's "<stable-id>-app" connection Secret).
+1123: 	// +required
+1124: 	Name string `json:"name"`
+1125: 
+1126: 	// Key is the key within the Secret (e.g. "uri", "host", "port", "username",
+1127: 	// "password", "dbname" — the CNPG app-Secret vocabulary, which Render's
+1128: 	// fromDatabase property names map onto).
+1129: 	// +required
+1130: 	Key string `json:"key"`
+1131: }
+1132: 
+1133: // StaticRoute is one redirect/rewrite rule for a static_site, matching Render's
+1134: // route shape. Rules are evaluated in order (first match wins). A redirect
+1135: // answers with a 301 to Destination; a rewrite serves Destination's content
+1136: // with 200 (the SPA fallback is a rewrite of "/*" to "/index.html"). Source and
+1137: // Destination are request paths; "/*" is a trailing wildcard.
+1138: type StaticRoute struct {
+1139: 	// Type is "redirect" (301 Location) or "rewrite" (200, serve another path).
+1140: 	// +required
+
+Pinned Render cmd/blueprintvalidate.go:96
+96: 	var body bytes.Buffer
+97: 	writer := multipart.NewWriter(&body)
+98: 
+99: 	if err := writer.WriteField("ownerId", workspaceID); err != nil {
+100: 		return fmt.Errorf("failed to write ownerId field: %w", err)
+101: 	}
+102: 
+103: 	part, err := writer.CreateFormFile("file", filepath.Base(absPath))
+104: 	if err != nil {
+105: 		return fmt.Errorf("failed to create form file: %w", err)
+106: 	}
+107: 	if _, err := part.Write(content); err != nil {
+108: 		return fmt.Errorf("failed to write file content: %w", err)
+109: 	}
+110: 
+111: 	if err := writer.Close(); err != nil {
+112: 		return fmt.Errorf("failed to close multipart writer: %w", err)
+113: 	}
+114: 
+115: 	c, err := client.NewDefaultClient()
+116: 	if err != nil {
+117: 		return fmt.Errorf("failed to create client: %w", err)
+118: 	}
+119: 
+120: 	resp, err := c.ValidateBlueprintWithBodyWithResponse(
+121: 		ctx,
+122: 		writer.FormDataContentType(),
+123: 		&body,
+124: 	)
+125: 	if err != nil {
+126: 		return fmt.Errorf("failed to validate Blueprint: %w", err)
+127: 	}
+128: 
+129: 	if resp.StatusCode() != 200 {
+130: 		return fmt.Errorf("validation request failed with status %d: %s", resp.StatusCode(), string(resp.Body))
+131: 	}
+132: 
+133: 	result := resp.JSON200
+134: 	if result == nil {
+135: 		return fmt.Errorf("unexpected response from server: %s", string(resp.Body))
+136: 	}
+137: 
+138: 	if output.Interactive() {
+139: 		return printValidationResultInteractive(absPath, result)
+140: 	}
+141: 
+142: 	// The API returns 200 for both validation outcomes. Preserve its validation
+143: 	// details on stdout before returning an error for an invalid Blueprint.
+144: 	_, err = command.PrintData(cmd, result, func(r *bptypes.ValidateBlueprintResponse) string {
+145: 		jsonBytes, err := json.MarshalIndent(r, "", "  ")
+146: 		if err != nil {
+147: 			return fmt.Sprintf("{\"error\": \"failed to format result: %v\"}\n", err)
+148: 		}
+149: 		return string(jsonBytes) + "\n"
+150: 	})
+151: 	if err != nil {
+152: 		return err
+153: 	}
+154: 	if result.Valid {
+155: 		return nil
+156: 	}
+157: 
+158: 	// The validation response already describes the failure. Return a non-zero
+159: 	// exit without duplicating it through Cobra's stderr output.
+160: 	cmd.Root().SilenceErrors = true
+161: 	return command.NewExitError(1, nil)
+162: }
+163: 
+164: func formatValidationError(e bptypes.ValidationError) string {
+165: 	var location string
+166: 	if e.Line != nil && *e.Line > 0 {
+167: 		location = fmt.Sprintf("line %d", *e.Line)
+168: 		if e.Column != nil && *e.Column > 0 {
+169: 			location += fmt.Sprintf(", column %d", *e.Column)

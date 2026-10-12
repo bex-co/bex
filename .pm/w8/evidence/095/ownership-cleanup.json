@@ -1,0 +1,43 @@
+{
+  "at": "2026-10-11T23:13:20.456560+00:00",
+  "resources_created_in_sweep": 0,
+  "native_service_list_exit": 0,
+  "baseline_service_ids": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3v694dm7c7390q930",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0"
+  ],
+  "baseline_ids_present": true,
+  "current_service_ids": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3v694dm7c7390q930",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0"
+  ],
+  "quota": {
+    "services": {
+      "used": 6,
+      "terminating": 0,
+      "limit": 25
+    },
+    "postgres": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    },
+    "keyValues": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    }
+  },
+  "owned_survivors": [],
+  "copied_render_config_removed": true,
+  "qualifications": "No hosted apply, group store projection or runtime attempted; private current-source fake-store probes create no platform resources; earlier bounded final-read check failed before quota; no mutation retried or product issue assigned",
+  "qualification_ownership_audit": "Minted owned resource IDs audited; historical rejected/no-ID intents remain in private checkpoint, including prior sweep60 absent-resource watch. Current six baseline service IDs match exactly; quotas services6/Postgres0/KeyValue0 with termination0."
+}

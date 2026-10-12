@@ -1,0 +1,74 @@
+[
+  {
+    "label": "project-name-list",
+    "provenance": "same-authority authenticated diagnostic replay; native traffic was not intercepted",
+    "request_response": {
+      "method": "GET",
+      "path": "/v1/projects?ownerId=tea-daif693dqjvc73e7as3g&name=prj-00000000000000093206&limit=100",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.388,
+      "response": "[{\"project\":{\"id\":\"prj-db60hghtodic73duutjg\",\"name\":\"prj-00000000000000093206\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"<QA_EMAIL>\",\"type\":\"team\"},\"environmentIds\":[\"evm-db60hghtodic73duutk0\"],\"createdAt\":\"2026-10-11T22:08:02.226977Z\",\"updatedAt\":\"2026-10-11T22:12:38.194364Z\"},\"cursor\":\"prj-db60hghtodic73duutjg\"}]\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4913bce4c86a709-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "label": "environment-name-list",
+    "provenance": "same-authority authenticated diagnostic replay; native traffic was not intercepted",
+    "request_response": {
+      "method": "GET",
+      "path": "/v1/environments?name=evm-00000000000000093206&projectId=prj-db60hghtodic73duutjg&limit=100",
+      "body": null,
+      "status": "200",
+      "elapsed": 1.53,
+      "response": "[{\"environment\":{\"id\":\"evm-db60hghtodic73duutk0\",\"projectId\":\"prj-db60hghtodic73duutjg\",\"name\":\"evm-00000000000000093206\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]},\"cursor\":\"evm-db60hghtodic73duutk0\"}]\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4913bd159763ad4-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "label": "project-synthetic-detail",
+    "provenance": "same-authority authenticated diagnostic replay; native traffic was not intercepted",
+    "request_response": {
+      "method": "GET",
+      "path": "/v1/projects/prj-00000000000000093206",
+      "body": null,
+      "status": "404",
+      "elapsed": 0.739,
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"project not found\",\"id\":\"not_found\",\"message\":\"project not found\",\"params\":null}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4913bdbddf52847-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "label": "environment-synthetic-detail",
+    "provenance": "same-authority authenticated diagnostic replay; native traffic was not intercepted",
+    "request_response": {
+      "method": "GET",
+      "path": "/v1/environments/evm-00000000000000093206",
+      "body": null,
+      "status": "404",
+      "elapsed": 0.265,
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"environment not found\",\"id\":\"not_found\",\"message\":\"environment not found\",\"params\":null}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4913be15ac81690-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    }
+  }
+]

@@ -1,0 +1,40 @@
+{
+  "at": "2026-10-12T04:14:49.060583+00:00",
+  "source_head": "aeeba21e7cd5a56a0f59d5a0ffe7d17fa457aff0",
+  "deployed_revision": "unknown",
+  "collector_revision": "unknown",
+  "bex": "v0.3.2",
+  "upstream": "v2.27.0/a764810a768202704e7206eb7b87a47211fcd98e",
+  "native_filter_queries": 20,
+  "passing_controls": 10,
+  "missing_severity_queries": 10,
+  "unfiltered_native_controls": 2,
+  "http_diagnostics": 2,
+  "owned_deleted_id": "srv-db65j8eui45s738uptug",
+  "local_container_ids_deleted": [
+    "c1016edffd0c75a5a3ca3537e98d7c09fa7dca0d3db4d13605de9835785eb9ee",
+    "5beb824006de8d4647031eb67188080aa17acc8840ba38f00be0f5fe7451e317",
+    "67b3df6d93076904bdccf7374a639d9d5d77670ce98e05001d8c20ea6dea6d86"
+  ],
+  "baseline_services_preserved": 6,
+  "quota": {
+    "services": {
+      "used": 6,
+      "terminating": 0,
+      "limit": 25
+    },
+    "postgres": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    },
+    "keyValues": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    }
+  },
+  "kubernetes_descendant_teardown": "not directly observed",
+  "product_fix": false,
+  "shipped": false
+}

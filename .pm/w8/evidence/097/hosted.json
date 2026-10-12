@@ -1,0 +1,4038 @@
+{
+  "sweep": 174,
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "type": "web_service",
+  "name": "qa-20261011-dc1b01-loglevels",
+  "nonce": "dc1b01",
+  "marker": "QA174_dc1b01",
+  "time": "2026-10-12T03:53:04.225631+00:00",
+  "source_head": "aeeba21e7cd5a56a0f59d5a0ffe7d17fa457aff0",
+  "dependency_ids": [],
+  "state": "deleted: CLIack/detail404/listabsent/baseline6/public404/quota6 termination0",
+  "capacity_proof": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.429,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49327c6edd76e82-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "command": [
+    "bex",
+    "services",
+    "create",
+    "--name",
+    "qa-20261011-dc1b01-loglevels",
+    "--type",
+    "web_service",
+    "--runtime",
+    "node",
+    "--repo",
+    "https://github.com/bex-co/bex",
+    "--branch",
+    "main",
+    "--root-directory",
+    "examples/hello-go",
+    "--build-command",
+    "/usr/local/bin/node --version",
+    "--start-command",
+    "/usr/local/bin/node -e 'const lines=[\"{\\\"level\\\":\\\"debug\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_DEBUG\\\"}\", \"{\\\"level\\\":\\\"info\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_INFO\\\"}\", \"{\\\"level\\\":\\\"notice\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_NOTICE\\\"}\", \"{\\\"level\\\":\\\"warning\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_WARNING\\\"}\", \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ERROR\\\"}\", \"{\\\"level\\\":\\\"critical\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_CRITICAL\\\"}\", \"{\\\"level\\\":\\\"alert\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ALERT\\\"}\", \"{\\\"level\\\":\\\"emergency\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_EMERGENCY\\\"}\", \"{\\\"severity\\\":\\\"ALERT\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_SEVERITY_ALERT\\\"}\", \"{\\\"severity\\\":\\\"EMERGENCY\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_SEVERITY_EMERGENCY\\\"}\", \"level=alert msg=QA174_dc1b01_FMT_alert\", \"severity=EMERGENCY msg=QA174_dc1b01_FMT_EMERGENCY\", \"QA174_dc1b01 CONTROL plain\"];for(const line of lines)console.log(line);require(\"http\").createServer((req,res)=>{const b=JSON.stringify({marker:\"QA174_dc1b01\",instance:require(\"os\").hostname()});res.writeHead(200,{\"Content-Type\":\"application/json\",\"Content-Length\":Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'",
+    "--health-check-path",
+    "/",
+    "--plan",
+    "free",
+    "--region",
+    "frankfurt",
+    "--auto-deploy=false",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "programme": "const lines=[\"{\\\"level\\\":\\\"debug\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_DEBUG\\\"}\", \"{\\\"level\\\":\\\"info\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_INFO\\\"}\", \"{\\\"level\\\":\\\"notice\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_NOTICE\\\"}\", \"{\\\"level\\\":\\\"warning\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_WARNING\\\"}\", \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ERROR\\\"}\", \"{\\\"level\\\":\\\"critical\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_CRITICAL\\\"}\", \"{\\\"level\\\":\\\"alert\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ALERT\\\"}\", \"{\\\"level\\\":\\\"emergency\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_EMERGENCY\\\"}\", \"{\\\"severity\\\":\\\"ALERT\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_SEVERITY_ALERT\\\"}\", \"{\\\"severity\\\":\\\"EMERGENCY\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_SEVERITY_EMERGENCY\\\"}\", \"level=alert msg=QA174_dc1b01_FMT_alert\", \"severity=EMERGENCY msg=QA174_dc1b01_FMT_EMERGENCY\", \"QA174_dc1b01 CONTROL plain\"];for(const line of lines)console.log(line);require(\"http\").createServer((req,res)=>{const b=JSON.stringify({marker:\"QA174_dc1b01\",instance:require(\"os\").hostname()});res.writeHead(200,{\"Content-Type\":\"application/json\",\"Content-Length\":Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");",
+  "expected_message_bytes": [
+    "{\"level\":\"debug\",\"message\":\"QA174_dc1b01 JSON_DEBUG\"}",
+    "{\"level\":\"info\",\"message\":\"QA174_dc1b01 JSON_INFO\"}",
+    "{\"level\":\"notice\",\"message\":\"QA174_dc1b01 JSON_NOTICE\"}",
+    "{\"level\":\"warning\",\"message\":\"QA174_dc1b01 JSON_WARNING\"}",
+    "{\"level\":\"error\",\"message\":\"QA174_dc1b01 JSON_ERROR\"}",
+    "{\"level\":\"critical\",\"message\":\"QA174_dc1b01 JSON_CRITICAL\"}",
+    "{\"level\":\"alert\",\"message\":\"QA174_dc1b01 JSON_ALERT\"}",
+    "{\"level\":\"emergency\",\"message\":\"QA174_dc1b01 JSON_EMERGENCY\"}",
+    "{\"severity\":\"ALERT\",\"message\":\"QA174_dc1b01 JSON_SEVERITY_ALERT\"}",
+    "{\"severity\":\"EMERGENCY\",\"message\":\"QA174_dc1b01 JSON_SEVERITY_EMERGENCY\"}",
+    "level=alert msg=QA174_dc1b01_FMT_alert",
+    "severity=EMERGENCY msg=QA174_dc1b01_FMT_EMERGENCY",
+    "QA174_dc1b01 CONTROL plain"
+  ],
+  "role": "Historical native level aliases over explicit JSON/logfmt severity, with plain unknown control",
+  "level_inputs": [
+    {
+      "style": "json-level",
+      "level": "debug",
+      "line": "{\"level\":\"debug\",\"message\":\"QA174_dc1b01 JSON_DEBUG\"}",
+      "expected_bucket": "debug"
+    },
+    {
+      "style": "json-level",
+      "level": "info",
+      "line": "{\"level\":\"info\",\"message\":\"QA174_dc1b01 JSON_INFO\"}",
+      "expected_bucket": "info"
+    },
+    {
+      "style": "json-level",
+      "level": "notice",
+      "line": "{\"level\":\"notice\",\"message\":\"QA174_dc1b01 JSON_NOTICE\"}",
+      "expected_bucket": "info"
+    },
+    {
+      "style": "json-level",
+      "level": "warning",
+      "line": "{\"level\":\"warning\",\"message\":\"QA174_dc1b01 JSON_WARNING\"}",
+      "expected_bucket": "warning"
+    },
+    {
+      "style": "json-level",
+      "level": "error",
+      "line": "{\"level\":\"error\",\"message\":\"QA174_dc1b01 JSON_ERROR\"}",
+      "expected_bucket": "error"
+    },
+    {
+      "style": "json-level",
+      "level": "critical",
+      "line": "{\"level\":\"critical\",\"message\":\"QA174_dc1b01 JSON_CRITICAL\"}",
+      "expected_bucket": "error"
+    },
+    {
+      "style": "json-level",
+      "level": "alert",
+      "line": "{\"level\":\"alert\",\"message\":\"QA174_dc1b01 JSON_ALERT\"}",
+      "expected_bucket": "error"
+    },
+    {
+      "style": "json-level",
+      "level": "emergency",
+      "line": "{\"level\":\"emergency\",\"message\":\"QA174_dc1b01 JSON_EMERGENCY\"}",
+      "expected_bucket": "error"
+    },
+    {
+      "style": "json-severity",
+      "level": "ALERT",
+      "line": "{\"severity\":\"ALERT\",\"message\":\"QA174_dc1b01 JSON_SEVERITY_ALERT\"}",
+      "expected_bucket": "error"
+    },
+    {
+      "style": "json-severity",
+      "level": "EMERGENCY",
+      "line": "{\"severity\":\"EMERGENCY\",\"message\":\"QA174_dc1b01 JSON_SEVERITY_EMERGENCY\"}",
+      "expected_bucket": "error"
+    },
+    {
+      "style": "logfmt",
+      "level": "alert",
+      "line": "level=alert msg=QA174_dc1b01_FMT_alert",
+      "expected_bucket": "error"
+    },
+    {
+      "style": "logfmt",
+      "level": "EMERGENCY",
+      "line": "severity=EMERGENCY msg=QA174_dc1b01_FMT_EMERGENCY",
+      "expected_bucket": "error"
+    }
+  ],
+  "expected_level_buckets": {
+    "{\"level\":\"debug\",\"message\":\"QA174_dc1b01 JSON_DEBUG\"}": "debug",
+    "{\"level\":\"info\",\"message\":\"QA174_dc1b01 JSON_INFO\"}": "info",
+    "{\"level\":\"notice\",\"message\":\"QA174_dc1b01 JSON_NOTICE\"}": "info",
+    "{\"level\":\"warning\",\"message\":\"QA174_dc1b01 JSON_WARNING\"}": "warning",
+    "{\"level\":\"error\",\"message\":\"QA174_dc1b01 JSON_ERROR\"}": "error",
+    "{\"level\":\"critical\",\"message\":\"QA174_dc1b01 JSON_CRITICAL\"}": "error",
+    "{\"level\":\"alert\",\"message\":\"QA174_dc1b01 JSON_ALERT\"}": "error",
+    "{\"level\":\"emergency\",\"message\":\"QA174_dc1b01 JSON_EMERGENCY\"}": "error",
+    "{\"severity\":\"ALERT\",\"message\":\"QA174_dc1b01 JSON_SEVERITY_ALERT\"}": "error",
+    "{\"severity\":\"EMERGENCY\",\"message\":\"QA174_dc1b01 JSON_SEVERITY_EMERGENCY\"}": "error",
+    "level=alert msg=QA174_dc1b01_FMT_alert": "error",
+    "severity=EMERGENCY msg=QA174_dc1b01_FMT_EMERGENCY": "error",
+    "QA174_dc1b01 CONTROL plain": "unknown"
+  },
+  "create_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261011-dc1b01-loglevels",
+      "--type",
+      "web_service",
+      "--runtime",
+      "node",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/hello-go",
+      "--build-command",
+      "/usr/local/bin/node --version",
+      "--start-command",
+      "/usr/local/bin/node -e 'const lines=[\"{\\\"level\\\":\\\"debug\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_DEBUG\\\"}\", \"{\\\"level\\\":\\\"info\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_INFO\\\"}\", \"{\\\"level\\\":\\\"notice\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_NOTICE\\\"}\", \"{\\\"level\\\":\\\"warning\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_WARNING\\\"}\", \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ERROR\\\"}\", \"{\\\"level\\\":\\\"critical\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_CRITICAL\\\"}\", \"{\\\"level\\\":\\\"alert\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ALERT\\\"}\", \"{\\\"level\\\":\\\"emergency\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_EMERGENCY\\\"}\", \"{\\\"severity\\\":\\\"ALERT\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_SEVERITY_ALERT\\\"}\", \"{\\\"severity\\\":\\\"EMERGENCY\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_SEVERITY_EMERGENCY\\\"}\", \"level=alert msg=QA174_dc1b01_FMT_alert\", \"severity=EMERGENCY msg=QA174_dc1b01_FMT_EMERGENCY\", \"QA174_dc1b01 CONTROL plain\"];for(const line of lines)console.log(line);require(\"http\").createServer((req,res)=>{const b=JSON.stringify({marker:\"QA174_dc1b01\",instance:require(\"os\").hostname()});res.writeHead(200,{\"Content-Type\":\"application/json\",\"Content-Length\":Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'",
+      "--health-check-path",
+      "/",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.222,
+    "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-12T03:53:05Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db65j8eui45s738uptug\",\n  \"id\": \"srv-db65j8eui45s738uptug\",\n  \"name\": \"qa-20261011-dc1b01-loglevels\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-go\",\n  \"serviceDetails\": {\n    \"env\": \"node\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"/usr/local/bin/node --version\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"/usr/local/bin/node -e 'const lines=[\\\"{\\\\\\\"level\\\\\\\":\\\\\\\"debug\\\\\\\",\\\\\\\"message\\\\\\\":\\\\\\\"QA174_dc1b01 JSON_DEBUG\\\\\\\"}\\\", \\\"{\\\\\\\"level\\\\\\\":\\\\\\\"info\\\\\\\",\\\\\\\"message\\\\\\\":\\\\\\\"QA174_dc1b01 JSON_INFO\\\\\\\"}\\\", \\\"{\\\\\\\"level\\\\\\\":\\\\\\\"notice\\\\\\\",\\\\\\\"message\\\\\\\":\\\\\\\"QA174_dc1b01 JSON_NOTICE\\\\\\\"}\\\", \\\"{\\\\\\\"level\\\\\\\":\\\\\\\"warning\\\\\\\",\\\\\\\"message\\\\\\\":\\\\\\\"QA174_dc1b01 JSON_WARNING\\\\\\\"}\\\", \\\"{\\\\\\\"level\\\\\\\":\\\\\\\"error\\\\\\\",\\\\\\\"message\\\\\\\":\\\\\\\"QA174_dc1b01 JSON_ERROR\\\\\\\"}\\\", \\\"{\\\\\\\"level\\\\\\\":\\\\\\\"critical\\\\\\\",\\\\\\\"message\\\\\\\":\\\\\\\"QA174_dc1b01 JSON_CRITICAL\\\\\\\"}\\\", \\\"{\\\\\\\"level\\\\\\\":\\\\\\\"alert\\\\\\\",\\\\\\\"message\\\\\\\":\\\\\\\"QA174_dc1b01 JSON_ALERT\\\\\\\"}\\\", \\\"{\\\\\\\"level\\\\\\\":\\\\\\\"emergency\\\\\\\",\\\\\\\"message\\\\\\\":\\\\\\\"QA174_dc1b01 JSON_EMERGENCY\\\\\\\"}\\\", \\\"{\\\\\\\"severity\\\\\\\":\\\\\\\"ALERT\\\\\\\",\\\\\\\"message\\\\\\\":\\\\\\\"QA174_dc1b01 JSON_SEVERITY_ALERT\\\\\\\"}\\\", \\\"{\\\\\\\"severity\\\\\\\":\\\\\\\"EMERGENCY\\\\\\\",\\\\\\\"message\\\\\\\":\\\\\\\"QA174_dc1b01 JSON_SEVERITY_EMERGENCY\\\\\\\"}\\\", \\\"level=alert msg=QA174_dc1b01_FMT_alert\\\", \\\"severity=EMERGENCY msg=QA174_dc1b01_FMT_EMERGENCY\\\", \\\"QA174_dc1b01 CONTROL plain\\\"];for(const line of lines)console.log(line);require(\\\"http\\\").createServer((req,res)=\\u003e{const b=JSON.stringify({marker:\\\"QA174_dc1b01\\\",instance:require(\\\"os\\\").hostname()});res.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\",\\\"Content-Length\\\":Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\"\n    },\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261011-dc1b01-loglevels:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"node\",\n    \"url\": \"https://qa-20261011-dc1b01-loglevels.onbex.co\"\n  },\n  \"slug\": \"qa-20261011-dc1b01-loglevels\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-12T03:53:05.363908477Z\"\n}",
+    "stderr": ""
+  },
+  "id": "srv-db65j8eui45s738uptug",
+  "create_response": {
+    "autoDeploy": "no",
+    "autoDeployTrigger": "off",
+    "branch": "main",
+    "createdAt": "2026-10-12T03:53:05Z",
+    "dashboardUrl": "https://dashboard.bex.co/web/srv-db65j8eui45s738uptug",
+    "id": "srv-db65j8eui45s738uptug",
+    "name": "qa-20261011-dc1b01-loglevels",
+    "notifyOnFail": "default",
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "repo": "https://github.com/bex-co/bex",
+    "rootDir": "examples/hello-go",
+    "serviceDetails": {
+      "env": "node",
+      "envSpecificDetails": {
+        "buildCommand": "/usr/local/bin/node --version",
+        "preDeployCommand": "",
+        "startCommand": "/usr/local/bin/node -e 'const lines=[\"{\\\"level\\\":\\\"debug\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_DEBUG\\\"}\", \"{\\\"level\\\":\\\"info\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_INFO\\\"}\", \"{\\\"level\\\":\\\"notice\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_NOTICE\\\"}\", \"{\\\"level\\\":\\\"warning\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_WARNING\\\"}\", \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ERROR\\\"}\", \"{\\\"level\\\":\\\"critical\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_CRITICAL\\\"}\", \"{\\\"level\\\":\\\"alert\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ALERT\\\"}\", \"{\\\"level\\\":\\\"emergency\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_EMERGENCY\\\"}\", \"{\\\"severity\\\":\\\"ALERT\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_SEVERITY_ALERT\\\"}\", \"{\\\"severity\\\":\\\"EMERGENCY\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_SEVERITY_EMERGENCY\\\"}\", \"level=alert msg=QA174_dc1b01_FMT_alert\", \"severity=EMERGENCY msg=QA174_dc1b01_FMT_EMERGENCY\", \"QA174_dc1b01 CONTROL plain\"];for(const line of lines)console.log(line);require(\"http\").createServer((req,res)=>{const b=JSON.stringify({marker:\"QA174_dc1b01\",instance:require(\"os\").hostname()});res.writeHead(200,{\"Content-Type\":\"application/json\",\"Content-Length\":Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'"
+      },
+      "healthCheckPath": "/",
+      "internalAddress": "qa-20261011-dc1b01-loglevels:3000",
+      "maintenanceMode": {
+        "enabled": false,
+        "uri": ""
+      },
+      "maxShutdownDelaySeconds": 30,
+      "numInstances": 1,
+      "plan": "free",
+      "port": 3000,
+      "region": "fsn1",
+      "renderSubdomainPolicy": "enabled",
+      "runtime": "node",
+      "url": "https://qa-20261011-dc1b01-loglevels.onbex.co"
+    },
+    "slug": "qa-20261011-dc1b01-loglevels",
+    "suspended": "not_suspended",
+    "suspenders": [],
+    "type": "web_service",
+    "updatedAt": "2026-10-12T03:53:05.363908477Z"
+  },
+  "runtime_observations": [
+    {
+      "native_history": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db65j8eui45s738uptug",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.671,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"aeeba21e7cd5a56a0f59d5a0ffe7d17fa457aff0\",\n      \"message\": \"fix(dashboard): datastore names truncate instead of pushing the status off mobile (w4/244)\\n\\nOn Key Value and Postgres detail pages the name/status row kept its\\ncontent width, so the title's truncate never engaged: an accepted\\n30-character name pushed the status badge past a 390px viewport and the\\npage scrolled sideways.\\n\\nBefore (390px): Key Value document 390/416 with Available ending at\\nx416; Postgres 390/412.\\nAfter: the ready row and its pending skeleton row are bounded to the\\nheader; the name ellipsizes (full heading text kept), the badge ends at\\nx374, and the document is 390/390. Desktop, short names and the Postgres\\naction menu position are unchanged.\"\n    },\n    \"createdAt\": \"2026-10-12T03:53:05.318019Z\",\n    \"id\": \"dep-db65j8eui45s738uptv0\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T03:53:11.663122Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "runtime": {
+        "at": "2026-10-12T03:53:36.846571+00:00",
+        "exit": 0,
+        "http": "404",
+        "body": null,
+        "stderr": ""
+      }
+    },
+    {
+      "native_history": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db65j8eui45s738uptug",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.656,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"aeeba21e7cd5a56a0f59d5a0ffe7d17fa457aff0\",\n      \"message\": \"fix(dashboard): datastore names truncate instead of pushing the status off mobile (w4/244)\\n\\nOn Key Value and Postgres detail pages the name/status row kept its\\ncontent width, so the title's truncate never engaged: an accepted\\n30-character name pushed the status badge past a 390px viewport and the\\npage scrolled sideways.\\n\\nBefore (390px): Key Value document 390/416 with Available ending at\\nx416; Postgres 390/412.\\nAfter: the ready row and its pending skeleton row are bounded to the\\nheader; the name ellipsizes (full heading text kept), the badge ends at\\nx374, and the document is 390/390. Desktop, short names and the Postgres\\naction menu position are unchanged.\"\n    },\n    \"createdAt\": \"2026-10-12T03:53:05.318019Z\",\n    \"id\": \"dep-db65j8eui45s738uptv0\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T03:53:11.663122Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "runtime": {
+        "at": "2026-10-12T03:53:46.214322+00:00",
+        "exit": 0,
+        "http": "404",
+        "body": null,
+        "stderr": ""
+      }
+    },
+    {
+      "native_history": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db65j8eui45s738uptug",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.345,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"aeeba21e7cd5a56a0f59d5a0ffe7d17fa457aff0\",\n      \"message\": \"fix(dashboard): datastore names truncate instead of pushing the status off mobile (w4/244)\\n\\nOn Key Value and Postgres detail pages the name/status row kept its\\ncontent width, so the title's truncate never engaged: an accepted\\n30-character name pushed the status badge past a 390px viewport and the\\npage scrolled sideways.\\n\\nBefore (390px): Key Value document 390/416 with Available ending at\\nx416; Postgres 390/412.\\nAfter: the ready row and its pending skeleton row are bounded to the\\nheader; the name ellipsizes (full heading text kept), the badge ends at\\nx374, and the document is 390/390. Desktop, short names and the Postgres\\naction menu position are unchanged.\"\n    },\n    \"createdAt\": \"2026-10-12T03:53:05.318019Z\",\n    \"id\": \"dep-db65j8eui45s738uptv0\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T03:53:11.663122Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "runtime": {
+        "at": "2026-10-12T03:53:55.245976+00:00",
+        "exit": 0,
+        "http": "404",
+        "body": null,
+        "stderr": ""
+      }
+    },
+    {
+      "native_history": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db65j8eui45s738uptug",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.426,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"aeeba21e7cd5a56a0f59d5a0ffe7d17fa457aff0\",\n      \"message\": \"fix(dashboard): datastore names truncate instead of pushing the status off mobile (w4/244)\\n\\nOn Key Value and Postgres detail pages the name/status row kept its\\ncontent width, so the title's truncate never engaged: an accepted\\n30-character name pushed the status badge past a 390px viewport and the\\npage scrolled sideways.\\n\\nBefore (390px): Key Value document 390/416 with Available ending at\\nx416; Postgres 390/412.\\nAfter: the ready row and its pending skeleton row are bounded to the\\nheader; the name ellipsizes (full heading text kept), the badge ends at\\nx374, and the document is 390/390. Desktop, short names and the Postgres\\naction menu position are unchanged.\"\n    },\n    \"createdAt\": \"2026-10-12T03:53:05.318019Z\",\n    \"id\": \"dep-db65j8eui45s738uptv0\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T03:53:11.663122Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "runtime": {
+        "at": "2026-10-12T03:54:04.340052+00:00",
+        "exit": 0,
+        "http": "404",
+        "body": null,
+        "stderr": ""
+      }
+    },
+    {
+      "native_history": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db65j8eui45s738uptug",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.329,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"aeeba21e7cd5a56a0f59d5a0ffe7d17fa457aff0\",\n      \"message\": \"fix(dashboard): datastore names truncate instead of pushing the status off mobile (w4/244)\\n\\nOn Key Value and Postgres detail pages the name/status row kept its\\ncontent width, so the title's truncate never engaged: an accepted\\n30-character name pushed the status badge past a 390px viewport and the\\npage scrolled sideways.\\n\\nBefore (390px): Key Value document 390/416 with Available ending at\\nx416; Postgres 390/412.\\nAfter: the ready row and its pending skeleton row are bounded to the\\nheader; the name ellipsizes (full heading text kept), the badge ends at\\nx374, and the document is 390/390. Desktop, short names and the Postgres\\naction menu position are unchanged.\"\n    },\n    \"createdAt\": \"2026-10-12T03:53:05.318019Z\",\n    \"id\": \"dep-db65j8eui45s738uptv0\",\n    \"startedAt\": \"2026-10-12T03:54:08.070322Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T03:54:08.070323Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "runtime": {
+        "at": "2026-10-12T03:54:13.401504+00:00",
+        "exit": 0,
+        "http": "404",
+        "body": null,
+        "stderr": ""
+      }
+    },
+    {
+      "native_history": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db65j8eui45s738uptug",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.665,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"aeeba21e7cd5a56a0f59d5a0ffe7d17fa457aff0\",\n      \"message\": \"fix(dashboard): datastore names truncate instead of pushing the status off mobile (w4/244)\\n\\nOn Key Value and Postgres detail pages the name/status row kept its\\ncontent width, so the title's truncate never engaged: an accepted\\n30-character name pushed the status badge past a 390px viewport and the\\npage scrolled sideways.\\n\\nBefore (390px): Key Value document 390/416 with Available ending at\\nx416; Postgres 390/412.\\nAfter: the ready row and its pending skeleton row are bounded to the\\nheader; the name ellipsizes (full heading text kept), the badge ends at\\nx374, and the document is 390/390. Desktop, short names and the Postgres\\naction menu position are unchanged.\"\n    },\n    \"createdAt\": \"2026-10-12T03:53:05.318019Z\",\n    \"finishedAt\": \"2026-10-12T03:55:41.509353Z\",\n    \"id\": \"dep-db65j8eui45s738uptv0\",\n    \"startedAt\": \"2026-10-12T03:54:08.070322Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T03:55:41.509354Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "runtime": {
+        "at": "2026-10-12T03:56:25.755004+00:00",
+        "exit": 0,
+        "http": "200",
+        "body": {
+          "marker": "QA174_dc1b01",
+          "instance": "tea-daif693dqjvc73e7as3g-qa-20261011-dc1b01-loglevels-84c76jm7r"
+        },
+        "stderr": ""
+      }
+    }
+  ],
+  "runtime_pass": true,
+  "marker_history_observations": [
+    {
+      "at": "2026-10-12T03:57:23.260732+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db65j8eui45s738uptug",
+          "--type",
+          "app",
+          "--text",
+          "QA174_dc1b01",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.578,
+        "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.051356355Z-4dda2aa3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"debug\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"debug\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_DEBUG\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.051356355Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052219199Z-0cd55897\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"info\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_INFO\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052219199Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052239228Z-83527ccf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"notice\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_NOTICE\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052239228Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"warning\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_WARNING\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.05230079Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ERROR\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052340696Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"critical\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_CRITICAL\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052481393Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"alert\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ALERT\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052639185Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"emergency\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_EMERGENCY\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052657566Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"{\\\"severity\\\":\\\"ALERT\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_SEVERITY_ALERT\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052663029Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"{\\\"severity\\\":\\\"EMERGENCY\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_SEVERITY_EMERGENCY\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052885509Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"level=alert msg=QA174_dc1b01_FMT_alert\",\n  \"timestamp\": \"2026-10-12T03:55:24.053033866Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"severity=EMERGENCY msg=QA174_dc1b01_FMT_EMERGENCY\",\n  \"timestamp\": \"2026-10-12T03:55:24.053440965Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053474341Z-597703ce\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA174_dc1b01 CONTROL plain\",\n  \"timestamp\": \"2026-10-12T03:55:24.053474341Z\"\n}",
+        "stderr": ""
+      },
+      "rows": [
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.051356355Z-4dda2aa3",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "debug"
+            }
+          ],
+          "message": "{\"level\":\"debug\",\"message\":\"QA174_dc1b01 JSON_DEBUG\"}",
+          "timestamp": "2026-10-12T03:55:24.051356355Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052219199Z-0cd55897",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "info"
+            }
+          ],
+          "message": "{\"level\":\"info\",\"message\":\"QA174_dc1b01 JSON_INFO\"}",
+          "timestamp": "2026-10-12T03:55:24.052219199Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052239228Z-83527ccf",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "info"
+            }
+          ],
+          "message": "{\"level\":\"notice\",\"message\":\"QA174_dc1b01 JSON_NOTICE\"}",
+          "timestamp": "2026-10-12T03:55:24.052239228Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "warning"
+            }
+          ],
+          "message": "{\"level\":\"warning\",\"message\":\"QA174_dc1b01 JSON_WARNING\"}",
+          "timestamp": "2026-10-12T03:55:24.05230079Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"error\",\"message\":\"QA174_dc1b01 JSON_ERROR\"}",
+          "timestamp": "2026-10-12T03:55:24.052340696Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"critical\",\"message\":\"QA174_dc1b01 JSON_CRITICAL\"}",
+          "timestamp": "2026-10-12T03:55:24.052481393Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "unknown"
+            }
+          ],
+          "message": "{\"level\":\"alert\",\"message\":\"QA174_dc1b01 JSON_ALERT\"}",
+          "timestamp": "2026-10-12T03:55:24.052639185Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "unknown"
+            }
+          ],
+          "message": "{\"level\":\"emergency\",\"message\":\"QA174_dc1b01 JSON_EMERGENCY\"}",
+          "timestamp": "2026-10-12T03:55:24.052657566Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "unknown"
+            }
+          ],
+          "message": "{\"severity\":\"ALERT\",\"message\":\"QA174_dc1b01 JSON_SEVERITY_ALERT\"}",
+          "timestamp": "2026-10-12T03:55:24.052663029Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "unknown"
+            }
+          ],
+          "message": "{\"severity\":\"EMERGENCY\",\"message\":\"QA174_dc1b01 JSON_SEVERITY_EMERGENCY\"}",
+          "timestamp": "2026-10-12T03:55:24.052885509Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "unknown"
+            }
+          ],
+          "message": "level=alert msg=QA174_dc1b01_FMT_alert",
+          "timestamp": "2026-10-12T03:55:24.053033866Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "unknown"
+            }
+          ],
+          "message": "severity=EMERGENCY msg=QA174_dc1b01_FMT_EMERGENCY",
+          "timestamp": "2026-10-12T03:55:24.053440965Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053474341Z-597703ce",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "unknown"
+            }
+          ],
+          "message": "QA174_dc1b01 CONTROL plain",
+          "timestamp": "2026-10-12T03:55:24.053474341Z"
+        }
+      ],
+      "exact_message_set": true
+    }
+  ],
+  "baseline_log_rows": [
+    {
+      "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.051356355Z-4dda2aa3",
+      "labels": [
+        {
+          "name": "type",
+          "value": "app"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db65j8eui45s738uptug"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+        },
+        {
+          "name": "container",
+          "value": "app"
+        },
+        {
+          "name": "level",
+          "value": "debug"
+        }
+      ],
+      "message": "{\"level\":\"debug\",\"message\":\"QA174_dc1b01 JSON_DEBUG\"}",
+      "timestamp": "2026-10-12T03:55:24.051356355Z"
+    },
+    {
+      "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052219199Z-0cd55897",
+      "labels": [
+        {
+          "name": "type",
+          "value": "app"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db65j8eui45s738uptug"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+        },
+        {
+          "name": "container",
+          "value": "app"
+        },
+        {
+          "name": "level",
+          "value": "info"
+        }
+      ],
+      "message": "{\"level\":\"info\",\"message\":\"QA174_dc1b01 JSON_INFO\"}",
+      "timestamp": "2026-10-12T03:55:24.052219199Z"
+    },
+    {
+      "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052239228Z-83527ccf",
+      "labels": [
+        {
+          "name": "type",
+          "value": "app"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db65j8eui45s738uptug"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+        },
+        {
+          "name": "container",
+          "value": "app"
+        },
+        {
+          "name": "level",
+          "value": "info"
+        }
+      ],
+      "message": "{\"level\":\"notice\",\"message\":\"QA174_dc1b01 JSON_NOTICE\"}",
+      "timestamp": "2026-10-12T03:55:24.052239228Z"
+    },
+    {
+      "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993",
+      "labels": [
+        {
+          "name": "type",
+          "value": "app"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db65j8eui45s738uptug"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+        },
+        {
+          "name": "container",
+          "value": "app"
+        },
+        {
+          "name": "level",
+          "value": "warning"
+        }
+      ],
+      "message": "{\"level\":\"warning\",\"message\":\"QA174_dc1b01 JSON_WARNING\"}",
+      "timestamp": "2026-10-12T03:55:24.05230079Z"
+    },
+    {
+      "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+      "labels": [
+        {
+          "name": "type",
+          "value": "app"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db65j8eui45s738uptug"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+        },
+        {
+          "name": "container",
+          "value": "app"
+        },
+        {
+          "name": "level",
+          "value": "error"
+        }
+      ],
+      "message": "{\"level\":\"error\",\"message\":\"QA174_dc1b01 JSON_ERROR\"}",
+      "timestamp": "2026-10-12T03:55:24.052340696Z"
+    },
+    {
+      "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+      "labels": [
+        {
+          "name": "type",
+          "value": "app"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db65j8eui45s738uptug"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+        },
+        {
+          "name": "container",
+          "value": "app"
+        },
+        {
+          "name": "level",
+          "value": "error"
+        }
+      ],
+      "message": "{\"level\":\"critical\",\"message\":\"QA174_dc1b01 JSON_CRITICAL\"}",
+      "timestamp": "2026-10-12T03:55:24.052481393Z"
+    },
+    {
+      "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+      "labels": [
+        {
+          "name": "type",
+          "value": "app"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db65j8eui45s738uptug"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+        },
+        {
+          "name": "container",
+          "value": "app"
+        },
+        {
+          "name": "level",
+          "value": "unknown"
+        }
+      ],
+      "message": "{\"level\":\"alert\",\"message\":\"QA174_dc1b01 JSON_ALERT\"}",
+      "timestamp": "2026-10-12T03:55:24.052639185Z"
+    },
+    {
+      "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+      "labels": [
+        {
+          "name": "type",
+          "value": "app"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db65j8eui45s738uptug"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+        },
+        {
+          "name": "container",
+          "value": "app"
+        },
+        {
+          "name": "level",
+          "value": "unknown"
+        }
+      ],
+      "message": "{\"level\":\"emergency\",\"message\":\"QA174_dc1b01 JSON_EMERGENCY\"}",
+      "timestamp": "2026-10-12T03:55:24.052657566Z"
+    },
+    {
+      "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+      "labels": [
+        {
+          "name": "type",
+          "value": "app"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db65j8eui45s738uptug"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+        },
+        {
+          "name": "container",
+          "value": "app"
+        },
+        {
+          "name": "level",
+          "value": "unknown"
+        }
+      ],
+      "message": "{\"severity\":\"ALERT\",\"message\":\"QA174_dc1b01 JSON_SEVERITY_ALERT\"}",
+      "timestamp": "2026-10-12T03:55:24.052663029Z"
+    },
+    {
+      "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+      "labels": [
+        {
+          "name": "type",
+          "value": "app"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db65j8eui45s738uptug"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+        },
+        {
+          "name": "container",
+          "value": "app"
+        },
+        {
+          "name": "level",
+          "value": "unknown"
+        }
+      ],
+      "message": "{\"severity\":\"EMERGENCY\",\"message\":\"QA174_dc1b01 JSON_SEVERITY_EMERGENCY\"}",
+      "timestamp": "2026-10-12T03:55:24.052885509Z"
+    },
+    {
+      "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+      "labels": [
+        {
+          "name": "type",
+          "value": "app"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db65j8eui45s738uptug"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+        },
+        {
+          "name": "container",
+          "value": "app"
+        },
+        {
+          "name": "level",
+          "value": "unknown"
+        }
+      ],
+      "message": "level=alert msg=QA174_dc1b01_FMT_alert",
+      "timestamp": "2026-10-12T03:55:24.053033866Z"
+    },
+    {
+      "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a",
+      "labels": [
+        {
+          "name": "type",
+          "value": "app"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db65j8eui45s738uptug"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+        },
+        {
+          "name": "container",
+          "value": "app"
+        },
+        {
+          "name": "level",
+          "value": "unknown"
+        }
+      ],
+      "message": "severity=EMERGENCY msg=QA174_dc1b01_FMT_EMERGENCY",
+      "timestamp": "2026-10-12T03:55:24.053440965Z"
+    },
+    {
+      "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053474341Z-597703ce",
+      "labels": [
+        {
+          "name": "type",
+          "value": "app"
+        },
+        {
+          "name": "resource",
+          "value": "srv-db65j8eui45s738uptug"
+        },
+        {
+          "name": "instance",
+          "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+        },
+        {
+          "name": "container",
+          "value": "app"
+        },
+        {
+          "name": "level",
+          "value": "unknown"
+        }
+      ],
+      "message": "QA174_dc1b01 CONTROL plain",
+      "timestamp": "2026-10-12T03:55:24.053474341Z"
+    }
+  ],
+  "baseline_log_ids": [
+    "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.051356355Z-4dda2aa3",
+    "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052219199Z-0cd55897",
+    "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052239228Z-83527ccf",
+    "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993",
+    "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+    "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+    "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+    "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+    "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+    "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+    "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+    "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a",
+    "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053474341Z-597703ce"
+  ],
+  "level_checks": {
+    "bex-debug": {
+      "at": "2026-10-12T03:58:56.987001+00:00",
+      "intent": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db65j8eui45s738uptug",
+        "--type",
+        "app",
+        "--text",
+        "QA174_dc1b01",
+        "--level",
+        "debug",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "requested": [
+        "debug"
+      ],
+      "expected_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.051356355Z-4dda2aa3"
+      ],
+      "contract": "Recognized Render string severity normalized to shipper bucket; same existing storedLevels query alias mapping",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db65j8eui45s738uptug",
+          "--type",
+          "app",
+          "--text",
+          "QA174_dc1b01",
+          "--level",
+          "debug",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.704,
+        "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.051356355Z-4dda2aa3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"debug\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"debug\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_DEBUG\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.051356355Z\"\n}",
+        "stderr": ""
+      },
+      "rows": [
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.051356355Z-4dda2aa3",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "debug"
+            }
+          ],
+          "message": "{\"level\":\"debug\",\"message\":\"QA174_dc1b01 JSON_DEBUG\"}",
+          "timestamp": "2026-10-12T03:55:24.051356355Z"
+        }
+      ],
+      "missing_ids": [],
+      "unexpected_ids": [],
+      "passed": true
+    },
+    "bex-info": {
+      "at": "2026-10-12T03:59:01.173746+00:00",
+      "intent": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db65j8eui45s738uptug",
+        "--type",
+        "app",
+        "--text",
+        "QA174_dc1b01",
+        "--level",
+        "info",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "requested": [
+        "info"
+      ],
+      "expected_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052219199Z-0cd55897",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052239228Z-83527ccf"
+      ],
+      "contract": "Recognized Render string severity normalized to shipper bucket; same existing storedLevels query alias mapping",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db65j8eui45s738uptug",
+          "--type",
+          "app",
+          "--text",
+          "QA174_dc1b01",
+          "--level",
+          "info",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.984,
+        "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052219199Z-0cd55897\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"info\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_INFO\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052219199Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052239228Z-83527ccf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"notice\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_NOTICE\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052239228Z\"\n}",
+        "stderr": ""
+      },
+      "rows": [
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052219199Z-0cd55897",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "info"
+            }
+          ],
+          "message": "{\"level\":\"info\",\"message\":\"QA174_dc1b01 JSON_INFO\"}",
+          "timestamp": "2026-10-12T03:55:24.052219199Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052239228Z-83527ccf",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "info"
+            }
+          ],
+          "message": "{\"level\":\"notice\",\"message\":\"QA174_dc1b01 JSON_NOTICE\"}",
+          "timestamp": "2026-10-12T03:55:24.052239228Z"
+        }
+      ],
+      "missing_ids": [],
+      "unexpected_ids": [],
+      "passed": true
+    },
+    "bex-notice": {
+      "at": "2026-10-12T03:59:04.547578+00:00",
+      "intent": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db65j8eui45s738uptug",
+        "--type",
+        "app",
+        "--text",
+        "QA174_dc1b01",
+        "--level",
+        "notice",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "requested": [
+        "notice"
+      ],
+      "expected_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052219199Z-0cd55897",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052239228Z-83527ccf"
+      ],
+      "contract": "Recognized Render string severity normalized to shipper bucket; same existing storedLevels query alias mapping",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db65j8eui45s738uptug",
+          "--type",
+          "app",
+          "--text",
+          "QA174_dc1b01",
+          "--level",
+          "notice",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.606,
+        "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052219199Z-0cd55897\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"info\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_INFO\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052219199Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052239228Z-83527ccf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"notice\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_NOTICE\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052239228Z\"\n}",
+        "stderr": ""
+      },
+      "rows": [
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052219199Z-0cd55897",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "info"
+            }
+          ],
+          "message": "{\"level\":\"info\",\"message\":\"QA174_dc1b01 JSON_INFO\"}",
+          "timestamp": "2026-10-12T03:55:24.052219199Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052239228Z-83527ccf",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "info"
+            }
+          ],
+          "message": "{\"level\":\"notice\",\"message\":\"QA174_dc1b01 JSON_NOTICE\"}",
+          "timestamp": "2026-10-12T03:55:24.052239228Z"
+        }
+      ],
+      "missing_ids": [],
+      "unexpected_ids": [],
+      "passed": true
+    },
+    "bex-warning": {
+      "at": "2026-10-12T03:59:07.549421+00:00",
+      "intent": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db65j8eui45s738uptug",
+        "--type",
+        "app",
+        "--text",
+        "QA174_dc1b01",
+        "--level",
+        "warning",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "requested": [
+        "warning"
+      ],
+      "expected_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993"
+      ],
+      "contract": "Recognized Render string severity normalized to shipper bucket; same existing storedLevels query alias mapping",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db65j8eui45s738uptug",
+          "--type",
+          "app",
+          "--text",
+          "QA174_dc1b01",
+          "--level",
+          "warning",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.501,
+        "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"warning\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_WARNING\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.05230079Z\"\n}",
+        "stderr": ""
+      },
+      "rows": [
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "warning"
+            }
+          ],
+          "message": "{\"level\":\"warning\",\"message\":\"QA174_dc1b01 JSON_WARNING\"}",
+          "timestamp": "2026-10-12T03:55:24.05230079Z"
+        }
+      ],
+      "missing_ids": [],
+      "unexpected_ids": [],
+      "passed": true
+    },
+    "bex-error": {
+      "at": "2026-10-12T03:59:11.438435+00:00",
+      "intent": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db65j8eui45s738uptug",
+        "--type",
+        "app",
+        "--text",
+        "QA174_dc1b01",
+        "--level",
+        "error",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "requested": [
+        "error"
+      ],
+      "expected_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a"
+      ],
+      "contract": "Recognized Render string severity normalized to shipper bucket; same existing storedLevels query alias mapping",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db65j8eui45s738uptug",
+          "--type",
+          "app",
+          "--text",
+          "QA174_dc1b01",
+          "--level",
+          "error",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.01,
+        "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ERROR\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052340696Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"critical\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_CRITICAL\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052481393Z\"\n}",
+        "stderr": ""
+      },
+      "rows": [
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"error\",\"message\":\"QA174_dc1b01 JSON_ERROR\"}",
+          "timestamp": "2026-10-12T03:55:24.052340696Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"critical\",\"message\":\"QA174_dc1b01 JSON_CRITICAL\"}",
+          "timestamp": "2026-10-12T03:55:24.052481393Z"
+        }
+      ],
+      "missing_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a"
+      ],
+      "unexpected_ids": [],
+      "passed": false
+    },
+    "bex-critical": {
+      "at": "2026-10-12T03:59:14.823622+00:00",
+      "intent": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db65j8eui45s738uptug",
+        "--type",
+        "app",
+        "--text",
+        "QA174_dc1b01",
+        "--level",
+        "critical",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "requested": [
+        "critical"
+      ],
+      "expected_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a"
+      ],
+      "contract": "Recognized Render string severity normalized to shipper bucket; same existing storedLevels query alias mapping",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db65j8eui45s738uptug",
+          "--type",
+          "app",
+          "--text",
+          "QA174_dc1b01",
+          "--level",
+          "critical",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.582,
+        "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ERROR\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052340696Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"critical\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_CRITICAL\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052481393Z\"\n}",
+        "stderr": ""
+      },
+      "rows": [
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"error\",\"message\":\"QA174_dc1b01 JSON_ERROR\"}",
+          "timestamp": "2026-10-12T03:55:24.052340696Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"critical\",\"message\":\"QA174_dc1b01 JSON_CRITICAL\"}",
+          "timestamp": "2026-10-12T03:55:24.052481393Z"
+        }
+      ],
+      "missing_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a"
+      ],
+      "unexpected_ids": [],
+      "passed": false
+    },
+    "bex-alert": {
+      "at": "2026-10-12T03:59:18.822123+00:00",
+      "intent": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db65j8eui45s738uptug",
+        "--type",
+        "app",
+        "--text",
+        "QA174_dc1b01",
+        "--level",
+        "alert",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "requested": [
+        "alert"
+      ],
+      "expected_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a"
+      ],
+      "contract": "Recognized Render string severity normalized to shipper bucket; same existing storedLevels query alias mapping",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db65j8eui45s738uptug",
+          "--type",
+          "app",
+          "--text",
+          "QA174_dc1b01",
+          "--level",
+          "alert",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.006,
+        "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ERROR\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052340696Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"critical\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_CRITICAL\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052481393Z\"\n}",
+        "stderr": ""
+      },
+      "rows": [
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"error\",\"message\":\"QA174_dc1b01 JSON_ERROR\"}",
+          "timestamp": "2026-10-12T03:55:24.052340696Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"critical\",\"message\":\"QA174_dc1b01 JSON_CRITICAL\"}",
+          "timestamp": "2026-10-12T03:55:24.052481393Z"
+        }
+      ],
+      "missing_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a"
+      ],
+      "unexpected_ids": [],
+      "passed": false
+    },
+    "bex-emergency": {
+      "at": "2026-10-12T03:59:22.360955+00:00",
+      "intent": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db65j8eui45s738uptug",
+        "--type",
+        "app",
+        "--text",
+        "QA174_dc1b01",
+        "--level",
+        "emergency",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "requested": [
+        "emergency"
+      ],
+      "expected_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a"
+      ],
+      "contract": "Recognized Render string severity normalized to shipper bucket; same existing storedLevels query alias mapping",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db65j8eui45s738uptug",
+          "--type",
+          "app",
+          "--text",
+          "QA174_dc1b01",
+          "--level",
+          "emergency",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.066,
+        "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ERROR\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052340696Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"critical\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_CRITICAL\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052481393Z\"\n}",
+        "stderr": ""
+      },
+      "rows": [
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"error\",\"message\":\"QA174_dc1b01 JSON_ERROR\"}",
+          "timestamp": "2026-10-12T03:55:24.052340696Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"critical\",\"message\":\"QA174_dc1b01 JSON_CRITICAL\"}",
+          "timestamp": "2026-10-12T03:55:24.052481393Z"
+        }
+      ],
+      "missing_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a"
+      ],
+      "unexpected_ids": [],
+      "passed": false
+    },
+    "bex-union": {
+      "at": "2026-10-12T03:59:25.824196+00:00",
+      "intent": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db65j8eui45s738uptug",
+        "--type",
+        "app",
+        "--text",
+        "QA174_dc1b01",
+        "--level",
+        "debug,warning,emergency",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "requested": [
+        "debug",
+        "warning",
+        "emergency"
+      ],
+      "expected_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.051356355Z-4dda2aa3",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a"
+      ],
+      "contract": "Recognized Render string severity normalized to shipper bucket; same existing storedLevels query alias mapping",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db65j8eui45s738uptug",
+          "--type",
+          "app",
+          "--text",
+          "QA174_dc1b01",
+          "--level",
+          "debug,warning,emergency",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.214,
+        "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.051356355Z-4dda2aa3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"debug\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"debug\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_DEBUG\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.051356355Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"warning\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_WARNING\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.05230079Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ERROR\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052340696Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"critical\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_CRITICAL\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052481393Z\"\n}",
+        "stderr": ""
+      },
+      "rows": [
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.051356355Z-4dda2aa3",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "debug"
+            }
+          ],
+          "message": "{\"level\":\"debug\",\"message\":\"QA174_dc1b01 JSON_DEBUG\"}",
+          "timestamp": "2026-10-12T03:55:24.051356355Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "warning"
+            }
+          ],
+          "message": "{\"level\":\"warning\",\"message\":\"QA174_dc1b01 JSON_WARNING\"}",
+          "timestamp": "2026-10-12T03:55:24.05230079Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"error\",\"message\":\"QA174_dc1b01 JSON_ERROR\"}",
+          "timestamp": "2026-10-12T03:55:24.052340696Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"critical\",\"message\":\"QA174_dc1b01 JSON_CRITICAL\"}",
+          "timestamp": "2026-10-12T03:55:24.052481393Z"
+        }
+      ],
+      "missing_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a"
+      ],
+      "unexpected_ids": [],
+      "passed": false
+    },
+    "bex-duplicates": {
+      "at": "2026-10-12T03:59:29.428932+00:00",
+      "intent": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db65j8eui45s738uptug",
+        "--type",
+        "app",
+        "--text",
+        "QA174_dc1b01",
+        "--level",
+        "warning,warning",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "requested": [
+        "warning",
+        "warning"
+      ],
+      "expected_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993"
+      ],
+      "contract": "Recognized Render string severity normalized to shipper bucket; same existing storedLevels query alias mapping",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db65j8eui45s738uptug",
+          "--type",
+          "app",
+          "--text",
+          "QA174_dc1b01",
+          "--level",
+          "warning,warning",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.823,
+        "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"warning\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_WARNING\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.05230079Z\"\n}",
+        "stderr": ""
+      },
+      "rows": [
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "warning"
+            }
+          ],
+          "message": "{\"level\":\"warning\",\"message\":\"QA174_dc1b01 JSON_WARNING\"}",
+          "timestamp": "2026-10-12T03:55:24.05230079Z"
+        }
+      ],
+      "missing_ids": [],
+      "unexpected_ids": [],
+      "passed": true
+    },
+    "render-debug": {
+      "at": "2026-10-12T03:59:33.669635+00:00",
+      "intent": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db65j8eui45s738uptug",
+        "--type",
+        "app",
+        "--text",
+        "QA174_dc1b01",
+        "--level",
+        "debug",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "requested": [
+        "debug"
+      ],
+      "expected_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.051356355Z-4dda2aa3"
+      ],
+      "contract": "Recognized Render string severity normalized to shipper bucket; same existing storedLevels query alias mapping",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "logs",
+          "--resources",
+          "srv-db65j8eui45s738uptug",
+          "--type",
+          "app",
+          "--text",
+          "QA174_dc1b01",
+          "--level",
+          "debug",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.993,
+        "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.051356355Z-4dda2aa3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"debug\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"debug\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_DEBUG\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.051356355Z\"\n}",
+        "stderr": ""
+      },
+      "rows": [
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.051356355Z-4dda2aa3",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "debug"
+            }
+          ],
+          "message": "{\"level\":\"debug\",\"message\":\"QA174_dc1b01 JSON_DEBUG\"}",
+          "timestamp": "2026-10-12T03:55:24.051356355Z"
+        }
+      ],
+      "missing_ids": [],
+      "unexpected_ids": [],
+      "passed": true
+    },
+    "render-info": {
+      "at": "2026-10-12T03:59:37.058918+00:00",
+      "intent": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db65j8eui45s738uptug",
+        "--type",
+        "app",
+        "--text",
+        "QA174_dc1b01",
+        "--level",
+        "info",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "requested": [
+        "info"
+      ],
+      "expected_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052219199Z-0cd55897",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052239228Z-83527ccf"
+      ],
+      "contract": "Recognized Render string severity normalized to shipper bucket; same existing storedLevels query alias mapping",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "logs",
+          "--resources",
+          "srv-db65j8eui45s738uptug",
+          "--type",
+          "app",
+          "--text",
+          "QA174_dc1b01",
+          "--level",
+          "info",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.943,
+        "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052219199Z-0cd55897\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"info\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_INFO\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052219199Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052239228Z-83527ccf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"notice\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_NOTICE\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052239228Z\"\n}",
+        "stderr": ""
+      },
+      "rows": [
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052219199Z-0cd55897",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "info"
+            }
+          ],
+          "message": "{\"level\":\"info\",\"message\":\"QA174_dc1b01 JSON_INFO\"}",
+          "timestamp": "2026-10-12T03:55:24.052219199Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052239228Z-83527ccf",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "info"
+            }
+          ],
+          "message": "{\"level\":\"notice\",\"message\":\"QA174_dc1b01 JSON_NOTICE\"}",
+          "timestamp": "2026-10-12T03:55:24.052239228Z"
+        }
+      ],
+      "missing_ids": [],
+      "unexpected_ids": [],
+      "passed": true
+    },
+    "render-notice": {
+      "at": "2026-10-12T03:59:40.431799+00:00",
+      "intent": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db65j8eui45s738uptug",
+        "--type",
+        "app",
+        "--text",
+        "QA174_dc1b01",
+        "--level",
+        "notice",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "requested": [
+        "notice"
+      ],
+      "expected_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052219199Z-0cd55897",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052239228Z-83527ccf"
+      ],
+      "contract": "Recognized Render string severity normalized to shipper bucket; same existing storedLevels query alias mapping",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "logs",
+          "--resources",
+          "srv-db65j8eui45s738uptug",
+          "--type",
+          "app",
+          "--text",
+          "QA174_dc1b01",
+          "--level",
+          "notice",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.23,
+        "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052219199Z-0cd55897\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"info\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_INFO\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052219199Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052239228Z-83527ccf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"notice\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_NOTICE\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052239228Z\"\n}",
+        "stderr": ""
+      },
+      "rows": [
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052219199Z-0cd55897",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "info"
+            }
+          ],
+          "message": "{\"level\":\"info\",\"message\":\"QA174_dc1b01 JSON_INFO\"}",
+          "timestamp": "2026-10-12T03:55:24.052219199Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052239228Z-83527ccf",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "info"
+            }
+          ],
+          "message": "{\"level\":\"notice\",\"message\":\"QA174_dc1b01 JSON_NOTICE\"}",
+          "timestamp": "2026-10-12T03:55:24.052239228Z"
+        }
+      ],
+      "missing_ids": [],
+      "unexpected_ids": [],
+      "passed": true
+    },
+    "render-warning": {
+      "at": "2026-10-12T03:59:44.095950+00:00",
+      "intent": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db65j8eui45s738uptug",
+        "--type",
+        "app",
+        "--text",
+        "QA174_dc1b01",
+        "--level",
+        "warning",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "requested": [
+        "warning"
+      ],
+      "expected_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993"
+      ],
+      "contract": "Recognized Render string severity normalized to shipper bucket; same existing storedLevels query alias mapping",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "logs",
+          "--resources",
+          "srv-db65j8eui45s738uptug",
+          "--type",
+          "app",
+          "--text",
+          "QA174_dc1b01",
+          "--level",
+          "warning",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.83,
+        "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"warning\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_WARNING\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.05230079Z\"\n}",
+        "stderr": ""
+      },
+      "rows": [
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "warning"
+            }
+          ],
+          "message": "{\"level\":\"warning\",\"message\":\"QA174_dc1b01 JSON_WARNING\"}",
+          "timestamp": "2026-10-12T03:55:24.05230079Z"
+        }
+      ],
+      "missing_ids": [],
+      "unexpected_ids": [],
+      "passed": true
+    },
+    "render-error": {
+      "at": "2026-10-12T03:59:47.322950+00:00",
+      "intent": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db65j8eui45s738uptug",
+        "--type",
+        "app",
+        "--text",
+        "QA174_dc1b01",
+        "--level",
+        "error",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "requested": [
+        "error"
+      ],
+      "expected_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a"
+      ],
+      "contract": "Recognized Render string severity normalized to shipper bucket; same existing storedLevels query alias mapping",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "logs",
+          "--resources",
+          "srv-db65j8eui45s738uptug",
+          "--type",
+          "app",
+          "--text",
+          "QA174_dc1b01",
+          "--level",
+          "error",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.03,
+        "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ERROR\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052340696Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"critical\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_CRITICAL\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052481393Z\"\n}",
+        "stderr": ""
+      },
+      "rows": [
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"error\",\"message\":\"QA174_dc1b01 JSON_ERROR\"}",
+          "timestamp": "2026-10-12T03:55:24.052340696Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"critical\",\"message\":\"QA174_dc1b01 JSON_CRITICAL\"}",
+          "timestamp": "2026-10-12T03:55:24.052481393Z"
+        }
+      ],
+      "missing_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a"
+      ],
+      "unexpected_ids": [],
+      "passed": false
+    },
+    "render-critical": {
+      "at": "2026-10-12T03:59:50.760488+00:00",
+      "intent": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db65j8eui45s738uptug",
+        "--type",
+        "app",
+        "--text",
+        "QA174_dc1b01",
+        "--level",
+        "critical",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "requested": [
+        "critical"
+      ],
+      "expected_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a"
+      ],
+      "contract": "Recognized Render string severity normalized to shipper bucket; same existing storedLevels query alias mapping",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "logs",
+          "--resources",
+          "srv-db65j8eui45s738uptug",
+          "--type",
+          "app",
+          "--text",
+          "QA174_dc1b01",
+          "--level",
+          "critical",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.76,
+        "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ERROR\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052340696Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"critical\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_CRITICAL\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052481393Z\"\n}",
+        "stderr": ""
+      },
+      "rows": [
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"error\",\"message\":\"QA174_dc1b01 JSON_ERROR\"}",
+          "timestamp": "2026-10-12T03:55:24.052340696Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"critical\",\"message\":\"QA174_dc1b01 JSON_CRITICAL\"}",
+          "timestamp": "2026-10-12T03:55:24.052481393Z"
+        }
+      ],
+      "missing_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a"
+      ],
+      "unexpected_ids": [],
+      "passed": false
+    },
+    "render-alert": {
+      "at": "2026-10-12T03:59:53.938714+00:00",
+      "intent": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db65j8eui45s738uptug",
+        "--type",
+        "app",
+        "--text",
+        "QA174_dc1b01",
+        "--level",
+        "alert",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "requested": [
+        "alert"
+      ],
+      "expected_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a"
+      ],
+      "contract": "Recognized Render string severity normalized to shipper bucket; same existing storedLevels query alias mapping",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "logs",
+          "--resources",
+          "srv-db65j8eui45s738uptug",
+          "--type",
+          "app",
+          "--text",
+          "QA174_dc1b01",
+          "--level",
+          "alert",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.006,
+        "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ERROR\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052340696Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"critical\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_CRITICAL\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052481393Z\"\n}",
+        "stderr": ""
+      },
+      "rows": [
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"error\",\"message\":\"QA174_dc1b01 JSON_ERROR\"}",
+          "timestamp": "2026-10-12T03:55:24.052340696Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"critical\",\"message\":\"QA174_dc1b01 JSON_CRITICAL\"}",
+          "timestamp": "2026-10-12T03:55:24.052481393Z"
+        }
+      ],
+      "missing_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a"
+      ],
+      "unexpected_ids": [],
+      "passed": false
+    },
+    "render-emergency": {
+      "at": "2026-10-12T03:59:57.354622+00:00",
+      "intent": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db65j8eui45s738uptug",
+        "--type",
+        "app",
+        "--text",
+        "QA174_dc1b01",
+        "--level",
+        "emergency",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "requested": [
+        "emergency"
+      ],
+      "expected_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a"
+      ],
+      "contract": "Recognized Render string severity normalized to shipper bucket; same existing storedLevels query alias mapping",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "logs",
+          "--resources",
+          "srv-db65j8eui45s738uptug",
+          "--type",
+          "app",
+          "--text",
+          "QA174_dc1b01",
+          "--level",
+          "emergency",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.099,
+        "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ERROR\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052340696Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"critical\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_CRITICAL\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052481393Z\"\n}",
+        "stderr": ""
+      },
+      "rows": [
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"error\",\"message\":\"QA174_dc1b01 JSON_ERROR\"}",
+          "timestamp": "2026-10-12T03:55:24.052340696Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"critical\",\"message\":\"QA174_dc1b01 JSON_CRITICAL\"}",
+          "timestamp": "2026-10-12T03:55:24.052481393Z"
+        }
+      ],
+      "missing_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a"
+      ],
+      "unexpected_ids": [],
+      "passed": false
+    },
+    "render-union": {
+      "at": "2026-10-12T04:00:00.868694+00:00",
+      "intent": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db65j8eui45s738uptug",
+        "--type",
+        "app",
+        "--text",
+        "QA174_dc1b01",
+        "--level",
+        "debug,warning,emergency",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "requested": [
+        "debug",
+        "warning",
+        "emergency"
+      ],
+      "expected_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.051356355Z-4dda2aa3",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a"
+      ],
+      "contract": "Recognized Render string severity normalized to shipper bucket; same existing storedLevels query alias mapping",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "logs",
+          "--resources",
+          "srv-db65j8eui45s738uptug",
+          "--type",
+          "app",
+          "--text",
+          "QA174_dc1b01",
+          "--level",
+          "debug,warning,emergency",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.571,
+        "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.051356355Z-4dda2aa3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"debug\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"debug\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_DEBUG\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.051356355Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"warning\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_WARNING\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.05230079Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ERROR\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052340696Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"critical\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_CRITICAL\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052481393Z\"\n}",
+        "stderr": ""
+      },
+      "rows": [
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.051356355Z-4dda2aa3",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "debug"
+            }
+          ],
+          "message": "{\"level\":\"debug\",\"message\":\"QA174_dc1b01 JSON_DEBUG\"}",
+          "timestamp": "2026-10-12T03:55:24.051356355Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "warning"
+            }
+          ],
+          "message": "{\"level\":\"warning\",\"message\":\"QA174_dc1b01 JSON_WARNING\"}",
+          "timestamp": "2026-10-12T03:55:24.05230079Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"error\",\"message\":\"QA174_dc1b01 JSON_ERROR\"}",
+          "timestamp": "2026-10-12T03:55:24.052340696Z"
+        },
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "error"
+            }
+          ],
+          "message": "{\"level\":\"critical\",\"message\":\"QA174_dc1b01 JSON_CRITICAL\"}",
+          "timestamp": "2026-10-12T03:55:24.052481393Z"
+        }
+      ],
+      "missing_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a"
+      ],
+      "unexpected_ids": [],
+      "passed": false
+    },
+    "render-duplicates": {
+      "at": "2026-10-12T04:00:04.853157+00:00",
+      "intent": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db65j8eui45s738uptug",
+        "--type",
+        "app",
+        "--text",
+        "QA174_dc1b01",
+        "--level",
+        "warning,warning",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "requested": [
+        "warning",
+        "warning"
+      ],
+      "expected_ids": [
+        "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993"
+      ],
+      "contract": "Recognized Render string severity normalized to shipper bucket; same existing storedLevels query alias mapping",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "logs",
+          "--resources",
+          "srv-db65j8eui45s738uptug",
+          "--type",
+          "app",
+          "--text",
+          "QA174_dc1b01",
+          "--level",
+          "warning,warning",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.002,
+        "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"warning\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_WARNING\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.05230079Z\"\n}",
+        "stderr": ""
+      },
+      "rows": [
+        {
+          "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993",
+          "labels": [
+            {
+              "name": "type",
+              "value": "app"
+            },
+            {
+              "name": "resource",
+              "value": "srv-db65j8eui45s738uptug"
+            },
+            {
+              "name": "instance",
+              "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+            },
+            {
+              "name": "container",
+              "value": "app"
+            },
+            {
+              "name": "level",
+              "value": "warning"
+            }
+          ],
+          "message": "{\"level\":\"warning\",\"message\":\"QA174_dc1b01 JSON_WARNING\"}",
+          "timestamp": "2026-10-12T03:55:24.05230079Z"
+        }
+      ],
+      "missing_ids": [],
+      "unexpected_ids": [],
+      "passed": true
+    }
+  },
+  "diagnostic_wire": [
+    {
+      "at": "2026-10-12T04:04:39.352379+00:00",
+      "method": "GET",
+      "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&resource=srv-db65j8eui45s738uptug&type=app&text=QA174_dc1b01&level=alert&limit=100&direction=backward",
+      "request_query": [
+        [
+          "ownerId",
+          "tea-daif693dqjvc73e7as3g"
+        ],
+        [
+          "resource",
+          "srv-db65j8eui45s738uptug"
+        ],
+        [
+          "type",
+          "app"
+        ],
+        [
+          "text",
+          "QA174_dc1b01"
+        ],
+        [
+          "level",
+          "alert"
+        ],
+        [
+          "limit",
+          "100"
+        ],
+        [
+          "direction",
+          "backward"
+        ]
+      ],
+      "result": {
+        "method": "GET",
+        "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&resource=srv-db65j8eui45s738uptug&type=app&text=QA174_dc1b01&level=alert&limit=100&direction=backward",
+        "body": null,
+        "status": "200",
+        "elapsed": 3.133,
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T03:04:39.231219458Z\",\"nextEndTime\":\"2026-10-12T03:55:24.052340695Z\",\"logs\":[{\"id\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7\",\"message\":\"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ERROR\\\"}\",\"timestamp\":\"2026-10-12T03:55:24.052340696Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db65j8eui45s738uptug\"},{\"name\":\"instance\",\"value\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"error\"}]},{\"id\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05\",\"message\":\"{\\\"level\\\":\\\"critical\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_CRITICAL\\\"}\",\"timestamp\":\"2026-10-12T03:55:24.052481393Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db65j8eui45s738uptug\"},{\"name\":\"instance\",\"value\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"error\"}]}]}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a49338aecc87cee9-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "qualification": "Equivalent owned-resource API diagnostic; native traffic not intercepted"
+    },
+    {
+      "at": "2026-10-12T04:04:42.042643+00:00",
+      "method": "GET",
+      "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&resource=srv-db65j8eui45s738uptug&type=app&text=QA174_dc1b01&level=unknown&limit=100&direction=backward",
+      "request_query": [
+        [
+          "ownerId",
+          "tea-daif693dqjvc73e7as3g"
+        ],
+        [
+          "resource",
+          "srv-db65j8eui45s738uptug"
+        ],
+        [
+          "type",
+          "app"
+        ],
+        [
+          "text",
+          "QA174_dc1b01"
+        ],
+        [
+          "level",
+          "unknown"
+        ],
+        [
+          "limit",
+          "100"
+        ],
+        [
+          "direction",
+          "backward"
+        ]
+      ],
+      "result": {
+        "method": "GET",
+        "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&resource=srv-db65j8eui45s738uptug&type=app&text=QA174_dc1b01&level=unknown&limit=100&direction=backward",
+        "body": null,
+        "status": "200",
+        "elapsed": 2.637,
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T03:04:41.940719781Z\",\"nextEndTime\":\"2026-10-12T03:55:24.052639184Z\",\"logs\":[{\"id\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f\",\"message\":\"{\\\"level\\\":\\\"alert\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ALERT\\\"}\",\"timestamp\":\"2026-10-12T03:55:24.052639185Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db65j8eui45s738uptug\"},{\"name\":\"instance\",\"value\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f\",\"message\":\"{\\\"level\\\":\\\"emergency\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_EMERGENCY\\\"}\",\"timestamp\":\"2026-10-12T03:55:24.052657566Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db65j8eui45s738uptug\"},{\"name\":\"instance\",\"value\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8\",\"message\":\"{\\\"severity\\\":\\\"ALERT\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_SEVERITY_ALERT\\\"}\",\"timestamp\":\"2026-10-12T03:55:24.052663029Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db65j8eui45s738uptug\"},{\"name\":\"instance\",\"value\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a\",\"message\":\"{\\\"severity\\\":\\\"EMERGENCY\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_SEVERITY_EMERGENCY\\\"}\",\"timestamp\":\"2026-10-12T03:55:24.052885509Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db65j8eui45s738uptug\"},{\"name\":\"instance\",\"value\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175\",\"message\":\"level=alert msg=QA174_dc1b01_FMT_alert\",\"timestamp\":\"2026-10-12T03:55:24.053033866Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db65j8eui45s738uptug\"},{\"name\":\"instance\",\"value\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a\",\"message\":\"severity=EMERGENCY msg=QA174_dc1b01_FMT_EMERGENCY\",\"timestamp\":\"2026-10-12T03:55:24.053440965Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db65j8eui45s738uptug\"},{\"name\":\"instance\",\"value\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053474341Z-597703ce\",\"message\":\"QA174_dc1b01 CONTROL plain\",\"timestamp\":\"2026-10-12T03:55:24.053474341Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db65j8eui45s738uptug\"},{\"name\":\"instance\",\"value\":\"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a49338c28ef34c71-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "qualification": "Equivalent owned-resource API diagnostic; native traffic not intercepted"
+    }
+  ],
+  "render_baseline": {
+    "result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db65j8eui45s738uptug",
+        "--type",
+        "app",
+        "--text",
+        "QA174_dc1b01",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 3.114,
+      "stdout": "{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.051356355Z-4dda2aa3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"debug\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"debug\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_DEBUG\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.051356355Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052219199Z-0cd55897\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"info\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_INFO\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052219199Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052239228Z-83527ccf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"notice\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_NOTICE\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052239228Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"warning\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_WARNING\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.05230079Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ERROR\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052340696Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"critical\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_CRITICAL\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052481393Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"alert\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_ALERT\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052639185Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"emergency\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_EMERGENCY\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052657566Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"{\\\"severity\\\":\\\"ALERT\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_SEVERITY_ALERT\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052663029Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"{\\\"severity\\\":\\\"EMERGENCY\\\",\\\"message\\\":\\\"QA174_dc1b01 JSON_SEVERITY_EMERGENCY\\\"}\",\n  \"timestamp\": \"2026-10-12T03:55:24.052885509Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"level=alert msg=QA174_dc1b01_FMT_alert\",\n  \"timestamp\": \"2026-10-12T03:55:24.053033866Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"severity=EMERGENCY msg=QA174_dc1b01_FMT_EMERGENCY\",\n  \"timestamp\": \"2026-10-12T03:55:24.053440965Z\"\n}{\n  \"id\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053474341Z-597703ce\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db65j8eui45s738uptug\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA174_dc1b01 CONTROL plain\",\n  \"timestamp\": \"2026-10-12T03:55:24.053474341Z\"\n}",
+      "stderr": ""
+    },
+    "rows": [
+      {
+        "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.051356355Z-4dda2aa3",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db65j8eui45s738uptug"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "debug"
+          }
+        ],
+        "message": "{\"level\":\"debug\",\"message\":\"QA174_dc1b01 JSON_DEBUG\"}",
+        "timestamp": "2026-10-12T03:55:24.051356355Z"
+      },
+      {
+        "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052219199Z-0cd55897",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db65j8eui45s738uptug"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "info"
+          }
+        ],
+        "message": "{\"level\":\"info\",\"message\":\"QA174_dc1b01 JSON_INFO\"}",
+        "timestamp": "2026-10-12T03:55:24.052219199Z"
+      },
+      {
+        "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052239228Z-83527ccf",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db65j8eui45s738uptug"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "info"
+          }
+        ],
+        "message": "{\"level\":\"notice\",\"message\":\"QA174_dc1b01 JSON_NOTICE\"}",
+        "timestamp": "2026-10-12T03:55:24.052239228Z"
+      },
+      {
+        "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.05230079Z-a6c71993",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db65j8eui45s738uptug"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "warning"
+          }
+        ],
+        "message": "{\"level\":\"warning\",\"message\":\"QA174_dc1b01 JSON_WARNING\"}",
+        "timestamp": "2026-10-12T03:55:24.05230079Z"
+      },
+      {
+        "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052340696Z-e6d8e9f7",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db65j8eui45s738uptug"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "error"
+          }
+        ],
+        "message": "{\"level\":\"error\",\"message\":\"QA174_dc1b01 JSON_ERROR\"}",
+        "timestamp": "2026-10-12T03:55:24.052340696Z"
+      },
+      {
+        "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052481393Z-a6a96f05",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db65j8eui45s738uptug"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "error"
+          }
+        ],
+        "message": "{\"level\":\"critical\",\"message\":\"QA174_dc1b01 JSON_CRITICAL\"}",
+        "timestamp": "2026-10-12T03:55:24.052481393Z"
+      },
+      {
+        "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052639185Z-45ab555f",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db65j8eui45s738uptug"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "{\"level\":\"alert\",\"message\":\"QA174_dc1b01 JSON_ALERT\"}",
+        "timestamp": "2026-10-12T03:55:24.052639185Z"
+      },
+      {
+        "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052657566Z-57836c3f",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db65j8eui45s738uptug"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "{\"level\":\"emergency\",\"message\":\"QA174_dc1b01 JSON_EMERGENCY\"}",
+        "timestamp": "2026-10-12T03:55:24.052657566Z"
+      },
+      {
+        "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052663029Z-4b02fea8",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db65j8eui45s738uptug"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "{\"severity\":\"ALERT\",\"message\":\"QA174_dc1b01 JSON_SEVERITY_ALERT\"}",
+        "timestamp": "2026-10-12T03:55:24.052663029Z"
+      },
+      {
+        "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.052885509Z-c970fe8a",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db65j8eui45s738uptug"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "{\"severity\":\"EMERGENCY\",\"message\":\"QA174_dc1b01 JSON_SEVERITY_EMERGENCY\"}",
+        "timestamp": "2026-10-12T03:55:24.052885509Z"
+      },
+      {
+        "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053033866Z-69c07175",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db65j8eui45s738uptug"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "level=alert msg=QA174_dc1b01_FMT_alert",
+        "timestamp": "2026-10-12T03:55:24.053033866Z"
+      },
+      {
+        "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053440965Z-6514f70a",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db65j8eui45s738uptug"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "severity=EMERGENCY msg=QA174_dc1b01_FMT_EMERGENCY",
+        "timestamp": "2026-10-12T03:55:24.053440965Z"
+      },
+      {
+        "id": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob-2026-10-12T03:55:24.053474341Z-597703ce",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db65j8eui45s738uptug"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db65j8eui45s738uptug-qbl7jh69kqimgo7fk6ob"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          },
+          {
+            "name": "level",
+            "value": "unknown"
+          }
+        ],
+        "message": "QA174_dc1b01 CONTROL plain",
+        "timestamp": "2026-10-12T03:55:24.053474341Z"
+      }
+    ],
+    "exact_ids_messages_labels": true
+  },
+  "deploy_children": [
+    {
+      "commit": {
+        "id": "aeeba21e7cd5a56a0f59d5a0ffe7d17fa457aff0",
+        "message": "fix(dashboard): datastore names truncate instead of pushing the status off mobile (w4/244)\n\nOn Key Value and Postgres detail pages the name/status row kept its\ncontent width, so the title's truncate never engaged: an accepted\n30-character name pushed the status badge past a 390px viewport and the\npage scrolled sideways.\n\nBefore (390px): Key Value document 390/416 with Available ending at\nx416; Postgres 390/412.\nAfter: the ready row and its pending skeleton row are bounded to the\nheader; the name ellipsizes (full heading text kept), the badge ends at\nx374, and the document is 390/390. Desktop, short names and the Postgres\naction menu position are unchanged."
+      },
+      "createdAt": "2026-10-12T03:53:05.318019Z",
+      "finishedAt": "2026-10-12T03:55:41.509353Z",
+      "id": "dep-db65j8eui45s738uptv0",
+      "startedAt": "2026-10-12T03:54:08.070322Z",
+      "status": "live",
+      "trigger": "other",
+      "updatedAt": "2026-10-12T03:55:41.509354Z"
+    }
+  ],
+  "children_enumeration_evidence": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "deploys",
+      "list",
+      "srv-db65j8eui45s738uptug",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.471,
+    "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"aeeba21e7cd5a56a0f59d5a0ffe7d17fa457aff0\",\n      \"message\": \"fix(dashboard): datastore names truncate instead of pushing the status off mobile (w4/244)\\n\\nOn Key Value and Postgres detail pages the name/status row kept its\\ncontent width, so the title's truncate never engaged: an accepted\\n30-character name pushed the status badge past a 390px viewport and the\\npage scrolled sideways.\\n\\nBefore (390px): Key Value document 390/416 with Available ending at\\nx416; Postgres 390/412.\\nAfter: the ready row and its pending skeleton row are bounded to the\\nheader; the name ellipsizes (full heading text kept), the badge ends at\\nx374, and the document is 390/390. Desktop, short names and the Postgres\\naction menu position are unchanged.\"\n    },\n    \"createdAt\": \"2026-10-12T03:53:05.318019Z\",\n    \"finishedAt\": \"2026-10-12T03:55:41.509353Z\",\n    \"id\": \"dep-db65j8eui45s738uptv0\",\n    \"startedAt\": \"2026-10-12T03:54:08.070322Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-12T03:55:41.509354Z\"\n  }\n]",
+    "stderr": ""
+  },
+  "delete_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "delete",
+      "srv-db65j8eui45s738uptug",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.405,
+    "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-12T03:53:05Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db65j8eui45s738uptug\",\n    \"id\": \"srv-db65j8eui45s738uptug\",\n    \"name\": \"qa-20261011-dc1b01-loglevels\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-go\",\n    \"serviceDetails\": {\n      \"env\": \"node\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"/usr/local/bin/node --version\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"/usr/local/bin/node -e 'const lines=[\\\"{\\\\\\\"level\\\\\\\":\\\\\\\"debug\\\\\\\",\\\\\\\"message\\\\\\\":\\\\\\\"QA174_dc1b01 JSON_DEBUG\\\\\\\"}\\\", \\\"{\\\\\\\"level\\\\\\\":\\\\\\\"info\\\\\\\",\\\\\\\"message\\\\\\\":\\\\\\\"QA174_dc1b01 JSON_INFO\\\\\\\"}\\\", \\\"{\\\\\\\"level\\\\\\\":\\\\\\\"notice\\\\\\\",\\\\\\\"message\\\\\\\":\\\\\\\"QA174_dc1b01 JSON_NOTICE\\\\\\\"}\\\", \\\"{\\\\\\\"level\\\\\\\":\\\\\\\"warning\\\\\\\",\\\\\\\"message\\\\\\\":\\\\\\\"QA174_dc1b01 JSON_WARNING\\\\\\\"}\\\", \\\"{\\\\\\\"level\\\\\\\":\\\\\\\"error\\\\\\\",\\\\\\\"message\\\\\\\":\\\\\\\"QA174_dc1b01 JSON_ERROR\\\\\\\"}\\\", \\\"{\\\\\\\"level\\\\\\\":\\\\\\\"critical\\\\\\\",\\\\\\\"message\\\\\\\":\\\\\\\"QA174_dc1b01 JSON_CRITICAL\\\\\\\"}\\\", \\\"{\\\\\\\"level\\\\\\\":\\\\\\\"alert\\\\\\\",\\\\\\\"message\\\\\\\":\\\\\\\"QA174_dc1b01 JSON_ALERT\\\\\\\"}\\\", \\\"{\\\\\\\"level\\\\\\\":\\\\\\\"emergency\\\\\\\",\\\\\\\"message\\\\\\\":\\\\\\\"QA174_dc1b01 JSON_EMERGENCY\\\\\\\"}\\\", \\\"{\\\\\\\"severity\\\\\\\":\\\\\\\"ALERT\\\\\\\",\\\\\\\"message\\\\\\\":\\\\\\\"QA174_dc1b01 JSON_SEVERITY_ALERT\\\\\\\"}\\\", \\\"{\\\\\\\"severity\\\\\\\":\\\\\\\"EMERGENCY\\\\\\\",\\\\\\\"message\\\\\\\":\\\\\\\"QA174_dc1b01 JSON_SEVERITY_EMERGENCY\\\\\\\"}\\\", \\\"level=alert msg=QA174_dc1b01_FMT_alert\\\", \\\"severity=EMERGENCY msg=QA174_dc1b01_FMT_EMERGENCY\\\", \\\"QA174_dc1b01 CONTROL plain\\\"];for(const line of lines)console.log(line);require(\\\"http\\\").createServer((req,res)=\\u003e{const b=JSON.stringify({marker:\\\"QA174_dc1b01\\\",instance:require(\\\"os\\\").hostname()});res.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\",\\\"Content-Length\\\":Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261011-dc1b01-loglevels:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"node\",\n      \"url\": \"https://qa-20261011-dc1b01-loglevels.onbex.co\"\n    },\n    \"slug\": \"qa-20261011-dc1b01-loglevels\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-12T03:55:29Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+    "stderr": ""
+  },
+  "detail_after_delete": {
+    "method": "GET",
+    "path": "/v1/services/srv-db65j8eui45s738uptug",
+    "body": null,
+    "status": "404",
+    "elapsed": 0.257,
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4933d0bb8da49d2-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "workspace_after_delete_ids": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3v694dm7c7390q930",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0"
+  ],
+  "runtime_after_delete_checks": [
+    {
+      "exit": 0,
+      "stdout": "404 page not found\n\n404",
+      "stderr": ""
+    }
+  ],
+  "quota_after_delete": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.415,
+    "response": "{\"services\":{\"used\":7,\"terminating\":1,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4933d1ad9184fd0-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "readonly_cleanup_reconciliation": [
+    {
+      "at": "2026-10-12T04:10:38.289564+00:00",
+      "quota": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.719,
+        "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a49341812a784b39-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    }
+  ]
+}

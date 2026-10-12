@@ -1,0 +1,20 @@
+import datetime,json,pathlib,secrets,shutil,subprocess,sys
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('<REPO>/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());client=sys.argv[1];assert client in ('bex','render');cfg=p/'render-config/cli.yaml';assert not cfg.exists();key='sweep171_env_values'
+if key not in c:
+ assert client=='bex' and c['sync171_result']==0;nonce=secrets.token_hex(3);c[key]={'sweep':171,'source_head':c['head'],'nonce':nonce,'marker':'QA171_'+nonce,'mutation':'Blueprint validation only; no group or workload created','results':[],'question':'Does native validation accept a literal containing byte0, which process environment consumers cannot represent?','classification':'functional environment-value admission candidate; runtime consumer and production apply not yet verified'}
+x=c[key];assert not any(z['client']==client for z in x['results'])
+def save():
+ c['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(c,indent=2)+'\n');cp.chmod(0o600);f=p/'sweep171-env-values.json';f.write_text(json.dumps(x,indent=2)+'\n');f.chmod(0o600)
+save()
+if client=='render':shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+try:
+ for container in ['service-literal','service-seed','group-literal']:
+  for label,sep in [('nul','\x00'),('newline-control','\n')]:
+   val=x['marker']+sep+'after';entry={'key':'QA_LITERAL','value':val}
+   if container=='service-seed':entry['sync']=False
+   if container=='group-literal':doc={'envVarGroups':[{'name':'qa171-'+x['nonce']+'-group','envVars':[entry]}]}
+   else:doc={'services':[{'name':'qa171-'+x['nonce']+'-web','type':'web','runtime':'image','image':{'url':'nginx:1'},'plan':'free','envVars':[entry]}]}
+   f=p/('sweep171-'+container+'-'+label+'.yaml');f.write_text(json.dumps(doc,indent=2)+'\n');f.chmod(0o600);args=['blueprints','validate',str(f),'--confirm','-o','json'];z={'client':client,'container':container,'variant':label,'document':doc,'intent':[client,*args],'state':'native validation intent persisted'};x['results'].append(z);save();r=json.loads(subprocess.check_output(['python3',str(p/('run.py' if client=='bex' else 'run-render.py')),*([] if client=='render' else ['--release']),*args],text=True));z['result']=r;z['decoded']=json.loads(r['stdout']) if r['stdout'] else None;z['consumer_consistent']=z['decoded'] is not None and r['exit']==(0 if z['decoded']['valid'] else 1) and not r['stderr'];save();print(json.dumps({'client':client,'container':container,'variant':label,'valid':z['decoded'].get('valid') if z['decoded'] else None,'exit':r['exit'],'elapsed':r['elapsed'],'consistent':z['consumer_consistent'],'stderr':r['stderr']}),flush=True)
+finally:
+ if client=='render':cfg.unlink(missing_ok=True);x['copied_render_config_removed']=True
+ save()

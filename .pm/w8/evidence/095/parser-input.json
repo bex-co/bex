@@ -1,0 +1,128 @@
+[
+  {
+    "container": "root",
+    "variant": "empty-literal",
+    "document": {
+      "envVarGroups": [
+        {
+          "name": "qa155e-3b7e21-group",
+          "envVars": [
+            {
+              "key": "QA_EMPTY",
+              "value": ""
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "container": "root",
+    "variant": "space-literal",
+    "document": {
+      "envVarGroups": [
+        {
+          "name": "qa155e-3b7e21-group",
+          "envVars": [
+            {
+              "key": "QA_EMPTY",
+              "value": " "
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "container": "ungrouped",
+    "variant": "empty-literal",
+    "document": {
+      "ungrouped": {
+        "envVarGroups": [
+          {
+            "name": "qa155e-3b7e21-group",
+            "envVars": [
+              {
+                "key": "QA_EMPTY",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "container": "ungrouped",
+    "variant": "space-literal",
+    "document": {
+      "ungrouped": {
+        "envVarGroups": [
+          {
+            "name": "qa155e-3b7e21-group",
+            "envVars": [
+              {
+                "key": "QA_EMPTY",
+                "value": " "
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "container": "project-environment",
+    "variant": "empty-literal",
+    "document": {
+      "projects": [
+        {
+          "name": "qa155-3b7e21-project",
+          "environments": [
+            {
+              "name": "qa155-3b7e21-environment",
+              "envVarGroups": [
+                {
+                  "name": "qa155e-3b7e21-group",
+                  "envVars": [
+                    {
+                      "key": "QA_EMPTY",
+                      "value": ""
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "container": "project-environment",
+    "variant": "space-literal",
+    "document": {
+      "projects": [
+        {
+          "name": "qa155-3b7e21-project",
+          "environments": [
+            {
+              "name": "qa155-3b7e21-environment",
+              "envVarGroups": [
+                {
+                  "name": "qa155e-3b7e21-group",
+                  "envVars": [
+                    {
+                      "key": "QA_EMPTY",
+                      "value": " "
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

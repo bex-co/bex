@@ -1,0 +1,8 @@
+: bex-native-env-rev=none
+while IFS= read -r record; do
+  [ -n "$record" ] || continue
+  key=${record%%=*}
+  encoded=${record#*=}
+  value="$(printf '%s' "$encoded" | base64 -d 2>/dev/null && printf '.')" || exit 1
+  export "$key=${value%.}"
+done < /run/secrets/render-env

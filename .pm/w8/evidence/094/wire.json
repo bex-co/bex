@@ -1,0 +1,194 @@
+[
+  {
+    "at": "2026-10-11T22:40:04.485780+00:00",
+    "case": "root-exact",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa153-868dfc2c1daa290db4e2187245ee7ce9",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa153-868dfc2c1daa290db4e2187245ee7ce9\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa153-868dfc2c1daa290db4e2187245ee7ce9\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep153-root-exact.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa-20261011-0f49ee-envgroup\",\n      \"envVars\": []\n    }\n  ]\n}\n\r\n--qa153-868dfc2c1daa290db4e2187245ee7ce9--\r\n"
+    },
+    "status": "200",
+    "elapsed": 0.92,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4915d46aececff1-SJC"
+    },
+    "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261011-0f49ee-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261011-0f49ee-envgroup\",\"sourcePath\":\"#/envVarGroups/0\",\"resourceId\":\"evg-db60vpptodic73duuuhg\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+  },
+  {
+    "at": "2026-10-11T22:40:05.114025+00:00",
+    "case": "root-leading-space",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa153-7ebac37181d490634ad4513a9c2d82bc",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa153-7ebac37181d490634ad4513a9c2d82bc\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa153-7ebac37181d490634ad4513a9c2d82bc\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep153-root-leading-space.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"  qa-20261011-0f49ee-envgroup\",\n      \"envVars\": []\n    }\n  ]\n}\n\r\n--qa153-7ebac37181d490634ad4513a9c2d82bc--\r\n"
+    },
+    "status": "200",
+    "elapsed": 0.627,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4915d4c6841e8d9-SJC"
+    },
+    "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261011-0f49ee-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"  qa-20261011-0f49ee-envgroup\",\"sourcePath\":\"#/envVarGroups/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+  },
+  {
+    "at": "2026-10-11T22:40:05.571371+00:00",
+    "case": "root-trailing-space",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa153-ec47a0b98799cd9baef4897c5cdaa1de",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa153-ec47a0b98799cd9baef4897c5cdaa1de\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa153-ec47a0b98799cd9baef4897c5cdaa1de\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep153-root-trailing-space.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa-20261011-0f49ee-envgroup  \",\n      \"envVars\": []\n    }\n  ]\n}\n\r\n--qa153-ec47a0b98799cd9baef4897c5cdaa1de--\r\n"
+    },
+    "status": "200",
+    "elapsed": 0.456,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4915d505c3f9464-SJC"
+    },
+    "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261011-0f49ee-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa-20261011-0f49ee-envgroup  \",\"sourcePath\":\"#/envVarGroups/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+  },
+  {
+    "at": "2026-10-11T22:40:06.294154+00:00",
+    "case": "root-unicode-space",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa153-b8d3101af3447b3e6723cf70ed788d0c",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa153-b8d3101af3447b3e6723cf70ed788d0c\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa153-b8d3101af3447b3e6723cf70ed788d0c\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep153-root-unicode-space.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \" qa-20261011-0f49ee-envgroup \",\n      \"envVars\": []\n    }\n  ]\n}\n\r\n--qa153-b8d3101af3447b3e6723cf70ed788d0c--\r\n"
+    },
+    "status": "200",
+    "elapsed": 0.722,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4915d534b09cf1b-SJC"
+    },
+    "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261011-0f49ee-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\" qa-20261011-0f49ee-envgroup \",\"sourcePath\":\"#/envVarGroups/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+  },
+  {
+    "at": "2026-10-11T22:43:42.195968+00:00",
+    "case": "ungrouped-exact",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa153-38fe931354d304b5ab01f9241e62bd8a",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa153-38fe931354d304b5ab01f9241e62bd8a\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa153-38fe931354d304b5ab01f9241e62bd8a\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep153-ungrouped-exact.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"qa-20261011-0f49ee-envgroup\",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n\r\n--qa153-38fe931354d304b5ab01f9241e62bd8a--\r\n"
+    },
+    "status": "200",
+    "elapsed": 0.893,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49162981fc46e82-SJC"
+    },
+    "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261011-0f49ee-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261011-0f49ee-envgroup\",\"sourcePath\":\"#/ungrouped/envVarGroups/0\",\"resourceId\":\"evg-db60vpptodic73duuuhg\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+  },
+  {
+    "at": "2026-10-11T22:43:43.023772+00:00",
+    "case": "ungrouped-unicode-space",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa153-3bdfeee7c5de5352d5e5f61475ecf8e4",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa153-3bdfeee7c5de5352d5e5f61475ecf8e4\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa153-3bdfeee7c5de5352d5e5f61475ecf8e4\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep153-ungrouped-unicode-space.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \" qa-20261011-0f49ee-envgroup \",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n\r\n--qa153-3bdfeee7c5de5352d5e5f61475ecf8e4--\r\n"
+    },
+    "status": "200",
+    "elapsed": 0.827,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a491629d193bcfd9-SJC"
+    },
+    "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261011-0f49ee-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\" qa-20261011-0f49ee-envgroup \",\"sourcePath\":\"#/ungrouped/envVarGroups/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+  },
+  {
+    "at": "2026-10-11T22:43:43.611979+00:00",
+    "case": "project-exact",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa153-b547a0e9a404d58c4c181139ccdc566c",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa153-b547a0e9a404d58c4c181139ccdc566c\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa153-b547a0e9a404d58c4c181139ccdc566c\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep153-project-exact.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa153-0f49ee-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa153-0f49ee-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"qa-20261011-0f49ee-envgroup\",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--qa153-b547a0e9a404d58c4c181139ccdc566c--\r\n"
+    },
+    "status": "200",
+    "elapsed": 0.588,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49162a24cc2eb25-SJC"
+    },
+    "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261011-0f49ee-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261011-0f49ee-envgroup\",\"sourcePath\":\"#/projects/0/environments/0/envVarGroups/0\",\"resourceId\":\"evg-db60vpptodic73duuuhg\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+  },
+  {
+    "at": "2026-10-11T22:43:44.312174+00:00",
+    "case": "project-unicode-space",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa153-c384bf3589d5510ec2a6266d9d4c8334",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa153-c384bf3589d5510ec2a6266d9d4c8334\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa153-c384bf3589d5510ec2a6266d9d4c8334\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep153-project-unicode-space.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa153-0f49ee-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa153-0f49ee-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \" qa-20261011-0f49ee-envgroup \",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--qa153-c384bf3589d5510ec2a6266d9d4c8334--\r\n"
+    },
+    "status": "200",
+    "elapsed": 0.699,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49162a5fac84f08-SJC"
+    },
+    "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261011-0f49ee-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\" qa-20261011-0f49ee-envgroup \",\"sourcePath\":\"#/projects/0/environments/0/envVarGroups/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+  }
+]

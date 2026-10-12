@@ -1,0 +1,38 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+package build
+
+import (
+ "encoding/json"
+ "os"
+ "testing"
+ corev1 "k8s.io/api/core/v1"
+)
+
+func TestQANativePATHSource(t *testing.T) {
+ o:=nativeOptions()
+ o.Runtime="python"
+ o.BuildCommand=`/usr/local/bin/python3 -c 'import os,json;print(json.dumps({"PATH":os.getenv("PATH"),"QA_NOTE":os.getenv("QA_NOTE"),"command_ran":True}))'`
+ o.BuildEnv=nil
+ o.RuntimeEnvSecret="qa-own-env"
+ prep:=nativeBuildPreparer(o)
+ out:=map[string]any{"dockerfile":nativeDockerfile(o),"preparer":prep,"qualification":"Actual unmodified functions from checkout; source diagnostic only"}
+ o.BuildEnv=[]corev1.EnvVar{{Name:"PATH",Value:"/usr/local/bin"},{Name:"QA_NOTE",Value:"qa163-note"}}
+ out["literal_preparer"]=nativeBuildPreparer(o)
+ data,err:=json.MarshalIndent(out,"","  ")
+ if err!=nil {t.Fatal(err)}
+ if err=os.WriteFile(os.Getenv("QA163_SOURCE_OUTPUT"),data,0600);err!=nil {t.Fatal(err)}
+}

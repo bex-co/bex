@@ -1,0 +1,17 @@
+from pathlib import Path
+import json,subprocess
+p=Path(__file__).parent;history=json.loads((p/'sweep139-history.json').read_text());assert len(history)==6;decoder=json.JSONDecoder();tails=json.loads((p/'sweep139-native-tail.json').read_text());results=[];paths=[]
+def rows(s):
+ out=[]
+ while s.strip():x,n=decoder.raw_decode(s.lstrip());out.append(x);s=s.lstrip()[n:]
+ return out
+for role in ['bex','render']:
+ a=rows(next(t['stdout'] for t in tails if t['client']==role and t['mode']=='json'));b=rows(next(t['stdout'] for t in history if t['client']==role and t['batch']=='json' and t['format']=='json'));pairs=[]
+ for live in a:
+  h=next(z for z in b if z['id']==live['id']);assert all(live[k]==h[k] for k in ['id','timestamp','message']);ll={x['name']:x['value'] for x in live['labels']};hl={x['name']:x['value'] for x in h['labels']};assert all(ll[k]==hl[k] for k in ['type','resource','instance','container']);pairs.append({'id':live['id'],'message_timestamp_identity_equal':True,'shared_attribution_equal':True,'history_only_labels':{k:v for k,v in hl.items() if k not in ll},'live_only_labels':{k:v for k,v in ll.items() if k not in hl}})
+ results.append({'client':role,'count':len(a),'pairs':pairs,'entire_objects_identical':a==b})
+ h=next(t for t in history if t['client']==role and t['format']=='yaml');f=p/f'sweep139-{role}-single-history.yaml';f.write_text(h['stdout']);paths.append(str(f))
+strict=[json.loads(z) for z in subprocess.check_output([str(p/'sweep139-yaml-decode'),*paths],text=True).splitlines()]
+for z in strict:assert len(z['documents'])==1 and z['error']=='';z['file']=Path(z['file']).name
+(p/'sweep139-controls.json').write_text(json.dumps({'live_history_comparisons':results,'strict_single_yaml_controls':strict,'qualification':'An initial whole-object assertion was too broad: history adds level=unknown to these messages while live labels omit it. No record/identity/timestamp/common-attribution loss; differences are retained, not erased. No live level filtering or complete metadata parity is claimed.'},indent=2))
+print('Both JSON pairs preserve message, ID, timestamp and four common attribution labels. History-only level=unknown retained. Both single YAML controls decode one valid document.')

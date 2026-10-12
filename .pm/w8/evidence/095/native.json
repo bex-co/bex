@@ -1,0 +1,622 @@
+{
+  "sweep": 155,
+  "source_head": "69a676d1409cd64f50e115f8ac64fb887c227b27",
+  "nonce": "3b7e21",
+  "mutation": "validation only; no group or workload created",
+  "results": [
+    {
+      "client": "bex",
+      "container": "root",
+      "variant": "empty-literal",
+      "expected_valid": true,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa155e-3b7e21-group",
+            "envVars": [
+              {
+                "key": "QA_EMPTY",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155empty-root-empty-literal.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.416,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa155e-3b7e21-group\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa155e-3b7e21-group"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "root",
+      "variant": "space-literal",
+      "expected_valid": true,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa155e-3b7e21-group",
+            "envVars": [
+              {
+                "key": "QA_EMPTY",
+                "value": " "
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155empty-root-space-literal.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.77,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa155e-3b7e21-group\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa155e-3b7e21-group"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "ungrouped",
+      "variant": "empty-literal",
+      "expected_valid": true,
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "qa155e-3b7e21-group",
+              "envVars": [
+                {
+                  "key": "QA_EMPTY",
+                  "value": ""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155empty-ungrouped-empty-literal.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.144,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa155e-3b7e21-group\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa155e-3b7e21-group"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "ungrouped",
+      "variant": "space-literal",
+      "expected_valid": true,
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "qa155e-3b7e21-group",
+              "envVars": [
+                {
+                  "key": "QA_EMPTY",
+                  "value": " "
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155empty-ungrouped-space-literal.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.908,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa155e-3b7e21-group\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa155e-3b7e21-group"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "project-environment",
+      "variant": "empty-literal",
+      "expected_valid": true,
+      "document": {
+        "projects": [
+          {
+            "name": "qa155-3b7e21-project",
+            "environments": [
+              {
+                "name": "qa155-3b7e21-environment",
+                "envVarGroups": [
+                  {
+                    "name": "qa155e-3b7e21-group",
+                    "envVars": [
+                      {
+                        "key": "QA_EMPTY",
+                        "value": ""
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155empty-project-environment-empty-literal.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.905,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa155e-3b7e21-group\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa155e-3b7e21-group"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "project-environment",
+      "variant": "space-literal",
+      "expected_valid": true,
+      "document": {
+        "projects": [
+          {
+            "name": "qa155-3b7e21-project",
+            "environments": [
+              {
+                "name": "qa155-3b7e21-environment",
+                "envVarGroups": [
+                  {
+                    "name": "qa155e-3b7e21-group",
+                    "envVars": [
+                      {
+                        "key": "QA_EMPTY",
+                        "value": " "
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155empty-project-environment-space-literal.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.358,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa155e-3b7e21-group\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa155e-3b7e21-group"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "variant": "empty-literal",
+      "expected_valid": true,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa155e-3b7e21-group",
+            "envVars": [
+              {
+                "key": "QA_EMPTY",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155empty-root-empty-literal.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.723,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa155e-3b7e21-group\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa155e-3b7e21-group"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "variant": "space-literal",
+      "expected_valid": true,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa155e-3b7e21-group",
+            "envVars": [
+              {
+                "key": "QA_EMPTY",
+                "value": " "
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155empty-root-space-literal.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.927,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa155e-3b7e21-group\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa155e-3b7e21-group"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "ungrouped",
+      "variant": "empty-literal",
+      "expected_valid": true,
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "qa155e-3b7e21-group",
+              "envVars": [
+                {
+                  "key": "QA_EMPTY",
+                  "value": ""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155empty-ungrouped-empty-literal.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.206,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa155e-3b7e21-group\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa155e-3b7e21-group"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "ungrouped",
+      "variant": "space-literal",
+      "expected_valid": true,
+      "document": {
+        "ungrouped": {
+          "envVarGroups": [
+            {
+              "name": "qa155e-3b7e21-group",
+              "envVars": [
+                {
+                  "key": "QA_EMPTY",
+                  "value": " "
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155empty-ungrouped-space-literal.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.505,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa155e-3b7e21-group\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa155e-3b7e21-group"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "project-environment",
+      "variant": "empty-literal",
+      "expected_valid": true,
+      "document": {
+        "projects": [
+          {
+            "name": "qa155-3b7e21-project",
+            "environments": [
+              {
+                "name": "qa155-3b7e21-environment",
+                "envVarGroups": [
+                  {
+                    "name": "qa155e-3b7e21-group",
+                    "envVars": [
+                      {
+                        "key": "QA_EMPTY",
+                        "value": ""
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155empty-project-environment-empty-literal.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.612,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa155e-3b7e21-group\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa155e-3b7e21-group"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "project-environment",
+      "variant": "space-literal",
+      "expected_valid": true,
+      "document": {
+        "projects": [
+          {
+            "name": "qa155-3b7e21-project",
+            "environments": [
+              {
+                "name": "qa155-3b7e21-environment",
+                "envVarGroups": [
+                  {
+                    "name": "qa155e-3b7e21-group",
+                    "envVars": [
+                      {
+                        "key": "QA_EMPTY",
+                        "value": " "
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep155empty-project-environment-space-literal.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.728,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa155e-3b7e21-group\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa155e-3b7e21-group"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    }
+  ],
+  "limitations": "Native validation positive controls only; hosted apply not executed or exposed by pinned CLI; actual unchanged source fake-store apply diagnosis separate",
+  "copied_render_config_removed": true
+}

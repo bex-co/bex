@@ -1,0 +1,1030 @@
+[
+  {
+    "client": "bex",
+    "case": "first",
+    "command": [
+      "bex",
+      "ssh",
+      "srv-12345678901234567890",
+      "-o",
+      "interactive"
+    ],
+    "exit": 0,
+    "timeout": false,
+    "elapsed": 1.125,
+    "events": [
+      {
+        "action": "Down 1 then Enter",
+        "expected_selected": "srv-12345678901234567890-first111"
+      }
+    ],
+    "terminal_output": "\u001b]11;?\u001b\\\r                                                                                                                                                      \r\ntea-12345678901234567890 > Login                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                    \u28fd  Loading...                                                                     \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n[Ctrl+C]: Quit                                                                                                                                        \r                                                   \r\ntea-12345678901234567890 > Select Instance         \r\n                                                   \r\n   Select an instance:                             \r\n                                                   \r\n\u2502 Any instance                                     \r\n\u2502 Connect to any available instance                \r\n                                                   \r\n  srv-12345678901234567890-first111                \r\n  Age: 12m                                         \r\n                                                   \r\n  srv-12345678901234567890-second22                \r\n  Age: 13m                                         \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n  \u2191/k up \u2022 \u2193/j down \u2022 q quit \u2022 ? more              \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n\n\n  Any instance                                     \r\n  Connect to any available instance                \r\n\n\u2502 srv-12345678901234567890-first111                \r\n\u2502 Age: 12m                                         \r\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\r                                                                \r\ntea-12345678901234567890 > Select Instance > SSH                \r\n                                                                \r\n                                                                \r\n[Ctrl+C]: Quit  [Esc]: Back  [Ctrl+S]: Copy command to clipboard\r\r                                                   \r\ntea-12345678901234567890 > Select Instance         \r\n                                                   \r\n   Select an instance:                             \r\n                                                   \r\n  Any instance                                     \r\n  Connect to any available instance                \r\n                                                   \r\n\u2502 srv-12345678901234567890-first111                \r\n\u2502 Age: 12m                                         \r\n                                                   \r\n  srv-12345678901234567890-second22                \r\n  Age: 13m                                         \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n  \u2191/k up \u2022 \u2193/j down \u2022 q quit \u2022 ? more              \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\r\u001b]11;?\u001b\\                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+    "ssh_child": {
+      "argv": [
+        "srv-12345678901234567890@ssh.example.invalid"
+      ],
+      "stdin_is_tty": true
+    },
+    "wire": [
+      {
+        "method": "GET",
+        "path": "/v1/users",
+        "status": 200,
+        "response": {
+          "id": "usr-local-fixture",
+          "name": "Local fixture",
+          "email": "qa@example.invalid"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/instances",
+        "status": 200,
+        "response": [
+          {
+            "id": "srv-12345678901234567890-first111",
+            "createdAt": "2026-10-11T20:00:00Z"
+          },
+          {
+            "id": "srv-12345678901234567890-second22",
+            "createdAt": "2026-10-11T19:59:00Z"
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890",
+        "status": 200,
+        "response": {
+          "id": "srv-12345678901234567890",
+          "name": "local-qa-instance-picker",
+          "type": "web_service",
+          "suspended": "not_suspended",
+          "serviceDetails": {
+            "runtime": "python",
+            "plan": "starter",
+            "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/deploys",
+        "status": 200,
+        "response": [
+          {
+            "deploy": {
+              "id": "dep-12345678901234567890",
+              "status": "live"
+            }
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/instances",
+        "status": 200,
+        "response": [
+          {
+            "id": "srv-12345678901234567890-first111",
+            "createdAt": "2026-10-11T20:00:00Z"
+          },
+          {
+            "id": "srv-12345678901234567890-second22",
+            "createdAt": "2026-10-11T19:59:00Z"
+          }
+        ]
+      }
+    ],
+    "qualification": "Actual unmodified native binary against loopback schema fixtures and PATH-local ssh argv recorder. Dummy local key only; no production API request, hosting fixture, paid resource or SSH connection."
+  },
+  {
+    "client": "bex",
+    "case": "second",
+    "command": [
+      "bex",
+      "ssh",
+      "srv-12345678901234567890",
+      "-o",
+      "interactive"
+    ],
+    "exit": 0,
+    "timeout": false,
+    "elapsed": 0.958,
+    "events": [
+      {
+        "action": "Down 2 then Enter",
+        "expected_selected": "srv-12345678901234567890-second22"
+      }
+    ],
+    "terminal_output": "\u001b]11;?\u001b\\\r                                                   \r\ntea-12345678901234567890 > Select Instance         \r\n                                                   \r\n   Select an instance:                             \r\n                                                   \r\n\u2502 Any instance                                     \r\n\u2502 Connect to any available instance                \r\n                                                   \r\n  srv-12345678901234567890-first111                \r\n  Age: 12m                                         \r\n                                                   \r\n  srv-12345678901234567890-second22                \r\n  Age: 13m                                         \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n  \u2191/k up \u2022 \u2193/j down \u2022 q quit \u2022 ? more              \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n\n\n  Any instance                                     \r\n  Connect to any available instance                \r\n\n\u2502 srv-12345678901234567890-first111                \r\n\u2502 Age: 12m                                         \r\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n  srv-12345678901234567890-first111                \r\n  Age: 12m                                         \r\n\n\u2502 srv-12345678901234567890-second22                \r\n\u2502 Age: 13m                                         \r\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\r                                                                \r\ntea-12345678901234567890 > Select Instance > SSH                \r\n                                                                \r\n                                                                \r\n[Ctrl+C]: Quit  [Esc]: Back  [Ctrl+S]: Copy command to clipboard\r\r                                                   \r\ntea-12345678901234567890 > Select Instance         \r\n                                                   \r\n   Select an instance:                             \r\n                                                   \r\n  Any instance                                     \r\n  Connect to any available instance                \r\n                                                   \r\n  srv-12345678901234567890-first111                \r\n  Age: 12m                                         \r\n                                                   \r\n\u2502 srv-12345678901234567890-second22                \r\n\u2502 Age: 13m                                         \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n  \u2191/k up \u2022 \u2193/j down \u2022 q quit \u2022 ? more              \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\r\u001b]11;?\u001b\\                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+    "ssh_child": {
+      "argv": [
+        "srv-12345678901234567890@ssh.example.invalid"
+      ],
+      "stdin_is_tty": true
+    },
+    "wire": [
+      {
+        "method": "GET",
+        "path": "/v1/users",
+        "status": 200,
+        "response": {
+          "id": "usr-local-fixture",
+          "name": "Local fixture",
+          "email": "qa@example.invalid"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/instances",
+        "status": 200,
+        "response": [
+          {
+            "id": "srv-12345678901234567890-first111",
+            "createdAt": "2026-10-11T20:00:00Z"
+          },
+          {
+            "id": "srv-12345678901234567890-second22",
+            "createdAt": "2026-10-11T19:59:00Z"
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890",
+        "status": 200,
+        "response": {
+          "id": "srv-12345678901234567890",
+          "name": "local-qa-instance-picker",
+          "type": "web_service",
+          "suspended": "not_suspended",
+          "serviceDetails": {
+            "runtime": "python",
+            "plan": "starter",
+            "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/deploys",
+        "status": 200,
+        "response": [
+          {
+            "deploy": {
+              "id": "dep-12345678901234567890",
+              "status": "live"
+            }
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/instances",
+        "status": 200,
+        "response": [
+          {
+            "id": "srv-12345678901234567890-first111",
+            "createdAt": "2026-10-11T20:00:00Z"
+          },
+          {
+            "id": "srv-12345678901234567890-second22",
+            "createdAt": "2026-10-11T19:59:00Z"
+          }
+        ]
+      }
+    ],
+    "qualification": "Actual unmodified native binary against loopback schema fixtures and PATH-local ssh argv recorder. Dummy local key only; no production API request, hosting fixture, paid resource or SSH connection."
+  },
+  {
+    "client": "bex",
+    "case": "any",
+    "command": [
+      "bex",
+      "ssh",
+      "srv-12345678901234567890",
+      "-o",
+      "interactive"
+    ],
+    "exit": 0,
+    "timeout": false,
+    "elapsed": 0.728,
+    "events": [
+      {
+        "action": "Down 0 then Enter",
+        "expected_selected": ""
+      }
+    ],
+    "terminal_output": "\u001b]11;?\u001b\\\r                                                   \r\ntea-12345678901234567890 > Select Instance         \r\n                                                   \r\n   Select an instance:                             \r\n                                                   \r\n\u2502 Any instance                                     \r\n\u2502 Connect to any available instance                \r\n                                                   \r\n  srv-12345678901234567890-first111                \r\n  Age: 12m                                         \r\n                                                   \r\n  srv-12345678901234567890-second22                \r\n  Age: 13m                                         \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n  \u2191/k up \u2022 \u2193/j down \u2022 q quit \u2022 ? more              \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\r                                                                \r\ntea-12345678901234567890 > Select Instance > SSH                \r\n                                                                \r\n                                                                \r\n[Ctrl+C]: Quit  [Esc]: Back  [Ctrl+S]: Copy command to clipboard\r\r                                                   \r\ntea-12345678901234567890 > Select Instance         \r\n                                                   \r\n   Select an instance:                             \r\n                                                   \r\n\u2502 Any instance                                     \r\n\u2502 Connect to any available instance                \r\n                                                   \r\n  srv-12345678901234567890-first111                \r\n  Age: 12m                                         \r\n                                                   \r\n  srv-12345678901234567890-second22                \r\n  Age: 13m                                         \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n  \u2191/k up \u2022 \u2193/j down \u2022 q quit \u2022 ? more              \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\r\u001b]11;?\u001b\\                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+    "ssh_child": {
+      "argv": [
+        "srv-12345678901234567890@ssh.example.invalid"
+      ],
+      "stdin_is_tty": true
+    },
+    "wire": [
+      {
+        "method": "GET",
+        "path": "/v1/users",
+        "status": 200,
+        "response": {
+          "id": "usr-local-fixture",
+          "name": "Local fixture",
+          "email": "qa@example.invalid"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/instances",
+        "status": 200,
+        "response": [
+          {
+            "id": "srv-12345678901234567890-first111",
+            "createdAt": "2026-10-11T20:00:00Z"
+          },
+          {
+            "id": "srv-12345678901234567890-second22",
+            "createdAt": "2026-10-11T19:59:00Z"
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890",
+        "status": 200,
+        "response": {
+          "id": "srv-12345678901234567890",
+          "name": "local-qa-instance-picker",
+          "type": "web_service",
+          "suspended": "not_suspended",
+          "serviceDetails": {
+            "runtime": "python",
+            "plan": "starter",
+            "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/deploys",
+        "status": 200,
+        "response": [
+          {
+            "deploy": {
+              "id": "dep-12345678901234567890",
+              "status": "live"
+            }
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/instances",
+        "status": 200,
+        "response": [
+          {
+            "id": "srv-12345678901234567890-first111",
+            "createdAt": "2026-10-11T20:00:00Z"
+          },
+          {
+            "id": "srv-12345678901234567890-second22",
+            "createdAt": "2026-10-11T19:59:00Z"
+          }
+        ]
+      }
+    ],
+    "qualification": "Actual unmodified native binary against loopback schema fixtures and PATH-local ssh argv recorder. Dummy local key only; no production API request, hosting fixture, paid resource or SSH connection."
+  },
+  {
+    "client": "bex",
+    "case": "direct",
+    "command": [
+      "bex",
+      "ssh",
+      "srv-12345678901234567890-first111",
+      "-o",
+      "interactive"
+    ],
+    "exit": -2,
+    "timeout": false,
+    "elapsed": 0.711,
+    "events": [],
+    "terminal_output": "\u001b]11;?\u001b\\\r                                                   \r\ntea-12345678901234567890 > SSH                     \r\n                                                   \r\n                                                   \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\r",
+    "ssh_child": {
+      "argv": [
+        "srv-12345678901234567890-first111@ssh.example.invalid"
+      ],
+      "stdin_is_tty": true
+    },
+    "wire": [
+      {
+        "method": "GET",
+        "path": "/v1/users",
+        "status": 200,
+        "response": {
+          "id": "usr-local-fixture",
+          "name": "Local fixture",
+          "email": "qa@example.invalid"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890",
+        "status": 200,
+        "response": {
+          "id": "srv-12345678901234567890",
+          "name": "local-qa-instance-picker",
+          "type": "web_service",
+          "suspended": "not_suspended",
+          "serviceDetails": {
+            "runtime": "python",
+            "plan": "starter",
+            "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/deploys",
+        "status": 200,
+        "response": [
+          {
+            "deploy": {
+              "id": "dep-12345678901234567890",
+              "status": "live"
+            }
+          }
+        ]
+      }
+    ],
+    "qualification": "Actual unmodified native binary against loopback schema fixtures and PATH-local ssh argv recorder. Dummy local key only; no production API request, hosting fixture, paid resource or SSH connection."
+  },
+  {
+    "client": "render",
+    "case": "first",
+    "command": [
+      "render",
+      "ssh",
+      "srv-12345678901234567890",
+      "-o",
+      "interactive"
+    ],
+    "exit": 0,
+    "timeout": false,
+    "elapsed": 0.919,
+    "events": [
+      {
+        "action": "Down 1 then Enter",
+        "expected_selected": "srv-12345678901234567890-first111"
+      }
+    ],
+    "terminal_output": "\u001b]11;?\u001b\\\r                                                                                                                                                      \r\ntea-12345678901234567890 > Login                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                    \u28fd  Loading...                                                                     \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n[Ctrl+C]: Quit                                                                                                                                        \r                                                   \r\ntea-12345678901234567890 > Select Instance         \r\n                                                   \r\n   Select an instance:                             \r\n                                                   \r\n\u2502 Any instance                                     \r\n\u2502 Connect to any available instance                \r\n                                                   \r\n  srv-12345678901234567890-first111                \r\n  Age: 12m                                         \r\n                                                   \r\n  srv-12345678901234567890-second22                \r\n  Age: 13m                                         \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n  \u2191/k up \u2022 \u2193/j down \u2022 q quit \u2022 ? more              \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n\n\n  Any instance                                     \r\n  Connect to any available instance                \r\n\n\u2502 srv-12345678901234567890-first111                \r\n\u2502 Age: 12m                                         \r\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\r                                                                                                                                                      \r\ntea-12345678901234567890 > Select Instance > SSH                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                            \u28fd  Preparing SSH connection...                                                            \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n[Ctrl+C]: Quit  [Esc]: Back  [Ctrl+S]: Copy command to clipboard                                                                                                                                                      \r\ntea-12345678901234567890 > Select Instance > SSH                \r\n                                                                \r\n                                                                \r\n[Ctrl+C]: Quit  [Esc]: Back  [Ctrl+S]: Copy command to clipboard\r\r                                                   \r\ntea-12345678901234567890 > Select Instance         \r\n                                                   \r\n   Select an instance:                             \r\n                                                   \r\n  Any instance                                     \r\n  Connect to any available instance                \r\n                                                   \r\n\u2502 srv-12345678901234567890-first111                \r\n\u2502 Age: 12m                                         \r\n                                                   \r\n  srv-12345678901234567890-second22                \r\n  Age: 13m                                         \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n  \u2191/k up \u2022 \u2193/j down \u2022 q quit \u2022 ? more              \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\r\u001b]11;?\u001b\\                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+    "ssh_child": {
+      "argv": [
+        "srv-12345678901234567890@ssh.example.invalid"
+      ],
+      "stdin_is_tty": true
+    },
+    "wire": [
+      {
+        "method": "GET",
+        "path": "/v1/users",
+        "status": 200,
+        "response": {
+          "id": "usr-local-fixture",
+          "name": "Local fixture",
+          "email": "qa@example.invalid"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/instances",
+        "status": 200,
+        "response": [
+          {
+            "id": "srv-12345678901234567890-first111",
+            "createdAt": "2026-10-11T20:00:00Z"
+          },
+          {
+            "id": "srv-12345678901234567890-second22",
+            "createdAt": "2026-10-11T19:59:00Z"
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890",
+        "status": 200,
+        "response": {
+          "id": "srv-12345678901234567890",
+          "name": "local-qa-instance-picker",
+          "type": "web_service",
+          "suspended": "not_suspended",
+          "serviceDetails": {
+            "runtime": "python",
+            "plan": "starter",
+            "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/deploys",
+        "status": 200,
+        "response": [
+          {
+            "deploy": {
+              "id": "dep-12345678901234567890",
+              "status": "live"
+            }
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/instances",
+        "status": 200,
+        "response": [
+          {
+            "id": "srv-12345678901234567890-first111",
+            "createdAt": "2026-10-11T20:00:00Z"
+          },
+          {
+            "id": "srv-12345678901234567890-second22",
+            "createdAt": "2026-10-11T19:59:00Z"
+          }
+        ]
+      }
+    ],
+    "qualification": "Actual unmodified native binary against loopback schema fixtures and PATH-local ssh argv recorder. Dummy local key only; no production API request, hosting fixture, paid resource or SSH connection."
+  },
+  {
+    "client": "render",
+    "case": "second",
+    "command": [
+      "render",
+      "ssh",
+      "srv-12345678901234567890",
+      "-o",
+      "interactive"
+    ],
+    "exit": 0,
+    "timeout": false,
+    "elapsed": 1.03,
+    "events": [
+      {
+        "action": "Down 2 then Enter",
+        "expected_selected": "srv-12345678901234567890-second22"
+      }
+    ],
+    "terminal_output": "\u001b]11;?\u001b\\\r                                                                                                                                                      \r\ntea-12345678901234567890 > Select Instance                                                                                                            \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                    \u28fd  Loading...                                                                     \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard                                                                                                                                                      \r\ntea-12345678901234567890 > Select Instance         \r\n                                                   \r\n   Select an instance:                             \r\n                                                   \r\n\u2502 Any instance                                     \r\n\u2502 Connect to any available instance                \r\n                                                   \r\n  srv-12345678901234567890-first111                \r\n  Age: 12m                                         \r\n                                                   \r\n  srv-12345678901234567890-second22                \r\n  Age: 13m                                         \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n  \u2191/k up \u2022 \u2193/j down \u2022 q quit \u2022 ? more              \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n\n\n  Any instance                                     \r\n  Connect to any available instance                \r\n\n\u2502 srv-12345678901234567890-first111                \r\n\u2502 Age: 12m                                         \r\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n  srv-12345678901234567890-first111                \r\n  Age: 12m                                         \r\n\n\u2502 srv-12345678901234567890-second22                \r\n\u2502 Age: 13m                                         \r\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\r                                                                \r\ntea-12345678901234567890 > Select Instance > SSH                \r\n                                                                \r\n                                                                \r\n[Ctrl+C]: Quit  [Esc]: Back  [Ctrl+S]: Copy command to clipboard\r\r                                                   \r\ntea-12345678901234567890 > Select Instance         \r\n                                                   \r\n   Select an instance:                             \r\n                                                   \r\n  Any instance                                     \r\n  Connect to any available instance                \r\n                                                   \r\n  srv-12345678901234567890-first111                \r\n  Age: 12m                                         \r\n                                                   \r\n\u2502 srv-12345678901234567890-second22                \r\n\u2502 Age: 13m                                         \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n  \u2191/k up \u2022 \u2193/j down \u2022 q quit \u2022 ? more              \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\r\u001b]11;?\u001b\\                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+    "ssh_child": {
+      "argv": [
+        "srv-12345678901234567890@ssh.example.invalid"
+      ],
+      "stdin_is_tty": true
+    },
+    "wire": [
+      {
+        "method": "GET",
+        "path": "/v1/users",
+        "status": 200,
+        "response": {
+          "id": "usr-local-fixture",
+          "name": "Local fixture",
+          "email": "qa@example.invalid"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/instances",
+        "status": 200,
+        "response": [
+          {
+            "id": "srv-12345678901234567890-first111",
+            "createdAt": "2026-10-11T20:00:00Z"
+          },
+          {
+            "id": "srv-12345678901234567890-second22",
+            "createdAt": "2026-10-11T19:59:00Z"
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890",
+        "status": 200,
+        "response": {
+          "id": "srv-12345678901234567890",
+          "name": "local-qa-instance-picker",
+          "type": "web_service",
+          "suspended": "not_suspended",
+          "serviceDetails": {
+            "runtime": "python",
+            "plan": "starter",
+            "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/deploys",
+        "status": 200,
+        "response": [
+          {
+            "deploy": {
+              "id": "dep-12345678901234567890",
+              "status": "live"
+            }
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/instances",
+        "status": 200,
+        "response": [
+          {
+            "id": "srv-12345678901234567890-first111",
+            "createdAt": "2026-10-11T20:00:00Z"
+          },
+          {
+            "id": "srv-12345678901234567890-second22",
+            "createdAt": "2026-10-11T19:59:00Z"
+          }
+        ]
+      }
+    ],
+    "qualification": "Actual unmodified native binary against loopback schema fixtures and PATH-local ssh argv recorder. Dummy local key only; no production API request, hosting fixture, paid resource or SSH connection."
+  },
+  {
+    "client": "render",
+    "case": "any",
+    "command": [
+      "render",
+      "ssh",
+      "srv-12345678901234567890",
+      "-o",
+      "interactive"
+    ],
+    "exit": 0,
+    "timeout": false,
+    "elapsed": 0.712,
+    "events": [
+      {
+        "action": "Down 0 then Enter",
+        "expected_selected": ""
+      }
+    ],
+    "terminal_output": "\u001b]11;?\u001b\\\r                                                   \r\ntea-12345678901234567890 > Select Instance         \r\n                                                   \r\n   Select an instance:                             \r\n                                                   \r\n\u2502 Any instance                                     \r\n\u2502 Connect to any available instance                \r\n                                                   \r\n  srv-12345678901234567890-first111                \r\n  Age: 12m                                         \r\n                                                   \r\n  srv-12345678901234567890-second22                \r\n  Age: 13m                                         \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n  \u2191/k up \u2022 \u2193/j down \u2022 q quit \u2022 ? more              \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\r                                                                \r\ntea-12345678901234567890 > Select Instance > SSH                \r\n                                                                \r\n                                                                \r\n[Ctrl+C]: Quit  [Esc]: Back  [Ctrl+S]: Copy command to clipboard\r\r                                                   \r\ntea-12345678901234567890 > Select Instance         \r\n                                                   \r\n   Select an instance:                             \r\n                                                   \r\n\u2502 Any instance                                     \r\n\u2502 Connect to any available instance                \r\n                                                   \r\n  srv-12345678901234567890-first111                \r\n  Age: 12m                                         \r\n                                                   \r\n  srv-12345678901234567890-second22                \r\n  Age: 13m                                         \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n                                                   \r\n  \u2191/k up \u2022 \u2193/j down \u2022 q quit \u2022 ? more              \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\r\u001b]11;?\u001b\\                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+    "ssh_child": {
+      "argv": [
+        "srv-12345678901234567890@ssh.example.invalid"
+      ],
+      "stdin_is_tty": true
+    },
+    "wire": [
+      {
+        "method": "GET",
+        "path": "/v1/users",
+        "status": 200,
+        "response": {
+          "id": "usr-local-fixture",
+          "name": "Local fixture",
+          "email": "qa@example.invalid"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/instances",
+        "status": 200,
+        "response": [
+          {
+            "id": "srv-12345678901234567890-first111",
+            "createdAt": "2026-10-11T20:00:00Z"
+          },
+          {
+            "id": "srv-12345678901234567890-second22",
+            "createdAt": "2026-10-11T19:59:00Z"
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890",
+        "status": 200,
+        "response": {
+          "id": "srv-12345678901234567890",
+          "name": "local-qa-instance-picker",
+          "type": "web_service",
+          "suspended": "not_suspended",
+          "serviceDetails": {
+            "runtime": "python",
+            "plan": "starter",
+            "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/deploys",
+        "status": 200,
+        "response": [
+          {
+            "deploy": {
+              "id": "dep-12345678901234567890",
+              "status": "live"
+            }
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/instances",
+        "status": 200,
+        "response": [
+          {
+            "id": "srv-12345678901234567890-first111",
+            "createdAt": "2026-10-11T20:00:00Z"
+          },
+          {
+            "id": "srv-12345678901234567890-second22",
+            "createdAt": "2026-10-11T19:59:00Z"
+          }
+        ]
+      }
+    ],
+    "qualification": "Actual unmodified native binary against loopback schema fixtures and PATH-local ssh argv recorder. Dummy local key only; no production API request, hosting fixture, paid resource or SSH connection."
+  },
+  {
+    "client": "render",
+    "case": "direct",
+    "command": [
+      "render",
+      "ssh",
+      "srv-12345678901234567890-first111",
+      "-o",
+      "interactive"
+    ],
+    "exit": -2,
+    "timeout": false,
+    "elapsed": 0.701,
+    "events": [],
+    "terminal_output": "\u001b]11;?\u001b\\\r                                                   \r\ntea-12345678901234567890 > SSH                     \r\n                                                   \r\n                                                   \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\r",
+    "ssh_child": {
+      "argv": [
+        "srv-12345678901234567890-first111@ssh.example.invalid"
+      ],
+      "stdin_is_tty": true
+    },
+    "wire": [
+      {
+        "method": "GET",
+        "path": "/v1/users",
+        "status": 200,
+        "response": {
+          "id": "usr-local-fixture",
+          "name": "Local fixture",
+          "email": "qa@example.invalid"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890",
+        "status": 200,
+        "response": {
+          "id": "srv-12345678901234567890",
+          "name": "local-qa-instance-picker",
+          "type": "web_service",
+          "suspended": "not_suspended",
+          "serviceDetails": {
+            "runtime": "python",
+            "plan": "starter",
+            "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/deploys",
+        "status": 200,
+        "response": [
+          {
+            "deploy": {
+              "id": "dep-12345678901234567890",
+              "status": "live"
+            }
+          }
+        ]
+      }
+    ],
+    "qualification": "Actual unmodified native binary against loopback schema fixtures and PATH-local ssh argv recorder. Dummy local key only; no production API request, hosting fixture, paid resource or SSH connection."
+  },
+  {
+    "client": "bex",
+    "case": "empty",
+    "command": [
+      "bex",
+      "ssh",
+      "-o",
+      "interactive"
+    ],
+    "exit": 0,
+    "timeout": false,
+    "elapsed": 1.168,
+    "events": [
+      {
+        "action": "Enter sole local service row"
+      },
+      {
+        "action": "Down 1 then Enter",
+        "expected_selected": "srv-12345678901234567890-first111"
+      }
+    ],
+    "terminal_output": "\u001b]11;?\u001b\\\r                                                                                                                                                      \r\ntea-12345678901234567890 > Login                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                    \u28fd  Loading...                                                                     \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n                                                                                                                                                      \r\n[Ctrl+C]: Quit                                                                                                                                        \r                                                                                                                                                      \r\ntea-12345678901234567890 > SSH                                                                                                                        \r\n                                                                                                                                                      \r\n\u250f\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2533\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2533\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2533\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2533\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2513\r\n\u2503Name                                            \u2503Project                 \u2503Environment             \u2503Type              \u2503ID                            \u2503\r\n\u2523\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u254b\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u254b\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u254b\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u254b\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u252b\r\n\u2503local-qa-instance-picker                        \u2503                        \u2503                        \u2503Web Service       \u2503srv-12345678901234567890      \u2503\r\n\u2523\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u253b\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u253b\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u253b\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u253b\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u252b\r\n\u25031/1                                                                                                                                                 \u2503\r\n\u2517\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u251b\r\n[c]: Copy ID  [w]: Change Workspace  [f]: Filter by Project  [/]: Search                                                                              \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard                                                                                                   \r                                                                \r\ntea-12345678901234567890 > SSH > Select Instance                \r\n                                                                \r\n   Select an instance:                                          \r\n                                                                \r\n\u2502 Any instance                                                  \r\n\u2502 Connect to any available instance                             \r\n                                                                \r\n  srv-12345678901234567890-first111                             \r\n  Age: 12m                                                      \r\n                                                                \r\n  srv-12345678901234567890-second22                             \r\n  Age: 13m                                                      \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n  \u2191/k up \u2022 \u2193/j down \u2022 q quit \u2022 ? more                           \r\n[Ctrl+C]: Quit  [Esc]: Back  [Ctrl+S]: Copy command to clipboard\n\n\n\n\n  Any instance                                                  \r\n  Connect to any available instance                             \r\n\n\u2502 srv-12345678901234567890-first111                             \r\n\u2502 Age: 12m                                                      \r\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\r                                                                \r\ntea-12345678901234567890 > SSH > Select Instance > SSH          \r\n                                                                \r\n                                                                \r\n[Ctrl+C]: Quit  [Esc]: Back  [Ctrl+S]: Copy command to clipboard\r\r                                                                \r\ntea-12345678901234567890 > SSH > Select Instance                \r\n                                                                \r\n   Select an instance:                                          \r\n                                                                \r\n  Any instance                                                  \r\n  Connect to any available instance                             \r\n                                                                \r\n\u2502 srv-12345678901234567890-first111                             \r\n\u2502 Age: 12m                                                      \r\n                                                                \r\n  srv-12345678901234567890-second22                             \r\n  Age: 13m                                                      \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n  \u2191/k up \u2022 \u2193/j down \u2022 q quit \u2022 ? more                           \r\n[Ctrl+C]: Quit  [Esc]: Back  [Ctrl+S]: Copy command to clipboard\r\u001b]11;?\u001b\\                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+    "ssh_child": {
+      "argv": [
+        "srv-12345678901234567890@ssh.example.invalid"
+      ],
+      "stdin_is_tty": true
+    },
+    "wire": [
+      {
+        "method": "GET",
+        "path": "/v1/users",
+        "status": 200,
+        "response": {
+          "id": "usr-local-fixture",
+          "name": "Local fixture",
+          "email": "qa@example.invalid"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services?type=web_service,private_service,background_worker&ownerId=tea-12345678901234567890&includePreviews=false&limit=100",
+        "status": 200,
+        "response": [
+          {
+            "service": {
+              "id": "srv-12345678901234567890",
+              "name": "local-qa-instance-picker",
+              "type": "web_service",
+              "suspended": "not_suspended",
+              "serviceDetails": {
+                "runtime": "python",
+                "plan": "starter",
+                "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/projects?ownerId=tea-12345678901234567890&limit=100",
+        "status": 200,
+        "response": []
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/instances",
+        "status": 200,
+        "response": [
+          {
+            "id": "srv-12345678901234567890-first111",
+            "createdAt": "2026-10-11T20:00:00Z"
+          },
+          {
+            "id": "srv-12345678901234567890-second22",
+            "createdAt": "2026-10-11T19:59:00Z"
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890",
+        "status": 200,
+        "response": {
+          "id": "srv-12345678901234567890",
+          "name": "local-qa-instance-picker",
+          "type": "web_service",
+          "suspended": "not_suspended",
+          "serviceDetails": {
+            "runtime": "python",
+            "plan": "starter",
+            "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/deploys",
+        "status": 200,
+        "response": [
+          {
+            "deploy": {
+              "id": "dep-12345678901234567890",
+              "status": "live"
+            }
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services?type=web_service,private_service,background_worker&ownerId=tea-12345678901234567890&includePreviews=false&limit=100",
+        "status": 200,
+        "response": [
+          {
+            "service": {
+              "id": "srv-12345678901234567890",
+              "name": "local-qa-instance-picker",
+              "type": "web_service",
+              "suspended": "not_suspended",
+              "serviceDetails": {
+                "runtime": "python",
+                "plan": "starter",
+                "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/instances",
+        "status": 200,
+        "response": [
+          {
+            "id": "srv-12345678901234567890-first111",
+            "createdAt": "2026-10-11T20:00:00Z"
+          },
+          {
+            "id": "srv-12345678901234567890-second22",
+            "createdAt": "2026-10-11T19:59:00Z"
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/projects?ownerId=tea-12345678901234567890&limit=100",
+        "status": 200,
+        "response": []
+      }
+    ],
+    "qualification": "Actual unmodified native binary against loopback schema fixtures and PATH-local ssh argv recorder. Dummy local key only; no production API request, hosting fixture, paid resource or SSH connection."
+  },
+  {
+    "client": "render",
+    "case": "empty",
+    "command": [
+      "render",
+      "ssh",
+      "-o",
+      "interactive"
+    ],
+    "exit": 0,
+    "timeout": false,
+    "elapsed": 0.852,
+    "events": [
+      {
+        "action": "Enter sole local service row"
+      },
+      {
+        "action": "Down 1 then Enter",
+        "expected_selected": "srv-12345678901234567890-first111"
+      }
+    ],
+    "terminal_output": "\u001b]11;?\u001b\\\r                                                                                                                                                      \r\ntea-12345678901234567890 > SSH                                                                                                                        \r\n                                                                                                                                                      \r\n\u250f\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2533\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2533\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2533\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2533\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2513\r\n\u2503Name                                            \u2503Project                 \u2503Environment             \u2503Type              \u2503ID                            \u2503\r\n\u2523\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u254b\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u254b\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u254b\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u254b\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u252b\r\n\u2503local-qa-instance-picker                        \u2503                        \u2503                        \u2503Web Service       \u2503srv-12345678901234567890      \u2503\r\n\u2523\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u253b\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u253b\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u253b\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u253b\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u252b\r\n\u25031/1                                                                                                                                                 \u2503\r\n\u2517\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u251b\r\n[c]: Copy ID  [w]: Change Workspace  [f]: Filter by Project  [/]: Search                                                                              \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard                                                                                                   \r                                                                \r\ntea-12345678901234567890 > SSH > Select Instance                \r\n                                                                \r\n   Select an instance:                                          \r\n                                                                \r\n\u2502 Any instance                                                  \r\n\u2502 Connect to any available instance                             \r\n                                                                \r\n  srv-12345678901234567890-first111                             \r\n  Age: 12m                                                      \r\n                                                                \r\n  srv-12345678901234567890-second22                             \r\n  Age: 13m                                                      \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n  \u2191/k up \u2022 \u2193/j down \u2022 q quit \u2022 ? more                           \r\n[Ctrl+C]: Quit  [Esc]: Back  [Ctrl+S]: Copy command to clipboard\n\n\n\n\n  Any instance                                                  \r\n  Connect to any available instance                             \r\n\n\u2502 srv-12345678901234567890-first111                             \r\n\u2502 Age: 12m                                                      \r\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\r                                                                \r\ntea-12345678901234567890 > SSH > Select Instance > SSH          \r\n                                                                \r\n                                                                \r\n[Ctrl+C]: Quit  [Esc]: Back  [Ctrl+S]: Copy command to clipboard\r\r                                                                \r\ntea-12345678901234567890 > SSH > Select Instance                \r\n                                                                \r\n   Select an instance:                                          \r\n                                                                \r\n  Any instance                                                  \r\n  Connect to any available instance                             \r\n                                                                \r\n\u2502 srv-12345678901234567890-first111                             \r\n\u2502 Age: 12m                                                      \r\n                                                                \r\n  srv-12345678901234567890-second22                             \r\n  Age: 13m                                                      \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n                                                                \r\n  \u2191/k up \u2022 \u2193/j down \u2022 q quit \u2022 ? more                           \r\n[Ctrl+C]: Quit  [Esc]: Back  [Ctrl+S]: Copy command to clipboard\r\u001b]11;?\u001b\\                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+    "ssh_child": {
+      "argv": [
+        "srv-12345678901234567890@ssh.example.invalid"
+      ],
+      "stdin_is_tty": true
+    },
+    "wire": [
+      {
+        "method": "GET",
+        "path": "/v1/users",
+        "status": 200,
+        "response": {
+          "id": "usr-local-fixture",
+          "name": "Local fixture",
+          "email": "qa@example.invalid"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services?type=web_service,private_service,background_worker&ownerId=tea-12345678901234567890&includePreviews=false&limit=100",
+        "status": 200,
+        "response": [
+          {
+            "service": {
+              "id": "srv-12345678901234567890",
+              "name": "local-qa-instance-picker",
+              "type": "web_service",
+              "suspended": "not_suspended",
+              "serviceDetails": {
+                "runtime": "python",
+                "plan": "starter",
+                "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/projects?ownerId=tea-12345678901234567890&limit=100",
+        "status": 200,
+        "response": []
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/instances",
+        "status": 200,
+        "response": [
+          {
+            "id": "srv-12345678901234567890-first111",
+            "createdAt": "2026-10-11T20:00:00Z"
+          },
+          {
+            "id": "srv-12345678901234567890-second22",
+            "createdAt": "2026-10-11T19:59:00Z"
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890",
+        "status": 200,
+        "response": {
+          "id": "srv-12345678901234567890",
+          "name": "local-qa-instance-picker",
+          "type": "web_service",
+          "suspended": "not_suspended",
+          "serviceDetails": {
+            "runtime": "python",
+            "plan": "starter",
+            "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/deploys",
+        "status": 200,
+        "response": [
+          {
+            "deploy": {
+              "id": "dep-12345678901234567890",
+              "status": "live"
+            }
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services?type=web_service,private_service,background_worker&ownerId=tea-12345678901234567890&includePreviews=false&limit=100",
+        "status": 200,
+        "response": [
+          {
+            "service": {
+              "id": "srv-12345678901234567890",
+              "name": "local-qa-instance-picker",
+              "type": "web_service",
+              "suspended": "not_suspended",
+              "serviceDetails": {
+                "runtime": "python",
+                "plan": "starter",
+                "sshAddress": "srv-12345678901234567890@ssh.example.invalid"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/services/srv-12345678901234567890/instances",
+        "status": 200,
+        "response": [
+          {
+            "id": "srv-12345678901234567890-first111",
+            "createdAt": "2026-10-11T20:00:00Z"
+          },
+          {
+            "id": "srv-12345678901234567890-second22",
+            "createdAt": "2026-10-11T19:59:00Z"
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/v1/projects?ownerId=tea-12345678901234567890&limit=100",
+        "status": 200,
+        "response": []
+      }
+    ],
+    "qualification": "Actual unmodified native binary against loopback schema fixtures and PATH-local ssh argv recorder. Dummy local key only; no production API request, hosting fixture, paid resource or SSH connection."
+  }
+]

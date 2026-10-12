@@ -1,0 +1,8 @@
+{
+  "source_head": "a3129af44b6dcbabd88b2aa6a9d59ccfa544464c",
+  "path": "lego/operator/internal/build/native.go",
+  "native_go_sha256": "a2f5782a85f8662b2284a0a15a043a8a889617743aa609d5bb1e85b39906a078",
+  "byte_identical_to_sweep163": true,
+  "source_default_node_image": "node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
+  "qualification": "Source metadata, not deployed revision or observed runtime digest. Existing generated-loader/preparer mechanism and census remain applicable."
+}

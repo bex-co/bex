@@ -1,0 +1,122 @@
+[
+  {
+    "at": "2026-10-12T20:59:27.176321+00:00",
+    "case": "kv-env-key-complete",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa175-ce0a550ac8cd2e9e2082ba80d1ff7fcc",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa175-ce0a550ac8cd2e9e2082ba80d1ff7fcc\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa175-ce0a550ac8cd2e9e2082ba80d1ff7fcc\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep175-kv-env-key-complete.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa175-94d0fe-source\",\n      \"type\": \"keyvalue\",\n      \"plan\": \"free\",\n      \"ipAllowList\": []\n    },\n    {\n      \"name\": \"qa175-94d0fe-target\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_TARGET\",\n          \"fromService\": {\n            \"type\": \"keyvalue\",\n            \"name\": \"qa175-94d0fe-source\",\n            \"envVarKey\": \"QA_UNDECLARED\"\n          }\n        }\n      ]\n    }\n  ]\n}\n\r\n--qa175-ce0a550ac8cd2e9e2082ba80d1ff7fcc--\r\n"
+    },
+    "status": "200",
+    "elapsed": 0.836,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4990742ecba939a-EWR"
+    },
+    "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa175-94d0fe-target\"],\"keyValue\":[\"qa175-94d0fe-source\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"key_value\",\"name\":\"qa175-94d0fe-source\",\"sourcePath\":\"#/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa175-94d0fe-target\",\"sourcePath\":\"#/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+  },
+  {
+    "at": "2026-10-12T20:59:27.702571+00:00",
+    "case": "redis-env-key-complete",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa175-e234c310143c3bd0e41f3ce6dad5e37f",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa175-e234c310143c3bd0e41f3ce6dad5e37f\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa175-e234c310143c3bd0e41f3ce6dad5e37f\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep175-redis-env-key-complete.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa175-94d0fe-source\",\n      \"type\": \"redis\",\n      \"plan\": \"free\",\n      \"ipAllowList\": []\n    },\n    {\n      \"name\": \"qa175-94d0fe-target\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_TARGET\",\n          \"fromService\": {\n            \"type\": \"redis\",\n            \"name\": \"qa175-94d0fe-source\",\n            \"envVarKey\": \"QA_UNDECLARED\"\n          }\n        }\n      ]\n    }\n  ]\n}\n\r\n--qa175-e234c310143c3bd0e41f3ce6dad5e37f--\r\n"
+    },
+    "status": "200",
+    "elapsed": 0.525,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49907481d90134a-EWR"
+    },
+    "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa175-94d0fe-target\"],\"keyValue\":[\"qa175-94d0fe-source\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"key_value\",\"name\":\"qa175-94d0fe-source\",\"sourcePath\":\"#/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa175-94d0fe-target\",\"sourcePath\":\"#/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+  },
+  {
+    "at": "2026-10-12T20:59:28.302896+00:00",
+    "case": "kv-missing-property-complete",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa175-e44a2fc0e8ad39166e7f6e85a3bfe8ba",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa175-e44a2fc0e8ad39166e7f6e85a3bfe8ba\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa175-e44a2fc0e8ad39166e7f6e85a3bfe8ba\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep175-kv-missing-property-complete.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa175-94d0fe-source\",\n      \"type\": \"keyvalue\",\n      \"plan\": \"free\",\n      \"ipAllowList\": []\n    },\n    {\n      \"name\": \"qa175-94d0fe-target\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_TARGET\",\n          \"fromService\": {\n            \"type\": \"keyvalue\",\n            \"name\": \"qa175-94d0fe-source\"\n          }\n        }\n      ]\n    }\n  ]\n}\n\r\n--qa175-e44a2fc0e8ad39166e7f6e85a3bfe8ba--\r\n"
+    },
+    "status": "200",
+    "elapsed": 0.599,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a499074b486b71fc-ATL"
+    },
+    "response": "{\"valid\":false,\"errors\":[{\"error\":\"qa175-94d0fe-target env \\\"QA_TARGET\\\": fromService keyvalue needs a property (connectionString, host, port, or password)\",\"line\":17,\"column\":18,\"path\":\"services[1].envVars\"}]}\n"
+  },
+  {
+    "at": "2026-10-12T20:59:28.724898+00:00",
+    "case": "kv-host-complete",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa175-70669641911c06479515cfb5b2761df0",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa175-70669641911c06479515cfb5b2761df0\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa175-70669641911c06479515cfb5b2761df0\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep175-kv-host-complete.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa175-94d0fe-source\",\n      \"type\": \"keyvalue\",\n      \"plan\": \"free\",\n      \"ipAllowList\": []\n    },\n    {\n      \"name\": \"qa175-94d0fe-target\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_TARGET\",\n          \"fromService\": {\n            \"type\": \"keyvalue\",\n            \"name\": \"qa175-94d0fe-source\",\n            \"property\": \"host\"\n          }\n        }\n      ]\n    }\n  ]\n}\n\r\n--qa175-70669641911c06479515cfb5b2761df0--\r\n"
+    },
+    "status": "200",
+    "elapsed": 0.421,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a499074f1a20b261-ATL"
+    },
+    "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa175-94d0fe-target\"],\"keyValue\":[\"qa175-94d0fe-source\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"key_value\",\"name\":\"qa175-94d0fe-source\",\"sourcePath\":\"#/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa175-94d0fe-target\",\"sourcePath\":\"#/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+  },
+  {
+    "at": "2026-10-12T20:59:29.078828+00:00",
+    "case": "app-missing-key",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa175-8b942bdfce829a7971cfb5e8b6fa486f",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa175-8b942bdfce829a7971cfb5e8b6fa486f\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa175-8b942bdfce829a7971cfb5e8b6fa486f\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep175-app-missing-key.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa175-94d0fe-source\",\n      \"type\": \"web\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"envVars\": [\n        {\n          \"key\": \"QA_SOURCE\",\n          \"value\": \"source-175\"\n        }\n      ]\n    },\n    {\n      \"name\": \"qa175-94d0fe-target\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_TARGET\",\n          \"fromService\": {\n            \"type\": \"web\",\n            \"name\": \"qa175-94d0fe-source\",\n            \"envVarKey\": \"QA_UNDECLARED\"\n          }\n        }\n      ]\n    }\n  ]\n}\n\r\n--qa175-8b942bdfce829a7971cfb5e8b6fa486f--\r\n"
+    },
+    "status": "200",
+    "elapsed": 0.353,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49907514eb11571-PDX"
+    },
+    "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa175-94d0fe-target\\\": fromService.envVarKey references env \\\"QA_UNDECLARED\\\" on service \\\"qa175-94d0fe-source\\\", which has no such plainly-defined variable\",\"line\":26,\"column\":18,\"path\":\"services[1].envVars\"}]}\n"
+  }
+]

@@ -1,0 +1,24 @@
+{
+  "posix": {
+    "url": "https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap08.html",
+    "claim": "Environment values exclude NUL bytes. Other bytes are not globally prohibited by this rule.",
+    "consulted": "2026-10-12 UTC; primary page returned through web search; direct open returned 403"
+  },
+  "pinned_consumer": {
+    "pin": "a764810a768202704e7206eb7b87a47211fcd98e",
+    "version": "v2.27.0",
+    "valid_false": "HTTP 200 JSON validation result with valid:false and errors; native exit1",
+    "current": "Bex returns valid:true, causing both unchanged clients to exit0"
+  },
+  "render_production_tested": false,
+  "wire_capture": null,
+  "schema_note": "Pinned generated env value is a string; that type alone does not define process representability.",
+  "dedupe": [
+    "No NUL/null-byte admission finding found across open/done .pm records.",
+    "m61 covers representable PATH breaking helper discovery.",
+    "092 covers missing explicit-empty presence.",
+    "095 covers a missing empty group key.",
+    "done/m53 covers numeric normalization.",
+    "027 covers environment key validation."
+  ]
+}

@@ -1,0 +1,112 @@
+[
+  {
+    "label": "app-missing-key",
+    "compiler_problems": 0,
+    "parser_error": "bad request: service \"qa175-94d0fe-target\": fromService.envVarKey references env \"QA_UNDECLARED\" on service \"qa175-94d0fe-source\", which has no such plainly-defined variable",
+    "reference_type": "web",
+    "kv_refs": 0,
+    "resolver_error": "",
+    "secret_key": "",
+    "key_validation_errors": null
+  },
+  {
+    "label": "app-literal-key",
+    "compiler_problems": 0,
+    "parser_error": "",
+    "reference_type": "web",
+    "kv_refs": 0,
+    "resolver_error": "",
+    "secret_key": "",
+    "key_validation_errors": null,
+    "resolved_value": "source-175"
+  },
+  {
+    "label": "kv-env-key-complete",
+    "compiler_problems": 0,
+    "parser_error": "",
+    "reference_type": "keyvalue",
+    "kv_refs": 1,
+    "resolver_error": "",
+    "synthetic_secret_name": "qa175-local-object",
+    "secret_key": "",
+    "key_validation_errors": [
+      "a valid config key must consist of alphanumeric characters, '-', '_' or '.' (e.g. 'key.name',  or 'KEY_NAME',  or 'key-name', regex used for validation is '[-._a-zA-Z0-9]+')"
+    ]
+  },
+  {
+    "label": "redis-env-key-complete",
+    "compiler_problems": 0,
+    "parser_error": "",
+    "reference_type": "redis",
+    "kv_refs": 1,
+    "resolver_error": "",
+    "synthetic_secret_name": "qa175-local-object",
+    "secret_key": "",
+    "key_validation_errors": [
+      "a valid config key must consist of alphanumeric characters, '-', '_' or '.' (e.g. 'key.name',  or 'KEY_NAME',  or 'key-name', regex used for validation is '[-._a-zA-Z0-9]+')"
+    ]
+  },
+  {
+    "label": "kv-missing-property-complete",
+    "compiler_problems": 0,
+    "parser_error": "bad request: qa175-94d0fe-target env \"QA_TARGET\": fromService keyvalue needs a property (connectionString, host, port, or password)",
+    "reference_type": "keyvalue",
+    "kv_refs": 0,
+    "resolver_error": "",
+    "secret_key": "",
+    "key_validation_errors": null
+  },
+  {
+    "label": "kv-host-complete",
+    "compiler_problems": 0,
+    "parser_error": "",
+    "reference_type": "keyvalue",
+    "kv_refs": 1,
+    "resolver_error": "",
+    "synthetic_secret_name": "qa175-local-object",
+    "secret_key": "host",
+    "key_validation_errors": null
+  },
+  {
+    "label": "kv-port-complete",
+    "compiler_problems": 0,
+    "parser_error": "",
+    "reference_type": "keyvalue",
+    "kv_refs": 1,
+    "resolver_error": "",
+    "synthetic_secret_name": "qa175-local-object",
+    "secret_key": "port",
+    "key_validation_errors": null
+  },
+  {
+    "label": "kv-connection-complete",
+    "compiler_problems": 0,
+    "parser_error": "",
+    "reference_type": "keyvalue",
+    "kv_refs": 1,
+    "resolver_error": "",
+    "synthetic_secret_name": "qa175-local-object",
+    "secret_key": "uri",
+    "key_validation_errors": null
+  },
+  {
+    "label": "kv-hostport-complete",
+    "compiler_problems": 0,
+    "parser_error": "bad request: qa175-94d0fe-target env \"QA_TARGET\": fromService keyvalue property \"hostport\" is not supported (want connectionString, host, port, or password)",
+    "reference_type": "keyvalue",
+    "kv_refs": 0,
+    "resolver_error": "",
+    "secret_key": "",
+    "key_validation_errors": null
+  },
+  {
+    "label": "kv-both-complete",
+    "compiler_problems": 0,
+    "parser_error": "bad request: qa175-94d0fe-target env \"QA_TARGET\": fromService sets both envVarKey and property — pick one",
+    "reference_type": "keyvalue",
+    "kv_refs": 0,
+    "resolver_error": "",
+    "secret_key": "",
+    "key_validation_errors": null
+  }
+]

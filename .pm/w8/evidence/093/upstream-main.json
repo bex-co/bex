@@ -1,0 +1,10 @@
+{
+  "url": "https://raw.githubusercontent.com/render-oss/cli/main/pkg/resolve/resolve.go",
+  "observed_at": "2026-10-11T22:18:22.094418+00:00",
+  "headers": {
+    "Content-Type": "text/plain; charset=utf-8",
+    "ETag": "\"bb5205445b963dcfa90eadc3ea1b25479b913f9ef7459317f99dad172751a666\""
+  },
+  "commit_sha": "unobserved; mutable main snapshot",
+  "claim": "both ID-shaped branches still immediately return on getter errors; current main was inspected, not executed"
+}

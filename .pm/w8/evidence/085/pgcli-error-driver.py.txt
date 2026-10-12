@@ -1,0 +1,48 @@
+import pathlib,json,os,shutil,pty,fcntl,termios,struct,subprocess,time,select,errno,re,datetime
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());g=c['sweep142_pgscope'];sid=g['postgres']['id'];x=next(x for x in c['resources'] if x.get('id')==sid);assert x['sweep']==142 and x['last_readback']['status']=='available';assert not g.get('pgcli_cases')
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2));cp.chmod(0o600)
+def clean(raw):
+ s=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',raw.decode(errors='replace'));s=re.sub(r'\x1b\][^\x07]*\x07','',s);return re.sub(r'(?:postgres(?:ql)?|rediss?)://[^\s]+','[CONNECTION URL REDACTED]',s)
+real=shutil.which('pgcli');assert real=='/opt/homebrew/bin/pgcli';g['pgcli_external_controls']=[]
+for args in [['--version'],['--csv','-q'],['-q']]:
+ r=subprocess.run([real,*args],capture_output=True,text=True,timeout=10);g['pgcli_external_controls'].append({'command':['pgcli',*args],'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr})
+assert g['pgcli_external_controls'][0]['exit']==0 and '4.6.0' in g['pgcli_external_controls'][0]['stdout'];assert all(r['exit']==2 for r in g['pgcli_external_controls'][1:]);g['pgcli_cases']=[];save()
+root=p/'sweep142-pgcli-state';root.mkdir(mode=0o700);cfg=p/'render-config/cli.yaml';assert not cfg.exists();cfg.parent.mkdir(mode=0o700,exist_ok=True);shutil.copy2(p/'config/cli.yaml',cfg)
+try:
+ for role in ['bex','render']:
+  for case,flags in [('advertised-example',['--csv','-q']),('version-control',['--version'])]:
+   args=['pgcli',sid,'--confirm','-o','interactive','--',*flags];a={'client':role,'case':case,'command':[role,*args],'at':now(),'state':'native child parse/version probe intent persisted; no SQL'};g['pgcli_cases'].append(a);save();env={k:v for k,v in os.environ.items() if not k.startswith(('RENDER_','BEX_','QA_','PG'))};prefix='BEX' if role=='bex' else 'RENDER';env.update({prefix+'_HOST':'https://api.bex.co/v1/',prefix+'_WORKSPACE':g['project'].get('workspace','tea-daif693dqjvc73e7as3g'),prefix+'_CLI_CONFIG_DIR':str(p/('config' if role=='bex' else 'render-config')),prefix+'_CLI_CONFIG_PATH':str(p/('config' if role=='bex' else 'render-config')/'cli.yaml'),prefix+'_NO_UPDATE_NOTIFIER':'1',prefix+'_CLI_DISABLE_ANALYTICS':'1','DO_NOT_TRACK':'1','TERM':'xterm-256color','XDG_CONFIG_HOME':str(root),'TMPDIR':str(root)})
+   m,s=pty.openpty();fcntl.ioctl(s,termios.TIOCSWINSZ,struct.pack('HHHH',28,150,0,0));raw=b'';start=time.monotonic();dismissed=False;timed=False;proc=None
+   def setup():os.setsid();fcntl.ioctl(s,termios.TIOCSCTTY,0)
+   try:
+    proc=subprocess.Popen([str(p/('release/bex' if role=='bex' else 'render-pin')),*args],stdin=s,stdout=s,stderr=s,env=env,preexec_fn=setup);os.close(s);s=None
+    while time.monotonic()-start<16:
+     ready,_,_=select.select([m],[],[],.15)
+     if ready:
+      try:chunk=os.read(m,65536)
+      except OSError as e:
+       if e.errno==errno.EIO:break
+       raise
+      if not chunk:break
+      raw+=chunk
+      if b'\x1b[6n' in chunk:os.write(m,b'\x1b[1;1R')
+      if b'\x1b]11;?' in chunk:os.write(m,b'\x1b]11;rgb:0000/0000/0000\x07')
+      if case=='advertised-example' and 'An error occurred while running pgcli' in clean(raw) and not dismissed:os.write(m,b'\x03');dismissed=True
+     if proc.poll() is not None:break
+    if proc.poll() is None:
+     try:proc.wait(timeout=1)
+     except subprocess.TimeoutExpired:timed=True
+   finally:
+    if s is not None:os.close(s)
+    if proc is not None and proc.poll() is None:
+     proc.terminate()
+     try:proc.wait(timeout=2)
+     except subprocess.TimeoutExpired:proc.kill();proc.wait(timeout=2)
+    os.close(m)
+   output=clean(raw);a.update(exit=proc.returncode,elapsed=round(time.monotonic()-start,3),timeout=timed,dismissed_error_panel=dismissed,output=output,state='native process reaped')
+   if case=='advertised-example':a['blank_detail_reproduced']=dismissed and "No such option '--csv'" in output and 'exit status 2' not in output;a['pass']=a['blank_detail_reproduced'] and a['exit']==0 and not timed
+   else:a['pass']='Version: 4.6.0' in output and a['exit']==0 and not timed
+   save();print(role,case,'exit',a['exit'],'pass',a['pass'],'timeout',timed,a['elapsed'],flush=True);assert a['pass']
+finally:
+ cfg.unlink(missing_ok=True);shutil.rmtree(root);g['pgcli_cleanup']='all four native parents reaped; copied Render config and own external-client state removed; no SQL executed';save()

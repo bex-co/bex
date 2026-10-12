@@ -1,0 +1,51 @@
+{
+  "source_head": "97ce481c8eabb13025c118ea9fa96d0aa83832d3",
+  "deployed_revision": "unknown",
+  "at": "2026-10-12T02:38:31.850841+00:00",
+  "docker_components": [
+    {
+      "Name": "Engine",
+      "Version": "29.7.2",
+      "Details": {
+        "ApiVersion": "1.55",
+        "Arch": "arm64",
+        "BuildTime": "Wed Aug  5 18:28:35 2026",
+        "Experimental": "false",
+        "GitCommit": "6a43e3d",
+        "GoVersion": "go1.26.5",
+        "KernelVersion": "7.0.12-linuxkit",
+        "MinAPIVersion": "1.40",
+        "Module": "github.com/moby/moby/v2",
+        "ModuleVersion": "v2.0.0+unknown",
+        "Os": "linux"
+      }
+    },
+    {
+      "Name": "containerd",
+      "Version": "v2.3.3",
+      "Details": {
+        "GitCommit": "aad11006b869517fcd3009450b6f82da282e1a9b"
+      }
+    },
+    {
+      "Name": "runc",
+      "Version": "1.4.3",
+      "Details": {
+        "GitCommit": "v1.4.3-0-gbb14dabe"
+      }
+    },
+    {
+      "Name": "docker-init",
+      "Version": "0.19.0",
+      "Details": {
+        "GitCommit": "de40ad0"
+      }
+    }
+  ],
+  "loader_sha256": "13b3cfe23065ceed7112822490a9850d368d6914ed79b0a38c28a3ca49d90bdd",
+  "native_generator_sha256": "a2f5782a85f8662b2284a0a15a043a8a889617743aa609d5bb1e85b39906a078",
+  "diagnostic_toolchain": "Go 1.26.8, GOWORK=off",
+  "native_wire_capture": null,
+  "live_blueprint_apply": false,
+  "live_nul_runtime": false
+}

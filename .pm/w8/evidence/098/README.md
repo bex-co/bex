@@ -1,0 +1,10 @@
+# Key Value envVarKey validation: evidence
+
+[Native receipts](native.json) retain 28 processes: 20 eligible reference checks from Bex v0.3.2 and unmodified same-pin Render v2.27.0 against Bex production, plus eight initial schema refusals excluded from reference semantics. Four envVarKey-only Key Value checks falsely pass; eight positive controls and eight meaningful negative controls behave correctly.
+
+- [Actual parser/resolver observations](parser.json), [input](parser-input.json), [diagnostic](parser-probe_test.go.txt), [virtual overlay](parser-overlay.json), [execution](parser-execution.json), [driver](parser-driver.py.txt). Two accepted references yield empty selector keys; three valid properties yield host/port/uri; the literal App copy works and four invalid shapes are refused.
+- [API-only request/response diagnostics](wire.json), [driver](wire-driver.py.txt): exact harmless multipart bytes, HTTP 200, filtered response headers and complete response bodies for five checks. Native HTTP traffic was not intercepted.
+- [Producer/consumer source](source.txt), [caller census](callers.json), [reviewed schema](reviewed-schema.json), [primary-source research](contract-research.json), [metadata/cleanup](metadata-cleanup.json), [final metadata inventory](inventory.json).
+- Native drivers: [initial matrix](native-driver.py.txt), [complete Key Value definitions](complete-driver.py.txt), [App controls](app-controls-driver.py.txt). The initial eight missing-ipAllowList refusals and a missing-runner intent are retained and explicitly excluded; corrected definitions include ipAllowList: []. No hosted or local resource was created.
+
+The diagnostic asserts current behavior; it is not an implemented fix or a full backend suite. qa175-local-object is a synthetic local Kubernetes name used only in a pure resolver map, not a created resource or fabricated Bex resource ID. Paths are normalized to <QA_TMP>/<REPO>/<GO_MOD_CACHE>. All artifacts were checked privately against actual credential values before filing.

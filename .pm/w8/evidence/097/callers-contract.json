@@ -1,0 +1,35 @@
+{
+  "pinned_cli_levels": [
+    "debug",
+    "info",
+    "notice",
+    "warning",
+    "error",
+    "critical",
+    "alert",
+    "emergency"
+  ],
+  "producer_templates": {
+    "app": "deploy/gitops/base/log-shipper.yaml:332",
+    "platform": "deploy/gitops/base/log-shipper.yaml:505"
+  },
+  "storedLevels_callers": [
+    "lego/backend/internal/logs/loki.go:440",
+    "lego/backend/internal/logs/service.go:631"
+  ],
+  "query_behavior": "Existing alert/emergency aliases map to error buckets; this finding concerns missing literal producer aliases.",
+  "local_platform_scope": "JSON severity normalization confirmed locally only; platform logfmt support was not asserted.",
+  "excluded": "Exact production collector image pull timed out, no container created. One platform trial used incorrect CRI framing; its observations excluded and container deleted. Raw-message platform retry passed as a current-behavior diagnostic.",
+  "dedupe": [
+    "w8/done/031 fixed query aliases and warning spelling; it did not add literal alert/emergency to producer normalization.",
+    "w9/done/071 added app logfmt extraction; both JSON and logfmt now extract the key but lack these two literal aliases.",
+    "w7/done/054 and w8/done/m30/t004 concern platform alerting/canary checks, not this log-severity parser."
+  ],
+  "unverified": [
+    "exact patched production collector image execution locally",
+    "production platform streams",
+    "GraphQL/MCP/dashboard level queries",
+    "legacy warn-labelled retained streams",
+    "literal fatal and uppercase WARNING portions of the previous full031 acceptance"
+  ]
+}

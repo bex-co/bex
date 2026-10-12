@@ -1,0 +1,16 @@
+import datetime,json,os,pathlib,subprocess,time
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());g=c['sweep150_projects'];own=g['selected'];pid=own['id'];eid=own['environment_ids'][0];ws='tea-daif693dqjvc73e7as3g'
+assert len(g['selector_cases'])==24 and all(z['observed_expected_pattern'] for z in g['selector_cases']) and not g.get('head_cases')
+def save():c['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+def wire(method,path,body=None):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),method,path,*([json.dumps(body)] if body is not None else [])],text=True))
+for kind,sid,name in [('projects',pid,g['id_shaped_names']['project']),('environments',eid,g['id_shaped_names']['environment'])]:
+ resource=next(z for z in c['resources'] if z.get('id')==sid);assert resource['sweep']==150 and resource['workspace']==ws
+ a={'kind':kind,'actual_id':sid,'name':name,'method':'PATCH','path':'/v1/'+kind+'/'+sid,'body':{'name':name},'purpose':'current-checkout comparison on same admitted exact names','state':'exact owned rename intent persisted'};g['renames'].append(a);save();r=wire('PATCH',a['path'],a['body']);a['result']=r;save();assert r['status']=='200';r=wire('GET',a['path']);a['readback']=r;save();v=json.loads(r['response']);assert r['status']=='200' and v['id']==sid and v['name']==name;resource['name']=name;save()
+env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_'))};env.update(BEX_HOST='https://api.bex.co/v1/',BEX_WORKSPACE=ws,BEX_CLI_CONFIG_PATH=str(p/'config/cli.yaml'),BEX_CLI_CONFIG_DIR=str(p/'config'),BEX_NO_UPDATE_NOTIFIER='1',BEX_CLI_DISABLE_ANALYTICS='1')
+g['head_binary_metadata']=subprocess.check_output(['go','version','-m',str(p/'bex-head-150')],text=True);g['head_cases']=[];save()
+for family in ['postgres','keyvalues']:
+ for case,project,environment,success in [('project-full-name',g['id_shaped_names']['project'],eid,False),('environment-full-name',pid,g['id_shaped_names']['environment'],False),('actual-ids',pid,eid,True)]:
+  args=[family,'list','--project',project,'--environment',environment,'--confirm','-o','json'];a={'case':case,'family':family,'command':['bex-checkout',*args],'state':'current-checkout selector read intent persisted'};g['head_cases'].append(a);save();start=time.monotonic();r=subprocess.run([str(p/'bex-head-150'),*args],env=env,capture_output=True,text=True,timeout=20);a.update(exit=r.returncode,elapsed=round(time.monotonic()-start,3),stdout=r.stdout,stderr=r.stderr);save()
+  a['observed_expected_pattern']=r.returncode==0 and json.loads(r.stdout).get('data')==[] and not r.stderr if success else r.returncode==1 and not r.stdout and '404' in r.stderr and (project if case.startswith('project') else environment) in r.stderr;save();print('checkout',family,case,'exit',r.returncode,'pattern',a['observed_expected_pattern'],flush=True);assert a['observed_expected_pattern']
+(p/'sweep150-head.json').write_text(json.dumps({'metadata':g['head_binary_metadata'],'cases':g['head_cases']},indent=2)+'\n')
+(p/'sweep150-renames.json').write_text(json.dumps(g['renames'],ensure_ascii=False,indent=2)+'\n')

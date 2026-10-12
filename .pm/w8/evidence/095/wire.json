@@ -1,0 +1,50 @@
+[
+  {
+    "at": "2026-10-11T23:11:35.612798+00:00",
+    "case": "root-empty-literal",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa155empty-13c0e9fee82bc56e7a926061ebfb066f",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa155empty-13c0e9fee82bc56e7a926061ebfb066f\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa155empty-13c0e9fee82bc56e7a926061ebfb066f\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep155empty-root-empty-literal.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa155e-3b7e21-group\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_EMPTY\",\n          \"value\": \"\"\n        }\n      ]\n    }\n  ]\n}\n\r\n--qa155empty-13c0e9fee82bc56e7a926061ebfb066f--\r\n"
+    },
+    "status": "200",
+    "elapsed": 0.815,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4918b72dfcddac8-SJC"
+    },
+    "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa155e-3b7e21-group\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa155e-3b7e21-group\",\"sourcePath\":\"#/envVarGroups/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+  },
+  {
+    "at": "2026-10-11T23:11:36.277456+00:00",
+    "case": "root-space-literal",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa155empty-afb2a9be03cdcea5bae2979be86dde31",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa155empty-afb2a9be03cdcea5bae2979be86dde31\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa155empty-afb2a9be03cdcea5bae2979be86dde31\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep155empty-root-space-literal.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa155e-3b7e21-group\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_EMPTY\",\n          \"value\": \" \"\n        }\n      ]\n    }\n  ]\n}\n\r\n--qa155empty-afb2a9be03cdcea5bae2979be86dde31--\r\n"
+    },
+    "status": "200",
+    "elapsed": 0.664,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4918b7879882db2-SJC"
+    },
+    "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa155e-3b7e21-group\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa155e-3b7e21-group\",\"sourcePath\":\"#/envVarGroups/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+  }
+]

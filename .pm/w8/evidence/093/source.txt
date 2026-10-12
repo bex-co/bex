@@ -1,0 +1,1083 @@
+
+pinned-render/pkg/resolve/resolve.go
+72: 
+73: // NewFromClient builds a Resolver with repos backed by the given HTTP client.
+74: // Prefer New when a dependency container or shared repos are already available.
+75: func NewFromClient(c *client.ClientWithResponses) *Resolver {
+76: 	return New(owner.NewRepo(c), project.NewRepo(c), environment.NewRepo(c))
+77: }
+78: 
+79: // ResolveScope resolves explicitly supplied resources and their ancestors.
+80: // Project input resolves workspace and project; environment input resolves
+81: // workspace, project, and environment. It does not infer descendant resources
+82: // that were not supplied. The configured active workspace is only used when no
+83: // scope input is provided.
+84: func (r *Resolver) ResolveScope(ctx context.Context, input ScopeInput) (*Scope, error) {
+85: 	scope := &Scope{}
+86: 
+87: 	if input.WorkspaceIDOrName != "" {
+88: 		workspaceID, err := r.ResolveWorkspaceID(ctx, input.WorkspaceIDOrName)
+89: 		if err != nil {
+90: 			return nil, err
+91: 		}
+92: 		scope.WorkspaceID = workspaceID
+93: 	}
+94: 
+95: 	if input.ProjectIDOrName != nil {
+96: 		project, err := r.ResolveProject(ctx, *input.ProjectIDOrName, scope.WorkspaceID)
+97: 		if err != nil {
+98: 			return nil, err
+99: 		}
+100: 		if err := validateProjectBelongsToWorkspace(project, scope.WorkspaceID); err != nil {
+101: 			return nil, err
+102: 		}
+103: 		scope.Project = project
+104: 		if scope.WorkspaceID == "" {
+105: 			scope.WorkspaceID = project.Owner.Id
+106: 		}
+107: 	}
+108: 
+109: 	if input.EnvironmentIDOrName != nil {
+110: 		env, project, err := r.resolveEnvironmentAndProject(ctx, *input.EnvironmentIDOrName, scope.WorkspaceID, scope.Project)
+111: 		if err != nil {
+112: 			return nil, err
+113: 		}
+114: 		scope.Environment = env
+115: 		if scope.Project == nil {
+116: 			scope.Project = project
+117: 		}
+118: 		if scope.WorkspaceID == "" {
+119: 			scope.WorkspaceID = project.Owner.Id
+120: 		}
+121: 	}
+122: 
+123: 	// No input implied a workspace; fall back to the active workspace.
+124: 	if scope.WorkspaceID == "" {
+125: 		workspaceID, err := r.ResolveWorkspaceID(ctx, "")
+126: 		if err != nil {
+127: 			return nil, err
+128: 		}
+129: 		scope.WorkspaceID = workspaceID
+130: 	}
+131: 
+132: 	return scope, nil
+133: }
+134: 
+135: // ResolveEnvironment is a convenience wrapper around ResolveScope for callers
+136: // that have only an environment selector and want the full *client.Environment
+137: // (with Name, Id, ProjectId, etc.) for downstream use such as scoping a
+138: // resource lookup or building user-facing error messages. Ancestor resolution
+139: // matches ResolveScope. Callers decide whether to invoke this — pass a real
+140: // selector or skip the call entirely.
+141: func (r *Resolver) ResolveEnvironment(ctx context.Context, envIDOrName string) (*client.Environment, error) {
+142: 	scope, err := r.ResolveScope(ctx, ScopeInput{EnvironmentIDOrName: &envIDOrName})
+143: 	if err != nil {
+144: 		return nil, err
+145: 	}
+146: 	return scope.Environment, nil
+147: }
+148: 
+149: // ResolveScopeInActiveWorkspace is like ResolveScope but constrains all
+150: // supplied project and environment selectors to the configured active
+151: // workspace. Use this when the command's primary resources are active-workspace
+152: // scoped and project/environment inputs should only narrow within that scope.
+153: func (r *Resolver) ResolveScopeInActiveWorkspace(ctx context.Context, input ActiveWorkspaceScopeInput) (*Scope, error) {
+154: 	workspaceID, err := config.WorkspaceID()
+155: 	if err != nil {
+156: 		return nil, err
+157: 	}
+158: 	return r.ResolveScope(ctx, ScopeInput{
+159: 		WorkspaceIDOrName:   workspaceID,
+160: 		ProjectIDOrName:     input.ProjectIDOrName,
+161: 		EnvironmentIDOrName: input.EnvironmentIDOrName,
+162: 	})
+163: }
+
+pinned-render/pkg/resolve/resolve.go
+225: func (r *Resolver) resolveEnvironmentAndProject(ctx context.Context, envIDOrName string, workspaceID string, resolvedProject *client.Project) (*client.Environment, *client.Project, error) {
+226: 	if validate.IsEnvironmentID(envIDOrName) {
+227: 		env, err := r.environmentRepo.GetEnvironment(ctx, envIDOrName)
+228: 		if err != nil {
+229: 			return nil, nil, fmt.Errorf("environment %q not found: %w", envIDOrName, err)
+230: 		}
+231: 		project, err := r.projectRepo.GetProject(ctx, env.ProjectId)
+232: 		if err != nil {
+233: 			return nil, nil, err
+234: 		}
+235: 		if err := validateEnvironmentBelongsToProject(env, resolvedProject); err != nil {
+236: 			return nil, nil, err
+237: 		}
+238: 		if err := validateEnvironmentBelongsToWorkspace(env, project, workspaceID); err != nil {
+239: 			return nil, nil, err
+240: 		}
+241: 		return env, project, nil
+242: 	}
+243: 
+244: 	projects, err := r.candidateProjectsForEnvironmentLookup(ctx, resolvedProject, workspaceID)
+245: 	if err != nil {
+246: 		return nil, nil, err
+247: 	}
+248: 	projectIDs := make([]string, 0, len(projects))
+249: 	projectByID := make(map[string]*client.Project, len(projects))
+250: 	for _, p := range projects {
+251: 		projectIDs = append(projectIDs, p.Id)
+252: 		projectByID[p.Id] = p
+253: 	}
+254: 	if len(projectIDs) == 0 {
+255: 		return nil, nil, fmt.Errorf("no environment found with name %q", envIDOrName)
+256: 	}
+257: 
+258: 	nameFilter := client.NameParam{envIDOrName}
+259: 	matches, err := r.environmentRepo.ListEnvironments(ctx, &client.ListEnvironmentsParams{
+260: 		ProjectId: projectIDs,
+261: 		Name:      &nameFilter,
+262: 	})
+263: 	if err != nil {
+264: 		return nil, nil, err
+265: 	}
+266: 
+267: 	if len(matches) == 0 {
+268: 		return nil, nil, fmt.Errorf("no environment found with name %q", envIDOrName)
+269: 	}
+270: 	if len(matches) > 1 {
+271: 		return nil, nil, fmt.Errorf("multiple environments found with name %q across projects — please use the environment ID instead", envIDOrName)
+272: 	}
+273: 
+274: 	env := matches[0]
+275: 	project := projectByID[env.ProjectId]
+276: 	if project == nil {
+277: 		project, err = r.projectRepo.GetProject(ctx, env.ProjectId)
+278: 		if err != nil {
+279: 			return nil, nil, err
+280: 		}
+281: 	}
+282: 	if err := validateEnvironmentBelongsToProject(env, resolvedProject); err != nil {
+283: 		return nil, nil, err
+284: 	}
+285: 	if err := validateEnvironmentBelongsToWorkspace(env, project, workspaceID); err != nil {
+286: 		return nil, nil, err
+287: 	}
+288: 	return env, project, nil
+289: }
+290: 
+291: // candidateProjectsForEnvironmentLookup returns the projects whose environments
+292: // may match an environment name selector under the current scope constraints.
+293: func (r *Resolver) candidateProjectsForEnvironmentLookup(ctx context.Context, resolvedProject *client.Project, workspaceID string) ([]*client.Project, error) {
+294: 	if resolvedProject != nil {
+295: 		return []*client.Project{resolvedProject}, nil
+296: 	}
+297: 
+298: 	var projects []*client.Project
+299: 	var err error
+300: 	if workspaceID != "" {
+301: 		projects, err = r.projectRepo.ListProjectsForWorkspace(ctx, workspaceID)
+302: 	} else {
+303: 		projects, err = r.projectRepo.ListAllAccessibleProjects(ctx)
+304: 	}
+305: 	if err != nil {
+306: 		return nil, fmt.Errorf("failed to list projects: %w", err)
+307: 	}
+308: 	return projects, nil
+309: }
+310: 
+311: // ResolveProject resolves a project ID or name to a project.
+312: // Name lookup is server-side and case-sensitive; if workspaceID is empty the
+313: // search spans every workspace the caller can access. Returns the full
+314: // *client.Project so callers can read Owner.Id without re-fetching.
+315: func (r *Resolver) ResolveProject(ctx context.Context, idOrName string, workspaceID string) (*client.Project, error) {
+316: 	if validate.IsProjectID(idOrName) {
+317: 		proj, err := r.projectRepo.GetProject(ctx, idOrName)
+318: 		if err != nil {
+319: 			return nil, fmt.Errorf("project %q not found: %w", idOrName, err)
+320: 		}
+321: 		return proj, nil
+322: 	}
+323: 
+324: 	matches, err := r.projectRepo.ListProjectsByName(ctx, idOrName, workspaceID)
+325: 	if err != nil {
+326: 		return nil, err
+327: 	}
+328: 	if len(matches) == 0 {
+329: 		return nil, fmt.Errorf("no project found with name %q", idOrName)
+330: 	}
+331: 	if len(matches) > 1 {
+332: 		return nil, fmt.Errorf("multiple projects found with name %q — please use the project ID instead", idOrName)
+333: 	}
+334: 	return matches[0], nil
+335: }
+336: 
+337: // ResolveEnvironmentID resolves optional project and environment inputs to an
+338: // environment ID. If a project is provided without an environment, it returns
+339: // the project's single environment ID, errors if the project has multiple
+340: // environments, and returns nil if the project has none. If project or workspace
+341: // context is provided with an environment input, it must be consistent.
+342: func (r *Resolver) ResolveEnvironmentID(ctx context.Context, resolvedProject *client.Project, envIDOrName *string, workspaceID string) (*string, error) {
+343: 	if envIDOrName != nil {
+344: 		env, _, err := r.resolveEnvironmentAndProject(ctx, *envIDOrName, workspaceID, resolvedProject)
+345: 		if err != nil {
+346: 			return nil, err
+347: 		}
+348: 		return &env.Id, nil
+349: 	}
+350: 
+351: 	// Project given, no env name — use the single environment or error with the list.
+352: 	if resolvedProject != nil {
+353: 		env, err := r.resolveSingleProjectEnvironment(ctx, resolvedProject.Id)
+354: 		if err != nil {
+
+pinned-render/pkg/project/repo.go
+27: // ListProjectsByName fetches every accessible project whose name matches the
+28: // given filter (server-side, case-sensitive). If workspaceID is provided, the
+29: // API request also scopes the lookup to that owner.
+30: func (p *Repo) ListProjectsByName(ctx context.Context, name string, workspaceID string) ([]*client.Project, error) {
+31: 	params := &client.ListProjectsParams{
+32: 		Name: pointers.From([]string{name}),
+33: 	}
+34: 	if workspaceID != "" {
+35: 		params.OwnerId = pointers.From([]string{workspaceID})
+36: 	}
+37: 	return client.ListAll(ctx, params, p.listPage)
+38: }
+39: 
+40: // ListAllAccessibleProjects fetches every project the caller can see across
+41: // all workspaces. Used to gather project IDs for an unscoped environment
+42: // lookup.
+43: func (p *Repo) ListAllAccessibleProjects(ctx context.Context) ([]*client.Project, error) {
+44: 	return client.ListAll(ctx, &client.ListProjectsParams{}, p.listPage)
+45: }
+46: 
+47: func (p *Repo) ListProjects(ctx context.Context) ([]*client.Project, error) {
+48: 	params := &client.ListProjectsParams{}
+49: 
+50: 	workspaceId, err := config.WorkspaceID()
+51: 	if err != nil {
+52: 		return nil, err
+53: 	}
+54: 
+55: 	if workspaceId != "" {
+56: 		params.OwnerId = pointers.From([]string{workspaceId})
+57: 	}
+58: 
+59: 	return client.ListAll(ctx, params, p.listPage)
+60: }
+61: 
+62: func (p *Repo) listPage(ctx context.Context, params *client.ListProjectsParams) ([]*client.Project, *client.Cursor, error) {
+63: 	resp, err := p.client.ListProjectsWithResponse(ctx, params)
+64: 	if err != nil {
+65: 		return nil, nil, err
+66: 	}
+67: 
+68: 	if err := client.ErrorFromResponse(resp); err != nil {
+69: 		return nil, nil, err
+70: 	}
+71: 	if resp.JSON200 == nil || len(*resp.JSON200) == 0 {
+72: 		return nil, nil, nil
+73: 	}
+74: 
+75: 	res := *resp.JSON200
+76: 	projects := make([]*client.Project, 0, len(*resp.JSON200))
+77: 	for _, projectWithCursor := range *resp.JSON200 {
+78: 		projects = append(projects, &projectWithCursor.Project)
+79: 	}
+80: 
+81: 	return projects, &res[len(res)-1].Cursor, nil
+82: }
+83: 
+84: func (p *Repo) GetProject(ctx context.Context, id string) (*client.Project, error) {
+85: 	resp, err := p.client.RetrieveProjectWithResponse(ctx, id)
+86: 	if err != nil {
+87: 		return nil, err
+88: 	}
+89: 
+90: 	if resp.JSON200 == nil {
+91: 		return nil, fmt.Errorf("unexpected response: %v", resp.Status())
+92: 	}
+93: 
+94: 	return resp.JSON200, nil
+95: }
+
+pinned-render/pkg/environment/repo.go
+18: // GetEnvironment retrieves an environment by ID.
+19: // Note: We are not checking the workspace here because we currently only call this is from contexts
+20: // where we've pulled the environment ID from a resource that was already checked. If this changes, we should
+21: // fetch the project and check its workspace. For now, we will avoid the extra network call.
+22: func (e *Repo) GetEnvironment(ctx context.Context, id string) (*client.Environment, error) {
+23: 	resp, err := e.client.RetrieveEnvironmentWithResponse(ctx, id)
+24: 	if err != nil {
+25: 		return nil, err
+26: 	}
+27: 
+28: 	if resp.JSON200 == nil {
+29: 		return nil, fmt.Errorf("unexpected response: %v", resp.Status())
+30: 	}
+31: 
+32: 	return resp.JSON200, nil
+33: }
+34: 
+35: func (e *Repo) ListEnvironments(ctx context.Context, params *client.ListEnvironmentsParams) ([]*client.Environment, error) {
+36: 	return client.ListAll(ctx, params, e.listPage)
+37: }
+38: 
+39: func (e *Repo) listPage(ctx context.Context, params *client.ListEnvironmentsParams) ([]*client.Environment, *client.Cursor, error) {
+40: 	resp, err := e.client.ListEnvironmentsWithResponse(ctx, params)
+41: 	if err != nil {
+42: 		return nil, nil, err
+43: 	}
+44: 
+45: 	if err := client.ErrorFromResponse(resp); err != nil {
+46: 		return nil, nil, err
+47: 	}
+48: 	if resp.JSON200 == nil || len(*resp.JSON200) == 0 {
+49: 		return nil, nil, nil
+50: 	}
+51: 
+52: 	res := *resp.JSON200
+53: 	envs := make([]*client.Environment, 0, len(*resp.JSON200))
+54: 	for _, projectWithCursor := range *resp.JSON200 {
+55: 		envs = append(envs, &projectWithCursor.Environment)
+56: 	}
+57: 
+58: 	return envs, &res[len(res)-1].Cursor, nil
+59: }
+
+pinned-render/pkg/validate/id.go
+14: func IsObjectID(prefix, s string) bool {
+15: 	var objectIDRegex = regexp.MustCompile(fmt.Sprintf(`^%s-[a-z0-9]{20}$`, prefix))
+16: 	return objectIDRegex.MatchString(s)
+17: }
+18: 
+19: // IsServiceID checks if the string is a valid service ID (srv-[a-z0-9]{20})
+20: func IsServiceID(s string) bool {
+21: 	return IsObjectID("srv", s)
+22: }
+23: 
+24: // IsCronJobID checks if the string is a valid cron job ID (crn-[a-z0-9]{20}).
+25: func IsCronJobID(s string) bool {
+26: 	return IsObjectID("crn", s)
+27: }
+28: 
+29: // IsWorkspaceID checks if the string is a valid workspace owner ID. Workspaces
+30: // are represented by owner IDs, so both team IDs (tea-) and user IDs (usr-) are
+31: // accepted.
+32: func IsWorkspaceID(s string) bool {
+33: 	return IsObjectID("tea", s) || IsObjectID("usr", s)
+34: }
+35: 
+36: // IsProjectID checks if the string is a valid project ID (prj-[a-z0-9]{20}).
+37: func IsProjectID(s string) bool {
+38: 	return IsObjectID("prj", s)
+39: }
+40: 
+41: // IsEnvironmentID checks if the string is a valid environment ID (evm-[a-z0-9]{20}).
+42: func IsEnvironmentID(s string) bool {
+43: 	return IsObjectID("evm", s)
+44: }
+
+pinned-render/pkg/client/client.go
+104: func ErrorFromResponse(v any) error {
+105: 	responseErr := firstNonNilErrorField(v)
+106: 	if responseErr == nil {
+107: 		return nil
+108: 	}
+109: 
+110: 	if responseErr.Code == http.StatusUnauthorized {
+111: 		return ErrUnauthorized
+112: 	}
+113: 	if responseErr.Code == http.StatusForbidden {
+114: 		return ErrForbidden
+115: 	}
+116: 	if responseErr.Code == http.StatusTooManyRequests {
+117: 		return ErrTooManyRequests
+118: 	}
+119: 
+120: 	message := pointers.StringValue(responseErr.Message)
+121: 	errorCode := pointers.StringValue(responseErr.Error.Code)
+122: 	switch {
+123: 	case message != "" && errorCode != "":
+124: 		return fmt.Errorf("received response code %d (%s): %s", responseErr.Code, errorCode, message)
+125: 	case message != "":
+126: 		return fmt.Errorf("received response code %d: %s", responseErr.Code, message)
+127: 	case errorCode != "":
+128: 		return fmt.Errorf("received response code %d (%s)", responseErr.Code, errorCode)
+129: 	default:
+130: 		return fmt.Errorf("received response code %d", responseErr.Code)
+131: 	}
+132: }
+133: 
+134: type ErrorWithCode struct {
+135: 	Error
+136: 	Code int
+137: }
+
+lego/backend/internal/projects/service.go
+405: 	return s.CreateWithEnvironments(ctx, workspaceID, name, nil)
+406: }
+407: 
+408: // CreateWithEnvironments creates the project and requested environments in one transaction.
+409: func (s *Service) CreateWithEnvironments(ctx context.Context, workspaceID, name string, environments []EnvironmentInput) (ProjectView, error) {
+410: 	workspaceID, err := s.AuthorizeWorkspace(ctx, core.RelCanCreate, workspaceID)
+411: 	if err != nil {
+412: 		return ProjectView{}, err
+413: 	}
+414: 	if s.Store == nil {
+415: 		return ProjectView{}, ErrProjectsUnavailable
+416: 	}
+417: 	name = strings.TrimSpace(name)
+418: 	if name == "" {
+419: 		return ProjectView{}, core.ErrBadRequest
+420: 	}
+421: 	for i := range environments {
+422: 		e := &environments[i]
+423: 		e.Name = strings.TrimSpace(e.Name)
+424: 		if e.Name == "" {
+425: 			return ProjectView{}, fmt.Errorf("%w: invalid request body at /environments/%d/name", core.ErrBadRequest, i)
+426: 		}
+427: 		if e.ProtectedStatus != "" || e.NetworkIsolationEnabled || e.IPAllowList != nil {
+428: 			if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID)); err != nil {
+429: 				return ProjectView{}, err
+430: 			}
+
+lego/backend/internal/projects/service.go
+507: // Rename renames a project.
+508: func (s *Service) Rename(ctx context.Context, id, name string) (ProjectView, error) {
+509: 	p, err := s.authorizedProject(ctx, core.RelCanCreate, id)
+510: 	if err != nil {
+511: 		return ProjectView{}, err
+512: 	}
+513: 	name = strings.TrimSpace(name)
+514: 	if name == "" {
+515: 		return ProjectView{}, core.ErrBadRequest
+516: 	}
+517: 	if err := s.Store.RenameProject(ctx, id, name); err != nil {
+518: 		// A rename onto a taken name answers like a create does (w4/155).
+519: 		return ProjectView{}, conflictOrMapError(err, name)
+520: 	}
+521: 	// Re-read so UpdatedAt reflects the store's now() stamp — the pre-rename
+522: 	// row still carries the old timestamp (w4/m109).
+523: 	p, err = s.Store.GetProject(ctx, id)
+524: 	if err != nil {
+525: 		return ProjectView{}, store.MapError(err)
+
+lego/backend/internal/environments/service.go
+671: func (s *Service) Rename(ctx context.Context, id, name string) (EnvironmentView, error) {
+672: 	ctx, err := s.scopeEnvironment(ctx, id)
+673: 	if err != nil {
+674: 		return EnvironmentView{}, err
+675: 	}
+676: 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+677: 		return EnvironmentView{}, err
+678: 	}
+679: 	e, err := s.requireEnvironment(ctx, core.RelCanCreate, id)
+680: 	if err != nil {
+681: 		return EnvironmentView{}, err
+682: 	}
+683: 	name, err = validateEnvironmentName(name)
+684: 	if err != nil {
+685: 		return EnvironmentView{}, err
+686: 	}
+687: 	if err := s.Store.RenameEnvironment(ctx, e.ID, name); err != nil {
+688: 		// A rename onto a taken name answers like a create does (w4/155).
+689: 		return EnvironmentView{}, conflictOrMapError(err, name)
+690: 	}
+691: 	e.Name = name
+692: 	return s.toFullView(ctx, e)
+693: }
+694: 
+695: // Update applies a partial update (Render's PATCH /environments/{id}
+696: // semantics — only fields set in patch change; everything else is left
+697: // alone) in one authorize + one fetch, replacing the REST adapter's former
+698: // sequence of independently-authorized Rename/Get/SetACL calls. A rename and
+699: // an ACL merge in the same patch apply together against the one fetched row;
+700: // the ACL half reuses applyACL (SetACL's post-authorization body) so the
+701: // merge-then-full-replace semantics stay identical to the standalone /acl
+702: // route.
+703: func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch) (EnvironmentView, error) {
+704: 	ctx, err := s.scopeEnvironment(ctx, id)
+705: 	if err != nil {
+706: 		return EnvironmentView{}, err
+707: 	}
+708: 	// round-5 finding 12: an ACL-bearing patch mutates admin-only
+709: 	// protected-environment controls, so it takes can_manage; a rename-only
+710: 	// patch stays can_create. One gate, before the rename, so a refused patch
+711: 	// changes nothing.
+712: 	hasACL := patch.hasACL()
+713: 	relation := core.RelCanCreate
+714: 	if hasACL {
+715: 		relation = core.RelCanManage
+716: 	}
+717: 	if err := s.Authorize(ctx, relation); err != nil {
+718: 		return EnvironmentView{}, err
+719: 	}
+720: 	if patch.Name == nil && !hasACL {
+721: 		return EnvironmentView{}, core.ErrBadRequest
+722: 	}
+723: 	name := ""
+724: 	if patch.Name != nil {
+725: 		trimmed, err := validateEnvironmentName(*patch.Name)
+726: 		if err != nil {
+727: 			return EnvironmentView{}, err
+728: 		}
+729: 		name = trimmed
+730: 	}
+731: 	e, err := s.requireEnvironment(ctx, relation, id)
+732: 	if err != nil {
+733: 		return EnvironmentView{}, err
+734: 	}
+735: 	if patch.Name != nil {
+736: 		if err := s.Store.RenameEnvironment(ctx, e.ID, name); err != nil {
+737: 			return EnvironmentView{}, conflictOrMapError(err, name)
+738: 		}
+739: 		e.Name = name
+740: 	}
+741: 	if !hasACL {
+742: 		return s.toFullView(ctx, e)
+743: 	}
+744: 	status, isolated, allowList := e.ProtectedStatus, e.NetworkIsolationEnabled, e.IPAllowList
+745: 	if status == "" { // pre-ACL-migration rows surface as empty
+746: 		status = ProtectedStatusUnprotected
+747: 	}
+748: 	if patch.ProtectedStatus != nil {
+749: 		status = *patch.ProtectedStatus
+750: 	}
+
+lego/backend/internal/environments/service.go
+1150: 	}
+1151: 	return s.view(ctx, e, sids)
+1152: }
+1153: 
+1154: // validateEnvironmentName trims and rejects an empty environment name — the
+1155: // one check CreateWithACL and Update (w4/m30) both need before writing,
+1156: // factored out so the two verbs cannot drift on it.
+1157: func validateEnvironmentName(name string) (string, error) {
+1158: 	name = strings.TrimSpace(name)
+1159: 	if name == "" {
+1160: 		return "", core.ErrBadRequest
+1161: 	}
+1162: 	return name, nil
+1163: }
+1164: 
+1165: // validateACL is SetACL's input check, factored out so the Render-shaped
+1166: // REST create can reject a bad ACL BEFORE creating the environment (w4/017)
+1167: // — one source of truth, no orphan row on a 400.
+1168: func validateACL(protectedStatus string, ipAllowList []core.IPAllowListEntry) error {
+1169: 	if protectedStatus != ProtectedStatusProtected && protectedStatus != ProtectedStatusUnprotected {
+1170: 		return fmt.Errorf("%w: protectedStatus must be %q or %q", core.ErrBadRequest, ProtectedStatusProtected, ProtectedStatusUnprotected)
+1171: 	}
+1172: 	return core.ValidateAllowList(ipAllowList)
+1173: }
+1174: 
+1175: // requireProject fetches a project and authorizes it against the workspace it
+
+lego/backend/internal/projects/rest.go
+126: 			// rather than a bare "bad request" (w4/038).
+127: 			return nil, fmt.Errorf("%w: invalid query parameter %q", core.ErrBadRequest, "ownerId")
+128: 		}
+129: 		// Render's project shape carries no membership, so the page is filtered
+130: 		// and rendered from bare rows without reading any (w5/155).
+131: 		_, ps, err := s.listBare(r.Context(), ownerID)
+132: 		if err != nil {
+133: 			return nil, err
+134: 		}
+135: 		q := r.URL.Query()
+136: 		names := core.QueryNameList(r.URL, "name")
+137: 		created, err := core.QueryTimeWindow(q, "createdBefore", "createdAfter")
+138: 		if err != nil {
+139: 			return nil, err
+140: 		}
+141: 		updated, err := core.QueryTimeWindow(q, "updatedBefore", "updatedAfter")
+142: 		if err != nil {
+143: 			return nil, err
+144: 		}
+145: 		ps = core.Filter(ps, func(p ProjectView) bool {
+146: 			return (len(names) == 0 || slices.Contains(names, p.Name)) &&
+147: 				created.ContainsTime(p.CreatedAt) && updated.ContainsTime(p.UpdatedAt)
+148: 		})
+149: 		after, limit := core.PageParams(q)
+150: 		ps = core.StablePage(ps, after, limit, true, func(p ProjectView) string { return p.ID })
+151: 		rendered, err := s.renderProjects(r.Context(), ps)
+152: 		if err != nil {
+153: 			return nil, err
+154: 		}
+155: 		out := make([]renderProjectWithCursor, 0, len(ps))
+156: 		for i, p := range ps {
+157: 			out = append(out, renderProjectWithCursor{Project: rendered[i], Cursor: p.ID})
+
+lego/backend/internal/environments/rest.go
+35: 	}
+36: 	createdBefore, err := core.QueryTime(q, "createdBefore")
+37: 	if err != nil {
+38: 		return nil, err
+39: 	}
+40: 	createdAfter, err := core.QueryTime(q, "createdAfter")
+41: 	if err != nil {
+42: 		return nil, err
+43: 	}
+44: 	names := core.QueryNameList(u, "name")
+45: 	owners := core.QueryList(q, "ownerId")
+46: 	environmentIDs := core.QueryList(q, "environmentId")
+47: 	for i := range environmentIDs {
+48: 		environmentIDs[i] = ids.EnvironmentPublicID(environmentIDs[i])
+49: 	}
+50: 	return core.Filter(environments, func(e EnvironmentView) bool {
+51: 		return (len(names) == 0 || slices.Contains(names, e.Name)) &&
+52: 			(len(owners) == 0 || slices.Contains(owners, e.OwnerID)) &&
+53: 			(len(environmentIDs) == 0 || slices.Contains(environmentIDs, e.ID)) &&
+54: 			(createdBefore.IsZero() || e.CreatedAt.Before(createdBefore)) &&
+55: 			(createdAfter.IsZero() || e.CreatedAt.After(createdAfter))
+56: 	}), nil
+57: }
+58: 
+59: // rest.go is the environments REST fragment, mirroring internal/projects/
+60: // rest.go's shape exactly: GET/POST /v1/environments, GET/PATCH/DELETE
+
+pinned-render/pkg/client/client_gen.go
+11674: func NewListEnvironmentsRequest(server string, params *ListEnvironmentsParams) (*http.Request, error) {
+11675: 	var err error
+11676: 
+11677: 	serverURL, err := url.Parse(server)
+11678: 	if err != nil {
+11679: 		return nil, err
+11680: 	}
+11681: 
+11682: 	operationPath := fmt.Sprintf("/environments")
+11683: 	if operationPath[0] == '/' {
+11684: 		operationPath = "." + operationPath
+11685: 	}
+11686: 
+11687: 	queryURL, err := serverURL.Parse(operationPath)
+11688: 	if err != nil {
+11689: 		return nil, err
+11690: 	}
+11691: 
+11692: 	if params != nil {
+11693: 		// queryValues collects non-styled parameters (passthrough, JSON)
+11694: 		// that are safe to round-trip through url.Values.Encode().
+11695: 		queryValues := queryURL.Query()
+11696: 		// rawQueryFragments collects pre-encoded query fragments from
+11697: 		// styled parameters, preserving literal commas as delimiters
+11698: 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+11699: 		var rawQueryFragments []string
+11700: 
+11701: 		if params.Name != nil {
+11702: 
+11703: 			if queryFrag, err := runtime.StyleParamWithOptions("form", false, "name", *params.Name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+11704: 				return nil, err
+11705: 			} else {
+11706: 				for _, qp := range strings.Split(queryFrag, "&") {
+11707: 					rawQueryFragments = append(rawQueryFragments, qp)
+11708: 				}
+11709: 			}
+11710: 
+11711: 		}
+11712: 
+11713: 		if params.ProjectId != nil {
+11714: 
+11715: 			if queryFrag, err := runtime.StyleParamWithOptions("form", false, "projectId", params.ProjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+11716: 				return nil, err
+11717: 			} else {
+11718: 				for _, qp := range strings.Split(queryFrag, "&") {
+11719: 					rawQueryFragments = append(rawQueryFragments, qp)
+11720: 				}
+11721: 			}
+11722: 
+11723: 		}
+11724: 
+11725: 		if params.CreatedBefore != nil {
+11726: 
+11727: 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "createdBefore", *params.CreatedBefore, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+11728: 				return nil, err
+11729: 			} else {
+11730: 				for _, qp := range strings.Split(queryFrag, "&") {
+11731: 					rawQueryFragments = append(rawQueryFragments, qp)
+11732: 				}
+11733: 			}
+11734: 
+11735: 		}
+11736: 
+11737: 		if params.CreatedAfter != nil {
+11738: 
+11739: 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "createdAfter", *params.CreatedAfter, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+11740: 				return nil, err
+11741: 			} else {
+11742: 				for _, qp := range strings.Split(queryFrag, "&") {
+11743: 					rawQueryFragments = append(rawQueryFragments, qp)
+11744: 				}
+11745: 			}
+11746: 
+11747: 		}
+11748: 
+11749: 		if params.UpdatedBefore != nil {
+11750: 
+11751: 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "updatedBefore", *params.UpdatedBefore, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+11752: 				return nil, err
+11753: 			} else {
+11754: 				for _, qp := range strings.Split(queryFrag, "&") {
+11755: 					rawQueryFragments = append(rawQueryFragments, qp)
+11756: 				}
+11757: 			}
+11758: 
+11759: 		}
+11760: 
+11761: 		if params.UpdatedAfter != nil {
+11762: 
+11763: 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "updatedAfter", *params.UpdatedAfter, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+11764: 				return nil, err
+11765: 			} else {
+11766: 				for _, qp := range strings.Split(queryFrag, "&") {
+11767: 					rawQueryFragments = append(rawQueryFragments, qp)
+11768: 				}
+11769: 			}
+11770: 
+11771: 		}
+11772: 
+11773: 		if params.OwnerId != nil {
+11774: 
+11775: 			if queryFrag, err := runtime.StyleParamWithOptions("form", false, "ownerId", *params.OwnerId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+
+pinned-render/pkg/client/client_gen.go
+18220: func NewListProjectsRequest(server string, params *ListProjectsParams) (*http.Request, error) {
+18221: 	var err error
+18222: 
+18223: 	serverURL, err := url.Parse(server)
+18224: 	if err != nil {
+18225: 		return nil, err
+18226: 	}
+18227: 
+18228: 	operationPath := fmt.Sprintf("/projects")
+18229: 	if operationPath[0] == '/' {
+18230: 		operationPath = "." + operationPath
+18231: 	}
+18232: 
+18233: 	queryURL, err := serverURL.Parse(operationPath)
+18234: 	if err != nil {
+18235: 		return nil, err
+18236: 	}
+18237: 
+18238: 	if params != nil {
+18239: 		// queryValues collects non-styled parameters (passthrough, JSON)
+18240: 		// that are safe to round-trip through url.Values.Encode().
+18241: 		queryValues := queryURL.Query()
+18242: 		// rawQueryFragments collects pre-encoded query fragments from
+18243: 		// styled parameters, preserving literal commas as delimiters
+18244: 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+18245: 		var rawQueryFragments []string
+18246: 
+18247: 		if params.Name != nil {
+18248: 
+18249: 			if queryFrag, err := runtime.StyleParamWithOptions("form", false, "name", *params.Name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+18250: 				return nil, err
+18251: 			} else {
+18252: 				for _, qp := range strings.Split(queryFrag, "&") {
+18253: 					rawQueryFragments = append(rawQueryFragments, qp)
+18254: 				}
+18255: 			}
+18256: 
+18257: 		}
+18258: 
+18259: 		if params.CreatedBefore != nil {
+18260: 
+18261: 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "createdBefore", *params.CreatedBefore, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+18262: 				return nil, err
+18263: 			} else {
+18264: 				for _, qp := range strings.Split(queryFrag, "&") {
+18265: 					rawQueryFragments = append(rawQueryFragments, qp)
+18266: 				}
+18267: 			}
+18268: 
+18269: 		}
+18270: 
+18271: 		if params.CreatedAfter != nil {
+18272: 
+18273: 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "createdAfter", *params.CreatedAfter, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+18274: 				return nil, err
+18275: 			} else {
+18276: 				for _, qp := range strings.Split(queryFrag, "&") {
+18277: 					rawQueryFragments = append(rawQueryFragments, qp)
+18278: 				}
+18279: 			}
+18280: 
+18281: 		}
+18282: 
+18283: 		if params.UpdatedBefore != nil {
+18284: 
+18285: 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "updatedBefore", *params.UpdatedBefore, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+18286: 				return nil, err
+18287: 			} else {
+18288: 				for _, qp := range strings.Split(queryFrag, "&") {
+18289: 					rawQueryFragments = append(rawQueryFragments, qp)
+18290: 				}
+18291: 			}
+18292: 
+18293: 		}
+18294: 
+18295: 		if params.UpdatedAfter != nil {
+18296: 
+18297: 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "updatedAfter", *params.UpdatedAfter, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+18298: 				return nil, err
+18299: 			} else {
+18300: 				for _, qp := range strings.Split(queryFrag, "&") {
+18301: 					rawQueryFragments = append(rawQueryFragments, qp)
+18302: 				}
+18303: 			}
+18304: 
+18305: 		}
+18306: 
+18307: 		if params.OwnerId != nil {
+18308: 
+18309: 			if queryFrag, err := runtime.StyleParamWithOptions("form", false, "ownerId", *params.OwnerId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+18310: 				return nil, err
+18311: 			} else {
+18312: 				for _, qp := range strings.Split(queryFrag, "&") {
+18313: 					rawQueryFragments = append(rawQueryFragments, qp)
+18314: 				}
+18315: 			}
+
+pinned-render/cmd/kvlist.go
+88: 	}
+89: 
+90: 	return cmd
+91: }
+92: 
+93: // resolveListEnvIDs translates --project/--environment selectors into the
+94: // environment IDs to filter on. The second return value is true when the
+95: // caller should apply an environment filter; false means list workspace-wide.
+96: func resolveListEnvIDs(ctx context.Context, deps *dependencies.Dependencies, input kvtypes.KeyValueListInput) ([]string, bool, error) {
+97: 	if input.ProjectIDOrName == nil && input.EnvironmentIDOrName == nil {
+98: 		return nil, false, nil
+99: 	}
+100: 
+101: 	scope, err := deps.Resolver().ResolveScopeInActiveWorkspace(ctx, resolve.ActiveWorkspaceScopeInput{
+102: 		ProjectIDOrName:     input.ProjectIDOrName,
+103: 		EnvironmentIDOrName: input.EnvironmentIDOrName,
+104: 	})
+105: 	if err != nil {
+106: 		return nil, false, err
+107: 	}
+108: 	if scope.Environment != nil {
+109: 		return []string{scope.Environment.Id}, true, nil
+110: 	}
+111: 	return scope.Project.EnvironmentIds, true, nil
+112: }
+
+pinned-render/pkg/postgres/service.go
+215: }
+216: 
+217: // listEnvIDs translates active-workspace project/environment selectors into
+218: // environment IDs to filter on. A valid project with no environments returns
+219: // an empty ID list, which callers should treat as an empty resource list rather
+220: // than an invalid selector.
+221: func (s *Service) listEnvIDs(ctx context.Context, input pgtypes.ListPostgresInput) ([]string, error) {
+222: 	scope, err := s.resolver.ResolveScopeInActiveWorkspace(ctx, resolve.ActiveWorkspaceScopeInput{
+223: 		ProjectIDOrName:     input.ProjectIDOrName,
+224: 		EnvironmentIDOrName: input.EnvironmentIDOrName,
+225: 	})
+226: 	if err != nil {
+227: 		return nil, err
+228: 	}
+229: 	if scope.Environment != nil {
+230: 		return []string{scope.Environment.Id}, nil
+231: 	}
+232: 	// A successful filtered scope without a single environment is a project
+233: 	// filter; use that project's environments as the candidate set.
+234: 	return scope.Project.EnvironmentIds, nil
+235: }
+236: 
+237: func (s *Service) environmentForPostgres(ctx context.Context, pg *client.Postgres, envs []*client.Environment) (*client.Environment, error) {
+238: 	if pg.EnvironmentId == nil {
+239: 		return nil, nil
+240: 	}
+241: 
+242: 	for _, env := range envs {
+243: 		if *pg.EnvironmentId == env.Id {
+244: 			return env, nil
+245: 		}
+246: 	}
+247: 
+248: 	env, err := s.environmentRepo.GetEnvironment(ctx, *pg.EnvironmentId)
+249: 	if err != nil {
+250: 		return nil, err
+251: 	}
+252: 
+253: 	envs = append(envs, env)
+
+pinned-render/pkg/keyvalue/resolve.go
+20: }
+21: 
+22: // resolve looks up the requested Key Value and returns it with the
+23: // project/environment context needed by command output.
+24: func (s *Service) resolve(ctx context.Context, input ResolveInput) (*ResolvedKeyValue, error) {
+25: 	scope := resolveScope{}
+26: 	if input.ProjectIDOrName != nil || input.EnvironmentIDOrName != nil || !validate.IsKeyValueID(input.IDOrName) {
+27: 		resolved, err := s.resolver.ResolveScopeInActiveWorkspace(ctx, resolve.ActiveWorkspaceScopeInput{
+28: 			ProjectIDOrName:     input.ProjectIDOrName,
+29: 			EnvironmentIDOrName: input.EnvironmentIDOrName,
+30: 		})
+31: 		if err != nil {
+32: 			return nil, err
+33: 		}
+34: 		scope = resolveScope{project: resolved.Project, env: resolved.Environment}
+35: 	}
+36: 
+37: 	kv, err := resolveInScope(ctx, s.repo, input.IDOrName, scope)
+38: 	if err != nil {
+39: 		return nil, err
+40: 	}
+41: 
+42: 	resolved := &ResolvedKeyValue{
+43: 		KeyValue:    kv,
+44: 		Project:     scope.project,
+45: 		Environment: scope.env,
+46: 	}
+47: 	if err := s.enrichResolvedKeyValue(ctx, resolved); err != nil {
+48: 		return nil, err
+49: 	}
+50: 	return resolved, nil
+51: }
+52: 
+53: // enrichResolvedKeyValue fills in related project/environment data when the
+54: // lookup itself did not already resolve that context.
+55: func (s *Service) enrichResolvedKeyValue(ctx context.Context, resolved *ResolvedKeyValue) error {
+56: 	if resolved.KeyValue == nil || resolved.KeyValue.EnvironmentId == nil {
+57: 		return nil
+58: 	}
+59: 
+60: 	kv := keyValueFromKeyValueDetail(resolved.KeyValue)
+61: 	if resolved.Environment == nil {
+62: 		env, err := s.environmentForKeyValue(ctx, kv, nil)
+63: 		if err != nil {
+64: 			return err
+65: 		}
+66: 		resolved.Environment = env
+67: 	}
+68: 	if resolved.Project == nil {
+69: 		project, err := s.projectRepo.GetProject(ctx, resolved.Environment.ProjectId)
+70: 		if err != nil {
+71: 			return err
+72: 		}
+73: 		resolved.Project = project
+74: 	}
+75: 	return nil
+76: }
+77: 
+78: func resolveInScope(
+79: 	ctx context.Context,
+80: 	repo *Repo,
+81: 	idOrName string,
+82: 	scope resolveScope,
+83: ) (*client.KeyValueDetail, error) {
+84: 	inputLooksLikeID := validate.IsKeyValueID(idOrName)
+85: 	if inputLooksLikeID {
+
+pinned-render/pkg/postgres/resolve.go
+16: // ResolveInput describes a Postgres lookup by ID or name within optional
+17: // active-workspace project/environment scope.
+18: type ResolveInput struct {
+19: 	IDOrName            string
+20: 	ProjectIDOrName     *string
+21: 	EnvironmentIDOrName *string
+22: }
+23: 
+24: type resolveScope struct {
+25: 	project *client.Project
+26: 	env     *client.Environment
+27: }
+28: 
+29: func (s *Service) resolve(ctx context.Context, input ResolveInput) (*ResolvedPostgres, error) {
+30: 	scope, err := s.resolveScope(ctx, input)
+31: 	if err != nil {
+32: 		return nil, err
+33: 	}
+34: 	pg, err := s.resolveInScope(ctx, input.IDOrName, scope)
+35: 	if err != nil {
+36: 		return nil, err
+37: 	}
+38: 	resolved := &ResolvedPostgres{
+39: 		Postgres:    pg,
+40: 		Project:     scope.project,
+41: 		Environment: scope.env,
+42: 	}
+43: 	if err := s.enrichResolvedPostgres(ctx, resolved); err != nil {
+44: 		return nil, err
+45: 	}
+46: 	return resolved, nil
+47: }
+48: 
+49: // enrichResolvedPostgres fills in related project/environment data when the
+50: // lookup itself did not already resolve that context.
+51: func (s *Service) enrichResolvedPostgres(ctx context.Context, resolved *ResolvedPostgres) error {
+52: 	if resolved.Postgres == nil || resolved.Postgres.EnvironmentId == nil {
+53: 		return nil
+54: 	}
+55: 
+56: 	pg := postgresFromPostgresDetail(resolved.Postgres)
+57: 	if resolved.Environment == nil {
+58: 		env, err := s.environmentForPostgres(ctx, pg, nil)
+59: 		if err != nil {
+60: 			return err
+61: 		}
+62: 		resolved.Environment = env
+63: 	}
+64: 	if resolved.Project == nil && resolved.Environment != nil {
+65: 		project, err := s.projectRepo.GetProject(ctx, resolved.Environment.ProjectId)
+66: 		if err != nil {
+67: 			return err
+68: 		}
+69: 		resolved.Project = project
+70: 	}
+71: 	return nil
+72: }
+73: 
+74: func (s *Service) resolveScope(ctx context.Context, input ResolveInput) (resolveScope, error) {
+75: 	if input.ProjectIDOrName == nil && input.EnvironmentIDOrName == nil {
+76: 		return resolveScope{}, nil
+77: 	}
+78: 
+79: 	resolved, err := s.resolver.ResolveScopeInActiveWorkspace(ctx, resolve.ActiveWorkspaceScopeInput{
+80: 		ProjectIDOrName:     input.ProjectIDOrName,
+81: 		EnvironmentIDOrName: input.EnvironmentIDOrName,
+82: 	})
+83: 	if err != nil {
+84: 		return resolveScope{}, err
+85: 	}
+86: 	return resolveScope{project: resolved.Project, env: resolved.Environment}, nil
+87: }
+88: 
+89: func (s *Service) resolveInScope(ctx context.Context, idOrName string, scope resolveScope) (*client.PostgresDetail, error) {
+90: 	inputLooksLikeID := validate.IsPostgresID(idOrName)
+91: 	if inputLooksLikeID {
+92: 		detail, err := s.repo.GetPostgres(ctx, idOrName)
+93: 		if err != nil && !errors.Is(err, ErrPostgresNotFound) {
+94: 			return nil, err
+95: 		}
+96: 		if err == nil {
+97: 			if err := scope.checkMatch(detail); err != nil {
+98: 				return nil, err
+99: 			}
+
+pinned-render/pkg/keyvalue/create.go
+43: 		input.Region = &r
+44: 	}
+45: 	if input.MaxmemoryPolicy == nil {
+46: 		p := kvtypes.MaxmemoryPolicyAllkeysLru
+47: 		input.MaxmemoryPolicy = &p
+48: 	}
+49: 
+50: 	scope, err := s.resolver.ResolveScope(ctx, resolve.ScopeInput{
+51: 		WorkspaceIDOrName:   input.WorkspaceIDOrName,
+52: 		ProjectIDOrName:     input.ProjectIDOrName,
+53: 		EnvironmentIDOrName: input.EnvironmentIDOrName,
+54: 	})
+55: 	if err != nil {
+56: 		return nil, err
+57: 	}
+58: 
+59: 	environmentID := scope.EnvironmentID()
+60: 	if environmentID == nil && input.ProjectIDOrName != nil && input.EnvironmentIDOrName == nil {
+61: 		environmentID, err = s.resolver.ResolveEnvironmentID(ctx, scope.Project, nil, scope.WorkspaceID)
+62: 		if err != nil {
+63: 			return nil, err
+64: 		}
+65: 	}
+66: 
+67: 	body, err := BuildCreateRequest(kvtypes.KeyValueCreateRequestInput{
+68: 		Name:            input.Name,

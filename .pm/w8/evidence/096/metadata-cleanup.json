@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-12T03:45:49.603494+00:00",
+  "head": "abc9ca2bab94c3d8f04dc195832a574aa7673ca5",
+  "deployed_revision": "unknown",
+  "bex_release": "v0.3.2",
+  "render_version": "v2.27.0",
+  "upstream_commit": "a764810a768202704e7206eb7b87a47211fcd98e",
+  "native_processes": 36,
+  "confirmed_false_valid_type_mismatches": 14,
+  "matching_positive_controls": 8,
+  "schema_and_addressability_negative_controls": 10,
+  "excluded_plan_refusals": 4,
+  "parser_observations": 11,
+  "hosted_resources_created": 0,
+  "local_containers_created": 0,
+  "copied_render_config_absent": true,
+  "product_fix": false,
+  "shipped": false
+}

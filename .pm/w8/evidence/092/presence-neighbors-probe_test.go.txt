@@ -1,0 +1,13 @@
+package apps
+import("encoding/json";"os";"testing")
+func TestQA152EnvFormsProbe(t *testing.T) {
+ raw,err:=os.ReadFile(os.Getenv("QA152_INPUT_FILE"));if err!=nil{t.Fatal(err)}
+ var cases []struct{Container string `json:"container"`; Variant string `json:"variant"`; Document map[string]any `json:"document"`};if err=json.Unmarshal(raw,&cases);err!=nil{t.Fatal(err)}
+ for _,q:=range cases{
+  manifest,_:=json.Marshal(q.Document);_,ir,problems:=CompileBlueprintIR(string(manifest));if len(problems)>0{t.Fatalf("schema refused %s/%s: %v",q.Container,q.Variant,problems)}
+  declared:=false;for _,r:=range ir.Resources{if f,ok:=r.Fields["envVars"];ok{for _,entry:=range f.Value.([]any){_,present:=entry.(map[string]any)["value"];declared=declared||present}}}
+  st,parseErr:=parseStack(DeployRequest{Manifest:string(manifest)});record:=map[string]any{"container":q.Container,"variant":q.Variant,"compiler_errors":len(problems),"value_declared_in_ir":declared,"parse_failed":parseErr!=nil}
+  if parseErr!=nil{record["parse_error"]=parseErr.Error()}else if q.Container=="service"{for _,s:=range st.services{v,ok:=s.seedLiterals["VALUE"];record["seed_literal_present"]=ok;record["seed_literal_value"]=v;record["generate_keys"]=s.seedGenerates;record["spec_env"]=s.req.Env}}else{for _,g:=range st.envGroups{v,ok:=g.literals["VALUE"];record["group_literal_present"]=ok;record["group_literal_value"]=v;record["generate_keys"]=g.generates}}
+  encoded,_:=json.Marshal(record);t.Log("QA152JSON "+string(encoded));if (q.Variant=="generated-plus-space")!=(parseErr!=nil){t.Fatalf("unexpected existing branch %s/%s %v",q.Container,q.Variant,parseErr)}
+ }
+}
