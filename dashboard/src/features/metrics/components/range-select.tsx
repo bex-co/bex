@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Pencil } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -57,7 +58,9 @@ interface RangeSelectProps {
  * "Last 30 days" + "Custom" added w5/m56) — shared by the Metrics toolbar and
  * the Logs filter bar so both tabs offer the same preset ladder. Picking
  * "Custom" opens an absolute start/end picker; every relative preset applies
- * immediately.
+ * immediately. Re-picking the already-selected "Custom" is a no-op for a
+ * controlled Select (Radix only fires onValueChange on a change), so an active
+ * custom window gets its own "Edit custom range" action (w4/245).
  */
 export function RangeSelect({
   range,
@@ -110,6 +113,13 @@ export function RangeSelect({
           <SelectItem value={CUSTOM}>{t("metrics.rangeCustom")}</SelectItem>
         </SelectContent>
       </Select>
+
+      {isCustomRange(range) && (
+        <Button size="sm" variant="outline" onClick={openPicker}>
+          <Pencil aria-hidden="true" />
+          {t("metrics.rangeCustomEdit")}
+        </Button>
+      )}
 
       <CustomRangeDialog
         open={pickerOpen}

@@ -184,3 +184,47 @@ describe("LogFilterBar (w5/008, simplified w7/m42)", () => {
     expect(screen.getByRole("switch")).not.toBeDisabled();
   });
 });
+
+describe("LogFilterBar active custom range (w4/245)", () => {
+  it("edits the custom window in place without touching search or Live", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const onLiveChange = vi.fn();
+    const onRangeChange = vi.fn();
+    const start = new Date("2026-10-10T17:45").toISOString();
+    render(
+      <LogFilterBar
+        resource="web"
+        filters={{ ...EMPTY_LOG_FILTERS, text: "qa-a129|alpha|" }}
+        onChange={onChange}
+        live={false}
+        onLiveChange={onLiveChange}
+        liveSupported
+        range={{
+          id: "custom",
+          startTime: start,
+          endTime: new Date("2026-10-10T17:46").toISOString(),
+          resolutionSeconds: 60,
+        }}
+        onRangeChange={onRangeChange}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Edit custom range" }));
+    expect(screen.getByLabelText("Start")).toHaveValue("2026-10-10T17:45");
+    fireEvent.change(screen.getByLabelText("End"), {
+      target: { value: "2026-10-10T17:47" },
+    });
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+
+    expect(onRangeChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "custom",
+        startTime: start,
+        endTime: new Date("2026-10-10T17:47").toISOString(),
+      }),
+    );
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onLiveChange).not.toHaveBeenCalled();
+  });
+});
