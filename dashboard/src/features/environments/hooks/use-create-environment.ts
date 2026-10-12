@@ -1,13 +1,10 @@
 import { useCallback, useState } from "react";
-import type { ApolloClient } from "@apollo/client";
 import { useApolloClient, useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
-import {
-  CreateEnvironmentDocument,
-  EnvironmentsDocument,
-} from "@/graphql/definitions";
+import { CreateEnvironmentDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import { publishEnvironments } from "@/features/environments/lib/refresh-environments";
 
 export interface UseCreateEnvironmentResult {
   /**
@@ -18,36 +15,6 @@ export interface UseCreateEnvironmentResult {
   create: (name: string) => Promise<string | null>;
   /** True from submit until the new environment is listed (or its refresh failed). */
   busy: boolean;
-}
-
-/**
- * Re-read the project's environments so the created one is listed (w4/231).
- *
- * A named refetchQueries dedupes onto an Environments read already in flight,
- * one that may have started before the write and so answers without the new
- * environment. So: first let every Environments read that is IN FLIGHT settle
- * (joining it issues no new request; each result is settled on its own, since
- * the aggregate promise rejects on the first failure while others may still be
- * writing), so none can land later with the pre-save list. Only then read this
- * project's list network-only, with queryDeduplication off so it can't join an
- * older read. Its answer is authoritative and reaches every useEnvironments
- * consumer through the cache; its failure touches no watcher, so the rows on
- * screen stay (the use-rename-project precedent, w4/m186).
- */
-async function refreshEnvironments(client: ApolloClient, projectId: string) {
-  const lists = client.refetchQueries({
-    include: [EnvironmentsDocument],
-    onQueryUpdated: (query) =>
-      query.getCurrentResult().loading ? query.refetch() : false,
-  });
-  lists.catch(() => undefined); // each result is settled below
-  await Promise.allSettled(lists.results);
-  await client.query({
-    query: EnvironmentsDocument,
-    variables: { projectId },
-    fetchPolicy: "network-only",
-    context: { queryDeduplication: false },
-  });
 }
 
 /**
@@ -63,26 +30,13 @@ export function useCreateEnvironment(
   const [mutate] = useMutation(CreateEnvironmentDocument);
   const [busy, setBusy] = useState(false);
 
-  // The write already committed: a failed refresh is never a failed create,
-  // and its retry re-reads without creating again.
   const publish = useCallback(
-    (name: string): Promise<void> => {
-      const attempt = async () => {
-        try {
-          await refreshEnvironments(client, projectId);
-        } catch {
-          toast.warning(t("environments.createRefreshFailed", { name }), {
-            action: {
-              label: t("common.tryAgain"),
-              onClick: () => void attempt(),
-            },
-          });
-          return;
-        }
-        toast.success(t("environments.createSuccess", { name }));
-      };
-      return attempt();
-    },
+    (name: string) =>
+      publishEnvironments(client, projectId, {
+        succeeded: t("environments.createSuccess", { name }),
+        refreshFailed: t("environments.createRefreshFailed", { name }),
+        tryAgain: t("common.tryAgain"),
+      }),
     [client, projectId, t],
   );
 

@@ -3,7 +3,10 @@ import { act, renderHook } from "@testing-library/react";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 
 const mutate = vi.fn();
-vi.mock("@apollo/client/react", () => ({ useMutation: () => [mutate] }));
+vi.mock("@apollo/client/react", () => ({
+  useMutation: () => [mutate],
+  useApolloClient: () => ({}),
+}));
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
 vi.mock("sonner", () => ({
