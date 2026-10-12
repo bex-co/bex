@@ -415,14 +415,28 @@ function BuildFilterEditor({
     ignoredPaths: buildFilter?.ignoredPaths ?? [],
   };
   const [draft, setDraft] = useState(current);
-  const dirty = JSON.stringify(draft) !== JSON.stringify(current);
+  // The saved lists the draft last synced to. An untouched draft follows a
+  // newer saved filter (another tab, the API) instead of offering the old
+  // lists as an unsaved change whose Save would roll it back (w4/274); a
+  // draft that differs from it is a real edit or a save in flight, and stays.
+  const [baseline, setBaseline] = useState(current);
+  const currentJson = JSON.stringify(current);
+  const baselineJson = JSON.stringify(baseline);
+  const draftJson = JSON.stringify(draft);
+  if (currentJson !== baselineJson) {
+    setBaseline(current);
+    if (draftJson === baselineJson) setDraft(current);
+  }
+  const dirty = draftJson !== currentJson;
 
   async function handleSave() {
     const clean = (xs: string[]) => xs.map((x) => x.trim()).filter(Boolean);
-    const paths = clean(draft.paths);
-    const ignoredPaths = clean(draft.ignoredPaths);
+    const submitted = draft;
+    const paths = clean(submitted.paths);
+    const ignoredPaths = clean(submitted.ignoredPaths);
     const ok = await setBuildFilter(serviceId, paths, ignoredPaths);
-    if (ok) setDraft({ paths, ignoredPaths });
+    // Adopt the normalized lists, but never over typing done meanwhile.
+    if (ok) setDraft((d) => (d === submitted ? { paths, ignoredPaths } : d));
   }
 
   return (

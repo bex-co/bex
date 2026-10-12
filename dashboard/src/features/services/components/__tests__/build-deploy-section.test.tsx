@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BuildDeploySection } from "@/features/services/components/build-deploy-section";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
@@ -1014,5 +1014,116 @@ describe("BuildDeploySection", () => {
     );
     expect(screen.getByText("Docker Command")).toBeInTheDocument();
     expect(screen.queryByText("backend/ $")).not.toBeInTheDocument();
+  });
+});
+
+// w4/274: an untouched Build Filters editor kept its mount-time lists after a
+// newer saved filter arrived (another tab), so it offered them as an unsaved
+// change whose Save rolled the newer filter back.
+describe("BuildFilterEditor — saved filter refresh (w4/274)", () => {
+  type Filter = { paths: string[]; ignoredPaths: string[] } | null;
+  const section = (buildFilter: Filter) => (
+    <BuildDeploySection
+      serviceId="app"
+      repo="https://github.com/x/mono"
+      branch="main"
+      rootDir={null}
+      buildFilter={buildFilter}
+      autoDeploy={false}
+      preDeployCommand={null}
+      showPreDeployCommand={false}
+    />
+  );
+  const save = () => screen.getByRole("button", { name: "Save Build Filters" });
+  const cancel = () => screen.queryByRole("button", { name: "Cancel" });
+  const included = () =>
+    screen
+      .queryAllByPlaceholderText("e.g. src/**")
+      .map((input) => (input as HTMLInputElement).value);
+  const ignored = () =>
+    screen
+      .queryAllByPlaceholderText("e.g. docs/**")
+      .map((input) => (input as HTMLInputElement).value);
+
+  it("an untouched draft adopts a newer saved filter and stays clean", () => {
+    const view = render(
+      section({ paths: ["site/**", "docs/a b.md"], ignoredPaths: ["**/*.md"] }),
+    );
+
+    view.rerender(
+      section({
+        paths: ["site/index.html", "docs/a b.md"],
+        ignoredPaths: ["**/*.md"],
+      }),
+    );
+    expect(included()).toEqual(["site/index.html", "docs/a b.md"]);
+    expect(save()).toBeDisabled();
+    expect(cancel()).toBeNull();
+
+    view.rerender(
+      section({ paths: ["site/index.html"], ignoredPaths: ["docs/**"] }),
+    );
+    expect(ignored()).toEqual(["docs/**"]);
+    expect(save()).toBeDisabled();
+
+    view.rerender(section(null));
+    expect(included()).toEqual([]);
+    expect(ignored()).toEqual([]);
+    expect(save()).toBeDisabled();
+
+    view.rerender(section({ paths: ["src/**"], ignoredPaths: [] }));
+    expect(included()).toEqual(["src/**"]);
+    expect(save()).toBeDisabled();
+  });
+
+  it("a real edit survives refreshes, keeps focus, and Cancel adopts the latest", async () => {
+    const user = userEvent.setup();
+    const view = render(
+      section({ paths: ["site/**"], ignoredPaths: ["**/*.md"] }),
+    );
+    const input = screen.getByDisplayValue("site/**");
+    await user.clear(input);
+    await user.type(input, "qa-unsaved/**");
+
+    view.rerender(section({ paths: ["site/**"], ignoredPaths: ["**/*.md"] }));
+    view.rerender(section(null));
+    expect(included()).toEqual(["qa-unsaved/**"]);
+    expect(ignored()).toEqual(["**/*.md"]);
+    expect(input).toHaveFocus();
+    expect(save()).toBeEnabled();
+
+    await user.click(cancel()!);
+    expect(included()).toEqual([]);
+    expect(ignored()).toEqual([]);
+    expect(save()).toBeDisabled();
+  });
+
+  it("keeps typing done while a save is pending, adopting the saved lists otherwise", async () => {
+    const user = userEvent.setup();
+    let settle: (ok: boolean) => void = () => {};
+    setBuildFilter.mockImplementationOnce(
+      () => new Promise<boolean>((resolve) => (settle = resolve)),
+    );
+    const view = render(section({ paths: ["site/**"], ignoredPaths: [] }));
+    const input = screen.getByDisplayValue("site/**");
+    await user.type(input, "  ");
+    await user.click(save());
+    expect(setBuildFilter).toHaveBeenCalledWith("app", ["site/**"], []);
+
+    await user.type(input, "x");
+    view.rerender(section({ paths: ["site/**"], ignoredPaths: [] }));
+    await act(async () => settle(true));
+    expect(included()).toEqual(["site/**  x"]);
+    expect(save()).toBeEnabled();
+  });
+
+  it("adopts the normalized lists after an accepted save with no later typing", async () => {
+    const user = userEvent.setup();
+    const view = render(section({ paths: ["site/**"], ignoredPaths: [] }));
+    await user.type(screen.getByDisplayValue("site/**"), "  ");
+    await user.click(save());
+    view.rerender(section({ paths: ["site/**"], ignoredPaths: [] }));
+    expect(included()).toEqual(["site/**"]);
+    expect(save()).toBeDisabled();
   });
 });
