@@ -1,6 +1,6 @@
 # w4 · m187 — Restore environment lifecycle on project moves and deletion
 
-**Worker:** worker4 **Goal:** a project move clears incompatible environment placement, and authorized deletion detaches surviving resources even when an environment group is linked. **Status:** blocked
+**Worker:** worker4 **Goal:** a project move clears incompatible environment placement, and authorized deletion detaches surviving resources even when an environment group is linked. **Status:** done
 
 **Size:** 270m (4h 30m), eight tasks. Two independently reproduced major bugs, with separate [move](finding-move.md) and [deletion](finding-delete.md) records. This ships the filing only.
 
@@ -15,7 +15,7 @@
 | t005 | Render parity — **DONE** | 25m | w4/m187/t002, w4/m187/t003, w4/m187/t004 |
 | t006 | Simplify — **DONE** | 15m | w4/m187/t005 |
 | t007 | Test coverage — **DONE** | 45m | w4/m187/t005, w4/m187/t006 |
-| t008 | Closeout | 15m | w4/m187/t007 |
+| t008 | Closeout — **DONE** | 15m | w4/m187/t007 |
 
 ## Definition of done
 
@@ -55,3 +55,7 @@ Scanned all 74 non-done README files (including workstream/dev files, not74 mile
 All seven created logical IDs returned404 at10:04:28Z; public URL returned404 at10:04:30Z. Final six-family inventory ID sets equal the valid initial baseline (5services,4databases,2key-values,3projects,1group,1blueprint). The run's session was revoked; its browser cookies then got whoami401, browser was cleared to0cookies/1login page, and jar/state files were removed at10:05:15Z.
 
 No Kubernetes workload/PVC/child-object absence claim: production kube credentials were not used. The public body was a constant fixture marker, not evidence that a group variable reached its process. Protected/deny-all/isolation-on rules, sibling App kinds, concurrency, recovery, mobile/zh and authenticated Render mutations were not live exercised.
+
+## Closeout
+
+Closed 2026-10-12 after a live DoD replay on deploy `86af4f59e` (contains `7ec90cf81`): every bullet passed on new owned fixtures, all fixtures were removed and only the run's session was revoked. Evidence: [verification.md](verification.md). Re-saving pre-fix production projects with (project, foreign environment) drift remains an optional operator decision, not done here.
