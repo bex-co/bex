@@ -56,6 +56,9 @@ function line(message: string, type: string): LogLine {
   };
 }
 
+const PARTIAL =
+  "Only part of this time range is loaded. Load older to search earlier lines.";
+
 describe("DeployLogPanel", () => {
   it("states a capped build and loads older lines on request (w4/m136)", async () => {
     logState.lines = [line("==> step 9", "build")];
@@ -71,11 +74,43 @@ describe("DeployLogPanel", () => {
       />,
     );
 
-    expect(screen.getByRole("status")).toHaveTextContent(
-      /newest 100 matching lines/,
-    );
+    expect(screen.getByRole("status")).toHaveTextContent(PARTIAL);
     await userEvent.click(screen.getByRole("button", { name: "Load older" }));
     expect(logState.loadOlder).toHaveBeenCalledTimes(1);
+  });
+
+  // w4/261: the panel filters loaded lines locally, so a capped source page
+  // says nothing about how many lines match.
+  it("says only part of the range is loaded, not how many lines match (w4/261)", async () => {
+    logState.lines = [
+      line("==> step 9", "build"),
+      line("server listening", "app"),
+    ];
+    logState.hasMore = true;
+    logState.loadOlder = vi.fn();
+    const props = {
+      resource: "web",
+      startTime: "2026-07-14T00:00:00Z",
+      endTime: "2026-07-14T00:05:00Z",
+      hasPreDeploy: false,
+      followBuild: false,
+    };
+    const view = render(<DeployLogPanel {...props} />);
+    const user = userEvent.setup();
+
+    await user.type(screen.getByPlaceholderText("Search logs…"), "nowhere");
+    expect(await screen.findByText("No matching logs")).toBeInTheDocument();
+    const notice = screen.getByRole("status");
+    expect(notice).toHaveTextContent(PARTIAL);
+    expect(notice).not.toHaveTextContent(/match/i);
+    await user.click(screen.getByRole("button", { name: "Load older" }));
+    expect(logState.loadOlder).toHaveBeenCalledTimes(1);
+
+    // Every leg complete: the notice goes, the empty result stays.
+    logState.hasMore = false;
+    view.rerender(<DeployLogPanel {...props} />);
+    expect(screen.queryByText(PARTIAL)).toBeNull();
+    expect(screen.getByText("No matching logs")).toBeInTheDocument();
   });
 
   it("shows no truncation notice when the deploy's logs are complete", () => {
@@ -89,7 +124,7 @@ describe("DeployLogPanel", () => {
         followBuild={false}
       />,
     );
-    expect(screen.queryByText(/newest 100 matching lines/)).toBeNull();
+    expect(screen.queryByText(PARTIAL)).toBeNull();
   });
 
   it("renders the explanatory log-store state on a build-log 503", () => {
@@ -175,7 +210,9 @@ describe("DeployLogPanel", () => {
     await user.type(screen.getByPlaceholderText("Search logs…"), "nowhere");
 
     expect(await screen.findByText("No matching logs")).toBeInTheDocument();
-    expect(screen.getByText("No logs match these filters.")).toBeInTheDocument();
+    expect(
+      screen.getByText("No logs match these filters."),
+    ).toBeInTheDocument();
 
     logState.lines = [];
     view.rerender(

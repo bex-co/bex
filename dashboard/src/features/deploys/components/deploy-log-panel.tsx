@@ -367,6 +367,7 @@ export function DeployLogPanel({
         <LogTruncationNotice
           loadingOlder={loadingOlder}
           onLoadOlder={loadOlder}
+          message={t("deploys.logPartiallyLoaded")}
         />
       ) : null}
       {body}
