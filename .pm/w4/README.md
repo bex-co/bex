@@ -276,9 +276,9 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [x] **259** — [Cron start events omit the required run ID](done/259.md) (55m) — **DONE 2026-10-12** (`51613e2db`, live-verified: scheduled, manual and pre-fix starts carry their run id over REST and GraphQL) ← functional QA 2026-10-11 a206; fresh scheduled/manual REST/GraphQL starts omit the matching run ID while completion controls pass; owned cron deleted and session revoked.
 
-- [ ] **258** — [Raw application-metrics headlines show an older instance's value](258.md) (55m) ← functional QA 2026-10-11 a186; fresh desktop/mobile CPU says 0.1% while the replacement is near 100%; current-instance and Max controls agree with the API; owned fixture/session cleanup verified.
+- [x] **258** — [Raw application-metrics headlines show an older instance's value](done/258.md) (55m) — **DONE 2026-10-12** (`62e88d839`, live-verified: Raw two-instance headers omit the scalar; Max and a single instance keep it, desktop and 390) ← functional QA 2026-10-11 a186; fresh desktop/mobile CPU says 0.1% while the replacement is near 100%; current-instance and Max controls agree with the API; owned fixture/session cleanup verified.
 
-- [ ] **257** — [Linked environment-group rows show a false legacy-scope warning while loading](257.md) (45m) ← functional QA 2026-10-11 a180; natural fresh mobile/desktop reloads warn for a valid same-environment link until the scope index settles; owned fixture/session cleanup verified.
+- [x] **257** — [Linked environment-group rows show a false legacy-scope warning while loading](done/257.md) (45m) — **DONE 2026-10-12** (`5ce0f7b5d`, live-verified: no warning while pending; row 64→64px desktop, 88→88px at 390) ← functional QA 2026-10-11 a180; natural fresh mobile/desktop reloads warn for a valid same-environment link until the scope index settles; owned fixture/session cleanup verified.
 
 - [x] **256** — [Historical and live logs use different message-size boundaries](done/256.md) (55m) — **DONE 2026-10-12** (`3f4f01efe`, live-verified: history and SSE return one identical capped record; one row at desktop and 390) ← functional QA 2026-10-11 a176; a same-millisecond 70,065-byte record renders twice on desktop/fresh mobile while the 50,065-byte control renders once; complete compressed JSON proof and owned fixture/session cleanup verified.
 
