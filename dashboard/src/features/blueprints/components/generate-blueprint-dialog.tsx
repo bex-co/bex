@@ -26,11 +26,13 @@ function SelectableList({
   label,
   items,
   selected,
+  disabled,
   onToggle,
 }: {
   label: string;
   items: { id: string; name: string }[];
   selected: Set<string>;
+  disabled: boolean;
   onToggle: (id: string, next: boolean) => void;
 }) {
   if (items.length === 0) return null;
@@ -41,10 +43,11 @@ function SelectableList({
         {items.map((item) => (
           <label
             key={item.id}
-            className="flex cursor-pointer items-center gap-2 text-sm"
+            className="flex cursor-pointer items-center gap-2 text-sm has-disabled:cursor-not-allowed"
           >
             <Checkbox
               checked={selected.has(item.id)}
+              disabled={disabled}
               onCheckedChange={(next) => onToggle(item.id, next === true)}
             />
             <span className="truncate">{item.name}</span>
@@ -76,11 +79,12 @@ export function GenerateBlueprintDialog({
   const { groups: envGroups } = useEnvGroups();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [manifest, setManifest] = useState<string | null>(null);
-  const [generate, { loading }] = useLazyQuery(GenerateBlueprintDocument, {
+  // Set synchronously on click and held until the result or error, so the
+  // selection can't change under a pending request (w4/267). The lazy query's
+  // own loading lands a render later (and only with notifyOnNetworkStatusChange).
+  const [loading, setLoading] = useState(false);
+  const [generate] = useLazyQuery(GenerateBlueprintDocument, {
     fetchPolicy: "no-cache",
-    // A lazy query's loading comes only from this emission, which the client
-    // default turns off (w1/m153); the spinner and double-submit guard need it.
-    notifyOnNetworkStatusChange: true,
   });
 
   const serviceIds = useMemo(
@@ -120,6 +124,8 @@ export function GenerateBlueprintDialog({
   }
 
   async function handleGenerate() {
+    if (loading) return;
+    setLoading(true);
     try {
       const res = await generate({
         variables: {
@@ -138,6 +144,8 @@ export function GenerateBlueprintDialog({
       setManifest(out.manifest);
     } catch (err) {
       toast.error(mutationErrorMessage(err, t("blueprints.generateError")));
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -170,24 +178,28 @@ export function GenerateBlueprintDialog({
               label={t("blueprints.previewServices")}
               items={services}
               selected={selected}
+              disabled={loading}
               onToggle={toggle}
             />
             <SelectableList
               label={t("blueprints.previewDatabases")}
               items={databases}
               selected={selected}
+              disabled={loading}
               onToggle={toggle}
             />
             <SelectableList
               label={t("blueprints.previewKeyValue")}
               items={keyValues}
               selected={selected}
+              disabled={loading}
               onToggle={toggle}
             />
             <SelectableList
               label={t("blueprints.previewEnvGroups")}
               items={envGroups}
               selected={selected}
+              disabled={loading}
               onToggle={toggle}
             />
             {selectionEmpty ? (
