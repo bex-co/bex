@@ -474,7 +474,7 @@ const enBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.generateSecretsNote": {
     message:
-      "Secret values are never exported — secret-backed variables appear as sync: false and are prompted for when the Blueprint is first created.",
+      "Stored values are never exported. Service variables marked sync: false are prompted for when the Blueprint is first created. Variables marked generateValue — including exported environment-group keys — keep an existing value, or get a generated one if missing.",
     description: "Generate dialog note under the yaml preview",
   },
   "blueprints.generateError": {
