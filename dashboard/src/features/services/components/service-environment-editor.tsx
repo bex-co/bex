@@ -339,6 +339,11 @@ export function EnvironmentEditor({
   );
   const dirty = patch.envVars.length > 0 || patch.secretFiles.length > 0;
   const busy = saving;
+  // Menu items mirror their trigger's disabled state; see AddVariableMenu.
+  const exportDisabled =
+    loading || Boolean(errorKind) || exporting || sensitiveDenied;
+  const saveDisabled =
+    !dirty || !isDraftValid(validation) || busy || createDenied;
   const blocker = useBlocker({
     shouldBlockFn: () => dirty,
     enableBeforeUnload: dirty,
@@ -726,19 +731,10 @@ export function EnvironmentEditor({
         loading={loading}
         action={
           <>
-            <PermissionTooltip reason={sensitiveReason}>
-              <DropdownMenu>
+            <DropdownMenu>
+              <PermissionTooltip reason={sensitiveReason}>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={
-                      loading ||
-                      Boolean(errorKind) ||
-                      exporting ||
-                      sensitiveDenied
-                    }
-                  >
+                  <Button size="sm" variant="outline" disabled={exportDisabled}>
                     {exporting ? (
                       <Loader2 className="animate-spin" />
                     ) : (
@@ -748,20 +744,22 @@ export function EnvironmentEditor({
                     <ChevronDown />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onSelect={() => void exportEnvironment("copy")}
-                  >
-                    <Clipboard /> {t("services.envCopy")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => void exportEnvironment("download")}
-                  >
-                    <Download /> {t("services.envDownload")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </PermissionTooltip>
+              </PermissionTooltip>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  disabled={exportDisabled}
+                  onSelect={() => void exportEnvironment("copy")}
+                >
+                  <Clipboard /> {t("services.envCopy")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={exportDisabled}
+                  onSelect={() => void exportEnvironment("download")}
+                >
+                  <Download /> {t("services.envDownload")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {!draft ? (
               <PermissionTooltip reason={createReason}>
                 <Button
@@ -773,16 +771,13 @@ export function EnvironmentEditor({
                 </Button>
               </PermissionTooltip>
             ) : (
-              <PermissionTooltip reason={createReason}>
-                <AddVariableMenu
-                  disabled={createDenied}
-                  onAdd={() => addVariable(false)}
-                  onGenerate={() => addVariable(true)}
-                  onImport={() => {
-                    if (!createDenied) setImportOpen(true);
-                  }}
-                />
-              </PermissionTooltip>
+              <AddVariableMenu
+                disabled={createDenied}
+                reason={createReason}
+                onAdd={() => addVariable(false)}
+                onGenerate={() => addVariable(true)}
+                onImport={() => setImportOpen(true)}
+              />
             )}
           </>
         }
@@ -948,51 +943,50 @@ export function EnvironmentEditor({
               >
                 {t("services.envCancel")}
               </Button>
-              <PermissionTooltip reason={createReason}>
-                <div className="flex">
-                  <Button
-                    className="flex-1 rounded-r-none sm:flex-none"
-                    disabled={
-                      !dirty ||
-                      !isDraftValid(validation) ||
-                      busy ||
-                      createDenied
-                    }
-                    onClick={() => void commit("deploy")}
-                  >
-                    {busy ? <Loader2 className="animate-spin" /> : <Check />}
-                    {t("services.environmentSaveDeploy")}
-                  </Button>
-                  <DropdownMenu>
+              <DropdownMenu>
+                <PermissionTooltip reason={createReason}>
+                  <div className="flex">
+                    <Button
+                      className="flex-1 rounded-r-none sm:flex-none"
+                      disabled={saveDisabled}
+                      onClick={() => void commit("deploy")}
+                    >
+                      {busy ? <Loader2 className="animate-spin" /> : <Check />}
+                      {t("services.environmentSaveDeploy")}
+                    </Button>
                     <DropdownMenuTrigger asChild>
                       <Button
                         className="rounded-l-none border-l border-primary-foreground/30 px-2"
-                        disabled={
-                          !dirty ||
-                          !isDraftValid(validation) ||
-                          busy ||
-                          createDenied
-                        }
+                        disabled={saveDisabled}
                         aria-label={t("services.environmentSaveOptions")}
                       >
                         <ChevronDown />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => void commit("rebuild")}>
-                        {t("services.environmentSaveRebuild")}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => void commit("deploy")}>
-                        {t("services.environmentSaveDeploy")}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onSelect={() => void commit("only")}>
-                        {t("services.environmentSaveOnly")}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </PermissionTooltip>
+                  </div>
+                </PermissionTooltip>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    disabled={saveDisabled}
+                    onSelect={() => void commit("rebuild")}
+                  >
+                    {t("services.environmentSaveRebuild")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={saveDisabled}
+                    onSelect={() => void commit("deploy")}
+                  >
+                    {t("services.environmentSaveDeploy")}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={saveDisabled}
+                    onSelect={() => void commit("only")}
+                  >
+                    {t("services.environmentSaveOnly")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </CardContent>
         </Card>
@@ -1474,13 +1468,20 @@ function FileDraftItem({
   );
 }
 
+// The root sits outside the reason tooltip: PermissionTooltip changes its
+// child's tree position when a reason comes and goes (e.g. a capability
+// refresh passing through "checking"), and a remounted root drops its open
+// state (w4/260). Only the trigger moves; the open menu stays, its items
+// disabled while the trigger is.
 function AddVariableMenu({
   disabled,
+  reason,
   onAdd,
   onGenerate,
   onImport,
 }: {
   disabled: boolean;
+  reason?: string;
   onAdd: () => void;
   onGenerate: () => void;
   onImport: () => void;
@@ -1488,20 +1489,22 @@ function AddVariableMenu({
   const { t } = useTranslations();
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button size="sm" variant="outline" disabled={disabled}>
-          <Plus /> {t("services.envAdd")} <ChevronDown />
-        </Button>
-      </DropdownMenuTrigger>
+      <PermissionTooltip reason={reason}>
+        <DropdownMenuTrigger asChild>
+          <Button size="sm" variant="outline" disabled={disabled}>
+            <Plus /> {t("services.envAdd")} <ChevronDown />
+          </Button>
+        </DropdownMenuTrigger>
+      </PermissionTooltip>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={onAdd}>
+        <DropdownMenuItem disabled={disabled} onSelect={onAdd}>
           <Plus /> {t("services.envAddVariable")}
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onGenerate}>
+        <DropdownMenuItem disabled={disabled} onSelect={onGenerate}>
           <Sparkles /> {t("services.envAddGenerated")}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={onImport}>
+        <DropdownMenuItem disabled={disabled} onSelect={onImport}>
           <FileUp /> {t("services.envImport")}
         </DropdownMenuItem>
       </DropdownMenuContent>
