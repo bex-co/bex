@@ -175,6 +175,11 @@ const enDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy detail page: accurate explanation of a storeless build-log response",
   },
+  "deploys.detailRefreshError": {
+    message: "Couldn't refresh this deploy. Showing the last loaded details.",
+    description:
+      "Deploy detail page: a background refresh of an already loaded deploy failed; the page keeps the last good details and offers a retry",
+  },
   "deploys.logPartiallyLoaded": {
     message:
       "Only part of this time range is loaded. Load older to search earlier lines.",

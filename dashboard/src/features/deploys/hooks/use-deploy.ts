@@ -1,7 +1,10 @@
 import { useEffect } from "react";
 import { useQuery } from "@apollo/client/react";
 import { resourceNotFound } from "@/common/hooks/use-not-found-redirect";
-import { skipPollWhenHidden } from "@/common/lib/polling";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import { DeployDocument, type DeployQuery } from "@/graphql/definitions";
 import { isTerminalDeployStatus } from "@/features/deploys/lib/deploy-status";
 
@@ -53,6 +56,8 @@ export interface UseDeployResult {
   error: Error | undefined;
   /** True once bex-api resolved the query and found no such deploy. */
   notFound: boolean;
+  /** Re-read the deploy, e.g. to retry after a failed refresh. */
+  refetch: () => void;
 }
 
 /**
@@ -60,22 +65,28 @@ export interface UseDeployResult {
  * detail page's header data. Polls every 3s while the deploy is non-terminal
  * so the header/log window follows each observed phase, and stops once it is
  * terminal — except a canceled deploy whose pre-deploy step may still settle
- * its verdict, which is read for that step's bounded lifetime (w4/m198).
+ * its verdict, which is read for that step's bounded lifetime (w4/m198), and a
+ * Live deploy, which a later deploy will replace (w4/262).
  */
 export function useDeploy(
   serviceId: string,
   deployId: string,
 ): UseDeployResult {
-  const { data, loading, error, previousData, stopPolling } = useQuery(
-    DeployDocument,
-    {
-      variables: { serviceId, deployId },
-      fetchPolicy: "cache-and-network",
-      errorPolicy: "all",
-      pollInterval: POLL_INTERVAL_MS,
-      skipPollAttempt: skipPollWhenHidden,
-    },
-  );
+  const {
+    data,
+    loading,
+    error,
+    previousData,
+    startPolling,
+    stopPolling,
+    refetch,
+  } = useQuery(DeployDocument, {
+    variables: { serviceId, deployId },
+    fetchPolicy: "cache-and-network",
+    errorPolicy: "all",
+    pollInterval: POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
+  });
 
   const deploy = toDeployView(data?.deploy ?? previousData?.deploy ?? null);
   const notFound = resourceNotFound(deploy, loading, error);
@@ -85,6 +96,12 @@ export function useDeploy(
   const finishedAt = deploy?.finishedAt ?? null;
   useEffect(() => {
     if (!isTerminalDeployStatus(status)) return;
+    // Live ends the rollout, not the record: the next deploy turns it
+    // Deactivated (and so rollbackable), so keep reading at the baseline.
+    if (status === "live") {
+      startPolling(RESOURCE_POLL_INTERVAL_MS);
+      return;
+    }
     // Keep reading it even when this deploy is no longer the service's latest.
     if (status === "canceled" && preDeployStatus === "canceled" && finishedAt) {
       const remaining = Date.parse(finishedAt) + STEP_SETTLE_MS - Date.now();
@@ -94,13 +111,14 @@ export function useDeploy(
       }
     }
     stopPolling();
-  }, [status, preDeployStatus, finishedAt, stopPolling]);
+  }, [status, preDeployStatus, finishedAt, startPolling, stopPolling]);
 
   return {
     deploy,
     loading: loading && !deploy,
     error: notFound ? undefined : error,
     notFound,
+    refetch: () => void refetch(),
   };
 }
 
