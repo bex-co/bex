@@ -76,6 +76,10 @@ const STATUS_CODE_CLASSES = ["2xx", "4xx", "5xx"];
 // label, so (like the Logs tab) it is a free-text filter, not a fabricated list.
 const HOST_ALL = "all";
 
+// bex-api refuses a bandwidth step below one minute (lego/backend metrics
+// minBandwidthStep).
+const MIN_BANDWIDTH_RESOLUTION_SECONDS = 60;
+
 /**
  * Render's "Network Metrics" card: Total Requests, Response Times, Outbound
  * Bandwidth — Prometheus-backed time-series honoring the range/resolution.
@@ -128,7 +132,16 @@ export function NetworkMetricsCard({
       ? { quantiles: ALL_QUANTILES }
       : { quantile: Number(percentile) }),
   });
-  const bandwidth = useMetrics(resource, "bandwidth", window);
+  // A bandwidth bucket finer than the API's 60s minimum would fall between
+  // 15s counter scrapes and read as zero (w4/241), so only this call is
+  // coarsened; start/end and the other charts keep the window's resolution.
+  const bandwidth = useMetrics(resource, "bandwidth", {
+    ...window,
+    resolutionSeconds: Math.max(
+      MIN_BANDWIDTH_RESOLUTION_SECONDS,
+      window.resolutionSeconds ?? MIN_BANDWIDTH_RESOLUTION_SECONDS,
+    ),
+  });
   const monthToDate = useMonthToDateBandwidth(resource);
 
   const statusCodeOptions = [

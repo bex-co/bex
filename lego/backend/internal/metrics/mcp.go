@@ -42,7 +42,7 @@ type getMetricsArgs struct {
 	StartTime   string   `json:"startTime,omitempty" jsonschema:"RFC3339 start of the window (request metrics)"`
 	EndTime     string   `json:"endTime,omitempty" jsonschema:"RFC3339 end of the window (request metrics)"`
 	// Resolution is Render's spelling; ResolutionSeconds is the legacy bex alias.
-	Resolution        *int64 `json:"resolution,omitempty" jsonschema:"request-metric step in seconds — Render's MCP spelling"`
+	Resolution        *int64 `json:"resolution,omitempty" jsonschema:"request-metric step in seconds — Render's MCP spelling; bandwidth (bex) refuses a step below 60 or a window shorter than 60 seconds"`
 	ResolutionSeconds *int64 `json:"resolutionSeconds,omitempty" jsonschema:"legacy bex alias of resolution; ignored when resolution is also set"`
 	// HTTPLatencyQuantile is Render's spelling; Quantile is the legacy bex alias.
 	HTTPLatencyQuantile *float64  `json:"httpLatencyQuantile,omitempty" jsonschema:"http_latency percentile 0..1 (default .95) — Render's MCP spelling"`

@@ -374,6 +374,15 @@ const (
 	// newly rejected — an over-budget request is refused here with a clear
 	// "raise resolutionSeconds" message instead of an opaque upstream 400.
 	maxPointsPerSeries = 11000
+
+	// minBandwidthStep is the finest bandwidth bucket bex serves: four of the
+	// 15s Traefik/cAdvisor scrapes (deploy/gitops/base/prometheus.yaml). Each
+	// byte bucket is increase(counter[step]) evaluated every step, and a
+	// lookback holding fewer than two samples yields no increase at all — the
+	// "or vector(0)" fallback then reported recorded traffic as zero (w4/241).
+	// Widening only the lookback would count overlapping bytes, so a finer step
+	// or a shorter window is refused instead of silently reshaped.
+	minBandwidthStep = time.Minute
 )
 
 // checkWindow enforces MaxQueryHours against a query's start–end range,
@@ -424,6 +433,18 @@ func checkPointBudget(start, end time.Time, resolution time.Duration) error {
 	return nil
 }
 
+// checkBandwidthGranularity refuses a bandwidth step or window finer than
+// minBandwidthStep with a named bad request (see minBandwidthStep).
+func checkBandwidthGranularity(start, end time.Time, resolution time.Duration) error {
+	if resolution < minBandwidthStep {
+		return fmt.Errorf("%w: bandwidth resolution must be at least %d seconds (got %d); finer buckets fall between metric scrapes", core.ErrBadRequest, int(minBandwidthStep/time.Second), int(resolution/time.Second))
+	}
+	if end.Sub(start) < minBandwidthStep {
+		return fmt.Errorf("%w: a bandwidth window must span at least %d seconds", core.ErrBadRequest, int(minBandwidthStep/time.Second))
+	}
+	return nil
+}
+
 // Metrics is the single metrics read every adapter (REST, GraphQL, MCP) calls. It
 // fails with core.ErrNotFound for an unknown App, dispatches on q.Metric, and
 // returns Render-shaped series.
@@ -452,6 +473,11 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 		}
 	}
 	q = q.normalized(s.Now())
+	if q.Metric == MetricBandwidth {
+		if err := checkBandwidthGranularity(q.Start, q.End, q.Resolution); err != nil {
+			return nil, err
+		}
+	}
 	if err := checkPointBudget(q.Start, q.End, q.Resolution); err != nil {
 		return nil, err
 	}
