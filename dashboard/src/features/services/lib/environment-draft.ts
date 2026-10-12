@@ -371,7 +371,17 @@ function patchRows<R extends { deleted: boolean }>(
         : { value: lens.value(row) ?? "" }),
     });
   }
-  return [...removals, ...moves, ...writes];
+  // A direct write replaces whatever its name holds, so removing that same
+  // name first is redundant — and the API refuses a write after an explicit
+  // delete of its name. Deleting a stored row and re-adding it under the same
+  // name therefore sends just the write (w4/243). A removal paired with an
+  // opaque rename into its name stays: a move does not overwrite (w4/m195).
+  const written = new Set(writes.map((write) => write.name));
+  return [
+    ...removals.filter((removal) => !written.has(removal.name)),
+    ...moves,
+    ...writes,
+  ];
 }
 
 export function environmentDraftPatch(

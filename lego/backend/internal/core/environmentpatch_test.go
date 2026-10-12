@@ -352,3 +352,42 @@ func TestRenamedAwayNameRefillKeepsItsRefusals(t *testing.T) {
 		})
 	}
 }
+
+// w4/243: the dashboard used to send Delete+Add of one stored name as a
+// delete plus a write, which this contract refuses. It now sends only the
+// write, which replaces the stored value in place and leaves the rest alone.
+func TestDeleteThenReAddSendsOneReplacingWrite(t *testing.T) {
+	stored := func() map[string]string { return map[string]string{"QA_A118_RENAMED": "old", "KEEP": "k"} }
+	refused := stored()
+	if err := ApplyEnvVarPatch(refused, []EnvVarPatch{
+		{Key: "QA_A118_RENAMED", Delete: true},
+		{Key: "QA_A118_RENAMED", Value: "qa-a118-readd-literal"},
+	}); err == nil || !strings.Contains(err.Error(), `duplicate environment variable operation for "QA_A118_RENAMED"`) {
+		t.Fatalf("delete then write the same name = %v, want the duplicate refusal kept", err)
+	}
+
+	literal := stored()
+	if err := ApplyEnvVarPatch(literal, []EnvVarPatch{{Key: "QA_A118_RENAMED", Value: "qa-a118-readd-literal"}}); err != nil {
+		t.Fatalf("literal replacement = %v", err)
+	}
+	if want := map[string]string{"QA_A118_RENAMED": "qa-a118-readd-literal", "KEEP": "k"}; !maps.Equal(literal, want) {
+		t.Fatalf("env = %#v, want %#v", literal, want)
+	}
+	generated := stored()
+	if err := ApplyEnvVarPatch(generated, []EnvVarPatch{{Key: "QA_A118_RENAMED", GenerateValue: true}}); err != nil {
+		t.Fatalf("generated replacement = %v", err)
+	}
+	if v := generated["QA_A118_RENAMED"]; v == "" || v == "old" || generated["KEEP"] != "k" || len(generated) != 2 {
+		t.Fatalf("generated = %#v, want a fresh value and KEEP intact", generated)
+	}
+
+	for _, content := range []string{"", "qa-a165-file-v2\nnew β\n"} {
+		files := map[string]string{"qa-a165-renamed.txt": "qa-a165-file-v1\nβ sample\n", "keep.txt": "k"}
+		if err := ApplySecretFilePatch(files, []SecretFilePatch{{Name: "qa-a165-renamed.txt", Content: content}}); err != nil {
+			t.Fatalf("file replacement %q = %v", content, err)
+		}
+		if want := map[string]string{"qa-a165-renamed.txt": content, "keep.txt": "k"}; !maps.Equal(files, want) {
+			t.Fatalf("files = %#v, want %#v", files, want)
+		}
+	}
+}
