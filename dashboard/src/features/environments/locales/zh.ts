@@ -197,6 +197,12 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     description:
       "Toast shown after an environment's key-value instances are updated",
   },
+  "environments.assignKeyValuesRefreshFailed": {
+    message:
+      "已更新“{name}”的键值存储实例，但列表刷新失败。请重试或重新加载以查看。",
+    description:
+      "Warning after the key-value membership was saved but re-reading the environments list failed; the write must not be retried or reported as failed (w4/263)",
+  },
   "environments.assignKeyValuesError": {
     message: "更新“{name}”的键值存储实例失败。",
     description:

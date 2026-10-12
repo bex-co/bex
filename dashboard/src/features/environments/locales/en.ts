@@ -206,6 +206,12 @@ const enEnvironments: Record<string, TranslationEntry> = {
     description:
       "Toast shown after an environment's key-value instances are updated",
   },
+  "environments.assignKeyValuesRefreshFailed": {
+    message:
+      'Key-value instances for "{name}" updated, but the list couldn\'t refresh. Try again or reload to see it.',
+    description:
+      "Warning after the key-value membership was saved but re-reading the environments list failed; the write must not be retried or reported as failed (w4/263)",
+  },
   "environments.assignKeyValuesError": {
     message: 'Failed to update key-value instances for "{name}".',
     description:
