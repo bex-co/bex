@@ -2,7 +2,7 @@
 
 Why: a sibling copy should equal its source's effective configuration, or refuse an unknowable value, instead of silently baking the wrong group literal.
 
-**Severity:** major — actual persisted configuration mismatch; no production outage/data loss claimed. **Ownership:** backend Blueprint known-value index/current-state integration. **Estimate:** 2h35m across six tasks. **Status:** todo. Existing w8/099 is promoted because its remaining current-state/order check now requires a researched multi-task correction; the completed linked-literal fix 7a06a13f4 and its full sweep212 native acceptance remain valid.
+**Severity:** major — actual persisted configuration mismatch; no production outage/data loss claimed. **Ownership:** backend Blueprint known-value index/current-state integration. **Estimate:** 3h30m total across eight tasks; completed original work is retained. **Status:** todo. Existing w8/099 is promoted because its remaining current-state/order check now requires a researched multi-task correction; the completed linked-literal fix 7a06a13f4 and its full sweep212 native acceptance remain valid.
 
 **Evidence boundary:** seven actual public DeployStack/ValidateBlueprint cases compose the real apps/envgroups services over fake Kubernetes/versioned storage. Four mismatch, three controls agree. Seven actual operator projections retain the stored order. Fourteen production native fresh declarations and four exact wire captures prove admission, not hosted apply/current-state/runtime. Source HEAD d15c1e7fcfe0bc4806f398c9b94535560380e837, deployed revision unknown. Fake IDs are not owned production fixtures.
 
@@ -55,14 +55,14 @@ Why: a service's same-file environment-group value is already known, yet another
 
 ### Reproduction and expected behavior
 
-[Complete linked-literal document](../../evidence/099/linked-literal.yaml): group qa182-f8e73e-group defines `VALUE: source-182`; source service links that group through `fromGroup`. The consumer uses `fromService: {type: web, name: qa182-f8e73e-source, envVarKey: VALUE}`. Both services are declared Free image web services. The values are harmless fixtures; nothing is applied or created.
+[Complete linked-literal document](../evidence/099/linked-literal.yaml): group qa182-f8e73e-group defines `VALUE: source-182`; source service links that group through `fromGroup`. The consumer uses `fromService: {type: web, name: qa182-f8e73e-source, envVarKey: VALUE}`. Both services are declared Free image web services. The values are harmless fixtures; nothing is applied or created.
 
 ```sh
 bex blueprints validate linked-literal.yaml --confirm -o json
 render blueprints validate linked-literal.yaml --confirm -o json
 ```
 
-Use isolated configuration, explicit Bex host and the QA workspace in both clients. **Actual:** valid:false/exit1, empty stderr, a located error saying the source has no such plainly-defined variable. Root and nested forms fail, as do group literals zero and empty string. [The local-override control](../../evidence/099/local-override.yaml), with the same linked group but a service-local VALUE, validates and copies local-override correctly.
+Use isolated configuration, explicit Bex host and the QA workspace in both clients. **Actual:** valid:false/exit1, empty stderr, a located error saying the source has no such plainly-defined variable. Root and nested forms fail, as do group literals zero and empty string. [The local-override control](../evidence/099/local-override.yaml), with the same linked group but a service-local VALUE, validates and copies local-override correctly.
 
 **Expected:** same-file linked group literals participate in the source's parse-time-known variable lookup; these four cases return HTTP200/valid:true, no errors and native exit0. Plain direct copies and local overrides continue to work. Missing keys and unlinked groups still fail; a declared group alone must not inject values into an unlinked service.
 
@@ -70,19 +70,19 @@ Bex's capability inventory calls envVarKey a translated copy of a parse-time-kno
 
 ### Durable evidence and controls
 
-[Sixteen original native checks](../../evidence/099/native.json), [matrix driver](../../evidence/099/native-driver.py.txt): eight false refusals (root/nested/zero/empty through both clients), four positive controls (direct literal and local override), four correct refusals (missing group key and unlinked group). Processes finish normally; output/exit semantics are consistent with the server's valid field.
+[Sixteen original native checks](../evidence/099/native.json), [matrix driver](../evidence/099/native-driver.py.txt): eight false refusals (root/nested/zero/empty through both clients), four positive controls (direct literal and local override), four correct refusals (missing group key and unlinked group). Processes finish normally; output/exit semantics are consistent with the server's valid field.
 
-[Four fresh actual native multipart captures](../../evidence/099/native-wire.json), [capture driver](../../evidence/099/capture-driver.py.txt): linked-literal fails and local-override passes through each client. Native durations are 0.893/0.877s for refusals and 1.585/3.765s for controls. Each exact ownerId/file body receives HTTP200. Complete request boundary/content type, body, response headers and response JSON are retained; native validity/errors equal captured validity/errors. No request or file rewrite, no Authorization recorded. The pin builds ownerId+file multipart in cmd/blueprintvalidate.go:96–128 and chooses its exit from JSON200.Valid, so the launcher is not the failing boundary.
+[Four fresh actual native multipart captures](../evidence/099/native-wire.json), [capture driver](../evidence/099/capture-driver.py.txt): linked-literal fails and local-override passes through each client. Native durations are 0.893/0.877s for refusals and 1.585/3.765s for controls. Each exact ownerId/file body receives HTTP200. Complete request boundary/content type, body, response headers and response JSON are retained; native validity/errors equal captured validity/errors. No request or file rewrite, no Authorization recorded. The pin builds ownerId+file multipart in cmd/blueprintvalidate.go:96–128 and chooses its exit from JSON200.Valid, so the launcher is not the failing boundary.
 
 One initial capture-only invocation failed because the QA recorder reused compressed response bytes as request bytes and raised UnicodeDecodeError while recording. It is retained and excluded. Separate request/response buffers produce the four eligible captures; the original sixteen normal-client receipts were unaffected. Validation was the only endpoint; no resource mutation was replayed.
 
-[Eight actual compiler/parser diagnostics](../../evidence/099/parser-result.json), [input](../../evidence/099/parser-input.json), [virtual probe](../../evidence/099/parser-probe_test.go.txt), [overlay](../../evidence/099/parser-overlay.json): all eight documents pass the real compiler. Real parseEnvGroup returns present VALUE strings source-182, 0 and empty in the failing cases, while real parseService records the group link but has no VALUE in known. resolveRef and parseCompiledStack reproduce each native refusal. Direct/local-override controls copy the expected strings. This asserts current behavior for diagnosis, not a product fix regression or full suite.
+[Eight actual compiler/parser diagnostics](../evidence/099/parser-result.json), [input](../evidence/099/parser-input.json), [virtual probe](../evidence/099/parser-probe_test.go.txt), [overlay](../evidence/099/parser-overlay.json): all eight documents pass the real compiler. Real parseEnvGroup returns present VALUE strings source-182, 0 and empty in the failing cases, while real parseService records the group link but has no VALUE in known. resolveRef and parseCompiledStack reproduce each native refusal. Direct/local-override controls copy the expected strings. This asserts current behavior for diagnosis, not a product fix regression or full suite.
 
-[Four existing targeted tests](../../evidence/099/existing-tests.json) pass under Go1.26.8/GOWORKoff, including group-link/copy integration and numeric root/group behavior. Their group and copied keys differ, so they do not exercise copying an inherited group key.
+[Four existing targeted tests](../evidence/099/existing-tests.json) pass under Go1.26.8/GOWORKoff, including group-link/copy integration and numeric root/group behavior. Their group and copied keys differ, so they do not exercise copying an inherited group key.
 
 ### Root cause and shared consumers
 
-[Producer/consumer excerpts and exact caller census](../../evidence/099/source.txt):
+[Producer/consumer excerpts and exact caller census](../evidence/099/source.txt):
 
 - deploy.go:1837–1857 parses group literals before services; parseEnvGroup:2136–2165 stores them, including empty and numeric-converted values.
 - classifyServiceEnv:2376–2430 records fromGroup only in groupLinks and continues before updating known. parseCompiledStack:1911 then assigns only se.known to idx.serviceKnownEnv. The already-parsed group literal maps never join this source index.
@@ -106,7 +106,7 @@ One sub-hour task: indexing correction 35m; meaningful precedence/presence regre
 
 Open/blocked/done searches for group-copy, linked literals, envVarKey/fromGroup and serviceKnownEnv found no matching item. w1/done/m35 introduced each form but tests a separate direct copy; w8/092 concerns empty sync:false seed presence, w8/095 concerns applying a newly empty key to an existing group, and w8/done/m53 concerns numeric decoding. This refusal also affects ordinary nonempty group strings, so none fixes the missing inherited-value index. History traces indexing to 8b4e4f18e and refactor 04380d92e; capability classification 2141bfd4e retains the parse-time-known contract. No later landed merge appears in the current source, independently reproduced by the diagnostic; exact deployed SHA remains unknown.
 
-Reviewed .pm/DO_NOT_DO.md and the supported CLI Blueprint ledger. [Metadata, redactions and cleanup](../../evidence/099/metadata-cleanup.json), [redaction policy](../../evidence/099/redactions.json): no hosted resource, group, generated runtime value or local container created. All proxy/config copies removed; final quota services used 6/terminating 0, PG/KV used 0/terminating 0. Baseline resources were not mutated.
+Reviewed .pm/DO_NOT_DO.md and the supported CLI Blueprint ledger. [Metadata, redactions and cleanup](../evidence/099/metadata-cleanup.json), [redaction policy](../evidence/099/redactions.json): no hosted resource, group, generated runtime value or local container created. All proxy/config copies removed; final quota services used 6/terminating 0, PG/KV used 0/terminating 0. Baseline resources were not mutated.
 
 Live Blueprint apply/reapply/runtime, current-state group collisions, generated/prompt/external-group values, GraphQL/MCP/dashboard live validation and Render-production behavior remain unverified. This finding schedules a fix; QA did not implement or ship it.
 
@@ -118,4 +118,22 @@ Live Blueprint apply/reapply/runtime, current-state group collisions, generated/
 
 ### Production native acceptance — sweep212, 2026-10-13 UTC
 
-All 16 original linked-group native cases now match intended decisions: root/nested/zero/empty linked literals are accepted, direct/local overrides pass, missing/unlinked values refuse. Remaining declared-group/current-state/reapply order, masking/external-group, caller and non-REST acceptance stays explicit. Validation alone does not prove runtime copy values. [Complete matrices, seven exact wire receipts and cleanup](../../evidence/blueprint-fixes-sweep212/README.md). Same published/pinned clients and isolated human grant; desired API pin c1dab29d39c9, actual deployed SHA unknown. No resource or paid feature applied, no duplicate finding or QA implementation/ship. The previous native deployment blocker is removed; existing source-fix and historical failure evidence is retained.
+All 16 original linked-group native cases now match intended decisions: root/nested/zero/empty linked literals are accepted, direct/local overrides pass, missing/unlinked values refuse. Remaining declared-group/current-state/reapply order, masking/external-group, caller and non-REST acceptance stays explicit. Validation alone does not prove runtime copy values. [Complete matrices, seven exact wire receipts and cleanup](../evidence/blueprint-fixes-sweep212/README.md). Same published/pinned clients and isolated human grant; desired API pin c1dab29d39c9, actual deployed SHA unknown. No resource or paid feature applied, no duplicate finding or QA implementation/ship. The previous native deployment blocker is removed; existing source-fix and historical failure evidence is retained.
+
+## Own mutable override follow-up — sweep219
+
+[Five current feature-method states](evidence/own-overrides-sweep219/README.md) confirm two remaining mismatches after d6bc82929: a normal own VALUE edit, including empty, still wins at the source but accepted validation/reapply bakes group A into the consumer. Target-name inventory returns VALUE; unrelated-key, manifest-literal and no-own-store controls agree. Actual fake-backed apps/envgroups/secrets calls are used, with persisted process precedence inferred rather than hosted execution. Eight fresh native declarations are admitted, which is not existing-state/apply proof.
+
+At lego/backend/internal/apps/deploy.go:1371–1425, currentStateCopyProblems checks seed and linked-group state, then derives knownServiceEnv without inspecting the same-key own mutable override. The existing names-only EnvNames seam is wired at lego/backend/internal/api/server.go:915 and implemented by secrets.ListEnvVarNames at service.go:1134. Operator envFromSources at app_controller.go:4777 places own after groups; literal env remains highest. Use names for target-key eligibility and a located consumer refusal for unknown current values; do not read arbitrary values or reject unrelated/manifest-literal controls.
+
+This is the same m64 effective-known-index contract, not a new milestone. Add t00725m and reopen t002–t005/t006 for expanded shared eligibility and regressions. The existing group-order/seed fixes and prior shipped scope remain recorded; complete original099, group, seed, prompt/mixed-source, caller, native/surface and cleanup obligations are retained. No live fixture, product fix or ship by QA.
+
+## Same-key immutable literal / seed priority — sweep222
+
+[Eight actual feature-method states and sixteen unchanged native validation captures](evidence/literal-seed-sweep222/README.md) identify a remaining m64 index gap. With VALUE declared as both an immutable literal and a sync:false seed, the persisted source uses the literal in either authored order (including empty). If the seed is last, accepted first apply copies the seed instead: two configured-value mismatches. Reapply refuses all four literal/seed shapes as unknowable, although the literal is fixed. Generated/literal pairs in both orders and literal-only controls remain correct; the seed-only existing-source refusal stays intentional.
+
+At deploy.go:2640–2662, classifyServiceEnv writes both ordinary literals and seeds into se.known by authored order. knownServiceEnv:2364–2376 sets knownValue.seed by membership in seedLiterals, even when the effective value is an immutable literal. classifyRefs:2223–2224 therefore adds an immutable copy to stateCopies, and currentStateCopyProblems:1389–1391 refuses it unconditionally when the source exists. Actual persisted explicit spec.Env has priority over own envFrom; ADR013's two-writers contract and the current operator projection preserve that rule.
+
+Separate effective immutable literals from seed hints when forming the known index; literals, including empty, take priority over mutable seed sources in either authored order. Set seed provenance only when a seed is actually the effective source. Keep later resolved spec.Env references masking same-key literals (w8/102), seed-once retention and unknown-only refusals, groups, generated controls, all parser callers and the names-only own-store guard. Add t00830m before the shared audit, then rerun expanded regressions and complete acceptance.
+
+The source evidence uses real feature methods with fake storage/Kubernetes; process precedence is inferred from persisted state, not observed in a hosted pod. Sixteen native fresh declarations are admitted with exact multipart captures, which proves admission only. No production existing-state/apply claim, source fix or QA ship. This extends the same known-index contract; no duplicate milestone or issue.
