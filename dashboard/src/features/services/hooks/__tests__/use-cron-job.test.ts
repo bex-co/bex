@@ -3,16 +3,29 @@ import { renderHook, act } from "@testing-library/react";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 
 const mockUseMutation = vi.fn();
+// The post-save publish settles in-flight Server reads, then re-reads by id;
+// with no watchers in these wire-level tests both steps resolve empty.
+const mockRefetchQueries = vi.fn(() => {
+  const settled = Promise.resolve([]);
+  return Object.assign(settled, { results: [] });
+});
+const mockClientQuery = vi.fn().mockResolvedValue({});
 vi.mock("@apollo/client/react", () => ({
   useMutation: (...args: unknown[]) => mockUseMutation(...args),
+  useApolloClient: () => ({
+    refetchQueries: mockRefetchQueries,
+    query: mockClientQuery,
+  }),
 }));
 
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
+const toastWarning = vi.fn();
 vi.mock("sonner", () => ({
   toast: {
     success: (...a: unknown[]) => toastSuccess(...a),
     error: (...a: unknown[]) => toastError(...a),
+    warning: (...a: unknown[]) => toastWarning(...a),
   },
 }));
 
@@ -26,8 +39,12 @@ import { codedGraphQLError } from "@/test/mocks/apollo";
 
 beforeEach(() => {
   mockUseMutation.mockReset();
+  mockRefetchQueries.mockClear();
+  mockClientQuery.mockClear();
+  mockClientQuery.mockResolvedValue({});
   toastSuccess.mockReset();
   toastError.mockReset();
+  toastWarning.mockReset();
   ask.mockReset();
 });
 

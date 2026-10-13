@@ -35,10 +35,17 @@ export function CronDeploySection({
   command,
 }: CronDeploySectionProps) {
   const { t } = useTranslations();
-  const { updateCronJob, busy } = useCronJob();
+  const { updateCronJob, busy, staleId } = useCronJob();
   const capabilities = useCapabilities();
   const { canCreate, canOperate } = capabilities;
   const loading = schedule === null;
+  // A committed save whose authoritative re-read failed: the shown values
+  // may be pre-save, so neither row is writable until the retry publishes
+  // (w4/276). Another service's stale save does not block this one.
+  const refreshStale = staleId === serviceId;
+  const refreshStaleReason = refreshStale
+    ? t("services.deployRefreshPending")
+    : undefined;
 
   // Setting the entrypoint command is can_create (it chooses code the job runs).
   // The dashboard re-sends the existing command when saving the schedule, so
@@ -74,8 +81,8 @@ export function CronDeploySection({
           editLabel={t("services.deployScheduleEdit")}
           mono
           busy={busy}
-          disabled={loading || scheduleBlocked}
-          disabledReason={scheduleReason}
+          disabled={loading || refreshStale || scheduleBlocked}
+          disabledReason={refreshStaleReason ?? scheduleReason}
           validate={(draft) => {
             const sched = draft.trim();
             if (!sched) return t("services.deployScheduleRequired");
@@ -109,8 +116,8 @@ export function CronDeploySection({
           optional
           mono
           busy={busy}
-          disabled={loading || !canCreate}
-          disabledReason={commandReason}
+          disabled={loading || refreshStale || !canCreate}
+          disabledReason={refreshStaleReason ?? commandReason}
           // The Command row forwards exactly what the user left behind,
           // including "" — the blank the field's hint invites.
           onSave={(value) =>
