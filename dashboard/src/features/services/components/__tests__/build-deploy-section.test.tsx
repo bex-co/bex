@@ -521,7 +521,7 @@ describe("BuildDeploySection", () => {
     expect(setAutoDeploy).toHaveBeenCalledWith("app", true);
   });
 
-  it("reverts the optimistic Auto-Deploy selection when setAutoDeploy fails", async () => {
+  it("keeps the saved Auto-Deploy value when setAutoDeploy fails", async () => {
     setAutoDeploy.mockResolvedValue(false);
     const user = userEvent.setup();
     render(
@@ -545,8 +545,8 @@ describe("BuildDeploySection", () => {
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
     expect(setAutoDeploy).toHaveBeenCalledWith("app", false);
-    // A failed save keeps the row in edit mode (like the other rows); the
-    // optimistic revert restores "On Commit" when the edit is cancelled.
+    // A failed save keeps the row in edit mode with the draft for a retry (like
+    // the other rows); Cancel shows the unchanged saved "On Commit".
     expect(
       screen.getByRole("button", { name: "Save changes" }),
     ).toBeInTheDocument();
@@ -1014,6 +1014,73 @@ describe("BuildDeploySection", () => {
     );
     expect(screen.getByText("Docker Command")).toBeInTheDocument();
     expect(screen.queryByText("backend/ $")).not.toBeInTheDocument();
+  });
+});
+
+// w4/281: the Auto-Deploy row kept its own useState copy of the saved value, so
+// a poll (or another tab's save) reaching this mounted section changed nothing
+// until a full reload — the untouched row, its Edit baseline and Cancel all
+// showed the stale value.
+describe("Auto-Deploy — saved value refresh (w4/281)", () => {
+  const section = (autoDeploy: boolean, rootDir: string | null = null) => (
+    <BuildDeploySection
+      serviceId="app"
+      repo="https://github.com/x/mono"
+      branch="main"
+      rootDir={rootDir}
+      autoDeploy={autoDeploy}
+      preDeployCommand={null}
+      showPreDeployCommand={false}
+    />
+  );
+  const select = () => screen.getByRole("combobox", { name: "Auto-Deploy" });
+  const save = () => screen.getByRole("button", { name: "Save changes" });
+
+  it("an untouched row follows newer saved values in both directions", async () => {
+    const user = userEvent.setup();
+    const view = render(section(false));
+    expect(select()).toHaveTextContent("Off");
+
+    view.rerender(section(true));
+    expect(select()).toHaveTextContent("On Commit");
+
+    // Edit starts from the newer value: re-choosing it is not a change.
+    await user.click(screen.getByRole("button", { name: "Edit Auto-Deploy" }));
+    expect(select()).toHaveTextContent("On Commit");
+    expect(save()).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(select()).toHaveTextContent("On Commit");
+
+    view.rerender(section(false));
+    expect(select()).toHaveTextContent("Off");
+    await user.click(screen.getByRole("button", { name: "Edit Auto-Deploy" }));
+    expect(save()).toBeDisabled();
+    await user.click(select());
+    await user.click(screen.getByRole("option", { name: "On Commit" }));
+    expect(save()).toBeEnabled();
+  });
+
+  it("keeps an open draft across a saved-value read, and Cancel returns to the latest value", async () => {
+    const user = userEvent.setup();
+    const view = render(section(false));
+
+    await user.click(screen.getByRole("button", { name: "Edit Auto-Deploy" }));
+    await user.click(select());
+    await user.click(screen.getByRole("option", { name: "On Commit" }));
+
+    // An unrelated read leaves the draft alone.
+    view.rerender(section(false, "apps/web"));
+    expect(select()).toHaveTextContent("On Commit");
+    expect(save()).toBeEnabled();
+
+    // Another tab saved On Commit: the draft now matches the stored value.
+    view.rerender(section(true, "apps/web"));
+    expect(select()).toHaveTextContent("On Commit");
+    expect(save()).toBeDisabled();
+
+    // Cancel shows the latest saved value, not the one the edit began from.
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(select()).toHaveTextContent("On Commit");
   });
 });
 
