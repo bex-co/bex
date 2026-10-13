@@ -1,0 +1,38 @@
+{
+  "services": [
+    {
+      "envVars": [
+        {
+          "fromService": {
+            "envVarKey": "VALUE",
+            "name": "qa214-a4eb18-source",
+            "type": "web"
+          },
+          "key": "COPY"
+        }
+      ],
+      "image": {
+        "url": "nginx:1"
+      },
+      "name": "qa214-a4eb18-consumer",
+      "runtime": "image",
+      "type": "web",
+      "plan": "free"
+    },
+    {
+      "envVars": [
+        {
+          "key": "VALUE",
+          "value": "literal A"
+        }
+      ],
+      "image": {
+        "url": "nginx:1"
+      },
+      "name": "qa214-a4eb18-source",
+      "runtime": "image",
+      "type": "web",
+      "plan": "free"
+    }
+  ]
+}

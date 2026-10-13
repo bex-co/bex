@@ -1,0 +1,234 @@
+Source HEAD cb16919ab75d1a72663109b06707fb3663fc33cb
+
+lego/backend/internal/apps/deploy.go
+1764: // envRefError names the referencing env entry in a parse-time reference
+1765: // refusal, so validation locates envVars["KEY"] instead of guessing a service
+1766: // field from words in the message (w8/100).
+1767: func envRefError(service, key string, err error) error {
+1768: 	return fmt.Errorf("%w: service %q: envVars[%q]: %v", core.ErrBadRequest, service, key, err)
+1769: }
+1770: 
+1771: // registerUniqueName checks for duplicate names across services and databases.
+1772: func registerUniqueName(name string, seen map[string]bool) error {
+
+lego/backend/internal/apps/deploy.go
+2181: // parseEnvGroup validates one envVarGroups[] entry and classifies its vars into
+2182: // literals + generateValue keys. Per Render, a group var may be only a literal or
+2183: // a generateValue — a group cannot reference services/groups (fromService/
+2184: // fromDatabase/fromGroup) and cannot carry sync:false; each is rejected with a
+2185: // clear per-entry error rather than silently dropped.
+2186: func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
+2187: 	name := strings.TrimSpace(g.Name)
+2188: 	if name == "" {
+2189: 		return parsedEnvGroup{}, fmt.Errorf("%w: an envVarGroups entry is missing its name", core.ErrBadRequest)
+2190: 	}
+2191: 	pg := parsedEnvGroup{name: name, literals: map[string]string{}}
+2192: 	for _, e := range g.EnvVars {
+2193: 		if e.Key == "" {
+2194: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q has an env var without a key", core.ErrBadRequest, name)
+2195: 		}
+2196: 		if !core.ValidEnvKey(e.Key) {
+2197: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: invalid environment variable name (%s)",
+2198: 				core.ErrBadRequest, name, e.Key, core.EnvKeyRule)
+2199: 		}
+2200: 		if core.IsReservedEnvKey(e.Key) {
+2201: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: %s",
+2202: 				core.ErrBadRequest, name, e.Key, core.ReservedEnvKeySentence(e.Key))
+2203: 		}
+2204: 		switch {
+2205: 		case e.FromGroup != "", e.FromDatabase != nil, e.FromService != nil:
+2206: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q var %q: a group cannot reference services or other groups", core.ErrBadRequest, name, e.Key)
+2207: 		case e.Sync != nil && !*e.Sync:
+2208: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q var %q: sync:false is not allowed inside an env group", core.ErrBadRequest, name, e.Key)
+2209: 		case e.GenerateValue:
+2210: 			if e.hasValue() {
+2211: 				return parsedEnvGroup{}, fmt.Errorf("%w: env group %q var %q sets both value and generateValue", core.ErrBadRequest, name, e.Key)
+2212: 			}
+2213: 			pg.generates = append(pg.generates, e.Key)
+2214: 		default:
+2215: 			if !core.ValidEnvValue(e.Value) {
+2216: 				return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: %s",
+2217: 					core.ErrBadRequest, name, e.Key, core.EnvValueSentence(e.Key))
+2218: 			}
+2219: 			pg.literals[e.Key] = e.Value
+2220: 		}
+2221: 	}
+2222: 	return pg, nil
+2223: }
+2224: 
+2225: // knownServiceEnv is a service's parse-time-known env as its process sees it,
+2226: // the set a sibling's fromService.envVarKey copy resolves against (w8/099,
+
+lego/backend/internal/apps/deploy.go
+2474: func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv1alpha1.EnvVar, serviceEnv, error) {
+2475: 	se := serviceEnv{seedLiterals: map[string]string{}, known: map[string]string{}}
+2476: 	literal := make([]appv1alpha1.EnvVar, 0, len(a.EnvVars))
+2477: 	for _, e := range a.EnvVars {
+2478: 		if e.FromGroup != "" {
+2479: 			if err := validateGroupLink(e); err != nil {
+2480: 				return nil, serviceEnv{}, fmt.Errorf("%w: %s: %v", core.ErrBadRequest, a.Name, err)
+2481: 			}
+2482: 			se.groupLinks = append(se.groupLinks, e.FromGroup)
+2483: 			continue
+2484: 		}
+2485: 		if err := validateKeyedEnv(e); err != nil {
+2486: 			return nil, serviceEnv{}, fmt.Errorf("%w: %s env %q: %v", core.ErrBadRequest, a.Name, e.Key, err)
+2487: 		}
+2488: 		// A reserved key is refused here, before any seed or CR write. The
+2489: 		// message carries the location the way every neighbouring Blueprint
+2490: 		// parse error does — the validation surface renders the error string,
+2491: 		// not a code (w2/m95 t003).
+2492: 		if !core.ValidEnvKey(e.Key) {
+2493: 			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: invalid environment variable name (%s)",
+2494: 				core.ErrBadRequest, a.Name, e.Key, core.EnvKeyRule)
+2495: 		}
+2496: 		if core.IsReservedEnvKey(e.Key) {
+2497: 			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: %s",
+2498: 				core.ErrBadRequest, a.Name, e.Key, core.ReservedEnvKeySentence(e.Key))
+2499: 		}
+2500: 		// The value this entry stores: its literal, or the prompt answer a
+2501: 		// sync:false key without one seeds.
+
+lego/backend/internal/apps/deploy.go
+2728: func validateKeyedEnv(e bexEnvVar) error {
+2729: 	if e.Key == "" {
+2730: 		return fmt.Errorf("an envVars entry is missing its key")
+2731: 	}
+2732: 	if e.GenerateValue {
+2733: 		if e.hasValue() {
+2734: 			return fmt.Errorf("sets both value and generateValue — pick one")
+2735: 		}
+2736: 		if e.FromDatabase != nil || e.FromService != nil {
+2737: 			return fmt.Errorf("generateValue cannot be combined with fromDatabase/fromService")
+2738: 		}
+2739: 	}
+2740: 	if e.FromService != nil {
+2741: 		ref := e.FromService
+2742: 		switch {
+2743: 		// Key Value first: it resolves a connection property, never a copied
+2744: 		// variable, so an envVarKey there became an empty Secret key (w8/098).
+2745: 		case isKeyValueType(ref.Type):
+2746: 			if ref.EnvVarKey != "" {
+2747: 				return fmt.Errorf("fromService keyvalue takes a property (%s), not envVarKey", kvManifestProperties)
+2748: 			}
+2749: 			if ref.Property == "" {
+2750: 				return fmt.Errorf("fromService keyvalue needs a property (%s)", kvManifestProperties)
+2751: 			}
+2752: 			if _, ok := kvPropertyKey[ref.Property]; !ok {
+2753: 				return fmt.Errorf("fromService keyvalue property %q is not supported (want %s)", ref.Property, kvManifestProperties)
+2754: 			}
+2755: 		case ref.EnvVarKey != "":
+2756: 			if ref.Property != "" {
+2757: 				return fmt.Errorf("fromService sets both envVarKey and property — pick one")
+2758: 			}
+2759: 		case ref.Property == "":
+2760: 			return fmt.Errorf("fromService needs a property (host, port, hostport) or an envVarKey")
+2761: 		case !serviceRefProperty[ref.Property]:
+2762: 			return fmt.Errorf("fromService property %q is not supported (want host, port, or hostport)", ref.Property)
+2763: 		}
+2764: 	}
+2765: 	if e.FromDatabase != nil {
+2766: 		if _, ok := dbPropertyKey[e.FromDatabase.Property]; !ok {
+2767: 			return fmt.Errorf("fromDatabase property %q is not supported (want connectionString, host, port, user, password, or database)", e.FromDatabase.Property)
+2768: 		}
+2769: 	}
+2770: 	return nil
+2771: }
+2772: 
+2773: // resolveDatabaseRef turns a validated fromDatabase entry into a Secret ref
+2774: // after applyDatabase has resolved the display name to an immutable resource id.
+
+lego/backend/internal/apps/blueprint.go
+745: 
+746: // blueprintValidationMessage drops the ErrBadRequest/ErrConflict sentinel text wherever a
+747: // wrap put it — "service \"x\": bad request: …" as well as a leading one. The
+748: // entry is already a validation error; the sentinel is transport detail.
+749: func blueprintValidationMessage(err error) string {
+750: 	msg := strings.ReplaceAll(err.Error(), core.ErrBadRequest.Error()+": ", "")
+751: 	return strings.ReplaceAll(msg, core.ErrConflict.Error()+": ", "")
+752: }
+753: 
+754: // blueprintResourceValidationErrors turns per-resource refusals into entries
+755: // located from the IR: the failing field's line/column when the message names
+756: // one, else the declaration's own.
+757: func blueprintResourceValidationErrors(source *BlueprintSource, ir BlueprintIR, refused blueprintResourceErrors) []BlueprintValidationError {
+758: 	out := make([]BlueprintValidationError, 0, len(refused))
+759: 	for _, problem := range refused {
+760: 		msg := blueprintManifestCreateMessage(blueprintValidationMessage(problem.err))
+761: 		var entry BlueprintValidationError
+762: 		if resource, ok := blueprintIRResource(ir, problem.kind, problem.name); ok {
+763: 			pointer := resource.SourcePath + strings.ReplaceAll(blueprintErrorField(msg), ".", "/")
+764: 			if i, ok := blueprintEnvVarIndex(resource, msg); ok {
+765: 				pointer = fmt.Sprintf("%s/envVars/%d", resource.SourcePath, i)
+766: 			} else if i, ok := blueprintDomainIndex(resource, msg); ok {
+767: 				pointer = fmt.Sprintf("%s/domains/%d", resource.SourcePath, i)
+768: 			} else if rule, ok := blueprintStaticRulePointer(resource, msg); ok {
+769: 				pointer = resource.SourcePath + rule
+770: 			} else if field, ok := blueprintCodedField(problem.err, resource); ok {
+771: 				pointer = resource.SourcePath + "/" + field
+772: 			}
+773: 			entry = blueprintLocatedError(source, msg, pointer)
+774: 		} else {
+775: 			entry = blueprintValidationError(ir, msg)
+776: 		}
+777: 		entry.Code = blueprintRefusalCode(problem.err)
+778: 		out = append(out, entry)
+779: 	}
+780: 	// Parsing visits resource kinds separately; present refusals in source order.
+781: 	sort.SliceStable(out, func(i, j int) bool {
+782: 		if out[i].Line == nil {
+783: 			return false
+784: 		}
+785: 		if out[j].Line == nil {
+786: 			return true
+
+lego/backend/internal/apps/blueprint.go
+819: var blueprintEnvKeyRE = regexp.MustCompile(`envVars\["([^"]+)"\]`)
+820: 
+821: // blueprintEnvVarIndex resolves a message naming envVars["KEY"] to that entry.
+822: func blueprintEnvVarIndex(resource BlueprintResourceIR, msg string) (int, bool) {
+823: 	match := blueprintEnvKeyRE.FindStringSubmatch(msg)
+824: 	if match == nil {
+825: 		return 0, false
+826: 	}
+827: 	envVars, _ := resource.Fields["envVars"].Value.([]any)
+828: 	for i, raw := range envVars {
+829: 		if env, _ := raw.(map[string]any); env["key"] == match[1] {
+830: 			return i, true
+831: 		}
+832: 	}
+833: 	return 0, false
+834: }
+835: 
+836: var blueprintStaticRuleRE = regexp.MustCompile(`\b(routes|headers)\[(\d+)\]\.(type|source|destination|path|name|value)\b`)
+837: 
+838: // blueprintStaticRulePointer resolves a static-site rule refusal naming
+
+lego/backend/internal/apps/blueprint.go
+1974: func blueprintErrorField(message string) string {
+1975: 	if strings.Contains(message, "health check path") {
+1976: 		return ".healthCheckPath"
+1977: 	}
+1978: 	// Hostname refusals contain "name"; they belong to domains (w8/055).
+1979: 	for _, marker := range []string{"hostname", "wildcard", "this domain", "custom domains"} {
+1980: 		if strings.Contains(strings.ToLower(message), marker) {
+1981: 			return ".domains"
+1982: 		}
+1983: 	}
+1984: 	for _, field := range []string{"maintenanceMode", "highAvailability", "readReplicas", "diskSizeGB", "storageAutoscalingEnabled", "connectionPool", "plan", "domains", "schedule", "runtime", "type", "image", "databaseName", "name", "ipAllowList", "renderSubdomainPolicy", "scaling", "staticPublishPath", "publishPath"} {
+1985: 		if strings.Contains(strings.ToLower(message), strings.ToLower(field)) {
+1986: 			return "." + field
+1987: 		}
+1988: 	}
+1989: 	if strings.Contains(message, " env ") || strings.Contains(message, "env var") || strings.Contains(message, "envVars[") {
+1990: 		return ".envVars"
+1991: 	}
+1992: 	return ""
+1993: }
+1994: 
+1995: // repoName extracts a human-friendly name from a repo URL.
+1996: func repoName(repo string) string {
+1997: 	base := path.Base(strings.TrimRight(repo, "/"))
+1998: 	return strings.TrimSuffix(base, ".git")
+1999: }
+2000: 

@@ -1,0 +1,2120 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-overlay=<QA_TMP>/sweep213-group-order-overlay.json",
+    "-run",
+    "^TestQAGroupCopyReapplyOrder213$",
+    "-count=1",
+    "-timeout=60s",
+    "-json",
+    "./internal/apps"
+  ],
+  "exit": 0,
+  "elapsed": 7.477,
+  "head_before": "d15c1e7fcfe0bc4806f398c9b94535560380e837",
+  "head_after": "d15c1e7fcfe0bc4806f398c9b94535560380e837",
+  "records": [
+    {
+      "case": "unchanged order control",
+      "consumer_COPY": "group B",
+      "initial_manifest": "{\"envVarGroups\":[{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group A\"}],\"name\":\"a\"},{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group B\"}],\"name\":\"b\"}],\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"fromGroup\":\"a\"},{\"fromGroup\":\"b\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "initial_persisted_apps": [
+        {
+          "metadata": {
+            "name": "consumer",
+            "namespace": "default",
+            "resourceVersion": "1",
+            "labels": {
+              "bex.co/app-id": "srv-db71m5hjg4r32f3fte20"
+            },
+            "annotations": {
+              "app.bex.co/release-generation": "1",
+              "app.bex.co/updated-at": "2026-10-13T11:50:46.106376Z"
+            }
+          },
+          "spec": {
+            "type": "web_service",
+            "image": "nginx:1",
+            "runtime": "image",
+            "builder": "auto",
+            "replicas": 1,
+            "port": 3000,
+            "env": [
+              {
+                "name": "COPY",
+                "value": "group B"
+              }
+            ],
+            "notifyOnFail": "default",
+            "tier": "free",
+            "expose": true,
+            "subdomainPolicy": "enabled"
+          }
+        },
+        {
+          "metadata": {
+            "name": "source",
+            "namespace": "default",
+            "resourceVersion": "1",
+            "labels": {
+              "bex.co/app-id": "srv-db71m5hjg4r32f3fte30"
+            },
+            "annotations": {
+              "app.bex.co/release-generation": "1",
+              "app.bex.co/updated-at": "2026-10-13T11:50:46.107421Z"
+            }
+          },
+          "spec": {
+            "type": "web_service",
+            "image": "nginx:1",
+            "runtime": "image",
+            "builder": "auto",
+            "replicas": 1,
+            "port": 3000,
+            "envFromSecrets": [
+              "evg-db71m5hjg4r32f3fte0g-env",
+              "evg-db71m5hjg4r32f3fte10-env"
+            ],
+            "filesFromSecrets": [
+              "evg-db71m5hjg4r32f3fte0g-files",
+              "evg-db71m5hjg4r32f3fte10-files"
+            ],
+            "notifyOnFail": "default",
+            "tier": "free",
+            "expose": true,
+            "subdomainPolicy": "enabled"
+          }
+        }
+      ],
+      "initial_service_ids": [
+        {
+          "id": "srv-db71m5hjg4r32f3fte20",
+          "name": "consumer",
+          "slug": "consumer",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "consumer:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.106376Z",
+          "idleTTLSeconds": 0,
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        },
+        {
+          "id": "srv-db71m5hjg4r32f3fte30",
+          "name": "source",
+          "slug": "source",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "source:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.107421Z",
+          "idleTTLSeconds": 0,
+          "linkedEnvGroupIds": [
+            "evg-db71m5hjg4r32f3fte0g",
+            "evg-db71m5hjg4r32f3fte10"
+          ],
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        }
+      ],
+      "mismatch": false,
+      "persisted_consumer": {
+        "metadata": {
+          "name": "consumer",
+          "namespace": "default",
+          "resourceVersion": "1",
+          "labels": {
+            "bex.co/app-id": "srv-db71m5hjg4r32f3fte20"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T11:50:46.106376Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "env": [
+            {
+              "name": "COPY",
+              "value": "group B"
+            }
+          ],
+          "notifyOnFail": "default",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "persisted_source": {
+        "metadata": {
+          "name": "source",
+          "namespace": "default",
+          "resourceVersion": "1",
+          "labels": {
+            "bex.co/app-id": "srv-db71m5hjg4r32f3fte30"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T11:50:46.107421Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "envFromSecrets": [
+            "evg-db71m5hjg4r32f3fte0g-env",
+            "evg-db71m5hjg4r32f3fte10-env"
+          ],
+          "filesFromSecrets": [
+            "evg-db71m5hjg4r32f3fte0g-files",
+            "evg-db71m5hjg4r32f3fte10-files"
+          ],
+          "notifyOnFail": "default",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "qualification": "actual backend services over fake storage/Kubernetes; process value inferred from persisted envFrom order, not a hosted pod; no auth or cluster execution claimed",
+      "reapplied_manifest": "{\"envVarGroups\":[{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group A\"}],\"name\":\"a\"},{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group B\"}],\"name\":\"b\"}],\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"fromGroup\":\"a\"},{\"fromGroup\":\"b\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "reapplied_service_ids": [
+        {
+          "id": "srv-db71m5hjg4r32f3fte20",
+          "name": "consumer",
+          "slug": "consumer",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "consumer:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.106376Z",
+          "idleTTLSeconds": 0,
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        },
+        {
+          "id": "srv-db71m5hjg4r32f3fte30",
+          "name": "source",
+          "slug": "source",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "source:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.107421Z",
+          "idleTTLSeconds": 0,
+          "linkedEnvGroupIds": [
+            "evg-db71m5hjg4r32f3fte0g",
+            "evg-db71m5hjg4r32f3fte10"
+          ],
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        }
+      ],
+      "shared_local_validation_valid": true,
+      "source_secret_order": [
+        "evg-db71m5hjg4r32f3fte0g-env",
+        "evg-db71m5hjg4r32f3fte10-env"
+      ],
+      "source_value_by_persisted_order": "group B"
+    },
+    {
+      "case": "fresh duplicate link",
+      "consumer_COPY": "group A",
+      "initial_manifest": "{\"envVarGroups\":[{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group A\"}],\"name\":\"a\"},{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group B\"}],\"name\":\"b\"}],\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"fromGroup\":\"a\"},{\"fromGroup\":\"b\"},{\"fromGroup\":\"a\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "initial_persisted_apps": [
+        {
+          "metadata": {
+            "name": "consumer",
+            "namespace": "default",
+            "resourceVersion": "1",
+            "labels": {
+              "bex.co/app-id": "srv-db71m5hjg4r32f3fte50"
+            },
+            "annotations": {
+              "app.bex.co/release-generation": "1",
+              "app.bex.co/updated-at": "2026-10-13T11:50:46.114404Z"
+            }
+          },
+          "spec": {
+            "type": "web_service",
+            "image": "nginx:1",
+            "runtime": "image",
+            "builder": "auto",
+            "replicas": 1,
+            "port": 3000,
+            "env": [
+              {
+                "name": "COPY",
+                "value": "group A"
+              }
+            ],
+            "notifyOnFail": "default",
+            "tier": "free",
+            "expose": true,
+            "subdomainPolicy": "enabled"
+          }
+        },
+        {
+          "metadata": {
+            "name": "source",
+            "namespace": "default",
+            "resourceVersion": "1",
+            "labels": {
+              "bex.co/app-id": "srv-db71m5hjg4r32f3fte60"
+            },
+            "annotations": {
+              "app.bex.co/release-generation": "1",
+              "app.bex.co/updated-at": "2026-10-13T11:50:46.116136Z"
+            }
+          },
+          "spec": {
+            "type": "web_service",
+            "image": "nginx:1",
+            "runtime": "image",
+            "builder": "auto",
+            "replicas": 1,
+            "port": 3000,
+            "envFromSecrets": [
+              "evg-db71m5hjg4r32f3fte3g-env",
+              "evg-db71m5hjg4r32f3fte40-env"
+            ],
+            "filesFromSecrets": [
+              "evg-db71m5hjg4r32f3fte3g-files",
+              "evg-db71m5hjg4r32f3fte40-files"
+            ],
+            "notifyOnFail": "default",
+            "tier": "free",
+            "expose": true,
+            "subdomainPolicy": "enabled"
+          }
+        }
+      ],
+      "initial_service_ids": [
+        {
+          "id": "srv-db71m5hjg4r32f3fte50",
+          "name": "consumer",
+          "slug": "consumer",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "consumer:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.114404Z",
+          "idleTTLSeconds": 0,
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        },
+        {
+          "id": "srv-db71m5hjg4r32f3fte60",
+          "name": "source",
+          "slug": "source",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "source:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.116136Z",
+          "idleTTLSeconds": 0,
+          "linkedEnvGroupIds": [
+            "evg-db71m5hjg4r32f3fte3g",
+            "evg-db71m5hjg4r32f3fte40"
+          ],
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        }
+      ],
+      "mismatch": true,
+      "persisted_consumer": {
+        "metadata": {
+          "name": "consumer",
+          "namespace": "default",
+          "resourceVersion": "1",
+          "labels": {
+            "bex.co/app-id": "srv-db71m5hjg4r32f3fte50"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T11:50:46.114404Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "env": [
+            {
+              "name": "COPY",
+              "value": "group A"
+            }
+          ],
+          "notifyOnFail": "default",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "persisted_source": {
+        "metadata": {
+          "name": "source",
+          "namespace": "default",
+          "resourceVersion": "1",
+          "labels": {
+            "bex.co/app-id": "srv-db71m5hjg4r32f3fte60"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T11:50:46.116136Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "envFromSecrets": [
+            "evg-db71m5hjg4r32f3fte3g-env",
+            "evg-db71m5hjg4r32f3fte40-env"
+          ],
+          "filesFromSecrets": [
+            "evg-db71m5hjg4r32f3fte3g-files",
+            "evg-db71m5hjg4r32f3fte40-files"
+          ],
+          "notifyOnFail": "default",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "qualification": "actual backend services over fake storage/Kubernetes; process value inferred from persisted envFrom order, not a hosted pod; no auth or cluster execution claimed",
+      "reapplied_manifest": "{\"envVarGroups\":[{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group A\"}],\"name\":\"a\"},{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group B\"}],\"name\":\"b\"}],\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"fromGroup\":\"a\"},{\"fromGroup\":\"b\"},{\"fromGroup\":\"a\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "reapplied_service_ids": [
+        {
+          "id": "srv-db71m5hjg4r32f3fte50",
+          "name": "consumer",
+          "slug": "consumer",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "consumer:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.114404Z",
+          "idleTTLSeconds": 0,
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        },
+        {
+          "id": "srv-db71m5hjg4r32f3fte60",
+          "name": "source",
+          "slug": "source",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "source:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.116136Z",
+          "idleTTLSeconds": 0,
+          "linkedEnvGroupIds": [
+            "evg-db71m5hjg4r32f3fte3g",
+            "evg-db71m5hjg4r32f3fte40"
+          ],
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        }
+      ],
+      "shared_local_validation_valid": true,
+      "source_secret_order": [
+        "evg-db71m5hjg4r32f3fte3g-env",
+        "evg-db71m5hjg4r32f3fte40-env"
+      ],
+      "source_value_by_persisted_order": "group B"
+    },
+    {
+      "case": "reversed declared links",
+      "consumer_COPY": "group A",
+      "initial_manifest": "{\"envVarGroups\":[{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group A\"}],\"name\":\"a\"},{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group B\"}],\"name\":\"b\"}],\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"fromGroup\":\"a\"},{\"fromGroup\":\"b\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "initial_persisted_apps": [
+        {
+          "metadata": {
+            "name": "consumer",
+            "namespace": "default",
+            "resourceVersion": "1",
+            "labels": {
+              "bex.co/app-id": "srv-db71m5hjg4r32f3fte80"
+            },
+            "annotations": {
+              "app.bex.co/release-generation": "1",
+              "app.bex.co/updated-at": "2026-10-13T11:50:46.123195Z"
+            }
+          },
+          "spec": {
+            "type": "web_service",
+            "image": "nginx:1",
+            "runtime": "image",
+            "builder": "auto",
+            "replicas": 1,
+            "port": 3000,
+            "env": [
+              {
+                "name": "COPY",
+                "value": "group B"
+              }
+            ],
+            "notifyOnFail": "default",
+            "tier": "free",
+            "expose": true,
+            "subdomainPolicy": "enabled"
+          }
+        },
+        {
+          "metadata": {
+            "name": "source",
+            "namespace": "default",
+            "resourceVersion": "1",
+            "labels": {
+              "bex.co/app-id": "srv-db71m5hjg4r32f3fte90"
+            },
+            "annotations": {
+              "app.bex.co/release-generation": "1",
+              "app.bex.co/updated-at": "2026-10-13T11:50:46.123923Z"
+            }
+          },
+          "spec": {
+            "type": "web_service",
+            "image": "nginx:1",
+            "runtime": "image",
+            "builder": "auto",
+            "replicas": 1,
+            "port": 3000,
+            "envFromSecrets": [
+              "evg-db71m5hjg4r32f3fte6g-env",
+              "evg-db71m5hjg4r32f3fte70-env"
+            ],
+            "filesFromSecrets": [
+              "evg-db71m5hjg4r32f3fte6g-files",
+              "evg-db71m5hjg4r32f3fte70-files"
+            ],
+            "notifyOnFail": "default",
+            "tier": "free",
+            "expose": true,
+            "subdomainPolicy": "enabled"
+          }
+        }
+      ],
+      "initial_service_ids": [
+        {
+          "id": "srv-db71m5hjg4r32f3fte80",
+          "name": "consumer",
+          "slug": "consumer",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "consumer:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.123195Z",
+          "idleTTLSeconds": 0,
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        },
+        {
+          "id": "srv-db71m5hjg4r32f3fte90",
+          "name": "source",
+          "slug": "source",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "source:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.123923Z",
+          "idleTTLSeconds": 0,
+          "linkedEnvGroupIds": [
+            "evg-db71m5hjg4r32f3fte6g",
+            "evg-db71m5hjg4r32f3fte70"
+          ],
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        }
+      ],
+      "mismatch": true,
+      "persisted_consumer": {
+        "metadata": {
+          "name": "consumer",
+          "namespace": "default",
+          "resourceVersion": "2",
+          "labels": {
+            "bex.co/app-id": "srv-db71m5hjg4r32f3fte80"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T11:50:46.125972Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "env": [
+            {
+              "name": "COPY",
+              "value": "group A"
+            }
+          ],
+          "notifyOnFail": "default",
+          "restartedAt": "2026-10-13T11:50:46Z",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "persisted_source": {
+        "metadata": {
+          "name": "source",
+          "namespace": "default",
+          "resourceVersion": "1",
+          "labels": {
+            "bex.co/app-id": "srv-db71m5hjg4r32f3fte90"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T11:50:46.123923Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "envFromSecrets": [
+            "evg-db71m5hjg4r32f3fte6g-env",
+            "evg-db71m5hjg4r32f3fte70-env"
+          ],
+          "filesFromSecrets": [
+            "evg-db71m5hjg4r32f3fte6g-files",
+            "evg-db71m5hjg4r32f3fte70-files"
+          ],
+          "notifyOnFail": "default",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "qualification": "actual backend services over fake storage/Kubernetes; process value inferred from persisted envFrom order, not a hosted pod; no auth or cluster execution claimed",
+      "reapplied_manifest": "{\"envVarGroups\":[{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group A\"}],\"name\":\"a\"},{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group B\"}],\"name\":\"b\"}],\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"fromGroup\":\"b\"},{\"fromGroup\":\"a\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "reapplied_service_ids": [
+        {
+          "id": "srv-db71m5hjg4r32f3fte80",
+          "name": "consumer",
+          "slug": "consumer",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "consumer:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.125972Z",
+          "idleTTLSeconds": 0,
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        },
+        {
+          "id": "srv-db71m5hjg4r32f3fte90",
+          "name": "source",
+          "slug": "source",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "source:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.123923Z",
+          "idleTTLSeconds": 0,
+          "linkedEnvGroupIds": [
+            "evg-db71m5hjg4r32f3fte6g",
+            "evg-db71m5hjg4r32f3fte70"
+          ],
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        }
+      ],
+      "shared_local_validation_valid": true,
+      "source_secret_order": [
+        "evg-db71m5hjg4r32f3fte6g-env",
+        "evg-db71m5hjg4r32f3fte70-env"
+      ],
+      "source_value_by_persisted_order": "group B"
+    },
+    {
+      "case": "new earlier declaration appends last",
+      "consumer_COPY": "group B",
+      "initial_manifest": "{\"envVarGroups\":[{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group A\"}],\"name\":\"a\"},{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group B\"}],\"name\":\"b\"}],\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"fromGroup\":\"b\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "initial_persisted_apps": [
+        {
+          "metadata": {
+            "name": "consumer",
+            "namespace": "default",
+            "resourceVersion": "1",
+            "labels": {
+              "bex.co/app-id": "srv-db71m5hjg4r32f3fteb0"
+            },
+            "annotations": {
+              "app.bex.co/release-generation": "1",
+              "app.bex.co/updated-at": "2026-10-13T11:50:46.133324Z"
+            }
+          },
+          "spec": {
+            "type": "web_service",
+            "image": "nginx:1",
+            "runtime": "image",
+            "builder": "auto",
+            "replicas": 1,
+            "port": 3000,
+            "env": [
+              {
+                "name": "COPY",
+                "value": "group B"
+              }
+            ],
+            "notifyOnFail": "default",
+            "tier": "free",
+            "expose": true,
+            "subdomainPolicy": "enabled"
+          }
+        },
+        {
+          "metadata": {
+            "name": "source",
+            "namespace": "default",
+            "resourceVersion": "1",
+            "labels": {
+              "bex.co/app-id": "srv-db71m5hjg4r32f3ftec0"
+            },
+            "annotations": {
+              "app.bex.co/release-generation": "1",
+              "app.bex.co/updated-at": "2026-10-13T11:50:46.134137Z"
+            }
+          },
+          "spec": {
+            "type": "web_service",
+            "image": "nginx:1",
+            "runtime": "image",
+            "builder": "auto",
+            "replicas": 1,
+            "port": 3000,
+            "envFromSecrets": [
+              "evg-db71m5hjg4r32f3ftea0-env"
+            ],
+            "filesFromSecrets": [
+              "evg-db71m5hjg4r32f3ftea0-files"
+            ],
+            "notifyOnFail": "default",
+            "tier": "free",
+            "expose": true,
+            "subdomainPolicy": "enabled"
+          }
+        }
+      ],
+      "initial_service_ids": [
+        {
+          "id": "srv-db71m5hjg4r32f3fteb0",
+          "name": "consumer",
+          "slug": "consumer",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "consumer:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.133324Z",
+          "idleTTLSeconds": 0,
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        },
+        {
+          "id": "srv-db71m5hjg4r32f3ftec0",
+          "name": "source",
+          "slug": "source",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "source:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.134137Z",
+          "idleTTLSeconds": 0,
+          "linkedEnvGroupIds": [
+            "evg-db71m5hjg4r32f3ftea0"
+          ],
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        }
+      ],
+      "mismatch": true,
+      "persisted_consumer": {
+        "metadata": {
+          "name": "consumer",
+          "namespace": "default",
+          "resourceVersion": "1",
+          "labels": {
+            "bex.co/app-id": "srv-db71m5hjg4r32f3fteb0"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T11:50:46.133324Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "env": [
+            {
+              "name": "COPY",
+              "value": "group B"
+            }
+          ],
+          "notifyOnFail": "default",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "persisted_source": {
+        "metadata": {
+          "name": "source",
+          "namespace": "default",
+          "resourceVersion": "2",
+          "labels": {
+            "bex.co/app-id": "srv-db71m5hjg4r32f3ftec0"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T11:50:46.134137Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "envFromSecrets": [
+            "evg-db71m5hjg4r32f3ftea0-env",
+            "evg-db71m5hjg4r32f3fte9g-env"
+          ],
+          "filesFromSecrets": [
+            "evg-db71m5hjg4r32f3ftea0-files",
+            "evg-db71m5hjg4r32f3fte9g-files"
+          ],
+          "notifyOnFail": "default",
+          "restartedAt": "2026-10-13T11:50:46.135366Z",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "qualification": "actual backend services over fake storage/Kubernetes; process value inferred from persisted envFrom order, not a hosted pod; no auth or cluster execution claimed",
+      "reapplied_manifest": "{\"envVarGroups\":[{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group A\"}],\"name\":\"a\"},{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group B\"}],\"name\":\"b\"}],\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"fromGroup\":\"a\"},{\"fromGroup\":\"b\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "reapplied_service_ids": [
+        {
+          "id": "srv-db71m5hjg4r32f3fteb0",
+          "name": "consumer",
+          "slug": "consumer",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "consumer:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.133324Z",
+          "idleTTLSeconds": 0,
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        },
+        {
+          "id": "srv-db71m5hjg4r32f3ftec0",
+          "name": "source",
+          "slug": "source",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "source:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.134137Z",
+          "idleTTLSeconds": 0,
+          "linkedEnvGroupIds": [
+            "evg-db71m5hjg4r32f3ftea0"
+          ],
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        }
+      ],
+      "shared_local_validation_valid": true,
+      "source_secret_order": [
+        "evg-db71m5hjg4r32f3ftea0-env",
+        "evg-db71m5hjg4r32f3fte9g-env"
+      ],
+      "source_value_by_persisted_order": "group A"
+    },
+    {
+      "case": "omitted previous link persists",
+      "consumer_COPY": "group A",
+      "initial_manifest": "{\"envVarGroups\":[{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group A\"}],\"name\":\"a\"},{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group B\"}],\"name\":\"b\"}],\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"fromGroup\":\"a\"},{\"fromGroup\":\"b\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "initial_persisted_apps": [
+        {
+          "metadata": {
+            "name": "consumer",
+            "namespace": "default",
+            "resourceVersion": "1",
+            "labels": {
+              "bex.co/app-id": "srv-db71m5hjg4r32f3ftee0"
+            },
+            "annotations": {
+              "app.bex.co/release-generation": "1",
+              "app.bex.co/updated-at": "2026-10-13T11:50:46.142837Z"
+            }
+          },
+          "spec": {
+            "type": "web_service",
+            "image": "nginx:1",
+            "runtime": "image",
+            "builder": "auto",
+            "replicas": 1,
+            "port": 3000,
+            "env": [
+              {
+                "name": "COPY",
+                "value": "group B"
+              }
+            ],
+            "notifyOnFail": "default",
+            "tier": "free",
+            "expose": true,
+            "subdomainPolicy": "enabled"
+          }
+        },
+        {
+          "metadata": {
+            "name": "source",
+            "namespace": "default",
+            "resourceVersion": "1",
+            "labels": {
+              "bex.co/app-id": "srv-db71m5hjg4r32f3ftef0"
+            },
+            "annotations": {
+              "app.bex.co/release-generation": "1",
+              "app.bex.co/updated-at": "2026-10-13T11:50:46.143665Z"
+            }
+          },
+          "spec": {
+            "type": "web_service",
+            "image": "nginx:1",
+            "runtime": "image",
+            "builder": "auto",
+            "replicas": 1,
+            "port": 3000,
+            "envFromSecrets": [
+              "evg-db71m5hjg4r32f3ftecg-env",
+              "evg-db71m5hjg4r32f3fted0-env"
+            ],
+            "filesFromSecrets": [
+              "evg-db71m5hjg4r32f3ftecg-files",
+              "evg-db71m5hjg4r32f3fted0-files"
+            ],
+            "notifyOnFail": "default",
+            "tier": "free",
+            "expose": true,
+            "subdomainPolicy": "enabled"
+          }
+        }
+      ],
+      "initial_service_ids": [
+        {
+          "id": "srv-db71m5hjg4r32f3ftee0",
+          "name": "consumer",
+          "slug": "consumer",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "consumer:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.142837Z",
+          "idleTTLSeconds": 0,
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        },
+        {
+          "id": "srv-db71m5hjg4r32f3ftef0",
+          "name": "source",
+          "slug": "source",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "source:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.143665Z",
+          "idleTTLSeconds": 0,
+          "linkedEnvGroupIds": [
+            "evg-db71m5hjg4r32f3ftecg",
+            "evg-db71m5hjg4r32f3fted0"
+          ],
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        }
+      ],
+      "mismatch": true,
+      "persisted_consumer": {
+        "metadata": {
+          "name": "consumer",
+          "namespace": "default",
+          "resourceVersion": "2",
+          "labels": {
+            "bex.co/app-id": "srv-db71m5hjg4r32f3ftee0"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T11:50:46.144839Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "env": [
+            {
+              "name": "COPY",
+              "value": "group A"
+            }
+          ],
+          "notifyOnFail": "default",
+          "restartedAt": "2026-10-13T11:50:46Z",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "persisted_source": {
+        "metadata": {
+          "name": "source",
+          "namespace": "default",
+          "resourceVersion": "1",
+          "labels": {
+            "bex.co/app-id": "srv-db71m5hjg4r32f3ftef0"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T11:50:46.143665Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "envFromSecrets": [
+            "evg-db71m5hjg4r32f3ftecg-env",
+            "evg-db71m5hjg4r32f3fted0-env"
+          ],
+          "filesFromSecrets": [
+            "evg-db71m5hjg4r32f3ftecg-files",
+            "evg-db71m5hjg4r32f3fted0-files"
+          ],
+          "notifyOnFail": "default",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "qualification": "actual backend services over fake storage/Kubernetes; process value inferred from persisted envFrom order, not a hosted pod; no auth or cluster execution claimed",
+      "reapplied_manifest": "{\"envVarGroups\":[{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group A\"}],\"name\":\"a\"},{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group B\"}],\"name\":\"b\"}],\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"fromGroup\":\"a\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "reapplied_service_ids": [
+        {
+          "id": "srv-db71m5hjg4r32f3ftee0",
+          "name": "consumer",
+          "slug": "consumer",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "consumer:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.144839Z",
+          "idleTTLSeconds": 0,
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        },
+        {
+          "id": "srv-db71m5hjg4r32f3ftef0",
+          "name": "source",
+          "slug": "source",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "source:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.143665Z",
+          "idleTTLSeconds": 0,
+          "linkedEnvGroupIds": [
+            "evg-db71m5hjg4r32f3ftecg",
+            "evg-db71m5hjg4r32f3fted0"
+          ],
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        }
+      ],
+      "shared_local_validation_valid": true,
+      "source_secret_order": [
+        "evg-db71m5hjg4r32f3ftecg-env",
+        "evg-db71m5hjg4r32f3fted0-env"
+      ],
+      "source_value_by_persisted_order": "group B"
+    },
+    {
+      "case": "own literal overrides both orders",
+      "consumer_COPY": "own",
+      "initial_manifest": "{\"envVarGroups\":[{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group A\"}],\"name\":\"a\"},{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group B\"}],\"name\":\"b\"}],\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"fromGroup\":\"a\"},{\"fromGroup\":\"b\"},{\"key\":\"VALUE\",\"value\":\"own\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "initial_persisted_apps": [
+        {
+          "metadata": {
+            "name": "consumer",
+            "namespace": "default",
+            "resourceVersion": "1",
+            "labels": {
+              "bex.co/app-id": "srv-db71m5hjg4r32f3fteh0"
+            },
+            "annotations": {
+              "app.bex.co/release-generation": "1",
+              "app.bex.co/updated-at": "2026-10-13T11:50:46.152644Z"
+            }
+          },
+          "spec": {
+            "type": "web_service",
+            "image": "nginx:1",
+            "runtime": "image",
+            "builder": "auto",
+            "replicas": 1,
+            "port": 3000,
+            "env": [
+              {
+                "name": "COPY",
+                "value": "own"
+              }
+            ],
+            "notifyOnFail": "default",
+            "tier": "free",
+            "expose": true,
+            "subdomainPolicy": "enabled"
+          }
+        },
+        {
+          "metadata": {
+            "name": "source",
+            "namespace": "default",
+            "resourceVersion": "1",
+            "labels": {
+              "bex.co/app-id": "srv-db71m5hjg4r32f3ftei0"
+            },
+            "annotations": {
+              "app.bex.co/release-generation": "1",
+              "app.bex.co/updated-at": "2026-10-13T11:50:46.153467Z"
+            }
+          },
+          "spec": {
+            "type": "web_service",
+            "image": "nginx:1",
+            "runtime": "image",
+            "builder": "auto",
+            "replicas": 1,
+            "port": 3000,
+            "env": [
+              {
+                "name": "VALUE",
+                "value": "own"
+              }
+            ],
+            "envFromSecrets": [
+              "evg-db71m5hjg4r32f3ftefg-env",
+              "evg-db71m5hjg4r32f3fteg0-env"
+            ],
+            "filesFromSecrets": [
+              "evg-db71m5hjg4r32f3ftefg-files",
+              "evg-db71m5hjg4r32f3fteg0-files"
+            ],
+            "notifyOnFail": "default",
+            "tier": "free",
+            "expose": true,
+            "subdomainPolicy": "enabled"
+          }
+        }
+      ],
+      "initial_service_ids": [
+        {
+          "id": "srv-db71m5hjg4r32f3fteh0",
+          "name": "consumer",
+          "slug": "consumer",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "consumer:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.152644Z",
+          "idleTTLSeconds": 0,
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        },
+        {
+          "id": "srv-db71m5hjg4r32f3ftei0",
+          "name": "source",
+          "slug": "source",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "source:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.153467Z",
+          "idleTTLSeconds": 0,
+          "linkedEnvGroupIds": [
+            "evg-db71m5hjg4r32f3ftefg",
+            "evg-db71m5hjg4r32f3fteg0"
+          ],
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        }
+      ],
+      "mismatch": false,
+      "persisted_consumer": {
+        "metadata": {
+          "name": "consumer",
+          "namespace": "default",
+          "resourceVersion": "1",
+          "labels": {
+            "bex.co/app-id": "srv-db71m5hjg4r32f3fteh0"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T11:50:46.152644Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "env": [
+            {
+              "name": "COPY",
+              "value": "own"
+            }
+          ],
+          "notifyOnFail": "default",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "persisted_source": {
+        "metadata": {
+          "name": "source",
+          "namespace": "default",
+          "resourceVersion": "1",
+          "labels": {
+            "bex.co/app-id": "srv-db71m5hjg4r32f3ftei0"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T11:50:46.153467Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "env": [
+            {
+              "name": "VALUE",
+              "value": "own"
+            }
+          ],
+          "envFromSecrets": [
+            "evg-db71m5hjg4r32f3ftefg-env",
+            "evg-db71m5hjg4r32f3fteg0-env"
+          ],
+          "filesFromSecrets": [
+            "evg-db71m5hjg4r32f3ftefg-files",
+            "evg-db71m5hjg4r32f3fteg0-files"
+          ],
+          "notifyOnFail": "default",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "qualification": "actual backend services over fake storage/Kubernetes; process value inferred from persisted envFrom order, not a hosted pod; no auth or cluster execution claimed",
+      "reapplied_manifest": "{\"envVarGroups\":[{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group A\"}],\"name\":\"a\"},{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group B\"}],\"name\":\"b\"}],\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"fromGroup\":\"b\"},{\"fromGroup\":\"a\"},{\"key\":\"VALUE\",\"value\":\"own\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "reapplied_service_ids": [
+        {
+          "id": "srv-db71m5hjg4r32f3fteh0",
+          "name": "consumer",
+          "slug": "consumer",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "consumer:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.152644Z",
+          "idleTTLSeconds": 0,
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        },
+        {
+          "id": "srv-db71m5hjg4r32f3ftei0",
+          "name": "source",
+          "slug": "source",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "source:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.153467Z",
+          "idleTTLSeconds": 0,
+          "linkedEnvGroupIds": [
+            "evg-db71m5hjg4r32f3ftefg",
+            "evg-db71m5hjg4r32f3fteg0"
+          ],
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        }
+      ],
+      "shared_local_validation_valid": true,
+      "source_secret_order": [
+        "evg-db71m5hjg4r32f3ftefg-env",
+        "evg-db71m5hjg4r32f3fteg0-env"
+      ],
+      "source_value_by_persisted_order": "own"
+    },
+    {
+      "case": "own empty overrides both orders",
+      "consumer_COPY": "",
+      "initial_manifest": "{\"envVarGroups\":[{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group A\"}],\"name\":\"a\"},{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group B\"}],\"name\":\"b\"}],\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"fromGroup\":\"a\"},{\"fromGroup\":\"b\"},{\"key\":\"VALUE\",\"value\":\"\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "initial_persisted_apps": [
+        {
+          "metadata": {
+            "name": "consumer",
+            "namespace": "default",
+            "resourceVersion": "1",
+            "labels": {
+              "bex.co/app-id": "srv-db71m5hjg4r32f3ftek0"
+            },
+            "annotations": {
+              "app.bex.co/release-generation": "1",
+              "app.bex.co/updated-at": "2026-10-13T11:50:46.160243Z"
+            }
+          },
+          "spec": {
+            "type": "web_service",
+            "image": "nginx:1",
+            "runtime": "image",
+            "builder": "auto",
+            "replicas": 1,
+            "port": 3000,
+            "env": [
+              {
+                "name": "COPY"
+              }
+            ],
+            "notifyOnFail": "default",
+            "tier": "free",
+            "expose": true,
+            "subdomainPolicy": "enabled"
+          }
+        },
+        {
+          "metadata": {
+            "name": "source",
+            "namespace": "default",
+            "resourceVersion": "1",
+            "labels": {
+              "bex.co/app-id": "srv-db71m5hjg4r32f3ftel0"
+            },
+            "annotations": {
+              "app.bex.co/release-generation": "1",
+              "app.bex.co/updated-at": "2026-10-13T11:50:46.162047Z"
+            }
+          },
+          "spec": {
+            "type": "web_service",
+            "image": "nginx:1",
+            "runtime": "image",
+            "builder": "auto",
+            "replicas": 1,
+            "port": 3000,
+            "env": [
+              {
+                "name": "VALUE"
+              }
+            ],
+            "envFromSecrets": [
+              "evg-db71m5hjg4r32f3fteig-env",
+              "evg-db71m5hjg4r32f3ftej0-env"
+            ],
+            "filesFromSecrets": [
+              "evg-db71m5hjg4r32f3fteig-files",
+              "evg-db71m5hjg4r32f3ftej0-files"
+            ],
+            "notifyOnFail": "default",
+            "tier": "free",
+            "expose": true,
+            "subdomainPolicy": "enabled"
+          }
+        }
+      ],
+      "initial_service_ids": [
+        {
+          "id": "srv-db71m5hjg4r32f3ftek0",
+          "name": "consumer",
+          "slug": "consumer",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "consumer:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.160243Z",
+          "idleTTLSeconds": 0,
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        },
+        {
+          "id": "srv-db71m5hjg4r32f3ftel0",
+          "name": "source",
+          "slug": "source",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "source:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.162047Z",
+          "idleTTLSeconds": 0,
+          "linkedEnvGroupIds": [
+            "evg-db71m5hjg4r32f3fteig",
+            "evg-db71m5hjg4r32f3ftej0"
+          ],
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        }
+      ],
+      "mismatch": false,
+      "persisted_consumer": {
+        "metadata": {
+          "name": "consumer",
+          "namespace": "default",
+          "resourceVersion": "1",
+          "labels": {
+            "bex.co/app-id": "srv-db71m5hjg4r32f3ftek0"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T11:50:46.160243Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "env": [
+            {
+              "name": "COPY"
+            }
+          ],
+          "notifyOnFail": "default",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "persisted_source": {
+        "metadata": {
+          "name": "source",
+          "namespace": "default",
+          "resourceVersion": "1",
+          "labels": {
+            "bex.co/app-id": "srv-db71m5hjg4r32f3ftel0"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T11:50:46.162047Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "env": [
+            {
+              "name": "VALUE"
+            }
+          ],
+          "envFromSecrets": [
+            "evg-db71m5hjg4r32f3fteig-env",
+            "evg-db71m5hjg4r32f3ftej0-env"
+          ],
+          "filesFromSecrets": [
+            "evg-db71m5hjg4r32f3fteig-files",
+            "evg-db71m5hjg4r32f3ftej0-files"
+          ],
+          "notifyOnFail": "default",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "qualification": "actual backend services over fake storage/Kubernetes; process value inferred from persisted envFrom order, not a hosted pod; no auth or cluster execution claimed",
+      "reapplied_manifest": "{\"envVarGroups\":[{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group A\"}],\"name\":\"a\"},{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"group B\"}],\"name\":\"b\"}],\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"fromGroup\":\"b\"},{\"fromGroup\":\"a\"},{\"key\":\"VALUE\",\"value\":\"\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "reapplied_service_ids": [
+        {
+          "id": "srv-db71m5hjg4r32f3ftek0",
+          "name": "consumer",
+          "slug": "consumer",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "consumer:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.160243Z",
+          "idleTTLSeconds": 0,
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        },
+        {
+          "id": "srv-db71m5hjg4r32f3ftel0",
+          "name": "source",
+          "slug": "source",
+          "displayName": "",
+          "type": "web_service",
+          "phase": "",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false,
+          "url": "",
+          "urls": null,
+          "image": "",
+          "sourceImage": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "suspended": false,
+          "plan": "free",
+          "revision": "",
+          "internalAddress": "source:3000",
+          "port": 3000,
+          "createdAt": "",
+          "updatedAt": "2026-10-13T11:50:46.162047Z",
+          "idleTTLSeconds": 0,
+          "linkedEnvGroupIds": [
+            "evg-db71m5hjg4r32f3fteig",
+            "evg-db71m5hjg4r32f3ftej0"
+          ],
+          "autoDeploy": false,
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "renderSubdomainPolicy": "enabled",
+          "maxShutdownDelaySeconds": 30,
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          }
+        }
+      ],
+      "shared_local_validation_valid": true,
+      "source_secret_order": [
+        "evg-db71m5hjg4r32f3fteig-env",
+        "evg-db71m5hjg4r32f3ftej0-env"
+      ],
+      "source_value_by_persisted_order": ""
+    }
+  ],
+  "passes": [
+    "TestQAGroupCopyReapplyOrder213/unchanged_order_control",
+    "TestQAGroupCopyReapplyOrder213/fresh_duplicate_link",
+    "TestQAGroupCopyReapplyOrder213/reversed_declared_links",
+    "TestQAGroupCopyReapplyOrder213/new_earlier_declaration_appends_last",
+    "TestQAGroupCopyReapplyOrder213/omitted_previous_link_persists",
+    "TestQAGroupCopyReapplyOrder213/own_literal_overrides_both_orders",
+    "TestQAGroupCopyReapplyOrder213/own_empty_overrides_both_orders",
+    "TestQAGroupCopyReapplyOrder213"
+  ]
+}

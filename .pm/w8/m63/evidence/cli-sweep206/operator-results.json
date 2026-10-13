@@ -1,0 +1,126 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-overlay=<QA_TMP>/sweep206-operator-overlay.json",
+    "-run",
+    "^TestQAInitialHookJob206$",
+    "-count=1",
+    "-timeout=90s",
+    "-json",
+    "./internal/controller"
+  ],
+  "exit": 0,
+  "elapsed": 9.525,
+  "records": [
+    {
+      "expected_current_command": "echo qa206-initial-once",
+      "fake_client_metadata_generation": 1,
+      "halt": true,
+      "job_generation": {
+        "app.bex.co/app": "qa206-hook",
+        "app.bex.co/app-uid": "qa206-simulated-api-uid",
+        "app.bex.co/component": "predeploy",
+        "app.bex.co/predeploy": "qa206-hook"
+      },
+      "label": "bex-without-resync",
+      "modeled_real_API_metadata_generation": 2,
+      "new_job_name": "predeploy-qa206-hook-gen-2",
+      "predeploy_status": {
+        "job": "predeploy-qa206-hook-gen-2",
+        "generation": 2,
+        "startedAt": "2026-10-13T09:19:05Z",
+        "status": "Running"
+      },
+      "qualification": "Actual current operator predeploy reconciliation creates a Job in fake client using actual post-native-trigger App; actual prepareAppReleaseDecision called before predeploy; server-assigned UID modeled because fake API leaves it empty; fake client metadata generation modeled to match standard API spec-patch increment; no job/container executed and no hosted resource",
+      "release_selection": {},
+      "requeue": "5s",
+      "selected_command": "sh -c echo qa206-initial-once",
+      "selected_status_release_generation": 2
+    },
+    {
+      "expected_current_command": "echo qa206-regular",
+      "fake_client_metadata_generation": 1,
+      "halt": true,
+      "job_generation": {
+        "app.bex.co/app": "qa206-hook",
+        "app.bex.co/app-uid": "qa206-simulated-api-uid",
+        "app.bex.co/component": "predeploy",
+        "app.bex.co/predeploy": "qa206-hook"
+      },
+      "label": "bex-resync-control",
+      "modeled_real_API_metadata_generation": 2,
+      "new_job_name": "predeploy-qa206-hook-gen-2",
+      "predeploy_status": {
+        "job": "predeploy-qa206-hook-gen-2",
+        "generation": 2,
+        "startedAt": "2026-10-13T09:19:05Z",
+        "status": "Running"
+      },
+      "qualification": "Actual current operator predeploy reconciliation creates a Job in fake client using actual post-native-trigger App; actual prepareAppReleaseDecision called before predeploy; server-assigned UID modeled because fake API leaves it empty; fake client metadata generation modeled to match standard API spec-patch increment; no job/container executed and no hosted resource",
+      "release_selection": {},
+      "requeue": "5s",
+      "selected_command": "sh -c echo qa206-regular",
+      "selected_status_release_generation": 2
+    },
+    {
+      "expected_current_command": "echo qa206-initial-once",
+      "fake_client_metadata_generation": 1,
+      "halt": true,
+      "job_generation": {
+        "app.bex.co/app": "qa206-hook",
+        "app.bex.co/app-uid": "qa206-simulated-api-uid",
+        "app.bex.co/component": "predeploy",
+        "app.bex.co/predeploy": "qa206-hook"
+      },
+      "label": "render-without-resync",
+      "modeled_real_API_metadata_generation": 2,
+      "new_job_name": "predeploy-qa206-hook-gen-2",
+      "predeploy_status": {
+        "job": "predeploy-qa206-hook-gen-2",
+        "generation": 2,
+        "startedAt": "2026-10-13T09:19:05Z",
+        "status": "Running"
+      },
+      "qualification": "Actual current operator predeploy reconciliation creates a Job in fake client using actual post-native-trigger App; actual prepareAppReleaseDecision called before predeploy; server-assigned UID modeled because fake API leaves it empty; fake client metadata generation modeled to match standard API spec-patch increment; no job/container executed and no hosted resource",
+      "release_selection": {},
+      "requeue": "5s",
+      "selected_command": "sh -c echo qa206-initial-once",
+      "selected_status_release_generation": 2
+    },
+    {
+      "expected_current_command": "echo qa206-regular",
+      "fake_client_metadata_generation": 1,
+      "halt": true,
+      "job_generation": {
+        "app.bex.co/app": "qa206-hook",
+        "app.bex.co/app-uid": "qa206-simulated-api-uid",
+        "app.bex.co/component": "predeploy",
+        "app.bex.co/predeploy": "qa206-hook"
+      },
+      "label": "render-resync-control",
+      "modeled_real_API_metadata_generation": 2,
+      "new_job_name": "predeploy-qa206-hook-gen-2",
+      "predeploy_status": {
+        "job": "predeploy-qa206-hook-gen-2",
+        "generation": 2,
+        "startedAt": "2026-10-13T09:19:05Z",
+        "status": "Running"
+      },
+      "qualification": "Actual current operator predeploy reconciliation creates a Job in fake client using actual post-native-trigger App; actual prepareAppReleaseDecision called before predeploy; server-assigned UID modeled because fake API leaves it empty; fake client metadata generation modeled to match standard API spec-patch increment; no job/container executed and no hosted resource",
+      "release_selection": {},
+      "requeue": "5s",
+      "selected_command": "sh -c echo qa206-regular",
+      "selected_status_release_generation": 2
+    }
+  ],
+  "passes": [
+    "TestQAInitialHookJob206/bex-without-resync",
+    "TestQAInitialHookJob206/bex-resync-control",
+    "TestQAInitialHookJob206/render-without-resync",
+    "TestQAInitialHookJob206/render-resync-control",
+    "TestQAInitialHookJob206"
+  ],
+  "stderr": "",
+  "qualification": "Actual prepareAppReleaseDecision/reconcilePreDeploy; API generation and server UID modeled for fake client; Jobs created in fake client only; no execution"
+}

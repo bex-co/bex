@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-13T10:08:11.744310+00:00",
+  "source_head": "3c6809182c0886e6bb537dfbba156df2baff7983",
+  "desired_API_image": "6ead1ae86285",
+  "deployed_API_revision": "unknown",
+  "native_matrix_checks": 104,
+  "all_valid_matrix_decisions_pass": true,
+  "excluded_initial_KV_fixture_schema_refusals": 8,
+  "seed_presence_full_previous_matrix": 44,
+  "type_guard_full_previous_valid_matrix_plus_neighbors": 40,
+  "initial_rollout_matrix": 20,
+  "exact_native_wire_captures": 5,
+  "resources_created": 0,
+  "hosted_apply_sync_runtime_other_surfaces": "untested",
+  "KV_core_guard": "now correct; unsupported password recommendation remains",
+  "configs_servers_children_removed": true,
+  "quota": {
+    "at": "2026-10-13T10:08:11.725811+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.366,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49d8aa75d092157-SJC"
+    },
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+  },
+  "implementation_commit_push_release_by_QA": false
+}

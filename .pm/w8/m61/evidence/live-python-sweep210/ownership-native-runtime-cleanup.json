@@ -1,0 +1,1215 @@
+[
+  {
+    "sweep": 210,
+    "source_head": "cb16919ab75d1a72663109b06707fb3663fc33cb",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "web_service",
+    "name": "qa-20261013-650114-buildbytes",
+    "client": "bex",
+    "nonce": "650114",
+    "marker": "QA210_650114",
+    "time": "2026-10-13T10:37:34.753713+00:00",
+    "role": "custom PATH excludes platform codec tools, absolute Python build command and harmless marker inputs",
+    "dependency_ids": [],
+    "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261013-650114-buildbytes",
+      "--type",
+      "web_service",
+      "--runtime",
+      "python",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/hello-go",
+      "--build-command",
+      "/usr/local/bin/python3 -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport json,time\npathlib.Path(\"qa-built.json\").write_text(json.dumps({\"marker\":'\"'\"'QA210_650114'\"'\"',\"snapshot\":snapshot(),\"build_path\":os.getenv(\"PATH\"),\"built_at\":time.time_ns()}))\n'",
+      "--start-command",
+      "/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport http.server,json,socket\nbuilt=json.loads(pathlib.Path(\"qa-built.json\").read_text())\nclass Handler(http.server.BaseHTTPRequestHandler):\n    def do_GET(self):\n        body=json.dumps({\"marker\":built[\"marker\"],\"built\":built,\"runtime\":snapshot(),\"runtime_path\":os.getenv(\"PATH\"),\"instance\":socket.gethostname()}).encode()\n        self.send_response(200)\n        self.send_header(\"Content-Type\",\"application/json\")\n        self.send_header(\"Content-Length\",str(len(body)))\n        self.end_headers()\n        self.wfile.write(body)\n    def log_message(self,*args): pass\nhttp.server.ThreadingHTTPServer((\"0.0.0.0\",int(os.getenv(\"PORT\",\"3000\"))),Handler).serve_forever()\n'",
+      "--health-check-path",
+      "/",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--env-var",
+      "QA_COMPLEX=QA210_650114\n☃=second\n内側",
+      "--env-var",
+      "PATH=/usr/local/bin",
+      "--secret-file",
+      "qa-note.txt:<QA_TMP>/sweep210-650114-note.txt",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "capacity_proof": {
+      "at": "2026-10-13T10:37:34.746876+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.365,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49db5b2abbacf26-SJC"
+      },
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "expected_bytes": {
+      "env_length": 30,
+      "env_sha256": "17590fc8404022310f6bdd69a0985323d260020e3890afbd1c6d5f7e77322eaa",
+      "file_present": true,
+      "file_length": 24,
+      "file_sha256": "908782ed2e293f3cf865f06f9d5ebacf5f84ea7faacafec4ca8ca8c88adad167"
+    },
+    "program": "import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport http.server,json,socket\nbuilt=json.loads(pathlib.Path(\"qa-built.json\").read_text())\nclass Handler(http.server.BaseHTTPRequestHandler):\n    def do_GET(self):\n        body=json.dumps({\"marker\":built[\"marker\"],\"built\":built,\"runtime\":snapshot(),\"runtime_path\":os.getenv(\"PATH\"),\"instance\":socket.gethostname()}).encode()\n        self.send_response(200)\n        self.send_header(\"Content-Type\",\"application/json\")\n        self.send_header(\"Content-Length\",str(len(body)))\n        self.end_headers()\n        self.wfile.write(body)\n    def log_message(self,*args): pass\nhttp.server.ThreadingHTTPServer((\"0.0.0.0\",int(os.getenv(\"PORT\",\"3000\"))),Handler).serve_forever()\n",
+    "build_program": "import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport json,time\npathlib.Path(\"qa-built.json\").write_text(json.dumps({\"marker\":'QA210_650114',\"snapshot\":snapshot(),\"build_path\":os.getenv(\"PATH\"),\"built_at\":time.time_ns()}))\n",
+    "create_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "qa-20261013-650114-buildbytes",
+        "--type",
+        "web_service",
+        "--runtime",
+        "python",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--branch",
+        "main",
+        "--root-directory",
+        "examples/hello-go",
+        "--build-command",
+        "/usr/local/bin/python3 -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport json,time\npathlib.Path(\"qa-built.json\").write_text(json.dumps({\"marker\":'\"'\"'QA210_650114'\"'\"',\"snapshot\":snapshot(),\"build_path\":os.getenv(\"PATH\"),\"built_at\":time.time_ns()}))\n'",
+        "--start-command",
+        "/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport http.server,json,socket\nbuilt=json.loads(pathlib.Path(\"qa-built.json\").read_text())\nclass Handler(http.server.BaseHTTPRequestHandler):\n    def do_GET(self):\n        body=json.dumps({\"marker\":built[\"marker\"],\"built\":built,\"runtime\":snapshot(),\"runtime_path\":os.getenv(\"PATH\"),\"instance\":socket.gethostname()}).encode()\n        self.send_response(200)\n        self.send_header(\"Content-Type\",\"application/json\")\n        self.send_header(\"Content-Length\",str(len(body)))\n        self.end_headers()\n        self.wfile.write(body)\n    def log_message(self,*args): pass\nhttp.server.ThreadingHTTPServer((\"0.0.0.0\",int(os.getenv(\"PORT\",\"3000\"))),Handler).serve_forever()\n'",
+        "--health-check-path",
+        "/",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--auto-deploy=false",
+        "--env-var",
+        "QA_COMPLEX=QA210_650114\n☃=second\n内側",
+        "--env-var",
+        "PATH=/usr/local/bin",
+        "--secret-file",
+        "qa-note.txt:<QA_TMP>/sweep210-650114-note.txt",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.372,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-13T10:37:36Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db70jrqkf5oc739fqv90\",\n  \"id\": \"srv-db70jrqkf5oc739fqv90\",\n  \"name\": \"qa-20261013-650114-buildbytes\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-go\",\n  \"serviceDetails\": {\n    \"env\": \"python\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"/usr/local/bin/python3 -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport json,time\\npathlib.Path(\\\"qa-built.json\\\").write_text(json.dumps({\\\"marker\\\":'\\\"'\\\"'QA210_650114'\\\"'\\\"',\\\"snapshot\\\":snapshot(),\\\"build_path\\\":os.getenv(\\\"PATH\\\"),\\\"built_at\\\":time.time_ns()}))\\n'\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport http.server,json,socket\\nbuilt=json.loads(pathlib.Path(\\\"qa-built.json\\\").read_text())\\nclass Handler(http.server.BaseHTTPRequestHandler):\\n    def do_GET(self):\\n        body=json.dumps({\\\"marker\\\":built[\\\"marker\\\"],\\\"built\\\":built,\\\"runtime\\\":snapshot(),\\\"runtime_path\\\":os.getenv(\\\"PATH\\\"),\\\"instance\\\":socket.gethostname()}).encode()\\n        self.send_response(200)\\n        self.send_header(\\\"Content-Type\\\",\\\"application/json\\\")\\n        self.send_header(\\\"Content-Length\\\",str(len(body)))\\n        self.end_headers()\\n        self.wfile.write(body)\\n    def log_message(self,*args): pass\\nhttp.server.ThreadingHTTPServer((\\\"0.0.0.0\\\",int(os.getenv(\\\"PORT\\\",\\\"3000\\\"))),Handler).serve_forever()\\n'\"\n    },\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261013-650114-buildbytes:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"python\",\n    \"url\": \"https://qa-20261013-650114-buildbytes.onbex.co\"\n  },\n  \"slug\": \"qa-20261013-650114-buildbytes\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-13T10:37:36Z\"\n}",
+      "stderr": ""
+    },
+    "id": "srv-db70jrqkf5oc739fqv90",
+    "create_response": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "main",
+      "createdAt": "2026-10-13T10:37:36Z",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db70jrqkf5oc739fqv90",
+      "id": "srv-db70jrqkf5oc739fqv90",
+      "name": "qa-20261013-650114-buildbytes",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/bex-co/bex",
+      "rootDir": "examples/hello-go",
+      "serviceDetails": {
+        "env": "python",
+        "envSpecificDetails": {
+          "buildCommand": "/usr/local/bin/python3 -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport json,time\npathlib.Path(\"qa-built.json\").write_text(json.dumps({\"marker\":'\"'\"'QA210_650114'\"'\"',\"snapshot\":snapshot(),\"build_path\":os.getenv(\"PATH\"),\"built_at\":time.time_ns()}))\n'",
+          "preDeployCommand": "",
+          "startCommand": "/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport http.server,json,socket\nbuilt=json.loads(pathlib.Path(\"qa-built.json\").read_text())\nclass Handler(http.server.BaseHTTPRequestHandler):\n    def do_GET(self):\n        body=json.dumps({\"marker\":built[\"marker\"],\"built\":built,\"runtime\":snapshot(),\"runtime_path\":os.getenv(\"PATH\"),\"instance\":socket.gethostname()}).encode()\n        self.send_response(200)\n        self.send_header(\"Content-Type\",\"application/json\")\n        self.send_header(\"Content-Length\",str(len(body)))\n        self.end_headers()\n        self.wfile.write(body)\n    def log_message(self,*args): pass\nhttp.server.ThreadingHTTPServer((\"0.0.0.0\",int(os.getenv(\"PORT\",\"3000\"))),Handler).serve_forever()\n'"
+        },
+        "healthCheckPath": "/",
+        "internalAddress": "qa-20261013-650114-buildbytes:3000",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "free",
+        "port": 3000,
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "python",
+        "url": "https://qa-20261013-650114-buildbytes.onbex.co"
+      },
+      "slug": "qa-20261013-650114-buildbytes",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "web_service",
+      "updatedAt": "2026-10-13T10:37:36Z"
+    },
+    "initial_observations": [
+      {
+        "at": "2026-10-13T10:38:10.668274+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db70jrqkf5oc739fqv90",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.524,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"cb16919ab75d1a72663109b06707fb3663fc33cb\",\n      \"message\": \"chore(deploy): pin platform images to 3c6809182c08 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:37:35.955978Z\",\n    \"id\": \"dep-db70jrqkf5oc739fqv9g\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:37:49.840372Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "cb16919ab75d1a72663109b06707fb3663fc33cb",
+            "message": "chore(deploy): pin platform images to 3c6809182c08 [skip ci]"
+          },
+          "createdAt": "2026-10-13T10:37:35.955978Z",
+          "id": "dep-db70jrqkf5oc739fqv9g",
+          "status": "queued",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T10:37:49.840372Z"
+        },
+        "runtime": {
+          "at": "2026-10-13T10:38:10.668027+00:00",
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T10:38:17.689209+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db70jrqkf5oc739fqv90",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.301,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"cb16919ab75d1a72663109b06707fb3663fc33cb\",\n      \"message\": \"chore(deploy): pin platform images to 3c6809182c08 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:37:35.955978Z\",\n    \"id\": \"dep-db70jrqkf5oc739fqv9g\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:37:49.840372Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "cb16919ab75d1a72663109b06707fb3663fc33cb",
+            "message": "chore(deploy): pin platform images to 3c6809182c08 [skip ci]"
+          },
+          "createdAt": "2026-10-13T10:37:35.955978Z",
+          "id": "dep-db70jrqkf5oc739fqv9g",
+          "status": "queued",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T10:37:49.840372Z"
+        },
+        "runtime": {
+          "at": "2026-10-13T10:38:17.689168+00:00",
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T10:38:24.735798+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db70jrqkf5oc739fqv90",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.324,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"cb16919ab75d1a72663109b06707fb3663fc33cb\",\n      \"message\": \"chore(deploy): pin platform images to 3c6809182c08 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:37:35.955978Z\",\n    \"id\": \"dep-db70jrqkf5oc739fqv9g\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:37:49.840372Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "cb16919ab75d1a72663109b06707fb3663fc33cb",
+            "message": "chore(deploy): pin platform images to 3c6809182c08 [skip ci]"
+          },
+          "createdAt": "2026-10-13T10:37:35.955978Z",
+          "id": "dep-db70jrqkf5oc739fqv9g",
+          "status": "queued",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T10:37:49.840372Z"
+        },
+        "runtime": {
+          "at": "2026-10-13T10:38:24.735770+00:00",
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T10:39:07.574929+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db70jrqkf5oc739fqv90",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.352,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"cb16919ab75d1a72663109b06707fb3663fc33cb\",\n      \"message\": \"chore(deploy): pin platform images to 3c6809182c08 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:37:35.955978Z\",\n    \"id\": \"dep-db70jrqkf5oc739fqv9g\",\n    \"startedAt\": \"2026-10-13T10:38:42.605069Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:38:42.605069Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "cb16919ab75d1a72663109b06707fb3663fc33cb",
+            "message": "chore(deploy): pin platform images to 3c6809182c08 [skip ci]"
+          },
+          "createdAt": "2026-10-13T10:37:35.955978Z",
+          "id": "dep-db70jrqkf5oc739fqv9g",
+          "startedAt": "2026-10-13T10:38:42.605069Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T10:38:42.605069Z"
+        },
+        "runtime": {
+          "at": "2026-10-13T10:39:07.574715+00:00",
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T10:39:14.585865+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db70jrqkf5oc739fqv90",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.303,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"cb16919ab75d1a72663109b06707fb3663fc33cb\",\n      \"message\": \"chore(deploy): pin platform images to 3c6809182c08 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:37:35.955978Z\",\n    \"id\": \"dep-db70jrqkf5oc739fqv9g\",\n    \"startedAt\": \"2026-10-13T10:38:42.605069Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:38:42.605069Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "cb16919ab75d1a72663109b06707fb3663fc33cb",
+            "message": "chore(deploy): pin platform images to 3c6809182c08 [skip ci]"
+          },
+          "createdAt": "2026-10-13T10:37:35.955978Z",
+          "id": "dep-db70jrqkf5oc739fqv9g",
+          "startedAt": "2026-10-13T10:38:42.605069Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T10:38:42.605069Z"
+        },
+        "runtime": {
+          "at": "2026-10-13T10:39:14.585815+00:00",
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T10:39:21.604078+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db70jrqkf5oc739fqv90",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.298,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"cb16919ab75d1a72663109b06707fb3663fc33cb\",\n      \"message\": \"chore(deploy): pin platform images to 3c6809182c08 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:37:35.955978Z\",\n    \"id\": \"dep-db70jrqkf5oc739fqv9g\",\n    \"startedAt\": \"2026-10-13T10:38:42.605069Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:38:42.605069Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "cb16919ab75d1a72663109b06707fb3663fc33cb",
+            "message": "chore(deploy): pin platform images to 3c6809182c08 [skip ci]"
+          },
+          "createdAt": "2026-10-13T10:37:35.955978Z",
+          "id": "dep-db70jrqkf5oc739fqv9g",
+          "startedAt": "2026-10-13T10:38:42.605069Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T10:38:42.605069Z"
+        },
+        "runtime": {
+          "at": "2026-10-13T10:39:21.604033+00:00",
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T10:40:56.011772+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db70jrqkf5oc739fqv90",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.344,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"cb16919ab75d1a72663109b06707fb3663fc33cb\",\n      \"message\": \"chore(deploy): pin platform images to 3c6809182c08 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:37:35.955978Z\",\n    \"finishedAt\": \"2026-10-13T10:40:19.053558Z\",\n    \"id\": \"dep-db70jrqkf5oc739fqv9g\",\n    \"startedAt\": \"2026-10-13T10:38:42.605069Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:40:19.053559Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "cb16919ab75d1a72663109b06707fb3663fc33cb",
+            "message": "chore(deploy): pin platform images to 3c6809182c08 [skip ci]"
+          },
+          "createdAt": "2026-10-13T10:37:35.955978Z",
+          "finishedAt": "2026-10-13T10:40:19.053558Z",
+          "id": "dep-db70jrqkf5oc739fqv9g",
+          "startedAt": "2026-10-13T10:38:42.605069Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T10:40:19.053559Z"
+        },
+        "runtime": {
+          "at": "2026-10-13T10:40:56.011390+00:00",
+          "exit": 0,
+          "http": "200",
+          "body": {
+            "marker": "QA210_650114",
+            "built": {
+              "marker": "QA210_650114",
+              "snapshot": {
+                "env_length": 30,
+                "env_sha256": "17590fc8404022310f6bdd69a0985323d260020e3890afbd1c6d5f7e77322eaa",
+                "file_present": true,
+                "file_length": 24,
+                "file_sha256": "908782ed2e293f3cf865f06f9d5ebacf5f84ea7faacafec4ca8ca8c88adad167"
+              },
+              "build_path": "/usr/local/bin",
+              "built_at": 1791887958751792301
+            },
+            "runtime": {
+              "env_length": 30,
+              "env_sha256": "17590fc8404022310f6bdd69a0985323d260020e3890afbd1c6d5f7e77322eaa",
+              "file_present": true,
+              "file_length": 24,
+              "file_sha256": "908782ed2e293f3cf865f06f9d5ebacf5f84ea7faacafec4ca8ca8c88adad167"
+            },
+            "runtime_path": "/usr/local/bin",
+            "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-650114-buildbytes-6fbhd9zh"
+          },
+          "raw": "{\"marker\": \"QA210_650114\", \"built\": {\"marker\": \"QA210_650114\", \"snapshot\": {\"env_length\": 30, \"env_sha256\": \"17590fc8404022310f6bdd69a0985323d260020e3890afbd1c6d5f7e77322eaa\", \"file_present\": true, \"file_length\": 24, \"file_sha256\": \"908782ed2e293f3cf865f06f9d5ebacf5f84ea7faacafec4ca8ca8c88adad167\"}, \"build_path\": \"/usr/local/bin\", \"built_at\": 1791887958751792301}, \"runtime\": {\"env_length\": 30, \"env_sha256\": \"17590fc8404022310f6bdd69a0985323d260020e3890afbd1c6d5f7e77322eaa\", \"file_present\": true, \"file_length\": 24, \"file_sha256\": \"908782ed2e293f3cf865f06f9d5ebacf5f84ea7faacafec4ca8ca8c88adad167\"}, \"runtime_path\": \"/usr/local/bin\", \"instance\": \"tea-daif693dqjvc73e7as3g-qa-20261013-650114-buildbytes-6fbhd9zh\"}",
+          "stderr": ""
+        }
+      }
+    ],
+    "initial_settled": true,
+    "initial_pass": true,
+    "initial_runtime": {
+      "at": "2026-10-13T10:40:56.011390+00:00",
+      "exit": 0,
+      "http": "200",
+      "body": {
+        "marker": "QA210_650114",
+        "built": {
+          "marker": "QA210_650114",
+          "snapshot": {
+            "env_length": 30,
+            "env_sha256": "17590fc8404022310f6bdd69a0985323d260020e3890afbd1c6d5f7e77322eaa",
+            "file_present": true,
+            "file_length": 24,
+            "file_sha256": "908782ed2e293f3cf865f06f9d5ebacf5f84ea7faacafec4ca8ca8c88adad167"
+          },
+          "build_path": "/usr/local/bin",
+          "built_at": 1791887958751792301
+        },
+        "runtime": {
+          "env_length": 30,
+          "env_sha256": "17590fc8404022310f6bdd69a0985323d260020e3890afbd1c6d5f7e77322eaa",
+          "file_present": true,
+          "file_length": 24,
+          "file_sha256": "908782ed2e293f3cf865f06f9d5ebacf5f84ea7faacafec4ca8ca8c88adad167"
+        },
+        "runtime_path": "/usr/local/bin",
+        "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-650114-buildbytes-6fbhd9zh"
+      },
+      "raw": "{\"marker\": \"QA210_650114\", \"built\": {\"marker\": \"QA210_650114\", \"snapshot\": {\"env_length\": 30, \"env_sha256\": \"17590fc8404022310f6bdd69a0985323d260020e3890afbd1c6d5f7e77322eaa\", \"file_present\": true, \"file_length\": 24, \"file_sha256\": \"908782ed2e293f3cf865f06f9d5ebacf5f84ea7faacafec4ca8ca8c88adad167\"}, \"build_path\": \"/usr/local/bin\", \"built_at\": 1791887958751792301}, \"runtime\": {\"env_length\": 30, \"env_sha256\": \"17590fc8404022310f6bdd69a0985323d260020e3890afbd1c6d5f7e77322eaa\", \"file_present\": true, \"file_length\": 24, \"file_sha256\": \"908782ed2e293f3cf865f06f9d5ebacf5f84ea7faacafec4ca8ca8c88adad167\"}, \"runtime_path\": \"/usr/local/bin\", \"instance\": \"tea-daif693dqjvc73e7as3g-qa-20261013-650114-buildbytes-6fbhd9zh\"}",
+      "stderr": ""
+    },
+    "initial_deploy": {
+      "commit": {
+        "id": "cb16919ab75d1a72663109b06707fb3663fc33cb",
+        "message": "chore(deploy): pin platform images to 3c6809182c08 [skip ci]"
+      },
+      "createdAt": "2026-10-13T10:37:35.955978Z",
+      "finishedAt": "2026-10-13T10:40:19.053558Z",
+      "id": "dep-db70jrqkf5oc739fqv9g",
+      "startedAt": "2026-10-13T10:38:42.605069Z",
+      "status": "live",
+      "trigger": "other",
+      "updatedAt": "2026-10-13T10:40:19.053559Z"
+    },
+    "deploy_children": [
+      {
+        "commit": {
+          "id": "cb16919ab75d1a72663109b06707fb3663fc33cb",
+          "message": "chore(deploy): pin platform images to 3c6809182c08 [skip ci]"
+        },
+        "createdAt": "2026-10-13T10:37:35.955978Z",
+        "finishedAt": "2026-10-13T10:40:19.053558Z",
+        "id": "dep-db70jrqkf5oc739fqv9g",
+        "startedAt": "2026-10-13T10:38:42.605069Z",
+        "status": "live",
+        "trigger": "other",
+        "updatedAt": "2026-10-13T10:40:19.053559Z"
+      }
+    ],
+    "children_enumeration_evidence": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "list",
+        "srv-db70jrqkf5oc739fqv90",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.443,
+      "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"cb16919ab75d1a72663109b06707fb3663fc33cb\",\n      \"message\": \"chore(deploy): pin platform images to 3c6809182c08 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:37:35.955978Z\",\n    \"finishedAt\": \"2026-10-13T10:40:19.053558Z\",\n    \"id\": \"dep-db70jrqkf5oc739fqv9g\",\n    \"startedAt\": \"2026-10-13T10:38:42.605069Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:40:19.053559Z\"\n  }\n]",
+      "stderr": ""
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db70jrqkf5oc739fqv90",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.809,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-13T10:37:36Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db70jrqkf5oc739fqv90\",\n    \"id\": \"srv-db70jrqkf5oc739fqv90\",\n    \"name\": \"qa-20261013-650114-buildbytes\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-go\",\n    \"serviceDetails\": {\n      \"env\": \"python\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"/usr/local/bin/python3 -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport json,time\\npathlib.Path(\\\"qa-built.json\\\").write_text(json.dumps({\\\"marker\\\":'\\\"'\\\"'QA210_650114'\\\"'\\\"',\\\"snapshot\\\":snapshot(),\\\"build_path\\\":os.getenv(\\\"PATH\\\"),\\\"built_at\\\":time.time_ns()}))\\n'\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport http.server,json,socket\\nbuilt=json.loads(pathlib.Path(\\\"qa-built.json\\\").read_text())\\nclass Handler(http.server.BaseHTTPRequestHandler):\\n    def do_GET(self):\\n        body=json.dumps({\\\"marker\\\":built[\\\"marker\\\"],\\\"built\\\":built,\\\"runtime\\\":snapshot(),\\\"runtime_path\\\":os.getenv(\\\"PATH\\\"),\\\"instance\\\":socket.gethostname()}).encode()\\n        self.send_response(200)\\n        self.send_header(\\\"Content-Type\\\",\\\"application/json\\\")\\n        self.send_header(\\\"Content-Length\\\",str(len(body)))\\n        self.end_headers()\\n        self.wfile.write(body)\\n    def log_message(self,*args): pass\\nhttp.server.ThreadingHTTPServer((\\\"0.0.0.0\\\",int(os.getenv(\\\"PORT\\\",\\\"3000\\\"))),Handler).serve_forever()\\n'\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261013-650114-buildbytes:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"python\",\n      \"url\": \"https://qa-20261013-650114-buildbytes.onbex.co\"\n    },\n    \"slug\": \"qa-20261013-650114-buildbytes\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-13T10:40:05Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "at": "2026-10-13T10:42:51.328488+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/services/srv-db70jrqkf5oc739fqv90",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "404",
+      "elapsed": 0.235,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49dbd6dcb65545f-SJC"
+      },
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+    },
+    "workspace_after_delete_ids": [
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3v694dm7c7390q930",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db09vbgehcmc739j12i0",
+      "srv-db70kf6qte1s73bn31n0"
+    ],
+    "runtime_after_delete_checks": [
+      {
+        "exit": 0,
+        "stdout": "404 page not found\n\n404",
+        "stderr": ""
+      }
+    ],
+    "quota_after_delete": {
+      "at": "2026-10-13T10:42:53.027447+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.291,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49dbd783d6a1d99-SJC"
+      },
+      "response": "{\"services\":{\"used\":7,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    }
+  },
+  {
+    "sweep": 210,
+    "source_head": "cb16919ab75d1a72663109b06707fb3663fc33cb",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "web_service",
+    "name": "qa-20261013-36f411-buildbytes",
+    "client": "render",
+    "nonce": "36f411",
+    "marker": "QA210_36f411",
+    "time": "2026-10-13T10:38:51.136766+00:00",
+    "role": "custom PATH excludes platform codec tools, absolute Python build command and harmless marker inputs",
+    "dependency_ids": [],
+    "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+    "command": [
+      "render",
+      "services",
+      "create",
+      "--name",
+      "qa-20261013-36f411-buildbytes",
+      "--type",
+      "web_service",
+      "--runtime",
+      "python",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/hello-go",
+      "--build-command",
+      "/usr/local/bin/python3 -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport json,time\npathlib.Path(\"qa-built.json\").write_text(json.dumps({\"marker\":'\"'\"'QA210_36f411'\"'\"',\"snapshot\":snapshot(),\"build_path\":os.getenv(\"PATH\"),\"built_at\":time.time_ns()}))\n'",
+      "--start-command",
+      "/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport http.server,json,socket\nbuilt=json.loads(pathlib.Path(\"qa-built.json\").read_text())\nclass Handler(http.server.BaseHTTPRequestHandler):\n    def do_GET(self):\n        body=json.dumps({\"marker\":built[\"marker\"],\"built\":built,\"runtime\":snapshot(),\"runtime_path\":os.getenv(\"PATH\"),\"instance\":socket.gethostname()}).encode()\n        self.send_response(200)\n        self.send_header(\"Content-Type\",\"application/json\")\n        self.send_header(\"Content-Length\",str(len(body)))\n        self.end_headers()\n        self.wfile.write(body)\n    def log_message(self,*args): pass\nhttp.server.ThreadingHTTPServer((\"0.0.0.0\",int(os.getenv(\"PORT\",\"3000\"))),Handler).serve_forever()\n'",
+      "--health-check-path",
+      "/",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--env-var",
+      "PATH=/usr/local/bin",
+      "--env-var",
+      "QA_COMPLEX=QA210_36f411\n☃=second\n内側",
+      "--secret-file",
+      "qa-note.txt:<QA_TMP>/sweep210-36f411-note.txt",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "capacity_proof": {
+      "at": "2026-10-13T10:38:51.129644+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.317,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49db7900942229f-SJC"
+      },
+      "response": "{\"services\":{\"used\":7,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "expected_bytes": {
+      "env_length": 30,
+      "env_sha256": "f38d9646b493d34a199f255ce1b401402c946ab5fe7e85fc612aad59cff7867d",
+      "file_present": true,
+      "file_length": 24,
+      "file_sha256": "55ebd5a721e9528ffa8432b6ffa964103280be9b18a243966b54f59368381e19"
+    },
+    "program": "import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport http.server,json,socket\nbuilt=json.loads(pathlib.Path(\"qa-built.json\").read_text())\nclass Handler(http.server.BaseHTTPRequestHandler):\n    def do_GET(self):\n        body=json.dumps({\"marker\":built[\"marker\"],\"built\":built,\"runtime\":snapshot(),\"runtime_path\":os.getenv(\"PATH\"),\"instance\":socket.gethostname()}).encode()\n        self.send_response(200)\n        self.send_header(\"Content-Type\",\"application/json\")\n        self.send_header(\"Content-Length\",str(len(body)))\n        self.end_headers()\n        self.wfile.write(body)\n    def log_message(self,*args): pass\nhttp.server.ThreadingHTTPServer((\"0.0.0.0\",int(os.getenv(\"PORT\",\"3000\"))),Handler).serve_forever()\n",
+    "build_program": "import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport json,time\npathlib.Path(\"qa-built.json\").write_text(json.dumps({\"marker\":'QA210_36f411',\"snapshot\":snapshot(),\"build_path\":os.getenv(\"PATH\"),\"built_at\":time.time_ns()}))\n",
+    "create_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "create",
+        "--name",
+        "qa-20261013-36f411-buildbytes",
+        "--type",
+        "web_service",
+        "--runtime",
+        "python",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--branch",
+        "main",
+        "--root-directory",
+        "examples/hello-go",
+        "--build-command",
+        "/usr/local/bin/python3 -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport json,time\npathlib.Path(\"qa-built.json\").write_text(json.dumps({\"marker\":'\"'\"'QA210_36f411'\"'\"',\"snapshot\":snapshot(),\"build_path\":os.getenv(\"PATH\"),\"built_at\":time.time_ns()}))\n'",
+        "--start-command",
+        "/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport http.server,json,socket\nbuilt=json.loads(pathlib.Path(\"qa-built.json\").read_text())\nclass Handler(http.server.BaseHTTPRequestHandler):\n    def do_GET(self):\n        body=json.dumps({\"marker\":built[\"marker\"],\"built\":built,\"runtime\":snapshot(),\"runtime_path\":os.getenv(\"PATH\"),\"instance\":socket.gethostname()}).encode()\n        self.send_response(200)\n        self.send_header(\"Content-Type\",\"application/json\")\n        self.send_header(\"Content-Length\",str(len(body)))\n        self.end_headers()\n        self.wfile.write(body)\n    def log_message(self,*args): pass\nhttp.server.ThreadingHTTPServer((\"0.0.0.0\",int(os.getenv(\"PORT\",\"3000\"))),Handler).serve_forever()\n'",
+        "--health-check-path",
+        "/",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--auto-deploy=false",
+        "--env-var",
+        "PATH=/usr/local/bin",
+        "--env-var",
+        "QA_COMPLEX=QA210_36f411\n☃=second\n内側",
+        "--secret-file",
+        "qa-note.txt:<QA_TMP>/sweep210-36f411-note.txt",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.472,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-13T10:38:52Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db70kf6qte1s73bn31n0\",\n  \"id\": \"srv-db70kf6qte1s73bn31n0\",\n  \"name\": \"qa-20261013-36f411-buildbytes\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-go\",\n  \"serviceDetails\": {\n    \"env\": \"python\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"/usr/local/bin/python3 -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport json,time\\npathlib.Path(\\\"qa-built.json\\\").write_text(json.dumps({\\\"marker\\\":'\\\"'\\\"'QA210_36f411'\\\"'\\\"',\\\"snapshot\\\":snapshot(),\\\"build_path\\\":os.getenv(\\\"PATH\\\"),\\\"built_at\\\":time.time_ns()}))\\n'\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport http.server,json,socket\\nbuilt=json.loads(pathlib.Path(\\\"qa-built.json\\\").read_text())\\nclass Handler(http.server.BaseHTTPRequestHandler):\\n    def do_GET(self):\\n        body=json.dumps({\\\"marker\\\":built[\\\"marker\\\"],\\\"built\\\":built,\\\"runtime\\\":snapshot(),\\\"runtime_path\\\":os.getenv(\\\"PATH\\\"),\\\"instance\\\":socket.gethostname()}).encode()\\n        self.send_response(200)\\n        self.send_header(\\\"Content-Type\\\",\\\"application/json\\\")\\n        self.send_header(\\\"Content-Length\\\",str(len(body)))\\n        self.end_headers()\\n        self.wfile.write(body)\\n    def log_message(self,*args): pass\\nhttp.server.ThreadingHTTPServer((\\\"0.0.0.0\\\",int(os.getenv(\\\"PORT\\\",\\\"3000\\\"))),Handler).serve_forever()\\n'\"\n    },\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261013-36f411-buildbytes:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"python\",\n    \"url\": \"https://qa-20261013-36f411-buildbytes.onbex.co\"\n  },\n  \"slug\": \"qa-20261013-36f411-buildbytes\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-13T10:38:52.389609923Z\"\n}",
+      "stderr": ""
+    },
+    "id": "srv-db70kf6qte1s73bn31n0",
+    "create_response": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "main",
+      "createdAt": "2026-10-13T10:38:52Z",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db70kf6qte1s73bn31n0",
+      "id": "srv-db70kf6qte1s73bn31n0",
+      "name": "qa-20261013-36f411-buildbytes",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/bex-co/bex",
+      "rootDir": "examples/hello-go",
+      "serviceDetails": {
+        "env": "python",
+        "envSpecificDetails": {
+          "buildCommand": "/usr/local/bin/python3 -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport json,time\npathlib.Path(\"qa-built.json\").write_text(json.dumps({\"marker\":'\"'\"'QA210_36f411'\"'\"',\"snapshot\":snapshot(),\"build_path\":os.getenv(\"PATH\"),\"built_at\":time.time_ns()}))\n'",
+          "preDeployCommand": "",
+          "startCommand": "/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport http.server,json,socket\nbuilt=json.loads(pathlib.Path(\"qa-built.json\").read_text())\nclass Handler(http.server.BaseHTTPRequestHandler):\n    def do_GET(self):\n        body=json.dumps({\"marker\":built[\"marker\"],\"built\":built,\"runtime\":snapshot(),\"runtime_path\":os.getenv(\"PATH\"),\"instance\":socket.gethostname()}).encode()\n        self.send_response(200)\n        self.send_header(\"Content-Type\",\"application/json\")\n        self.send_header(\"Content-Length\",str(len(body)))\n        self.end_headers()\n        self.wfile.write(body)\n    def log_message(self,*args): pass\nhttp.server.ThreadingHTTPServer((\"0.0.0.0\",int(os.getenv(\"PORT\",\"3000\"))),Handler).serve_forever()\n'"
+        },
+        "healthCheckPath": "/",
+        "internalAddress": "qa-20261013-36f411-buildbytes:3000",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "free",
+        "port": 3000,
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "python",
+        "url": "https://qa-20261013-36f411-buildbytes.onbex.co"
+      },
+      "slug": "qa-20261013-36f411-buildbytes",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "web_service",
+      "updatedAt": "2026-10-13T10:38:52.389609923Z"
+    },
+    "initial_observations": [
+      {
+        "at": "2026-10-13T10:39:43.120064+00:00",
+        "native_list": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db70kf6qte1s73bn31n0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.439,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:38:52.354987Z\",\n    \"id\": \"dep-db70kf6qte1s73bn31ng\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:38:57.090272Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+            "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+          },
+          "createdAt": "2026-10-13T10:38:52.354987Z",
+          "id": "dep-db70kf6qte1s73bn31ng",
+          "status": "queued",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T10:38:57.090272Z"
+        },
+        "runtime": {
+          "at": "2026-10-13T10:39:43.119853+00:00",
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T10:39:50.166331+00:00",
+        "native_list": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db70kf6qte1s73bn31n0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.296,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:38:52.354987Z\",\n    \"id\": \"dep-db70kf6qte1s73bn31ng\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:38:57.090272Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+            "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+          },
+          "createdAt": "2026-10-13T10:38:52.354987Z",
+          "id": "dep-db70kf6qte1s73bn31ng",
+          "status": "queued",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T10:38:57.090272Z"
+        },
+        "runtime": {
+          "at": "2026-10-13T10:39:50.166276+00:00",
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T10:39:57.149758+00:00",
+        "native_list": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db70kf6qte1s73bn31n0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.291,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:38:52.354987Z\",\n    \"id\": \"dep-db70kf6qte1s73bn31ng\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:38:57.090272Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+            "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+          },
+          "createdAt": "2026-10-13T10:38:52.354987Z",
+          "id": "dep-db70kf6qte1s73bn31ng",
+          "status": "queued",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T10:38:57.090272Z"
+        },
+        "runtime": {
+          "at": "2026-10-13T10:39:57.149717+00:00",
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T10:41:31.543829+00:00",
+        "native_list": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db70kf6qte1s73bn31n0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.377,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:38:52.354987Z\",\n    \"id\": \"dep-db70kf6qte1s73bn31ng\",\n    \"startedAt\": \"2026-10-13T10:40:45.994623Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:40:45.994624Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+            "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+          },
+          "createdAt": "2026-10-13T10:38:52.354987Z",
+          "id": "dep-db70kf6qte1s73bn31ng",
+          "startedAt": "2026-10-13T10:40:45.994623Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T10:40:45.994624Z"
+        },
+        "runtime": {
+          "at": "2026-10-13T10:41:31.543543+00:00",
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T10:41:38.999681+00:00",
+        "native_list": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db70kf6qte1s73bn31n0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.753,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:38:52.354987Z\",\n    \"id\": \"dep-db70kf6qte1s73bn31ng\",\n    \"startedAt\": \"2026-10-13T10:40:45.994623Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:40:45.994624Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+            "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+          },
+          "createdAt": "2026-10-13T10:38:52.354987Z",
+          "id": "dep-db70kf6qte1s73bn31ng",
+          "startedAt": "2026-10-13T10:40:45.994623Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T10:40:45.994624Z"
+        },
+        "runtime": {
+          "at": "2026-10-13T10:41:38.999640+00:00",
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T10:41:46.043616+00:00",
+        "native_list": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db70kf6qte1s73bn31n0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.326,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:38:52.354987Z\",\n    \"id\": \"dep-db70kf6qte1s73bn31ng\",\n    \"startedAt\": \"2026-10-13T10:40:45.994623Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:40:45.994624Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+            "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+          },
+          "createdAt": "2026-10-13T10:38:52.354987Z",
+          "id": "dep-db70kf6qte1s73bn31ng",
+          "startedAt": "2026-10-13T10:40:45.994623Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T10:40:45.994624Z"
+        },
+        "runtime": {
+          "at": "2026-10-13T10:41:46.043563+00:00",
+          "exit": 0,
+          "http": "503",
+          "body": null,
+          "raw": "service unavailable\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T10:43:04.708253+00:00",
+        "native_list": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db70kf6qte1s73bn31n0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.353,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:38:52.354987Z\",\n    \"finishedAt\": \"2026-10-13T10:41:55.296656Z\",\n    \"id\": \"dep-db70kf6qte1s73bn31ng\",\n    \"startedAt\": \"2026-10-13T10:40:45.994623Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:41:55.296657Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+            "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+          },
+          "createdAt": "2026-10-13T10:38:52.354987Z",
+          "finishedAt": "2026-10-13T10:41:55.296656Z",
+          "id": "dep-db70kf6qte1s73bn31ng",
+          "startedAt": "2026-10-13T10:40:45.994623Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T10:41:55.296657Z"
+        },
+        "runtime": {
+          "at": "2026-10-13T10:43:04.708057+00:00",
+          "exit": 0,
+          "http": "200",
+          "body": {
+            "marker": "QA210_36f411",
+            "built": {
+              "marker": "QA210_36f411",
+              "snapshot": {
+                "env_length": 30,
+                "env_sha256": "f38d9646b493d34a199f255ce1b401402c946ab5fe7e85fc612aad59cff7867d",
+                "file_present": true,
+                "file_length": 24,
+                "file_sha256": "55ebd5a721e9528ffa8432b6ffa964103280be9b18a243966b54f59368381e19"
+              },
+              "build_path": "/usr/local/bin",
+              "built_at": 1791888075688849767
+            },
+            "runtime": {
+              "env_length": 30,
+              "env_sha256": "f38d9646b493d34a199f255ce1b401402c946ab5fe7e85fc612aad59cff7867d",
+              "file_present": true,
+              "file_length": 24,
+              "file_sha256": "55ebd5a721e9528ffa8432b6ffa964103280be9b18a243966b54f59368381e19"
+            },
+            "runtime_path": "/usr/local/bin",
+            "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-36f411-buildbytes-6fd8gg7f"
+          },
+          "raw": "{\"marker\": \"QA210_36f411\", \"built\": {\"marker\": \"QA210_36f411\", \"snapshot\": {\"env_length\": 30, \"env_sha256\": \"f38d9646b493d34a199f255ce1b401402c946ab5fe7e85fc612aad59cff7867d\", \"file_present\": true, \"file_length\": 24, \"file_sha256\": \"55ebd5a721e9528ffa8432b6ffa964103280be9b18a243966b54f59368381e19\"}, \"build_path\": \"/usr/local/bin\", \"built_at\": 1791888075688849767}, \"runtime\": {\"env_length\": 30, \"env_sha256\": \"f38d9646b493d34a199f255ce1b401402c946ab5fe7e85fc612aad59cff7867d\", \"file_present\": true, \"file_length\": 24, \"file_sha256\": \"55ebd5a721e9528ffa8432b6ffa964103280be9b18a243966b54f59368381e19\"}, \"runtime_path\": \"/usr/local/bin\", \"instance\": \"tea-daif693dqjvc73e7as3g-qa-20261013-36f411-buildbytes-6fd8gg7f\"}",
+          "stderr": ""
+        }
+      }
+    ],
+    "initial_settled": true,
+    "initial_pass": true,
+    "initial_runtime": {
+      "at": "2026-10-13T10:43:04.708057+00:00",
+      "exit": 0,
+      "http": "200",
+      "body": {
+        "marker": "QA210_36f411",
+        "built": {
+          "marker": "QA210_36f411",
+          "snapshot": {
+            "env_length": 30,
+            "env_sha256": "f38d9646b493d34a199f255ce1b401402c946ab5fe7e85fc612aad59cff7867d",
+            "file_present": true,
+            "file_length": 24,
+            "file_sha256": "55ebd5a721e9528ffa8432b6ffa964103280be9b18a243966b54f59368381e19"
+          },
+          "build_path": "/usr/local/bin",
+          "built_at": 1791888075688849767
+        },
+        "runtime": {
+          "env_length": 30,
+          "env_sha256": "f38d9646b493d34a199f255ce1b401402c946ab5fe7e85fc612aad59cff7867d",
+          "file_present": true,
+          "file_length": 24,
+          "file_sha256": "55ebd5a721e9528ffa8432b6ffa964103280be9b18a243966b54f59368381e19"
+        },
+        "runtime_path": "/usr/local/bin",
+        "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-36f411-buildbytes-6fd8gg7f"
+      },
+      "raw": "{\"marker\": \"QA210_36f411\", \"built\": {\"marker\": \"QA210_36f411\", \"snapshot\": {\"env_length\": 30, \"env_sha256\": \"f38d9646b493d34a199f255ce1b401402c946ab5fe7e85fc612aad59cff7867d\", \"file_present\": true, \"file_length\": 24, \"file_sha256\": \"55ebd5a721e9528ffa8432b6ffa964103280be9b18a243966b54f59368381e19\"}, \"build_path\": \"/usr/local/bin\", \"built_at\": 1791888075688849767}, \"runtime\": {\"env_length\": 30, \"env_sha256\": \"f38d9646b493d34a199f255ce1b401402c946ab5fe7e85fc612aad59cff7867d\", \"file_present\": true, \"file_length\": 24, \"file_sha256\": \"55ebd5a721e9528ffa8432b6ffa964103280be9b18a243966b54f59368381e19\"}, \"runtime_path\": \"/usr/local/bin\", \"instance\": \"tea-daif693dqjvc73e7as3g-qa-20261013-36f411-buildbytes-6fd8gg7f\"}",
+      "stderr": ""
+    },
+    "initial_deploy": {
+      "commit": {
+        "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+        "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+      },
+      "createdAt": "2026-10-13T10:38:52.354987Z",
+      "finishedAt": "2026-10-13T10:41:55.296656Z",
+      "id": "dep-db70kf6qte1s73bn31ng",
+      "startedAt": "2026-10-13T10:40:45.994623Z",
+      "status": "live",
+      "trigger": "other",
+      "updatedAt": "2026-10-13T10:41:55.296657Z"
+    },
+    "deploy_children": [
+      {
+        "commit": {
+          "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+          "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+        },
+        "createdAt": "2026-10-13T10:38:52.354987Z",
+        "finishedAt": "2026-10-13T10:41:55.296656Z",
+        "id": "dep-db70kf6qte1s73bn31ng",
+        "startedAt": "2026-10-13T10:40:45.994623Z",
+        "status": "live",
+        "trigger": "other",
+        "updatedAt": "2026-10-13T10:41:55.296657Z"
+      }
+    ],
+    "children_enumeration_evidence": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "list",
+        "srv-db70kf6qte1s73bn31n0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.398,
+      "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:38:52.354987Z\",\n    \"finishedAt\": \"2026-10-13T10:41:55.296656Z\",\n    \"id\": \"dep-db70kf6qte1s73bn31ng\",\n    \"startedAt\": \"2026-10-13T10:40:45.994623Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:41:55.296657Z\"\n  }\n]",
+      "stderr": ""
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db70kf6qte1s73bn31n0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.402,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-13T10:38:52Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db70kf6qte1s73bn31n0\",\n    \"id\": \"srv-db70kf6qte1s73bn31n0\",\n    \"name\": \"qa-20261013-36f411-buildbytes\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-go\",\n    \"serviceDetails\": {\n      \"env\": \"python\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"/usr/local/bin/python3 -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport json,time\\npathlib.Path(\\\"qa-built.json\\\").write_text(json.dumps({\\\"marker\\\":'\\\"'\\\"'QA210_36f411'\\\"'\\\"',\\\"snapshot\\\":snapshot(),\\\"build_path\\\":os.getenv(\\\"PATH\\\"),\\\"built_at\\\":time.time_ns()}))\\n'\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport http.server,json,socket\\nbuilt=json.loads(pathlib.Path(\\\"qa-built.json\\\").read_text())\\nclass Handler(http.server.BaseHTTPRequestHandler):\\n    def do_GET(self):\\n        body=json.dumps({\\\"marker\\\":built[\\\"marker\\\"],\\\"built\\\":built,\\\"runtime\\\":snapshot(),\\\"runtime_path\\\":os.getenv(\\\"PATH\\\"),\\\"instance\\\":socket.gethostname()}).encode()\\n        self.send_response(200)\\n        self.send_header(\\\"Content-Type\\\",\\\"application/json\\\")\\n        self.send_header(\\\"Content-Length\\\",str(len(body)))\\n        self.end_headers()\\n        self.wfile.write(body)\\n    def log_message(self,*args): pass\\nhttp.server.ThreadingHTTPServer((\\\"0.0.0.0\\\",int(os.getenv(\\\"PORT\\\",\\\"3000\\\"))),Handler).serve_forever()\\n'\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261013-36f411-buildbytes:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"python\",\n      \"url\": \"https://qa-20261013-36f411-buildbytes.onbex.co\"\n    },\n    \"slug\": \"qa-20261013-36f411-buildbytes\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-13T10:41:49Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "at": "2026-10-13T10:43:47.108772+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/services/srv-db70kf6qte1s73bn31n0",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "404",
+      "elapsed": 0.585,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49dbec84bcc49fc-SJC"
+      },
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+    },
+    "workspace_after_delete_ids": [
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3v694dm7c7390q930",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db09vbgehcmc739j12i0"
+    ],
+    "runtime_after_delete_checks": [
+      {
+        "exit": 0,
+        "stdout": "404 page not found\n\n404",
+        "stderr": ""
+      }
+    ],
+    "quota_after_delete": {
+      "at": "2026-10-13T10:43:49.041745+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.272,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49dbed63e8a3c35-SJC"
+      },
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    }
+  }
+]

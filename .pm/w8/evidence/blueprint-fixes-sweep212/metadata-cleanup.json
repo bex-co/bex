@@ -1,0 +1,46 @@
+{
+  "at": "2026-10-13T11:26:05.774962+00:00",
+  "source_sync_HEAD": "b85ec5718276fbd780c661015b46950d293f5a5a",
+  "HEAD_at_archiving": "b85ec5718276fbd780c661015b46950d293f5a5a",
+  "desired_API_image": "c1dab29d39c9",
+  "deployed_API_operator_revision": "unknown",
+  "native_checks": 122,
+  "family_counts": {
+    "101-static": 32,
+    "102-shadowed-copy": 16,
+    "099-group-copy": 16,
+    "100-reference": 36,
+    "100-generic-neighbor": 8,
+    "098-KV-guidance": 14
+  },
+  "validity_exit_decisions_correct": 122,
+  "fixed_authored_locations": 44,
+  "known_unfixed_generic_locations": 4,
+  "KV_guidance_cases_correct": 6,
+  "exact_native_wire_captures": 7,
+  "fixture_locations": "PyYAML compose positions over the exact JSON/YAML bytes; all fixed native locations agree",
+  "resources_created": 0,
+  "paid_features_applied": 0,
+  "cleanup": "all copied native configs/capture servers/threads/children removed; quota baseline",
+  "quota": {
+    "at": "2026-10-13T11:26:05.747531+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.354,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49dfcc44b2f23fd-SJC"
+    },
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+  },
+  "unverified": "hosted apply/reapply/runtime; non-REST surfaces; current-state group link order; other masked sibling forms; deployed SHA",
+  "QA_implementation_commit_push_release": false
+}

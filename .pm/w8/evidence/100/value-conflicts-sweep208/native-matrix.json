@@ -1,0 +1,1609 @@
+{
+  "sweep": 208,
+  "source_head": "3c6809182c0886e6bb537dfbba156df2baff7983",
+  "surface": "Native invalid generated/literal declarations whose env keys resemble service fields, with unique literal controls",
+  "mutation": "validation only; no runtime generation or resources",
+  "results": [
+    {
+      "client": "bex",
+      "container": "service",
+      "key": "IMAGE",
+      "document": {
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "IMAGE",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native semantic-error locator intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-service-IMAGE.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.646,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 16,\n      \"error\": \"qa208-51785b-web env \\\"IMAGE\\\": sets both value and generateValue — pick one\",\n      \"line\": 8,\n      \"path\": \"services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 16,
+            "error": "qa208-51785b-web env \"IMAGE\": sets both value and generateValue — pick one",
+            "line": 8,
+            "path": "services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "correct_refusal": true,
+      "layout": "root",
+      "case": "service-IMAGE"
+    },
+    {
+      "client": "bex",
+      "container": "service",
+      "key": "PLAN",
+      "document": {
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "PLAN",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native semantic-error locator intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-service-PLAN.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.015,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 15,\n      \"error\": \"qa208-51785b-web env \\\"PLAN\\\": sets both value and generateValue — pick one\",\n      \"line\": 7,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 15,
+            "error": "qa208-51785b-web env \"PLAN\": sets both value and generateValue — pick one",
+            "line": 7,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "correct_refusal": true,
+      "layout": "root",
+      "case": "service-PLAN"
+    },
+    {
+      "client": "bex",
+      "container": "service",
+      "key": "TYPE",
+      "document": {
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "TYPE",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native semantic-error locator intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-service-TYPE.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.295,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 15,\n      \"error\": \"qa208-51785b-web env \\\"TYPE\\\": sets both value and generateValue — pick one\",\n      \"line\": 5,\n      \"path\": \"services[0].type\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 15,
+            "error": "qa208-51785b-web env \"TYPE\": sets both value and generateValue — pick one",
+            "line": 5,
+            "path": "services[0].type"
+          }
+        ],
+        "valid": false
+      },
+      "correct_refusal": true,
+      "layout": "root",
+      "case": "service-TYPE"
+    },
+    {
+      "client": "bex",
+      "container": "service",
+      "key": "CONNECTIONPOOL",
+      "document": {
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "CONNECTIONPOOL",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native semantic-error locator intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-service-CONNECTIONPOOL.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.663,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"qa208-51785b-web env \\\"CONNECTIONPOOL\\\": sets both value and generateValue — pick one\",\n      \"line\": 3,\n      \"path\": \"services[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "qa208-51785b-web env \"CONNECTIONPOOL\": sets both value and generateValue — pick one",
+            "line": 3,
+            "path": "services[0].connectionPool"
+          }
+        ],
+        "valid": false
+      },
+      "correct_refusal": true,
+      "layout": "root",
+      "case": "service-CONNECTIONPOOL"
+    },
+    {
+      "client": "bex",
+      "container": "service",
+      "key": "ORDINARY_VALUE",
+      "document": {
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "ORDINARY_VALUE",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native semantic-error locator intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-service-ORDINARY_VALUE.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.296,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa208-51785b-web env \\\"ORDINARY_VALUE\\\": sets both value and generateValue — pick one\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa208-51785b-web env \"ORDINARY_VALUE\": sets both value and generateValue — pick one",
+            "line": 11,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "correct_refusal": true,
+      "layout": "root",
+      "case": "service-ORDINARY_VALUE"
+    },
+    {
+      "client": "bex",
+      "container": "group",
+      "key": "IMAGE",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa208-51785b-group",
+            "envVars": [
+              {
+                "key": "IMAGE",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native semantic-error locator intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-group-IMAGE.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.308,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"env group \\\"qa208-51785b-group\\\" var \\\"IMAGE\\\" sets both value and generateValue\",\n      \"line\": 3,\n      \"path\": \"envVarGroups[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "env group \"qa208-51785b-group\" var \"IMAGE\" sets both value and generateValue",
+            "line": 3,
+            "path": "envVarGroups[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "correct_refusal": true,
+      "layout": "root",
+      "case": "group-IMAGE"
+    },
+    {
+      "client": "bex",
+      "container": "group",
+      "key": "PLAN",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa208-51785b-group",
+            "envVars": [
+              {
+                "key": "PLAN",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native semantic-error locator intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-group-PLAN.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.3,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"env group \\\"qa208-51785b-group\\\" var \\\"PLAN\\\" sets both value and generateValue\",\n      \"line\": 3,\n      \"path\": \"envVarGroups[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "env group \"qa208-51785b-group\" var \"PLAN\" sets both value and generateValue",
+            "line": 3,
+            "path": "envVarGroups[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "correct_refusal": true,
+      "layout": "root",
+      "case": "group-PLAN"
+    },
+    {
+      "client": "bex",
+      "container": "group",
+      "key": "TYPE",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa208-51785b-group",
+            "envVars": [
+              {
+                "key": "TYPE",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native semantic-error locator intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-group-TYPE.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.3,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"env group \\\"qa208-51785b-group\\\" var \\\"TYPE\\\" sets both value and generateValue\",\n      \"line\": 3,\n      \"path\": \"envVarGroups[0].type\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "env group \"qa208-51785b-group\" var \"TYPE\" sets both value and generateValue",
+            "line": 3,
+            "path": "envVarGroups[0].type"
+          }
+        ],
+        "valid": false
+      },
+      "correct_refusal": true,
+      "layout": "root",
+      "case": "group-TYPE"
+    },
+    {
+      "client": "bex",
+      "container": "group",
+      "key": "CONNECTIONPOOL",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa208-51785b-group",
+            "envVars": [
+              {
+                "key": "CONNECTIONPOOL",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native semantic-error locator intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-group-CONNECTIONPOOL.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.309,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"env group \\\"qa208-51785b-group\\\" var \\\"CONNECTIONPOOL\\\" sets both value and generateValue\",\n      \"line\": 3,\n      \"path\": \"envVarGroups[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "env group \"qa208-51785b-group\" var \"CONNECTIONPOOL\" sets both value and generateValue",
+            "line": 3,
+            "path": "envVarGroups[0].connectionPool"
+          }
+        ],
+        "valid": false
+      },
+      "correct_refusal": true,
+      "layout": "root",
+      "case": "group-CONNECTIONPOOL"
+    },
+    {
+      "client": "bex",
+      "container": "group",
+      "key": "ORDINARY_VALUE",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa208-51785b-group",
+            "envVars": [
+              {
+                "key": "ORDINARY_VALUE",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native semantic-error locator intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-group-ORDINARY_VALUE.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.678,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"env group \\\"qa208-51785b-group\\\" var \\\"ORDINARY_VALUE\\\" sets both value and generateValue\",\n      \"line\": 3,\n      \"path\": \"envVarGroups[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "env group \"qa208-51785b-group\" var \"ORDINARY_VALUE\" sets both value and generateValue",
+            "line": 3,
+            "path": "envVarGroups[0]"
+          }
+        ],
+        "valid": false
+      },
+      "correct_refusal": true,
+      "layout": "root",
+      "case": "group-ORDINARY_VALUE"
+    },
+    {
+      "client": "bex",
+      "container": "service",
+      "key": "IMAGE",
+      "control": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "IMAGE",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-control-IMAGE.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.323,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa208-51785b-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa208-51785b-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "correct_control": true,
+      "layout": "root",
+      "case": "control-IMAGE"
+    },
+    {
+      "client": "bex",
+      "container": "service",
+      "key": "TYPE",
+      "control": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "TYPE",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-control-TYPE.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.335,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa208-51785b-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa208-51785b-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "correct_control": true,
+      "layout": "root",
+      "case": "control-TYPE"
+    },
+    {
+      "client": "render",
+      "container": "service",
+      "key": "IMAGE",
+      "document": {
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "IMAGE",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native semantic-error locator intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-service-IMAGE.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.352,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 16,\n      \"error\": \"qa208-51785b-web env \\\"IMAGE\\\": sets both value and generateValue — pick one\",\n      \"line\": 8,\n      \"path\": \"services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 16,
+            "error": "qa208-51785b-web env \"IMAGE\": sets both value and generateValue — pick one",
+            "line": 8,
+            "path": "services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "correct_refusal": true,
+      "layout": "root",
+      "case": "service-IMAGE"
+    },
+    {
+      "client": "render",
+      "container": "service",
+      "key": "PLAN",
+      "document": {
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "PLAN",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native semantic-error locator intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-service-PLAN.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.308,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 15,\n      \"error\": \"qa208-51785b-web env \\\"PLAN\\\": sets both value and generateValue — pick one\",\n      \"line\": 7,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 15,
+            "error": "qa208-51785b-web env \"PLAN\": sets both value and generateValue — pick one",
+            "line": 7,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "correct_refusal": true,
+      "layout": "root",
+      "case": "service-PLAN"
+    },
+    {
+      "client": "render",
+      "container": "service",
+      "key": "TYPE",
+      "document": {
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "TYPE",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native semantic-error locator intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-service-TYPE.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.292,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 15,\n      \"error\": \"qa208-51785b-web env \\\"TYPE\\\": sets both value and generateValue — pick one\",\n      \"line\": 5,\n      \"path\": \"services[0].type\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 15,
+            "error": "qa208-51785b-web env \"TYPE\": sets both value and generateValue — pick one",
+            "line": 5,
+            "path": "services[0].type"
+          }
+        ],
+        "valid": false
+      },
+      "correct_refusal": true,
+      "layout": "root",
+      "case": "service-TYPE"
+    },
+    {
+      "client": "render",
+      "container": "service",
+      "key": "CONNECTIONPOOL",
+      "document": {
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "CONNECTIONPOOL",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native semantic-error locator intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-service-CONNECTIONPOOL.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.296,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"qa208-51785b-web env \\\"CONNECTIONPOOL\\\": sets both value and generateValue — pick one\",\n      \"line\": 3,\n      \"path\": \"services[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "qa208-51785b-web env \"CONNECTIONPOOL\": sets both value and generateValue — pick one",
+            "line": 3,
+            "path": "services[0].connectionPool"
+          }
+        ],
+        "valid": false
+      },
+      "correct_refusal": true,
+      "layout": "root",
+      "case": "service-CONNECTIONPOOL"
+    },
+    {
+      "client": "render",
+      "container": "service",
+      "key": "ORDINARY_VALUE",
+      "document": {
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "ORDINARY_VALUE",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native semantic-error locator intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-service-ORDINARY_VALUE.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.292,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa208-51785b-web env \\\"ORDINARY_VALUE\\\": sets both value and generateValue — pick one\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa208-51785b-web env \"ORDINARY_VALUE\": sets both value and generateValue — pick one",
+            "line": 11,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "correct_refusal": true,
+      "layout": "root",
+      "case": "service-ORDINARY_VALUE"
+    },
+    {
+      "client": "render",
+      "container": "group",
+      "key": "IMAGE",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa208-51785b-group",
+            "envVars": [
+              {
+                "key": "IMAGE",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native semantic-error locator intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-group-IMAGE.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.288,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"env group \\\"qa208-51785b-group\\\" var \\\"IMAGE\\\" sets both value and generateValue\",\n      \"line\": 3,\n      \"path\": \"envVarGroups[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "env group \"qa208-51785b-group\" var \"IMAGE\" sets both value and generateValue",
+            "line": 3,
+            "path": "envVarGroups[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "correct_refusal": true,
+      "layout": "root",
+      "case": "group-IMAGE"
+    },
+    {
+      "client": "render",
+      "container": "group",
+      "key": "PLAN",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa208-51785b-group",
+            "envVars": [
+              {
+                "key": "PLAN",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native semantic-error locator intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-group-PLAN.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.309,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"env group \\\"qa208-51785b-group\\\" var \\\"PLAN\\\" sets both value and generateValue\",\n      \"line\": 3,\n      \"path\": \"envVarGroups[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "env group \"qa208-51785b-group\" var \"PLAN\" sets both value and generateValue",
+            "line": 3,
+            "path": "envVarGroups[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "correct_refusal": true,
+      "layout": "root",
+      "case": "group-PLAN"
+    },
+    {
+      "client": "render",
+      "container": "group",
+      "key": "TYPE",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa208-51785b-group",
+            "envVars": [
+              {
+                "key": "TYPE",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native semantic-error locator intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-group-TYPE.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.311,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"env group \\\"qa208-51785b-group\\\" var \\\"TYPE\\\" sets both value and generateValue\",\n      \"line\": 3,\n      \"path\": \"envVarGroups[0].type\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "env group \"qa208-51785b-group\" var \"TYPE\" sets both value and generateValue",
+            "line": 3,
+            "path": "envVarGroups[0].type"
+          }
+        ],
+        "valid": false
+      },
+      "correct_refusal": true,
+      "layout": "root",
+      "case": "group-TYPE"
+    },
+    {
+      "client": "render",
+      "container": "group",
+      "key": "CONNECTIONPOOL",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa208-51785b-group",
+            "envVars": [
+              {
+                "key": "CONNECTIONPOOL",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native semantic-error locator intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-group-CONNECTIONPOOL.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.293,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"env group \\\"qa208-51785b-group\\\" var \\\"CONNECTIONPOOL\\\" sets both value and generateValue\",\n      \"line\": 3,\n      \"path\": \"envVarGroups[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "env group \"qa208-51785b-group\" var \"CONNECTIONPOOL\" sets both value and generateValue",
+            "line": 3,
+            "path": "envVarGroups[0].connectionPool"
+          }
+        ],
+        "valid": false
+      },
+      "correct_refusal": true,
+      "layout": "root",
+      "case": "group-CONNECTIONPOOL"
+    },
+    {
+      "client": "render",
+      "container": "group",
+      "key": "ORDINARY_VALUE",
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa208-51785b-group",
+            "envVars": [
+              {
+                "key": "ORDINARY_VALUE",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native semantic-error locator intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-group-ORDINARY_VALUE.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.294,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"env group \\\"qa208-51785b-group\\\" var \\\"ORDINARY_VALUE\\\" sets both value and generateValue\",\n      \"line\": 3,\n      \"path\": \"envVarGroups[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "env group \"qa208-51785b-group\" var \"ORDINARY_VALUE\" sets both value and generateValue",
+            "line": 3,
+            "path": "envVarGroups[0]"
+          }
+        ],
+        "valid": false
+      },
+      "correct_refusal": true,
+      "layout": "root",
+      "case": "group-ORDINARY_VALUE"
+    },
+    {
+      "client": "render",
+      "container": "service",
+      "key": "IMAGE",
+      "control": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "IMAGE",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-control-IMAGE.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.33,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa208-51785b-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa208-51785b-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "correct_control": true,
+      "layout": "root",
+      "case": "control-IMAGE"
+    },
+    {
+      "client": "render",
+      "container": "service",
+      "key": "TYPE",
+      "control": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa208-51785b-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "TYPE",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep208-control-TYPE.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.322,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa208-51785b-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa208-51785b-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "correct_control": true,
+      "layout": "root",
+      "case": "control-TYPE"
+    }
+  ],
+  "copied_render_config_removed": true,
+  "source_head_at_native_start": "not captured: validation began before stash restore recovery; source diagnosis follows recovery",
+  "verified_current_head": "cb16919ab75d1a72663109b06707fb3663fc33cb",
+  "native_captures": [
+    {
+      "at": "2026-10-13T10:21:01.096946+00:00",
+      "client": "bex",
+      "case": "service-IMAGE",
+      "layout": "root",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep208-root-service-IMAGE.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 1,
+        "elapsed": 0.456,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 16,\n      \"error\": \"qa208-51785b-web env \\\"IMAGE\\\": sets both value and generateValue — pick one\",\n      \"line\": 8,\n      \"path\": \"services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T10:21:01.614646+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=98d447d044b45613e0ff5e9452c69b3a4f28ead12e86797fcb22bd7aa032",
+            "body": "--98d447d044b45613e0ff5e9452c69b3a4f28ead12e86797fcb22bd7aa032\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--98d447d044b45613e0ff5e9452c69b3a4f28ead12e86797fcb22bd7aa032\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep208-root-service-IMAGE.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa208-51785b-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"key\": \"IMAGE\",\n          \"value\": \"\",\n          \"generateValue\": true\n        }\n      ]\n    }\n  ]\n}\n\r\n--98d447d044b45613e0ff5e9452c69b3a4f28ead12e86797fcb22bd7aa032--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"services\": [\n    {\n      \"name\": \"qa208-51785b-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"key\": \"IMAGE\",\n          \"value\": \"\",\n          \"generateValue\": true\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49d9d73afae34c3-SJC"
+          },
+          "response": "{\"valid\":false,\"errors\":[{\"error\":\"qa208-51785b-web env \\\"IMAGE\\\": sets both value and generateValue — pick one\",\"line\":8,\"column\":16,\"path\":\"services[0].image\"}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-13T10:21:02.029635+00:00",
+      "client": "render",
+      "case": "group-PLAN",
+      "layout": "root",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep208-root-group-PLAN.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 1,
+        "elapsed": 0.515,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"env group \\\"qa208-51785b-group\\\" var \\\"PLAN\\\" sets both value and generateValue\",\n      \"line\": 3,\n      \"path\": \"envVarGroups[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T10:21:02.602226+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=8dc4542237ef7d2be92dd82010f6650a52847e0b4f83f8ae306ba50ceb44",
+            "body": "--8dc4542237ef7d2be92dd82010f6650a52847e0b4f83f8ae306ba50ceb44\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--8dc4542237ef7d2be92dd82010f6650a52847e0b4f83f8ae306ba50ceb44\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep208-root-group-PLAN.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa208-51785b-group\",\n      \"envVars\": [\n        {\n          \"key\": \"PLAN\",\n          \"value\": \"\",\n          \"generateValue\": true\n        }\n      ]\n    }\n  ],\n  \"services\": [\n    {\n      \"name\": \"qa208-51785b-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      }\n    }\n  ]\n}\n\r\n--8dc4542237ef7d2be92dd82010f6650a52847e0b4f83f8ae306ba50ceb44--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa208-51785b-group\",\n      \"envVars\": [\n        {\n          \"key\": \"PLAN\",\n          \"value\": \"\",\n          \"generateValue\": true\n        }\n      ]\n    }\n  ],\n  \"services\": [\n    {\n      \"name\": \"qa208-51785b-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      }\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49d9d79289c2ed1-SJC"
+          },
+          "response": "{\"valid\":false,\"errors\":[{\"error\":\"env group \\\"qa208-51785b-group\\\" var \\\"PLAN\\\" sets both value and generateValue\",\"line\":3,\"column\":5,\"path\":\"envVarGroups[0].plan\"}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-13T10:21:02.899788+00:00",
+      "client": "bex",
+      "case": "service-ORDINARY_VALUE",
+      "layout": "root",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep208-root-service-ORDINARY_VALUE.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 1,
+        "elapsed": 0.321,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa208-51785b-web env \\\"ORDINARY_VALUE\\\": sets both value and generateValue — pick one\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T10:21:03.282113+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=90c8083241aa371bb8b95c9d7d47d5008525e6e861528150942b36de586a",
+            "body": "--90c8083241aa371bb8b95c9d7d47d5008525e6e861528150942b36de586a\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--90c8083241aa371bb8b95c9d7d47d5008525e6e861528150942b36de586a\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep208-root-service-ORDINARY_VALUE.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa208-51785b-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"key\": \"ORDINARY_VALUE\",\n          \"value\": \"\",\n          \"generateValue\": true\n        }\n      ]\n    }\n  ]\n}\n\r\n--90c8083241aa371bb8b95c9d7d47d5008525e6e861528150942b36de586a--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"services\": [\n    {\n      \"name\": \"qa208-51785b-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"key\": \"ORDINARY_VALUE\",\n          \"value\": \"\",\n          \"generateValue\": true\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49d9d7e5ea4586f-SJC"
+          },
+          "response": "{\"valid\":false,\"errors\":[{\"error\":\"qa208-51785b-web env \\\"ORDINARY_VALUE\\\": sets both value and generateValue — pick one\",\"line\":11,\"column\":18,\"path\":\"services[0].envVars\"}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-13T10:21:03.747881+00:00",
+      "client": "render",
+      "case": "control-IMAGE",
+      "layout": "root",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep208-root-control-IMAGE.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 0.374,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa208-51785b-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T10:21:04.180672+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=ef32bf59a0222c7bf4796e26fff6c956ef5c0b844e1d7ed9993426e653f7",
+            "body": "--ef32bf59a0222c7bf4796e26fff6c956ef5c0b844e1d7ed9993426e653f7\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--ef32bf59a0222c7bf4796e26fff6c956ef5c0b844e1d7ed9993426e653f7\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep208-root-control-IMAGE.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa208-51785b-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"key\": \"IMAGE\",\n          \"value\": \"\"\n        }\n      ]\n    }\n  ]\n}\n\r\n--ef32bf59a0222c7bf4796e26fff6c956ef5c0b844e1d7ed9993426e653f7--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"services\": [\n    {\n      \"name\": \"qa208-51785b-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"key\": \"IMAGE\",\n          \"value\": \"\"\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49d9d839be17b82-SJC"
+          },
+          "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa208-51785b-web\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa208-51785b-web\",\"sourcePath\":\"#/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    }
+  ]
+}

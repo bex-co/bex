@@ -1,0 +1,39 @@
+{
+  "at": "2026-10-13T09:26:59.762203+00:00",
+  "source_head": "c5a0eb9dd15f6b417bf586fdf26510706497b032",
+  "live_API_operator_revision": "unknown",
+  "production_validation_checks": 8,
+  "production_validation_wire_captures": 2,
+  "native_clients": "published Bex0.3.2 and unmodified Render2.27/a764810a7682",
+  "native_manual_deploy_cases_to_current_local_API": 4,
+  "wrong_local_native_selections": 2,
+  "resync_controls": 2,
+  "actual_current_operator_jobs_in_fake_client": 4,
+  "wrong_initial_jobs": 2,
+  "regular_job_controls": 2,
+  "existing_hook_tests": 5,
+  "production_resources_created": 0,
+  "hosted_apply_job_execution_runtime_auth": "untested; first Live rev-1 and predeploy generation1 completion simulated locally",
+  "local_servers_configs_children": "native children exit0; httptest servers close and Go TempDir configs remove on test completion; production comparison/capture configs removed",
+  "excluded_QA_setup": "fake-client metadata generation/UID and preceding release selection omitted initially; corrected with standard API effects modeled and actual prepareAppReleaseDecision; no claims from failed setup attempts. Long Go JSON output chunks are concatenated per test before decoding.",
+  "quota": {
+    "at": "2026-10-13T09:26:59.737786+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.845,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49d4e4abd77ebf3-SJC"
+    },
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+  },
+  "implementation_commit_push_release": false
+}

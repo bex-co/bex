@@ -1,0 +1,19 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-overlay=<QA_TMP>/sweep206-operator-overlay.json",
+    "-run",
+    "^TestQAInitialHookJob206$",
+    "-count=1",
+    "-timeout=90s",
+    "-json",
+    "./internal/controller"
+  ],
+  "exit": 1,
+  "elapsed": 8.924,
+  "records": [],
+  "passes": [],
+  "stderr": "",
+  "excluded_attempts": "Initial fixture omitted real API generation increment and normal preceding prepareAppReleaseDecision; corrected to model both, no product claim from those QA failures"
+}

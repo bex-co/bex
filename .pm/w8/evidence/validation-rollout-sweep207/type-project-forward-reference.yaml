@@ -1,0 +1,48 @@
+{
+  "projects": [
+    {
+      "name": "qa207-de5e17-project",
+      "environments": [
+        {
+          "name": "normal",
+          "services": [
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa207-de5e17-caller",
+              "envVars": [
+                {
+                  "key": "COPY_VALUE",
+                  "fromService": {
+                    "name": "qa207-de5e17-source",
+                    "type": "web",
+                    "envVarKey": "VALUE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa207-de5e17-source",
+              "envVars": [
+                {
+                  "key": "VALUE",
+                  "value": "ordinary literal"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

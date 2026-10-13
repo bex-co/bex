@@ -1,0 +1,271 @@
+lego/backend/internal/apps/service.go
+2251: func (s *Service) planStackApp(ctx context.Context, req CreateRequest, desired appv1alpha1.AppSpec) (stackAppPlan, error) {
+2252: 	if err := s.validateNewSpecMaintenanceMode(ctx, req.Name, desired); err != nil {
+2253: 		return stackAppPlan{}, err
+2254: 	}
+2255: 	// initialDeployHook: use the one-time command as preDeployCommand on first
+2256: 	// create so the operator runs it on the first deploy (w2/m45).
+2257: 	if req.InitialDeployHook != "" {
+2258: 		desired.PreDeployCommand = req.InitialDeployHook
+2259: 	}
+2260: 	if err := s.configureNewImageCompatibility(ctx, &desired, req.Port > 0); err != nil {
+2261: 		return stackAppPlan{}, err
+2262: 	}
+
+lego/backend/internal/apps/service.go
+2291: 	// Persist the initialDeployHook command for echo-back on reads (w2/m45).
+2292: 	// The ran-once annotation is added by applyCreate once the first pre-deploy
+2293: 	// Job succeeds; planStackApp only stores the command.
+2294: 	if req.InitialDeployHook != "" {
+2295: 		if a.Annotations == nil {
+2296: 			a.Annotations = map[string]string{}
+2297: 		}
+2298: 		a.Annotations[initialDeployHookAnnotation] = req.InitialDeployHook
+2299: 	}
+2300: 	// No env-literal move here: this is the Blueprint/stack create path, where
+
+lego/backend/internal/apps/deploy.go
+3087: 		if secretName != "" {
+3088: 			existing.Spec.CloneSecret = secretName
+3089: 		}
+3090: 		existing.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
+3091: 	}
+3092: 	// Mark the initialDeployHook as ran so subsequent syncs skip it (w2/m45).
+3093: 	if changes.markHookRan {
+3094: 		metav1.SetMetaDataAnnotation(&existing.ObjectMeta, initialDeployHookRanAnnotation, "true")
+3095: 	}
+3096: 	resourcemeta.Touch(existing, s.Now())
+3097: 	if err := s.Client.Patch(ctx, existing, base); err != nil {
+
+lego/backend/internal/apps/deploy.go
+3126: // initialDeployHookState is the initialDeployHook ran-once gate (w2/m45) for an
+3127: // existing service: once the ran-once annotation is set, desired.PreDeployCommand
+3128: // stays the regular one from req. markHookRan reports the first pre-deploy just
+3129: // succeeded (mark ran, revert to the regular command); a still-pending hook is
+3130: // kept as desired.PreDeployCommand instead. hookChanged reports a not-yet-ran
+3131: // hook whose command differs from the recorded annotation.
+3132: func initialDeployHookState(req CreateRequest, existing *appv1alpha1.App, desired *appv1alpha1.AppSpec) (markHookRan, hookChanged bool) {
+3133: 	if req.InitialDeployHook != "" && existing.Annotations[initialDeployHookRanAnnotation] == "" {
+3134: 		if pd := existing.Status.PreDeploy; pd != nil && pd.Status == appv1alpha1.PreDeploySucceeded {
+3135: 			// First pre-deploy just succeeded: mark ran, revert to regular command.
+3136: 			markHookRan = true
+3137: 		} else {
+3138: 			// Hook still pending: keep it as the preDeployCommand.
+3139: 			desired.PreDeployCommand = req.InitialDeployHook
+3140: 		}
+3141: 	}
+3142: 	hookChanged = req.InitialDeployHook != "" &&
+3143: 		existing.Annotations[initialDeployHookRanAnnotation] == "" &&
+3144: 		existing.Annotations[initialDeployHookAnnotation] != req.InitialDeployHook
+3145: 	return markHookRan, hookChanged
+3146: }
+
+lego/backend/internal/deploys/service.go
+760: 	}
+761: 	d, err := s.openRelease(ctx, a, appID, rowWrite, func(a *appv1alpha1.App, release int64) error {
+762: 		stampReleaseGeneration(a, release)
+763: 		stampClearCacheRelease(a, release, p.ClearCache)
+764: 		a.Spec.ReleaseConfig = nil
+765: 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339Nano)
+766: 		if a.Spec.Repo != "" {
+767: 			a.Spec.Image = ""
+768: 		}
+769: 		// A freshly minted clone credential rides the same patch as the bump;
+770: 		// "" (public/unconnected repo, or GitHub off) leaves the field alone.
+771: 		if cloneSecret != "" {
+772: 			a.Spec.CloneSecret = cloneSecret
+773: 		}
+774: 		a.Spec.ExternalRegistryPullSecret = pullSecret
+775: 		// Always write BuildCommit — when the commit resolver succeeds the
+776: 		// immutable SHA becomes the build input so the clone job can verify it
+777: 		// via EXPECTED_COMMIT (finding-1 TOCTOU). Otherwise the original ref
+778: 		// is preserved for best-effort provenance (w9/001) and the operator
+779: 		// fetches HEAD without verification. A trigger without commitId resets
+780: 		// to "" so Branch HEAD is always the default.
+781: 		if commit.Hash != "" {
+782: 			a.Spec.BuildCommit = commit.Hash
+783: 		} else {
+784: 			a.Spec.BuildCommit = p.CommitID
+785: 		}
+786: 		// A deploy override selects runtime input without changing the saved
+787: 		// image that the projector and subsequent config changes use.
+788: 		if p.ImageURL != "" {
+789: 			a.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: release, Image: p.ImageURL}
+790: 		}
+791: 		return nil
+792: 	}, func(release int64) (store.Deploy, error) {
+793: 		image := a.Spec.Image
+794: 		if p.ImageURL != "" {
+795: 			image = p.ImageURL
+796: 		}
+797: 		return s.Store.CreateDeploy(ctx, appID, trigger, image, release, commit, triggeredBy)
+798: 	})
+799: 	if err != nil {
+
+lego/backend/internal/deploys/service.go
+812: func patchedGeneration(before, after int64) int64 {
+813: 	return max(after, before+1)
+814: }
+815:
+816: func stampReleaseGeneration(a *appv1alpha1.App, generation int64) {
+817: 	if a.Annotations == nil {
+818: 		a.Annotations = map[string]string{}
+819: 	}
+820: 	a.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(generation, 10)
+821: }
+822:
+823: // stampClearCacheRelease binds Render's clearCache=clear to the release being
+824: // opened. Omission and do_not_clear remove any prior marker so a later normal
+825: // deploy cannot inherit a stale reset (w7/m88).
+826: func stampClearCacheRelease(a *appv1alpha1.App, generation int64, clearCache string) {
+
+lego/operator/internal/controller/release_identity.go
+417: 	app.Status.PendingReleaseGeneration = 0
+418:
+419: 	artifactChanged := app.Status.ArtifactFingerprint != desired.artifact
+420: 	releaseChanged := app.Status.ReleaseFingerprint != desired.release
+421: 	if releaseChanged {
+422: 		app.Status.ReleaseFingerprint = desired.release
+423: 		// Pin the artifact fingerprint of the release being dispatched, so a push
+424: 		// that coalesces mid-build (above) can label the running build's resolved
+425: 		// artifact correctly (ADR060 §D1a).
+426: 		app.Status.ReleaseArtifactFingerprint = desired.artifact
+427: 		app.Status.ReleaseGeneration = requestedReleaseGeneration(app)
+428: 	}
+429: 	if app.Status.ReleaseGeneration == 0 {
+430: 		app.Status.ReleaseGeneration = app.Generation
+431: 	}
+432: 	return appReleaseDecision{
+433: 		desired:         desired,
+434: 		artifactChanged: artifactChanged,
+435: 		releaseChanged:  releaseChanged,
+436: 	}
+437: }
+438:
+439: // releaseHasServed reports whether any release has actually served. markRunning
+
+lego/operator/internal/controller/release_identity.go
+542: func requestedReleaseGeneration(app *appv1alpha1.App) int64 {
+543: 	if generation, ok := stampedReleaseGeneration(app); ok && generation > app.Status.ReleaseGeneration {
+544: 		return generation
+545: 	}
+546: 	return app.Generation
+547: }
+548:
+549: func activeRevisionGeneration(app *appv1alpha1.App) int64 {
+550: 	if generation, ok := appv1alpha1.RevisionGeneration(app.Status.ActiveRevision); ok {
+551: 		return generation
+552: 	}
+553: 	if app.Status.ObservedGeneration > 0 {
+554: 		return app.Status.ObservedGeneration
+555: 	}
+556: 	return app.Generation
+557: }
+558:
+559: func releaseGeneration(app *appv1alpha1.App) int64 {
+560: 	if app.Status.ReleaseGeneration > 0 {
+561: 		return app.Status.ReleaseGeneration
+562: 	}
+563: 	return activeRevisionGeneration(app)
+564: }
+
+lego/operator/internal/controller/app_controller.go
+5568: func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, bool, error) {
+5569: 	if app.Spec.PreDeployCommand == "" || canceledOverServed(app) {
+5570: 		if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
+5571: 			return ctrl.Result{}, true, err
+5572: 		}
+5573: 		return ctrl.Result{}, false, nil
+5574: 	}
+5575: 	gen := releaseGeneration(app)
+5576:
+5577: 	// firstForGen is the first reconcile that runs this revision's step; started
+5578: 	// is preserved across the requeues that follow. Terminal per release: a
+5579: 	// completed step for this revision is decisive, so we never touch the Job
+5580: 	// again (no re-run, no re-create after TTL reap).
+5581: 	firstForGen := true
+5582: 	started := time.Now().UTC().Format(time.RFC3339)
+5583: 	recordedJob := ""
+5584: 	if pd := app.Status.PreDeploy; pd != nil && pd.Generation == gen {
+5585: 		firstForGen = false
+5586: 		recordedJob = pd.Job
+5587: 		if pd.StartedAt != "" {
+5588: 			started = pd.StartedAt
+5589: 		}
+5590: 		switch pd.Status {
+5591: 		case appv1alpha1.PreDeploySucceeded:
+5592: 			return ctrl.Result{}, false, nil // passed — proceed to the rollout
+5593: 		case appv1alpha1.PreDeployFailed:
+5594: 			// Terminal for this release: re-stamp the same verdict and go quiet,
+5595: 			// like the build verdict gate. A new release generation is what runs
+5596: 			// the step again, so retrying this one on error backoff buys nothing.
+5597: 			res, halt, _ := r.failPreDeploy(ctx, app, pd)
+5598: 			return res, halt, nil
+5599: 		}
+5600: 		// Running/Pending: fall through to re-check the live Job.
+5601: 	}
+5602:
+5603: 	// The Job runs in the App's OWN namespace, never the build namespace
+5604: 	// (ADR043 D8, applied verbatim): the per-workspace default-deny admits only
+
+lego/operator/internal/controller/app_controller.go
+5642: 	var vols []corev1.Volume
+5643: 	var mounts []corev1.VolumeMount
+5644: 	if vol, mount := secretFileMounts(release); vol != nil {
+5645: 		vols = []corev1.Volume{*vol}
+5646: 		mounts = []corev1.VolumeMount{*mount}
+5647: 	}
+5648: 	pullSecrets := r.imagePullSecrets(app, image)
+5649: 	if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
+5650: 		return r.failPreDeploy(ctx, app, failedPD(jobName, preDeployNotStarted(err)))
+5651: 	}
+5652: 	job, err := predeploy.Ensure(ctx, predeploy.Options{
+5653: 		Name:             app.Name,
+5654: 		AppUID:           string(app.UID),
+5655: 		Namespace:        ns,
+5656: 		Workspace:        app.Labels[labelWorkspace],
+5657: 		AppNamespace:     app.Namespace,
+5658: 		VerifyImage:      r.TenantSignKeySecret != "",
+5659: 		Image:            image,
+5660: 		Command:          app.Spec.PreDeployCommand,
+5661: 		Revision:         rev,
+5662: 		Generation:       gen,
+5663: 		Env:              appEnv(app, port),
+5664: 		EnvFrom:          envFromSources(release),
+5665: 		ImagePullSecrets: pullSecrets,
+5666: 		SecurityContext:  appSecCtx(app.Spec),
+5667: 		ContainerPolicy:  app.Spec.ContainerPolicy,
+5668: 		Resources:        resourcesForTier(app.Spec.Tier),
+5669: 		Volumes:          vols,
+5670: 		VolumeMounts:     mounts,
+5671: 		Client:           r.Client,
+5672: 	})
+5673: 	if err != nil {
+5674: 		// A transient API error (create/get) — requeue without marking the deploy
+
+lego/backend/internal/apps/stack_test.go
+963: // re-sync after the first pre-deploy Job succeeds writes the ran-once annotation
+964: // and restores the regular preDeployCommand.
+965: func TestDeployStackInitialHookMarkedRanWhenPreDeploySucceeds(t *testing.T) {
+966: 	svc, cl := newService(nil)
+967: 	ctx := context.Background()
+968: 	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: hookManifest}); err != nil {
+969: 		t.Fatalf("first DeployStack: %v", err)
+970: 	}
+971: 	// Simulate the operator: first pre-deploy Job succeeded.
+972: 	app := getApp(t, cl, "web")
+973: 	app.Status.PreDeploy = &appv1alpha1.PreDeployStatus{Status: appv1alpha1.PreDeploySucceeded}
+974: 	if err := cl.Update(ctx, app); err != nil {
+975: 		t.Fatalf("update status: %v", err)
+976: 	}
+977: 	// Re-sync: hook should not rerun; ran-once annotation should appear.
+978: 	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: hookManifest}); err != nil {
+979: 		t.Fatalf("second DeployStack: %v", err)
+980: 	}
+981: 	app = getApp(t, cl, "web")
+982: 	if app.Annotations[initialDeployHookRanAnnotation] != "true" {
+983: 		t.Errorf("ran-once annotation = %q, want true", app.Annotations[initialDeployHookRanAnnotation])
+984: 	}
+985: 	if app.Spec.PreDeployCommand != "npm run db:migrate" {
+986: 		t.Errorf("preDeployCommand after hook ran = %q, want npm run db:migrate (regular command)", app.Spec.PreDeployCommand)
+987: 	}

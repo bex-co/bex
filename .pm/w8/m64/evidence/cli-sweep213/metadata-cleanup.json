@@ -1,0 +1,46 @@
+{
+  "at": "2026-10-13T12:11:50.279372+00:00",
+  "source_HEAD": "d15c1e7fcfe0bc4806f398c9b94535560380e837",
+  "deployed_API_operator_Kubernetes_revision": "unknown",
+  "native_Bex": "0.3.2",
+  "native_Render": "2.27/a764810a768202704e7206eb7b87a47211fcd98e",
+  "QA_workspace": "tea-daif693dqjvc73e7as3g",
+  "auth": "isolated human grant, native validation only",
+  "actual_backend_cases": 7,
+  "persisted_association_mismatches": 4,
+  "actual_operator_projection_cases": 7,
+  "neighbor_operator_tests": "TestAppEnv (4 subcases) and TestEnvFromSources pass; no full suite",
+  "native_fresh_declaration_checks": 14,
+  "exact_native_wire_captures": 4,
+  "fresh_duplicate_mismatch": "initial persisted source order A,B and consumer COPY=group A; source order gives group B",
+  "fake_ownership": "all App/group IDs in local diagnostics are fake objects, not production ownership or deletion targets; no entries added to the hosting resource ledger",
+  "runtime_consequence": "inferred from actual operator projected order and Kubernetes v0.35.0 EnvFrom API contract, not executed in a hosted pod",
+  "original_099_scope": "core linked-literal fix and sweep212 acceptance preserved; current-state/order acceptance exposed this remaining bug",
+  "excluded_harness_attempts": [
+    "legacy CR-only selector looked at a missing production name label; corrected to known CR names",
+    "operator probe omitted int32-to-int conversion; corrected; neither is a product failure"
+  ],
+  "unverified": "hosted Blueprint apply/reapply/runtime; real-DB/store-backed mode; active release snapshots; current-state native API acceptance; non-REST surfaces; Render production",
+  "resources_created": 0,
+  "cleanup": "all native config/capture server/thread/child copies removed; quota baseline",
+  "quota": {
+    "at": "2026-10-13T12:11:50.214879+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.341,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49e3fc539bf2157-SJC"
+    },
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+  },
+  "QA_product_fix_commit_push_release": false
+}

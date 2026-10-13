@@ -1,0 +1,38 @@
+{
+  "services": [
+    {
+      "name": "qa207-de5e17-source",
+      "type": "web",
+      "runtime": "image",
+      "image": {
+        "url": "nginx:1"
+      },
+      "plan": "free",
+      "envVars": [
+        {
+          "key": "QA_SOURCE",
+          "value": "source-173"
+        }
+      ]
+    },
+    {
+      "name": "qa207-de5e17-target",
+      "type": "web",
+      "runtime": "image",
+      "image": {
+        "url": "nginx:1"
+      },
+      "plan": "free",
+      "envVars": [
+        {
+          "key": "QA_TARGET",
+          "fromService": {
+            "type": "pserv",
+            "name": "qa207-de5e17-source",
+            "property": "port"
+          }
+        }
+      ]
+    }
+  ]
+}

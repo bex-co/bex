@@ -1,0 +1,97 @@
+[
+  {
+    "at": "2026-10-13T09:06:52.774701+00:00",
+    "client": "bex",
+    "case": "initial-and-regular",
+    "layout": "root",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "<QA_TMP>/sweep206-root-initial-and-regular.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.53,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa206-85cf53-hook\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T09:06:53.360572+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=42136bc2b82ee1cab228f4fd3eb91c8a2874dad3bb67697faceae1a7fdb0",
+          "body": "--42136bc2b82ee1cab228f4fd3eb91c8a2874dad3bb67697faceae1a7fdb0\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--42136bc2b82ee1cab228f4fd3eb91c8a2874dad3bb67697faceae1a7fdb0\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep206-root-initial-and-regular.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa206-85cf53-hook\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"initialDeployHook\": \"echo qa206-initial-once\",\n      \"preDeployCommand\": \"echo qa206-regular\"\n    }\n  ]\n}\n\r\n--42136bc2b82ee1cab228f4fd3eb91c8a2874dad3bb67697faceae1a7fdb0--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"services\": [\n    {\n      \"name\": \"qa206-85cf53-hook\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"initialDeployHook\": \"echo qa206-initial-once\",\n      \"preDeployCommand\": \"echo qa206-regular\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49d30d96a27235c-SJC"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa206-85cf53-hook\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa206-85cf53-hook\",\"sourcePath\":\"#/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-13T09:08:13.440395+00:00",
+    "client": "render",
+    "case": "initial-only",
+    "layout": "root",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "<QA_TMP>/sweep206-root-initial-only.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.476,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa206-85cf53-hook\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T09:08:13.973713+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=1f9e216744e75ae766e288814e19a07640a947ef505d6e2e0fa9cd3e5823",
+          "body": "--1f9e216744e75ae766e288814e19a07640a947ef505d6e2e0fa9cd3e5823\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--1f9e216744e75ae766e288814e19a07640a947ef505d6e2e0fa9cd3e5823\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep206-root-initial-only.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa206-85cf53-hook\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"initialDeployHook\": \"echo qa206-initial-once\"\n    }\n  ]\n}\n\r\n--1f9e216744e75ae766e288814e19a07640a947ef505d6e2e0fa9cd3e5823--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"services\": [\n    {\n      \"name\": \"qa206-85cf53-hook\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"initialDeployHook\": \"echo qa206-initial-once\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49d32d17f99148e-SJC"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa206-85cf53-hook\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa206-85cf53-hook\",\"sourcePath\":\"#/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  }
+]

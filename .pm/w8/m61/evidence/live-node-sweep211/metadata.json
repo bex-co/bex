@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-13T11:07:12.464078+00:00",
+  "source_sync_head": "b85ec5718276fbd780c661015b46950d293f5a5a",
+  "head_at_archiving": "b85ec5718276fbd780c661015b46950d293f5a5a",
+  "deployed_API_operator_revision": "unknown",
+  "published_Bex": "0.3.2",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "auth": "isolated QA human grant",
+  "initial": "PATH alone, Live/HTTP200, omitted marker absent, exact narrow PATH and file bytes at build/runtime",
+  "additive": "API-only marker save followed by native same-commit deploy; Live/HTTP200 and exact env/file/PATH at build/runtime; changed build snapshot proves env cache invalidation",
+  "resources": 1,
+  "child_deploys": 2,
+  "cleanup": "native ack/API404/list absence/public404/baseline6/quota6 term0",
+  "unverified": "normal/omitted/empty PATH; hosted literal Blueprint; current-build create; other native runtimes/kinds; GraphQL/MCP/dashboard; Kubernetes descendants; Render production",
+  "QA_product_implementation_commit_push_release": false
+}

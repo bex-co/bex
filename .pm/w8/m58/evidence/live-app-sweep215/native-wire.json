@@ -1,0 +1,690 @@
+[
+  {
+    "at": "2026-10-13T13:09:04.939955+00:00",
+    "client": "bex",
+    "case": "all-raw",
+    "term": "QA215_1854e7",
+    "search_terms": [
+      "QA215_1854e7"
+    ],
+    "expected_label_keys": [
+      "table-0",
+      "table-1",
+      "table-2",
+      "table-3",
+      "table-4",
+      "table-5",
+      "table-6",
+      "table-7",
+      "table-8",
+      "table-9",
+      "table-10",
+      "table-11",
+      "cafe-upper",
+      "cafe-lower",
+      "literal-punct",
+      "literal-quote",
+      "literal-space",
+      "literal-no-space",
+      "literal-tab",
+      "literal-comma",
+      "hidden"
+    ],
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db72i5c479ic73bbj4sg",
+      "--type",
+      "app",
+      "--text",
+      "\"QA215_1854e7\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 4.061,
+      "stdout": "{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045176608Z-47d3c0e3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE РУССКИЙ\",\n  \"timestamp\": \"2026-10-13T12:52:29.045176608Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045475884Z-cd8d2cbf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE русский\",\n  \"timestamp\": \"2026-10-13T12:52:29.045475884Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045486725Z-5fbeebc0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE ΡΟΔΟ\",\n  \"timestamp\": \"2026-10-13T12:52:29.045486725Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045488598Z-14ff93ad\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE ροδο\",\n  \"timestamp\": \"2026-10-13T12:52:29.045488598Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046182077Z-f8077b61\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE KELVIN\",\n  \"timestamp\": \"2026-10-13T12:52:29.046182077Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046188819Z-debc2ade\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE KELVIN\",\n  \"timestamp\": \"2026-10-13T12:52:29.046188819Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046190352Z-f462c35e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE kelvin\",\n  \"timestamp\": \"2026-10-13T12:52:29.046190352Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046191434Z-7e457a16\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE İSTANBUL\",\n  \"timestamp\": \"2026-10-13T12:52:29.046191434Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046192506Z-520da5e9\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE ISTANBUL\",\n  \"timestamp\": \"2026-10-13T12:52:29.046192506Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046193628Z-be3c5aa9\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE istanbul\",\n  \"timestamp\": \"2026-10-13T12:52:29.046193628Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046195141Z-285b5b0a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE Ι\",\n  \"timestamp\": \"2026-10-13T12:52:29.046195141Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046196183Z-485b8d6a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE ι\",\n  \"timestamp\": \"2026-10-13T12:52:29.046196183Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346305007Z-53ff7718\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_CAFE CAFÉ Ελληνικά\",\n  \"timestamp\": \"2026-10-13T12:52:29.346305007Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346334222Z-7c296738\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_CAFE café ελληνικά\",\n  \"timestamp\": \"2026-10-13T12:52:29.346334222Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346369109Z-449ddcd3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT literal * . | \\\\ tail\",\n  \"timestamp\": \"2026-10-13T12:52:29.346369109Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346375481Z-b2f3b199\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT say \\\"quoted\\\"\",\n  \"timestamp\": \"2026-10-13T12:52:29.346375481Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346387984Z-0d364fd3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT space core \",\n  \"timestamp\": \"2026-10-13T12:52:29.346387984Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346390519Z-c0aa60e1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT space core\",\n  \"timestamp\": \"2026-10-13T12:52:29.346390519Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346391771Z-ca4e5e39\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT \\ttab\\tend\\t\",\n  \"timestamp\": \"2026-10-13T12:52:29.346391771Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346392863Z-d4f28352\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT comma,left,right\",\n  \"timestamp\": \"2026-10-13T12:52:29.346392863Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346394116Z-eeadff72\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_HIDDEN BEHIND_RAW_PAGE\",\n  \"timestamp\": \"2026-10-13T12:52:29.346394116Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T13:09:09.057071+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db72i5c479ic73bbj4sg&type=app&text=QA215_1854e7&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db72i5c479ic73bbj4sg"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA215_1854e7"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49e93a38d4f33fc-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-13T12:09:08.992722258Z\",\"nextEndTime\":\"2026-10-13T12:52:29.045176607Z\",\"logs\":[{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045176608Z-47d3c0e3\",\"message\":\"QA215_1854e7_TABLE РУССКИЙ\",\"timestamp\":\"2026-10-13T12:52:29.045176608Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045475884Z-cd8d2cbf\",\"message\":\"QA215_1854e7_TABLE русский\",\"timestamp\":\"2026-10-13T12:52:29.045475884Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045486725Z-5fbeebc0\",\"message\":\"QA215_1854e7_TABLE ΡΟΔΟ\",\"timestamp\":\"2026-10-13T12:52:29.045486725Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045488598Z-14ff93ad\",\"message\":\"QA215_1854e7_TABLE ροδο\",\"timestamp\":\"2026-10-13T12:52:29.045488598Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046182077Z-f8077b61\",\"message\":\"QA215_1854e7_TABLE KELVIN\",\"timestamp\":\"2026-10-13T12:52:29.046182077Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046188819Z-debc2ade\",\"message\":\"QA215_1854e7_TABLE KELVIN\",\"timestamp\":\"2026-10-13T12:52:29.046188819Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046190352Z-f462c35e\",\"message\":\"QA215_1854e7_TABLE kelvin\",\"timestamp\":\"2026-10-13T12:52:29.046190352Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046191434Z-7e457a16\",\"message\":\"QA215_1854e7_TABLE İSTANBUL\",\"timestamp\":\"2026-10-13T12:52:29.046191434Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046192506Z-520da5e9\",\"message\":\"QA215_1854e7_TABLE ISTANBUL\",\"timestamp\":\"2026-10-13T12:52:29.046192506Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046193628Z-be3c5aa9\",\"message\":\"QA215_1854e7_TABLE istanbul\",\"timestamp\":\"2026-10-13T12:52:29.046193628Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046195141Z-285b5b0a\",\"message\":\"QA215_1854e7_TABLE Ι\",\"timestamp\":\"2026-10-13T12:52:29.046195141Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046196183Z-485b8d6a\",\"message\":\"QA215_1854e7_TABLE ι\",\"timestamp\":\"2026-10-13T12:52:29.046196183Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346305007Z-53ff7718\",\"message\":\"QA215_1854e7_CAFE CAFÉ Ελληνικά\",\"timestamp\":\"2026-10-13T12:52:29.346305007Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346334222Z-7c296738\",\"message\":\"QA215_1854e7_CAFE café ελληνικά\",\"timestamp\":\"2026-10-13T12:52:29.346334222Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346369109Z-449ddcd3\",\"message\":\"QA215_1854e7_LIT literal * . | \\\\ tail\",\"timestamp\":\"2026-10-13T12:52:29.346369109Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346375481Z-b2f3b199\",\"message\":\"QA215_1854e7_LIT say \\\"quoted\\\"\",\"timestamp\":\"2026-10-13T12:52:29.346375481Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346387984Z-0d364fd3\",\"message\":\"QA215_1854e7_LIT space core \",\"timestamp\":\"2026-10-13T12:52:29.346387984Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346390519Z-c0aa60e1\",\"message\":\"QA215_1854e7_LIT space core\",\"timestamp\":\"2026-10-13T12:52:29.346390519Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346391771Z-ca4e5e39\",\"message\":\"QA215_1854e7_LIT \\ttab\\tend\\t\",\"timestamp\":\"2026-10-13T12:52:29.346391771Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346392863Z-d4f28352\",\"message\":\"QA215_1854e7_LIT comma,left,right\",\"timestamp\":\"2026-10-13T12:52:29.346392863Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346394116Z-eeadff72\",\"message\":\"QA215_1854e7_HIDDEN BEHIND_RAW_PAGE\",\"timestamp\":\"2026-10-13T12:52:29.346394116Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-13T13:09:09.348881+00:00",
+    "client": "bex",
+    "case": "hidden-raw",
+    "term": "QA215_1854e7_HIDDEN BEHIND_RAW_PAGE",
+    "search_terms": [
+      "QA215_1854e7_HIDDEN BEHIND_RAW_PAGE"
+    ],
+    "expected_label_keys": [
+      "hidden"
+    ],
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db72i5c479ic73bbj4sg",
+      "--type",
+      "app",
+      "--text",
+      "\"QA215_1854e7_HIDDEN BEHIND_RAW_PAGE\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 3.815,
+      "stdout": "{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346394116Z-eeadff72\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_HIDDEN BEHIND_RAW_PAGE\",\n  \"timestamp\": \"2026-10-13T12:52:29.346394116Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T13:09:13.223658+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db72i5c479ic73bbj4sg&type=app&text=QA215_1854e7_HIDDEN+BEHIND_RAW_PAGE&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db72i5c479ic73bbj4sg"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA215_1854e7_HIDDEN BEHIND_RAW_PAGE"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49e93be8a4e98ce-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-13T12:09:13.158571683Z\",\"nextEndTime\":\"2026-10-13T12:52:29.346394115Z\",\"logs\":[{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346394116Z-eeadff72\",\"message\":\"QA215_1854e7_HIDDEN BEHIND_RAW_PAGE\",\"timestamp\":\"2026-10-13T12:52:29.346394116Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-13T13:09:13.693846+00:00",
+    "client": "bex",
+    "case": "all-end-control",
+    "term": "QA215_1854e7",
+    "search_terms": [
+      "QA215_1854e7"
+    ],
+    "expected_label_keys": [
+      "table-0",
+      "table-1",
+      "table-2",
+      "table-3",
+      "table-4",
+      "table-5",
+      "table-6",
+      "table-7",
+      "table-8",
+      "table-9",
+      "table-10",
+      "table-11",
+      "cafe-upper",
+      "cafe-lower",
+      "literal-punct",
+      "literal-quote",
+      "literal-space",
+      "literal-no-space",
+      "literal-tab",
+      "literal-comma",
+      "hidden"
+    ],
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db72i5c479ic73bbj4sg",
+      "--type",
+      "app",
+      "--text",
+      "\"QA215_1854e7\"",
+      "--limit",
+      "100",
+      "--end",
+      "2026-10-13T12:52:29.346394116Z",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 4.575,
+      "stdout": "{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045176608Z-47d3c0e3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE РУССКИЙ\",\n  \"timestamp\": \"2026-10-13T12:52:29.045176608Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045475884Z-cd8d2cbf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE русский\",\n  \"timestamp\": \"2026-10-13T12:52:29.045475884Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045486725Z-5fbeebc0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE ΡΟΔΟ\",\n  \"timestamp\": \"2026-10-13T12:52:29.045486725Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045488598Z-14ff93ad\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE ροδο\",\n  \"timestamp\": \"2026-10-13T12:52:29.045488598Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046182077Z-f8077b61\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE KELVIN\",\n  \"timestamp\": \"2026-10-13T12:52:29.046182077Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046188819Z-debc2ade\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE KELVIN\",\n  \"timestamp\": \"2026-10-13T12:52:29.046188819Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046190352Z-f462c35e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE kelvin\",\n  \"timestamp\": \"2026-10-13T12:52:29.046190352Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046191434Z-7e457a16\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE İSTANBUL\",\n  \"timestamp\": \"2026-10-13T12:52:29.046191434Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046192506Z-520da5e9\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE ISTANBUL\",\n  \"timestamp\": \"2026-10-13T12:52:29.046192506Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046193628Z-be3c5aa9\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE istanbul\",\n  \"timestamp\": \"2026-10-13T12:52:29.046193628Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046195141Z-285b5b0a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE Ι\",\n  \"timestamp\": \"2026-10-13T12:52:29.046195141Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046196183Z-485b8d6a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE ι\",\n  \"timestamp\": \"2026-10-13T12:52:29.046196183Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346305007Z-53ff7718\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_CAFE CAFÉ Ελληνικά\",\n  \"timestamp\": \"2026-10-13T12:52:29.346305007Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346334222Z-7c296738\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_CAFE café ελληνικά\",\n  \"timestamp\": \"2026-10-13T12:52:29.346334222Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346369109Z-449ddcd3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT literal * . | \\\\ tail\",\n  \"timestamp\": \"2026-10-13T12:52:29.346369109Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346375481Z-b2f3b199\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT say \\\"quoted\\\"\",\n  \"timestamp\": \"2026-10-13T12:52:29.346375481Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346387984Z-0d364fd3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT space core \",\n  \"timestamp\": \"2026-10-13T12:52:29.346387984Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346390519Z-c0aa60e1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT space core\",\n  \"timestamp\": \"2026-10-13T12:52:29.346390519Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346391771Z-ca4e5e39\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT \\ttab\\tend\\t\",\n  \"timestamp\": \"2026-10-13T12:52:29.346391771Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346392863Z-d4f28352\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT comma,left,right\",\n  \"timestamp\": \"2026-10-13T12:52:29.346392863Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346394116Z-eeadff72\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_HIDDEN BEHIND_RAW_PAGE\",\n  \"timestamp\": \"2026-10-13T12:52:29.346394116Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T13:09:18.333532+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&endTime=2026-10-13T12%3A52%3A29.346394116Z&direction=backward&resource=srv-db72i5c479ic73bbj4sg&type=app&text=QA215_1854e7&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "endTime": [
+              "2026-10-13T12:52:29.346394116Z"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db72i5c479ic73bbj4sg"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA215_1854e7"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49e93dc1c39a0fc-CPH"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-13T11:52:29.346394116Z\",\"nextEndTime\":\"2026-10-13T12:52:29.045176607Z\",\"logs\":[{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045176608Z-47d3c0e3\",\"message\":\"QA215_1854e7_TABLE РУССКИЙ\",\"timestamp\":\"2026-10-13T12:52:29.045176608Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045475884Z-cd8d2cbf\",\"message\":\"QA215_1854e7_TABLE русский\",\"timestamp\":\"2026-10-13T12:52:29.045475884Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045486725Z-5fbeebc0\",\"message\":\"QA215_1854e7_TABLE ΡΟΔΟ\",\"timestamp\":\"2026-10-13T12:52:29.045486725Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045488598Z-14ff93ad\",\"message\":\"QA215_1854e7_TABLE ροδο\",\"timestamp\":\"2026-10-13T12:52:29.045488598Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046182077Z-f8077b61\",\"message\":\"QA215_1854e7_TABLE KELVIN\",\"timestamp\":\"2026-10-13T12:52:29.046182077Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046188819Z-debc2ade\",\"message\":\"QA215_1854e7_TABLE KELVIN\",\"timestamp\":\"2026-10-13T12:52:29.046188819Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046190352Z-f462c35e\",\"message\":\"QA215_1854e7_TABLE kelvin\",\"timestamp\":\"2026-10-13T12:52:29.046190352Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046191434Z-7e457a16\",\"message\":\"QA215_1854e7_TABLE İSTANBUL\",\"timestamp\":\"2026-10-13T12:52:29.046191434Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046192506Z-520da5e9\",\"message\":\"QA215_1854e7_TABLE ISTANBUL\",\"timestamp\":\"2026-10-13T12:52:29.046192506Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046193628Z-be3c5aa9\",\"message\":\"QA215_1854e7_TABLE istanbul\",\"timestamp\":\"2026-10-13T12:52:29.046193628Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046195141Z-285b5b0a\",\"message\":\"QA215_1854e7_TABLE Ι\",\"timestamp\":\"2026-10-13T12:52:29.046195141Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046196183Z-485b8d6a\",\"message\":\"QA215_1854e7_TABLE ι\",\"timestamp\":\"2026-10-13T12:52:29.046196183Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346305007Z-53ff7718\",\"message\":\"QA215_1854e7_CAFE CAFÉ Ελληνικά\",\"timestamp\":\"2026-10-13T12:52:29.346305007Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346334222Z-7c296738\",\"message\":\"QA215_1854e7_CAFE café ελληνικά\",\"timestamp\":\"2026-10-13T12:52:29.346334222Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346369109Z-449ddcd3\",\"message\":\"QA215_1854e7_LIT literal * . | \\\\ tail\",\"timestamp\":\"2026-10-13T12:52:29.346369109Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346375481Z-b2f3b199\",\"message\":\"QA215_1854e7_LIT say \\\"quoted\\\"\",\"timestamp\":\"2026-10-13T12:52:29.346375481Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346387984Z-0d364fd3\",\"message\":\"QA215_1854e7_LIT space core \",\"timestamp\":\"2026-10-13T12:52:29.346387984Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346390519Z-c0aa60e1\",\"message\":\"QA215_1854e7_LIT space core\",\"timestamp\":\"2026-10-13T12:52:29.346390519Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346391771Z-ca4e5e39\",\"message\":\"QA215_1854e7_LIT \\ttab\\tend\\t\",\"timestamp\":\"2026-10-13T12:52:29.346391771Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346392863Z-d4f28352\",\"message\":\"QA215_1854e7_LIT comma,left,right\",\"timestamp\":\"2026-10-13T12:52:29.346392863Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346394116Z-eeadff72\",\"message\":\"QA215_1854e7_HIDDEN BEHIND_RAW_PAGE\",\"timestamp\":\"2026-10-13T12:52:29.346394116Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-13T13:09:19.056597+00:00",
+    "client": "bex",
+    "case": "hidden-end-control",
+    "term": "QA215_1854e7_HIDDEN BEHIND_RAW_PAGE",
+    "search_terms": [
+      "QA215_1854e7_HIDDEN BEHIND_RAW_PAGE"
+    ],
+    "expected_label_keys": [
+      "hidden"
+    ],
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db72i5c479ic73bbj4sg",
+      "--type",
+      "app",
+      "--text",
+      "\"QA215_1854e7_HIDDEN BEHIND_RAW_PAGE\"",
+      "--limit",
+      "100",
+      "--end",
+      "2026-10-13T12:52:29.346394116Z",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 3.59,
+      "stdout": "{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346394116Z-eeadff72\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_HIDDEN BEHIND_RAW_PAGE\",\n  \"timestamp\": \"2026-10-13T12:52:29.346394116Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T13:09:22.707448+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&endTime=2026-10-13T12%3A52%3A29.346394116Z&direction=backward&resource=srv-db72i5c479ic73bbj4sg&type=app&text=QA215_1854e7_HIDDEN+BEHIND_RAW_PAGE&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "endTime": [
+              "2026-10-13T12:52:29.346394116Z"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db72i5c479ic73bbj4sg"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA215_1854e7_HIDDEN BEHIND_RAW_PAGE"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49e93fb4e0d67af-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-13T11:52:29.346394116Z\",\"nextEndTime\":\"2026-10-13T12:52:29.346394115Z\",\"logs\":[{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346394116Z-eeadff72\",\"message\":\"QA215_1854e7_HIDDEN BEHIND_RAW_PAGE\",\"timestamp\":\"2026-10-13T12:52:29.346394116Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-13T13:09:23.412571+00:00",
+    "client": "render",
+    "case": "all-raw",
+    "term": "QA215_1854e7",
+    "search_terms": [
+      "QA215_1854e7"
+    ],
+    "expected_label_keys": [
+      "table-0",
+      "table-1",
+      "table-2",
+      "table-3",
+      "table-4",
+      "table-5",
+      "table-6",
+      "table-7",
+      "table-8",
+      "table-9",
+      "table-10",
+      "table-11",
+      "cafe-upper",
+      "cafe-lower",
+      "literal-punct",
+      "literal-quote",
+      "literal-space",
+      "literal-no-space",
+      "literal-tab",
+      "literal-comma",
+      "hidden"
+    ],
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db72i5c479ic73bbj4sg",
+      "--type",
+      "app",
+      "--text",
+      "\"QA215_1854e7\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 4.157,
+      "stdout": "{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045176608Z-47d3c0e3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE РУССКИЙ\",\n  \"timestamp\": \"2026-10-13T12:52:29.045176608Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045475884Z-cd8d2cbf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE русский\",\n  \"timestamp\": \"2026-10-13T12:52:29.045475884Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045486725Z-5fbeebc0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE ΡΟΔΟ\",\n  \"timestamp\": \"2026-10-13T12:52:29.045486725Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045488598Z-14ff93ad\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE ροδο\",\n  \"timestamp\": \"2026-10-13T12:52:29.045488598Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046182077Z-f8077b61\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE KELVIN\",\n  \"timestamp\": \"2026-10-13T12:52:29.046182077Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046188819Z-debc2ade\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE KELVIN\",\n  \"timestamp\": \"2026-10-13T12:52:29.046188819Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046190352Z-f462c35e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE kelvin\",\n  \"timestamp\": \"2026-10-13T12:52:29.046190352Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046191434Z-7e457a16\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE İSTANBUL\",\n  \"timestamp\": \"2026-10-13T12:52:29.046191434Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046192506Z-520da5e9\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE ISTANBUL\",\n  \"timestamp\": \"2026-10-13T12:52:29.046192506Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046193628Z-be3c5aa9\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE istanbul\",\n  \"timestamp\": \"2026-10-13T12:52:29.046193628Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046195141Z-285b5b0a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE Ι\",\n  \"timestamp\": \"2026-10-13T12:52:29.046195141Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046196183Z-485b8d6a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE ι\",\n  \"timestamp\": \"2026-10-13T12:52:29.046196183Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346305007Z-53ff7718\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_CAFE CAFÉ Ελληνικά\",\n  \"timestamp\": \"2026-10-13T12:52:29.346305007Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346334222Z-7c296738\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_CAFE café ελληνικά\",\n  \"timestamp\": \"2026-10-13T12:52:29.346334222Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346369109Z-449ddcd3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT literal * . | \\\\ tail\",\n  \"timestamp\": \"2026-10-13T12:52:29.346369109Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346375481Z-b2f3b199\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT say \\\"quoted\\\"\",\n  \"timestamp\": \"2026-10-13T12:52:29.346375481Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346387984Z-0d364fd3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT space core \",\n  \"timestamp\": \"2026-10-13T12:52:29.346387984Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346390519Z-c0aa60e1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT space core\",\n  \"timestamp\": \"2026-10-13T12:52:29.346390519Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346391771Z-ca4e5e39\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT \\ttab\\tend\\t\",\n  \"timestamp\": \"2026-10-13T12:52:29.346391771Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346392863Z-d4f28352\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT comma,left,right\",\n  \"timestamp\": \"2026-10-13T12:52:29.346392863Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346394116Z-eeadff72\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_HIDDEN BEHIND_RAW_PAGE\",\n  \"timestamp\": \"2026-10-13T12:52:29.346394116Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T13:09:27.630794+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db72i5c479ic73bbj4sg&type=app&text=QA215_1854e7&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db72i5c479ic73bbj4sg"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA215_1854e7"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49e9416bbdccb6f-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-13T12:09:27.558484168Z\",\"nextEndTime\":\"2026-10-13T12:52:29.045176607Z\",\"logs\":[{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045176608Z-47d3c0e3\",\"message\":\"QA215_1854e7_TABLE РУССКИЙ\",\"timestamp\":\"2026-10-13T12:52:29.045176608Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045475884Z-cd8d2cbf\",\"message\":\"QA215_1854e7_TABLE русский\",\"timestamp\":\"2026-10-13T12:52:29.045475884Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045486725Z-5fbeebc0\",\"message\":\"QA215_1854e7_TABLE ΡΟΔΟ\",\"timestamp\":\"2026-10-13T12:52:29.045486725Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045488598Z-14ff93ad\",\"message\":\"QA215_1854e7_TABLE ροδο\",\"timestamp\":\"2026-10-13T12:52:29.045488598Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046182077Z-f8077b61\",\"message\":\"QA215_1854e7_TABLE KELVIN\",\"timestamp\":\"2026-10-13T12:52:29.046182077Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046188819Z-debc2ade\",\"message\":\"QA215_1854e7_TABLE KELVIN\",\"timestamp\":\"2026-10-13T12:52:29.046188819Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046190352Z-f462c35e\",\"message\":\"QA215_1854e7_TABLE kelvin\",\"timestamp\":\"2026-10-13T12:52:29.046190352Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046191434Z-7e457a16\",\"message\":\"QA215_1854e7_TABLE İSTANBUL\",\"timestamp\":\"2026-10-13T12:52:29.046191434Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046192506Z-520da5e9\",\"message\":\"QA215_1854e7_TABLE ISTANBUL\",\"timestamp\":\"2026-10-13T12:52:29.046192506Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046193628Z-be3c5aa9\",\"message\":\"QA215_1854e7_TABLE istanbul\",\"timestamp\":\"2026-10-13T12:52:29.046193628Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046195141Z-285b5b0a\",\"message\":\"QA215_1854e7_TABLE Ι\",\"timestamp\":\"2026-10-13T12:52:29.046195141Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046196183Z-485b8d6a\",\"message\":\"QA215_1854e7_TABLE ι\",\"timestamp\":\"2026-10-13T12:52:29.046196183Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346305007Z-53ff7718\",\"message\":\"QA215_1854e7_CAFE CAFÉ Ελληνικά\",\"timestamp\":\"2026-10-13T12:52:29.346305007Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346334222Z-7c296738\",\"message\":\"QA215_1854e7_CAFE café ελληνικά\",\"timestamp\":\"2026-10-13T12:52:29.346334222Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346369109Z-449ddcd3\",\"message\":\"QA215_1854e7_LIT literal * . | \\\\ tail\",\"timestamp\":\"2026-10-13T12:52:29.346369109Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346375481Z-b2f3b199\",\"message\":\"QA215_1854e7_LIT say \\\"quoted\\\"\",\"timestamp\":\"2026-10-13T12:52:29.346375481Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346387984Z-0d364fd3\",\"message\":\"QA215_1854e7_LIT space core \",\"timestamp\":\"2026-10-13T12:52:29.346387984Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346390519Z-c0aa60e1\",\"message\":\"QA215_1854e7_LIT space core\",\"timestamp\":\"2026-10-13T12:52:29.346390519Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346391771Z-ca4e5e39\",\"message\":\"QA215_1854e7_LIT \\ttab\\tend\\t\",\"timestamp\":\"2026-10-13T12:52:29.346391771Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346392863Z-d4f28352\",\"message\":\"QA215_1854e7_LIT comma,left,right\",\"timestamp\":\"2026-10-13T12:52:29.346392863Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346394116Z-eeadff72\",\"message\":\"QA215_1854e7_HIDDEN BEHIND_RAW_PAGE\",\"timestamp\":\"2026-10-13T12:52:29.346394116Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-13T13:09:28.308385+00:00",
+    "client": "render",
+    "case": "hidden-raw",
+    "term": "QA215_1854e7_HIDDEN BEHIND_RAW_PAGE",
+    "search_terms": [
+      "QA215_1854e7_HIDDEN BEHIND_RAW_PAGE"
+    ],
+    "expected_label_keys": [
+      "hidden"
+    ],
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db72i5c479ic73bbj4sg",
+      "--type",
+      "app",
+      "--text",
+      "\"QA215_1854e7_HIDDEN BEHIND_RAW_PAGE\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 4.24,
+      "stdout": "{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346394116Z-eeadff72\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_HIDDEN BEHIND_RAW_PAGE\",\n  \"timestamp\": \"2026-10-13T12:52:29.346394116Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T13:09:32.611578+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db72i5c479ic73bbj4sg&type=app&text=QA215_1854e7_HIDDEN+BEHIND_RAW_PAGE&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db72i5c479ic73bbj4sg"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA215_1854e7_HIDDEN BEHIND_RAW_PAGE"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49e9435087bf897-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-13T12:09:32.54306732Z\",\"nextEndTime\":\"2026-10-13T12:52:29.346394115Z\",\"logs\":[{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346394116Z-eeadff72\",\"message\":\"QA215_1854e7_HIDDEN BEHIND_RAW_PAGE\",\"timestamp\":\"2026-10-13T12:52:29.346394116Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-13T13:09:33.161896+00:00",
+    "client": "render",
+    "case": "all-end-control",
+    "term": "QA215_1854e7",
+    "search_terms": [
+      "QA215_1854e7"
+    ],
+    "expected_label_keys": [
+      "table-0",
+      "table-1",
+      "table-2",
+      "table-3",
+      "table-4",
+      "table-5",
+      "table-6",
+      "table-7",
+      "table-8",
+      "table-9",
+      "table-10",
+      "table-11",
+      "cafe-upper",
+      "cafe-lower",
+      "literal-punct",
+      "literal-quote",
+      "literal-space",
+      "literal-no-space",
+      "literal-tab",
+      "literal-comma",
+      "hidden"
+    ],
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db72i5c479ic73bbj4sg",
+      "--type",
+      "app",
+      "--text",
+      "\"QA215_1854e7\"",
+      "--limit",
+      "100",
+      "--end",
+      "2026-10-13T12:52:29.346394116Z",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 4.019,
+      "stdout": "{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045176608Z-47d3c0e3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE РУССКИЙ\",\n  \"timestamp\": \"2026-10-13T12:52:29.045176608Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045475884Z-cd8d2cbf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE русский\",\n  \"timestamp\": \"2026-10-13T12:52:29.045475884Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045486725Z-5fbeebc0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE ΡΟΔΟ\",\n  \"timestamp\": \"2026-10-13T12:52:29.045486725Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045488598Z-14ff93ad\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE ροδο\",\n  \"timestamp\": \"2026-10-13T12:52:29.045488598Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046182077Z-f8077b61\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE KELVIN\",\n  \"timestamp\": \"2026-10-13T12:52:29.046182077Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046188819Z-debc2ade\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE KELVIN\",\n  \"timestamp\": \"2026-10-13T12:52:29.046188819Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046190352Z-f462c35e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE kelvin\",\n  \"timestamp\": \"2026-10-13T12:52:29.046190352Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046191434Z-7e457a16\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE İSTANBUL\",\n  \"timestamp\": \"2026-10-13T12:52:29.046191434Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046192506Z-520da5e9\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE ISTANBUL\",\n  \"timestamp\": \"2026-10-13T12:52:29.046192506Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046193628Z-be3c5aa9\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE istanbul\",\n  \"timestamp\": \"2026-10-13T12:52:29.046193628Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046195141Z-285b5b0a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE Ι\",\n  \"timestamp\": \"2026-10-13T12:52:29.046195141Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046196183Z-485b8d6a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_TABLE ι\",\n  \"timestamp\": \"2026-10-13T12:52:29.046196183Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346305007Z-53ff7718\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_CAFE CAFÉ Ελληνικά\",\n  \"timestamp\": \"2026-10-13T12:52:29.346305007Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346334222Z-7c296738\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_CAFE café ελληνικά\",\n  \"timestamp\": \"2026-10-13T12:52:29.346334222Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346369109Z-449ddcd3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT literal * . | \\\\ tail\",\n  \"timestamp\": \"2026-10-13T12:52:29.346369109Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346375481Z-b2f3b199\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT say \\\"quoted\\\"\",\n  \"timestamp\": \"2026-10-13T12:52:29.346375481Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346387984Z-0d364fd3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT space core \",\n  \"timestamp\": \"2026-10-13T12:52:29.346387984Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346390519Z-c0aa60e1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT space core\",\n  \"timestamp\": \"2026-10-13T12:52:29.346390519Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346391771Z-ca4e5e39\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT \\ttab\\tend\\t\",\n  \"timestamp\": \"2026-10-13T12:52:29.346391771Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346392863Z-d4f28352\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_LIT comma,left,right\",\n  \"timestamp\": \"2026-10-13T12:52:29.346392863Z\"\n}{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346394116Z-eeadff72\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_HIDDEN BEHIND_RAW_PAGE\",\n  \"timestamp\": \"2026-10-13T12:52:29.346394116Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T13:09:37.246585+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&endTime=2026-10-13T12%3A52%3A29.346394116Z&direction=backward&resource=srv-db72i5c479ic73bbj4sg&type=app&text=QA215_1854e7&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "endTime": [
+              "2026-10-13T12:52:29.346394116Z"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db72i5c479ic73bbj4sg"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA215_1854e7"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49e9455e927a8b6-CPH"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-13T11:52:29.346394116Z\",\"nextEndTime\":\"2026-10-13T12:52:29.045176607Z\",\"logs\":[{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045176608Z-47d3c0e3\",\"message\":\"QA215_1854e7_TABLE РУССКИЙ\",\"timestamp\":\"2026-10-13T12:52:29.045176608Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045475884Z-cd8d2cbf\",\"message\":\"QA215_1854e7_TABLE русский\",\"timestamp\":\"2026-10-13T12:52:29.045475884Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045486725Z-5fbeebc0\",\"message\":\"QA215_1854e7_TABLE ΡΟΔΟ\",\"timestamp\":\"2026-10-13T12:52:29.045486725Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.045488598Z-14ff93ad\",\"message\":\"QA215_1854e7_TABLE ροδο\",\"timestamp\":\"2026-10-13T12:52:29.045488598Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046182077Z-f8077b61\",\"message\":\"QA215_1854e7_TABLE KELVIN\",\"timestamp\":\"2026-10-13T12:52:29.046182077Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046188819Z-debc2ade\",\"message\":\"QA215_1854e7_TABLE KELVIN\",\"timestamp\":\"2026-10-13T12:52:29.046188819Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046190352Z-f462c35e\",\"message\":\"QA215_1854e7_TABLE kelvin\",\"timestamp\":\"2026-10-13T12:52:29.046190352Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046191434Z-7e457a16\",\"message\":\"QA215_1854e7_TABLE İSTANBUL\",\"timestamp\":\"2026-10-13T12:52:29.046191434Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046192506Z-520da5e9\",\"message\":\"QA215_1854e7_TABLE ISTANBUL\",\"timestamp\":\"2026-10-13T12:52:29.046192506Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046193628Z-be3c5aa9\",\"message\":\"QA215_1854e7_TABLE istanbul\",\"timestamp\":\"2026-10-13T12:52:29.046193628Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046195141Z-285b5b0a\",\"message\":\"QA215_1854e7_TABLE Ι\",\"timestamp\":\"2026-10-13T12:52:29.046195141Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.046196183Z-485b8d6a\",\"message\":\"QA215_1854e7_TABLE ι\",\"timestamp\":\"2026-10-13T12:52:29.046196183Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346305007Z-53ff7718\",\"message\":\"QA215_1854e7_CAFE CAFÉ Ελληνικά\",\"timestamp\":\"2026-10-13T12:52:29.346305007Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346334222Z-7c296738\",\"message\":\"QA215_1854e7_CAFE café ελληνικά\",\"timestamp\":\"2026-10-13T12:52:29.346334222Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346369109Z-449ddcd3\",\"message\":\"QA215_1854e7_LIT literal * . | \\\\ tail\",\"timestamp\":\"2026-10-13T12:52:29.346369109Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346375481Z-b2f3b199\",\"message\":\"QA215_1854e7_LIT say \\\"quoted\\\"\",\"timestamp\":\"2026-10-13T12:52:29.346375481Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346387984Z-0d364fd3\",\"message\":\"QA215_1854e7_LIT space core \",\"timestamp\":\"2026-10-13T12:52:29.346387984Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346390519Z-c0aa60e1\",\"message\":\"QA215_1854e7_LIT space core\",\"timestamp\":\"2026-10-13T12:52:29.346390519Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346391771Z-ca4e5e39\",\"message\":\"QA215_1854e7_LIT \\ttab\\tend\\t\",\"timestamp\":\"2026-10-13T12:52:29.346391771Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346392863Z-d4f28352\",\"message\":\"QA215_1854e7_LIT comma,left,right\",\"timestamp\":\"2026-10-13T12:52:29.346392863Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346394116Z-eeadff72\",\"message\":\"QA215_1854e7_HIDDEN BEHIND_RAW_PAGE\",\"timestamp\":\"2026-10-13T12:52:29.346394116Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-13T13:09:37.516944+00:00",
+    "client": "render",
+    "case": "hidden-end-control",
+    "term": "QA215_1854e7_HIDDEN BEHIND_RAW_PAGE",
+    "search_terms": [
+      "QA215_1854e7_HIDDEN BEHIND_RAW_PAGE"
+    ],
+    "expected_label_keys": [
+      "hidden"
+    ],
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db72i5c479ic73bbj4sg",
+      "--type",
+      "app",
+      "--text",
+      "\"QA215_1854e7_HIDDEN BEHIND_RAW_PAGE\"",
+      "--limit",
+      "100",
+      "--end",
+      "2026-10-13T12:52:29.346394116Z",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 3.942,
+      "stdout": "{\n  \"id\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346394116Z-eeadff72\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA215_1854e7_HIDDEN BEHIND_RAW_PAGE\",\n  \"timestamp\": \"2026-10-13T12:52:29.346394116Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T13:09:41.520156+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&endTime=2026-10-13T12%3A52%3A29.346394116Z&direction=backward&resource=srv-db72i5c479ic73bbj4sg&type=app&text=QA215_1854e7_HIDDEN+BEHIND_RAW_PAGE&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "endTime": [
+              "2026-10-13T12:52:29.346394116Z"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db72i5c479ic73bbj4sg"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA215_1854e7_HIDDEN BEHIND_RAW_PAGE"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49e946e9e83f94f-SJC"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-13T11:52:29.346394116Z\",\"nextEndTime\":\"2026-10-13T12:52:29.346394115Z\",\"logs\":[{\"id\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj-2026-10-13T12:52:29.346394116Z-eeadff72\",\"message\":\"QA215_1854e7_HIDDEN BEHIND_RAW_PAGE\",\"timestamp\":\"2026-10-13T12:52:29.346394116Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db72i5c479ic73bbj4sg\"},{\"name\":\"instance\",\"value\":\"srv-db72i5c479ic73bbj4sg-g3nc7ia76s8s3r7pt8tj\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  }
+]

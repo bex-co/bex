@@ -1,0 +1,39 @@
+{
+  "at": "2026-10-13T10:30:28.112544+00:00",
+  "source_head_before_and_after_local_validation": "cb16919ab75d1a72663109b06707fb3663fc33cb",
+  "native_start_head": "not captured: validation began before stash restore recovery; source diagnosis follows recovery",
+  "native_source_context": "native validation began before scoped stash restoration completed; source diagnosis ran after recovery at explicit HEAD",
+  "deployed_API_revision": "unknown",
+  "native_checks": 24,
+  "wrong_location_refusals": 16,
+  "ordinary_key_refusal_controls": 4,
+  "valid_literal_controls": 4,
+  "exact_native_HTTP_captures": 4,
+  "actual_current_source_diagnostics": 8,
+  "source_assertions": "assert present mislocation, not corrected regression behavior",
+  "neighbor_tests": "12 reference cases plus parent; 10 static rule cases plus parent; no full suite",
+  "static_neighbor_detail": "original batch used an unmatched static test name; separate correctly named test receipt is authoritative",
+  "resources_created": 0,
+  "runtime_generation_apply_and_nonREST_surfaces": "untested",
+  "capture_configs_servers_children_removed": true,
+  "quota": {
+    "at": "2026-10-13T10:30:28.094228+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.392,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49dab479f673911-SJC"
+    },
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+  },
+  "QA_product_edits_commit_push_release": false
+}

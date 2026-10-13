@@ -1,0 +1,25 @@
+import pathlib,json,subprocess,secrets,datetime,shutil,sys
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('<REPO>/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());mode=sys.argv[1]
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2));cp.chmod(0o600)
+def cli(args,role):return json.loads(subprocess.check_output(['python3',str(p/('run.py' if role=='bex' else 'run-render.py')),*(['--release'] if role=='bex' else []),*args],text=True))
+if mode=='root':
+ assert c['sync207_result']==0 and 'sweep207_envrefs' not in c
+ g={'sweep':207,'nonce':secrets.token_hex(3),'source_head':c['head'],'surface':'native Blueprint literal-empty vs sync:false seeded-empty sibling envVarKey validation','mutation':'none: Blueprint validation only','native_wire':'not intercepted','results':[]};c['sweep207_envrefs']=g;save()
+else:g=c['sweep207_envrefs']
+cfg=p/'render-config/cli.yaml';assert not cfg.exists();cfg.parent.mkdir(mode=0o700,exist_ok=True);shutil.copy2(p/'config/cli.yaml',cfg)
+image='docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592'
+variants={'literal-empty':{'value':''},'seed-empty':{'value':'','sync':False},'seed-space':{'value':' ','sync':False},'seed-value':{'value':'qa207-'+g['nonce'],'sync':False},'prompt-only':{'sync':False},'seed-empty-reversed':{'value':'','sync':False}}
+selection=list(variants) if mode=='root' else ['literal-empty','seed-empty','seed-space']
+try:
+ for role in ['bex','render']:
+  for case in selection:
+   target='qa207-'+g['nonce']+'-target';caller='qa207-'+g['nonce']+'-caller';base={'type':'web','runtime':'image','plan':'free','image':{'url':image}}
+   a={**base,'name':caller,'envVars':[{'key':'COPY_VALUE','fromService':{'name':target,'type':'web','envVarKey':'SOURCE_VALUE'}}]};b={**base,'name':target,'envVars':[{'key':'SOURCE_VALUE',**variants[case]}]};services=[b,a] if case.endswith('reversed') else [a,b]
+   if mode=='root':doc={'services':services}
+   elif mode=='ungrouped':doc={'ungrouped':{'services':services}}
+   elif mode=='project':doc={'projects':[{'name':'qa207-'+g['nonce']+'-project','environments':[{'name':'qa207-'+g['nonce']+'-env','services':services}]}]}
+   else:raise ValueError(mode)
+   f=p/('sweep207-'+mode+'-'+case+'.yaml');f.write_text(json.dumps(doc,ensure_ascii=False,indent=2)+'\n');f.chmod(0o600);z={'client':role,'container':mode,'case':case,'document':doc,'at':now(),'state':'native validation intent persisted'};g['results'].append(z);save();r=cli(['blueprints','validate',str(f),'--confirm','-o','json'],role);z['result']=r;save();v=json.loads(r['stdout']);z['decoded']=v;z['expected_valid']=case!='prompt-only';z['matches_expected']=r['exit']==(0 if z['expected_valid'] else 1) and v['valid']==z['expected_valid'];z['state']='native completed';save();print(role,mode,case,'exit',r['exit'],'valid',v['valid'],'expected',z['expected_valid'],'errors',v.get('errors'),flush=True)
+finally:cfg.unlink(missing_ok=True);g['copied_render_config']='removed; ongoing isolated human grant retained';save()
+(p/('sweep207-'+mode+'-results.json')).write_text(json.dumps(g,ensure_ascii=False,indent=2));print('Validation phase completed; no resource create/apply',flush=True)

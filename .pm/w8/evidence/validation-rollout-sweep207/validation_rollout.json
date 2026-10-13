@@ -1,0 +1,1967 @@
+{
+  "sweep": 207,
+  "source_head": "3c6809182c0886e6bb537dfbba156df2baff7983",
+  "surface": "Native production acceptance of Key Value reference-property, supplied target-type and explicit empty seed fixes after desired API image pin changed",
+  "desired_image": "6ead1ae86285",
+  "deployed_revision": "unknown",
+  "mutation": "validation only; no resources applied",
+  "results": [
+    {
+      "client": "bex",
+      "case": "source-type-mismatch",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-source",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "ordinary literal"
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-source",
+                  "type": "pserv",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-source-type-mismatch.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.292,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-a5935b-caller\\\": envVars[\\\"COPY_VALUE\\\"] fromService.type \\\"pserv\\\" does not match \\\"qa207-a5935b-source\\\" (want type web)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-a5935b-caller\": envVars[\"COPY_VALUE\"] fromService.type \"pserv\" does not match \"qa207-a5935b-source\" (want type web)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "source-type-match",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-source",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "ordinary literal"
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-source",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-source-type-match.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.35,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-a5935b-source\",\n      \"qa207-a5935b-caller\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-a5935b-source",
+            "qa207-a5935b-caller"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "seeded-empty-copy",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-source",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "",
+                "sync": false
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-source",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-seeded-empty-copy.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.375,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-a5935b-source\",\n      \"qa207-a5935b-caller\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-a5935b-source",
+            "qa207-a5935b-caller"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "seeded-space-copy",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-source",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": " ",
+                "sync": false
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-source",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-seeded-space-copy.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.38,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-a5935b-source\",\n      \"qa207-a5935b-caller\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-a5935b-source",
+            "qa207-a5935b-caller"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "generated-plus-empty",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-source",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "generateValue": true,
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-generated-plus-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.29,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa207-a5935b-source env \\\"VALUE\\\": sets both value and generateValue — pick one\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa207-a5935b-source env \"VALUE\": sets both value and generateValue — pick one",
+            "line": 11,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "generated-only",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-source",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-generated-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.711,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-a5935b-source\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-a5935b-source"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "source-type-mismatch",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-source",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "ordinary literal"
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-source",
+                  "type": "pserv",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-source-type-mismatch.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.641,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-a5935b-caller\\\": envVars[\\\"COPY_VALUE\\\"] fromService.type \\\"pserv\\\" does not match \\\"qa207-a5935b-source\\\" (want type web)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-a5935b-caller\": envVars[\"COPY_VALUE\"] fromService.type \"pserv\" does not match \"qa207-a5935b-source\" (want type web)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "source-type-match",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-source",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "ordinary literal"
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-source",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-source-type-match.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.7,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-a5935b-source\",\n      \"qa207-a5935b-caller\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-a5935b-source",
+            "qa207-a5935b-caller"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "seeded-empty-copy",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-source",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "",
+                "sync": false
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-source",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-seeded-empty-copy.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.403,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-a5935b-source\",\n      \"qa207-a5935b-caller\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-a5935b-source",
+            "qa207-a5935b-caller"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "seeded-space-copy",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-source",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": " ",
+                "sync": false
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-source",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-seeded-space-copy.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.397,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-a5935b-source\",\n      \"qa207-a5935b-caller\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-a5935b-source",
+            "qa207-a5935b-caller"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "generated-plus-empty",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-source",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "generateValue": true,
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-generated-plus-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.294,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa207-a5935b-source env \\\"VALUE\\\": sets both value and generateValue — pick one\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa207-a5935b-source env \"VALUE\": sets both value and generateValue — pick one",
+            "line": 11,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "generated-only",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-source",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-generated-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.332,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-a5935b-source\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-a5935b-source"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "kv-env-only",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-a5935b-kv",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-kv",
+                  "type": "keyvalue",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "corrected native reference-guard fixture intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-kv-env-only-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.429,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa207-a5935b-caller env \\\"COPY_VALUE\\\": fromService keyvalue takes a property (connectionString, host, port, or password), not envVarKey\",\n      \"line\": 17,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa207-a5935b-caller env \"COPY_VALUE\": fromService keyvalue takes a property (connectionString, host, port, or password), not envVarKey",
+            "line": 17,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "redis-env-only",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-a5935b-kv",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-kv",
+                  "type": "redis",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "corrected native reference-guard fixture intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-redis-env-only-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.356,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa207-a5935b-caller env \\\"COPY_VALUE\\\": fromService keyvalue takes a property (connectionString, host, port, or password), not envVarKey\",\n      \"line\": 17,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa207-a5935b-caller env \"COPY_VALUE\": fromService keyvalue takes a property (connectionString, host, port, or password), not envVarKey",
+            "line": 17,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "kv-connection-control",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-a5935b-kv",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-kv",
+                  "type": "keyvalue",
+                  "property": "connectionString"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "corrected native reference-guard fixture intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-kv-connection-control-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.438,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa207-a5935b-kv\"\n    ],\n    \"services\": [\n      \"qa207-a5935b-caller\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa207-a5935b-kv"
+          ],
+          "services": [
+            "qa207-a5935b-caller"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "kv-host-control",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-a5935b-kv",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-kv",
+                  "type": "keyvalue",
+                  "property": "host"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "corrected native reference-guard fixture intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-kv-host-control-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.381,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa207-a5935b-kv\"\n    ],\n    \"services\": [\n      \"qa207-a5935b-caller\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa207-a5935b-kv"
+          ],
+          "services": [
+            "qa207-a5935b-caller"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "kv-env-only",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-a5935b-kv",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-kv",
+                  "type": "keyvalue",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "corrected native reference-guard fixture intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-kv-env-only-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.34,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa207-a5935b-caller env \\\"COPY_VALUE\\\": fromService keyvalue takes a property (connectionString, host, port, or password), not envVarKey\",\n      \"line\": 17,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa207-a5935b-caller env \"COPY_VALUE\": fromService keyvalue takes a property (connectionString, host, port, or password), not envVarKey",
+            "line": 17,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "redis-env-only",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-a5935b-kv",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-kv",
+                  "type": "redis",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "corrected native reference-guard fixture intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-redis-env-only-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.346,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa207-a5935b-caller env \\\"COPY_VALUE\\\": fromService keyvalue takes a property (connectionString, host, port, or password), not envVarKey\",\n      \"line\": 17,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa207-a5935b-caller env \"COPY_VALUE\": fromService keyvalue takes a property (connectionString, host, port, or password), not envVarKey",
+            "line": 17,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "kv-connection-control",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-a5935b-kv",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-kv",
+                  "type": "keyvalue",
+                  "property": "connectionString"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "corrected native reference-guard fixture intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-kv-connection-control-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.331,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa207-a5935b-kv\"\n    ],\n    \"services\": [\n      \"qa207-a5935b-caller\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa207-a5935b-kv"
+          ],
+          "services": [
+            "qa207-a5935b-caller"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "kv-host-control",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-a5935b-kv",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-kv",
+                  "type": "keyvalue",
+                  "property": "host"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "corrected native reference-guard fixture intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-kv-host-control-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.347,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa207-a5935b-kv\"\n    ],\n    \"services\": [\n      \"qa207-a5935b-caller\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa207-a5935b-kv"
+          ],
+          "services": [
+            "qa207-a5935b-caller"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    }
+  ],
+  "copied_render_config_removed": true,
+  "excluded_initial_KV_fixture_rows": [
+    {
+      "client": "bex",
+      "case": "kv-env-only",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-a5935b-kv",
+            "type": "keyvalue",
+            "plan": "free"
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-kv",
+                  "type": "keyvalue",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-kv-env-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.63,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"at '/services/0': missing property 'ipAllowList'\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "at '/services/0': missing property 'ipAllowList'",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "client": "bex",
+      "case": "redis-env-only",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-a5935b-kv",
+            "type": "keyvalue",
+            "plan": "free"
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-kv",
+                  "type": "redis",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-redis-env-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.379,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"at '/services/0': missing property 'ipAllowList'\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "at '/services/0': missing property 'ipAllowList'",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "client": "bex",
+      "case": "kv-connection-control",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-a5935b-kv",
+            "type": "keyvalue",
+            "plan": "free"
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-kv",
+                  "type": "keyvalue",
+                  "property": "connectionString"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-kv-connection-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.702,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"at '/services/0': missing property 'ipAllowList'\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "at '/services/0': missing property 'ipAllowList'",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": false
+    },
+    {
+      "client": "bex",
+      "case": "kv-host-control",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-a5935b-kv",
+            "type": "keyvalue",
+            "plan": "free"
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-kv",
+                  "type": "keyvalue",
+                  "property": "host"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-kv-host-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.658,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"at '/services/0': missing property 'ipAllowList'\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "at '/services/0': missing property 'ipAllowList'",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": false
+    },
+    {
+      "client": "render",
+      "case": "kv-env-only",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-a5935b-kv",
+            "type": "keyvalue",
+            "plan": "free"
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-kv",
+                  "type": "keyvalue",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-kv-env-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.502,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"at '/services/0': missing property 'ipAllowList'\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "at '/services/0': missing property 'ipAllowList'",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "client": "render",
+      "case": "redis-env-only",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-a5935b-kv",
+            "type": "keyvalue",
+            "plan": "free"
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-kv",
+                  "type": "redis",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-redis-env-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.304,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"at '/services/0': missing property 'ipAllowList'\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "at '/services/0': missing property 'ipAllowList'",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "client": "render",
+      "case": "kv-connection-control",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-a5935b-kv",
+            "type": "keyvalue",
+            "plan": "free"
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-kv",
+                  "type": "keyvalue",
+                  "property": "connectionString"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-kv-connection-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.276,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"at '/services/0': missing property 'ipAllowList'\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "at '/services/0': missing property 'ipAllowList'",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": false
+    },
+    {
+      "client": "render",
+      "case": "kv-host-control",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-a5935b-kv",
+            "type": "keyvalue",
+            "plan": "free"
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-a5935b-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-a5935b-kv",
+                  "type": "keyvalue",
+                  "property": "host"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-kv-host-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.314,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"at '/services/0': missing property 'ipAllowList'\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "at '/services/0': missing property 'ipAllowList'",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": false
+    }
+  ],
+  "qualification": "Initial KV declarations omitted schema-required ipAllowList; eight schema refusals excluded from reference-guard claims. Corrected harmless fixtures use explicit internal-only empty allowlist.",
+  "native_captures": [
+    {
+      "at": "2026-10-13T10:03:22.892939+00:00",
+      "client": "bex",
+      "case": "kv-env-only",
+      "layout": "root",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep207-root-kv-env-only.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 1,
+        "elapsed": 0.658,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa207-a5935b-caller env \\\"COPY_VALUE\\\": fromService keyvalue takes a property (connectionString, host, port, or password), not envVarKey\",\n      \"line\": 17,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T10:03:23.618280+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=0656c486f6ee5e17ab263b46c0f4086b2e1ff0f4af4ca6484213183eed8e",
+            "body": "--0656c486f6ee5e17ab263b46c0f4086b2e1ff0f4af4ca6484213183eed8e\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--0656c486f6ee5e17ab263b46c0f4086b2e1ff0f4af4ca6484213183eed8e\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep207-root-kv-env-only.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa207-a5935b-kv\",\n      \"type\": \"keyvalue\",\n      \"plan\": \"free\",\n      \"ipAllowList\": []\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa207-a5935b-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa207-a5935b-kv\",\n            \"type\": \"keyvalue\",\n            \"envVarKey\": \"VALUE\"\n          }\n        }\n      ]\n    }\n  ]\n}\n\r\n--0656c486f6ee5e17ab263b46c0f4086b2e1ff0f4af4ca6484213183eed8e--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"services\": [\n    {\n      \"name\": \"qa207-a5935b-kv\",\n      \"type\": \"keyvalue\",\n      \"plan\": \"free\",\n      \"ipAllowList\": []\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa207-a5935b-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa207-a5935b-kv\",\n            \"type\": \"keyvalue\",\n            \"envVarKey\": \"VALUE\"\n          }\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49d839d9f967587-SJC"
+          },
+          "response": "{\"valid\":false,\"errors\":[{\"error\":\"qa207-a5935b-caller env \\\"COPY_VALUE\\\": fromService keyvalue takes a property (connectionString, host, port, or password), not envVarKey\",\"line\":17,\"column\":18,\"path\":\"services[1].envVars\"}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-13T10:03:24.295207+00:00",
+      "client": "render",
+      "case": "kv-host-control",
+      "layout": "root",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep207-root-kv-host-control.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 0.492,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa207-a5935b-kv\"\n    ],\n    \"services\": [\n      \"qa207-a5935b-caller\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T10:03:24.849884+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=3562dfc9755afe4cc42ba625cc52704247cd744083d2c04250f9d5ef6f5a",
+            "body": "--3562dfc9755afe4cc42ba625cc52704247cd744083d2c04250f9d5ef6f5a\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--3562dfc9755afe4cc42ba625cc52704247cd744083d2c04250f9d5ef6f5a\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep207-root-kv-host-control.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa207-a5935b-kv\",\n      \"type\": \"keyvalue\",\n      \"plan\": \"free\",\n      \"ipAllowList\": []\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa207-a5935b-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa207-a5935b-kv\",\n            \"type\": \"keyvalue\",\n            \"property\": \"host\"\n          }\n        }\n      ]\n    }\n  ]\n}\n\r\n--3562dfc9755afe4cc42ba625cc52704247cd744083d2c04250f9d5ef6f5a--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"services\": [\n    {\n      \"name\": \"qa207-a5935b-kv\",\n      \"type\": \"keyvalue\",\n      \"plan\": \"free\",\n      \"ipAllowList\": []\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa207-a5935b-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa207-a5935b-kv\",\n            \"type\": \"keyvalue\",\n            \"property\": \"host\"\n          }\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49d83a62e2c5bc0-SJC"
+          },
+          "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa207-a5935b-caller\"],\"keyValue\":[\"qa207-a5935b-kv\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"key_value\",\"name\":\"qa207-a5935b-kv\",\"sourcePath\":\"#/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa207-a5935b-caller\",\"sourcePath\":\"#/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-13T10:03:27.339765+00:00",
+      "client": "bex",
+      "case": "generated-plus-empty",
+      "layout": "root",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep207-root-generated-plus-empty.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 1,
+        "elapsed": 0.297,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa207-a5935b-source env \\\"VALUE\\\": sets both value and generateValue — pick one\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T10:03:27.701979+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=bb37d4a4c777126fd334d481af9b451735d5154903864376d4d58c55fdac",
+            "body": "--bb37d4a4c777126fd334d481af9b451735d5154903864376d4d58c55fdac\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--bb37d4a4c777126fd334d481af9b451735d5154903864376d4d58c55fdac\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep207-root-generated-plus-empty.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa207-a5935b-source\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"generateValue\": true,\n          \"value\": \"\"\n        }\n      ]\n    }\n  ]\n}\n\r\n--bb37d4a4c777126fd334d481af9b451735d5154903864376d4d58c55fdac--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa207-a5935b-source\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"generateValue\": true,\n          \"value\": \"\"\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49d83b8de7931f4-SJC"
+          },
+          "response": "{\"valid\":false,\"errors\":[{\"error\":\"qa207-a5935b-source env \\\"VALUE\\\": sets both value and generateValue — pick one\",\"line\":11,\"column\":18,\"path\":\"services[0].envVars\"}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    }
+  ]
+}
