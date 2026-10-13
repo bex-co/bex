@@ -452,6 +452,14 @@ type bexEnvVar struct {
 	FromDatabase  *bexFromRef `json:"fromDatabase"`
 	FromService   *bexFromRef `json:"fromService"`
 	FromGroup     string      `json:"fromGroup"`
+	// valueSet records a declared value, so an explicit "" is a literal
+	// rather than an omission (w8/092, ADR049 D5).
+	valueSet bool
+}
+
+// hasValue reports whether the entry declares a literal value, empty or not.
+func (e bexEnvVar) hasValue() bool {
+	return e.valueSet || e.Value != ""
 }
 
 // UnmarshalJSON accepts a number for value, which the pinned schema allows
@@ -471,8 +479,9 @@ func (e *bexEnvVar) UnmarshalJSON(data []byte) error {
 	}
 	*e = bexEnvVar(raw.plain)
 	value := bytes.TrimSpace(raw.Value)
+	e.valueSet = len(value) > 0 && !bytes.Equal(value, []byte("null"))
 	switch {
-	case len(value) == 0 || bytes.Equal(value, []byte("null")):
+	case !e.valueSet:
 	case value[0] == '-' || (value[0] >= '0' && value[0] <= '9'):
 		e.Value = string(value)
 	default:
@@ -2157,7 +2166,7 @@ func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
 		case e.Sync != nil && !*e.Sync:
 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q var %q: sync:false is not allowed inside an env group", core.ErrBadRequest, name, e.Key)
 		case e.GenerateValue:
-			if e.Value != "" {
+			if e.hasValue() {
 				return parsedEnvGroup{}, fmt.Errorf("%w: env group %q var %q sets both value and generateValue", core.ErrBadRequest, name, e.Key)
 			}
 			pg.generates = append(pg.generates, e.Key)
@@ -2406,7 +2415,7 @@ func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv
 		// The value this entry stores: its literal, or the prompt answer a
 		// sync:false key without one seeds.
 		value := e.Value
-		if e.Sync != nil && !*e.Sync && value == "" {
+		if e.Sync != nil && !*e.Sync && !e.hasValue() {
 			value = overrides.envVarValues[e.Key]
 		}
 		if !core.ValidEnvValue(value) {
@@ -2421,7 +2430,7 @@ func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv
 		case e.Sync != nil && !*e.Sync:
 			// A literal seeds immediately; an omitted value is a create-time prompt
 			// that DeployRequest.EnvVarValues may seed exactly once.
-			if e.Value != "" {
+			if e.hasValue() {
 				se.seedLiterals[e.Key] = e.Value
 				se.known[e.Key] = e.Value
 			} else {
@@ -2620,7 +2629,7 @@ func parseBlueprintIPAllowList(label, name string, entries []bexIPEntry) ([]appv
 // group and carries no other field. Its target's existence is pre-flighted in
 // deployStack (declared in-file OR pre-existing in the workspace).
 func validateGroupLink(e bexEnvVar) error {
-	if e.Key != "" || e.Value != "" || e.GenerateValue || e.Sync != nil || e.FromDatabase != nil || e.FromService != nil {
+	if e.Key != "" || e.hasValue() || e.GenerateValue || e.Sync != nil || e.FromDatabase != nil || e.FromService != nil {
 		return fmt.Errorf("fromGroup %q must be the only field on its envVars entry (it links the whole group)", e.FromGroup)
 	}
 	return nil
@@ -2636,7 +2645,7 @@ func validateKeyedEnv(e bexEnvVar) error {
 		return fmt.Errorf("an envVars entry is missing its key")
 	}
 	if e.GenerateValue {
-		if e.Value != "" {
+		if e.hasValue() {
 			return fmt.Errorf("sets both value and generateValue — pick one")
 		}
 		if e.FromDatabase != nil || e.FromService != nil {
