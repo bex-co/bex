@@ -113,7 +113,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **101** — [Blueprint static rule errors point to the service instead of the invalid rule](done/101.md) — **DONE 2026-10-13** (fix `2fb562c4a`; sweep212 native matrix passes with exact field locations; GraphQL/MCP details agree in code)
 
-- [ ] **100** — [Blueprint environment errors point to unrelated or nonexistent fields](100.md) — **TODO (sweep223 now reproduces later invalid repeated-key mislocations live in Bex/Render: four failures and eight controls, twelve exact captures; current-source ordinal repair remains 45m; wider base-fix acceptance is unverified)**
+- [ ] **100** — [Blueprint environment errors point to unrelated or nonexistent fields](blocked/100.md) — **BLOCKED (2026-10-13: repeated-key ordinal fixed — a later invalid repeated env key is located at its own entry; needs the fix deployed to production plus fresh native Bex/Render replay of sweeps 208/223)**
 
 - [x] **098** — [Blueprint validation accepts Key Value envVarKey refs that resolve to an empty key](done/098.md) — **DONE 2026-10-13** (fixes `fcd0d1124`/`0daac2275`; sweeps 207/212 native matrices pass; REST/GraphQL/MCP agreement in code; hosted apply recorded as a boundary)
 
