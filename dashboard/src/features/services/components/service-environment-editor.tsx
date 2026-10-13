@@ -530,9 +530,13 @@ export function EnvironmentEditor({
         // Secret files travel as JSON strings, so only UTF-8 text survives:
         // file.text() would silently swap every invalid byte for U+FFFD and
         // save a mangled keystore (w8/029). A strict decode refuses it.
-        const content = new TextDecoder("utf-8", { fatal: true }).decode(
-          await file.arrayBuffer(),
-        );
+        // ignoreBOM keeps a leading byte-order mark as content: the default
+        // drops it, so the stored file would differ from the one selected
+        // (w4/285).
+        const content = new TextDecoder("utf-8", {
+          fatal: true,
+          ignoreBOM: true,
+        }).decode(await file.arrayBuffer());
         if (content.includes("\0")) {
           rejected = true;
           continue;
