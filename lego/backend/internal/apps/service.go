@@ -988,7 +988,7 @@ func effectiveType(specType string) string {
 // "static"), and a bare "buildpack"/"native" builder without an explicit runtime
 // names no runtime bex can pin here, so each reads back empty as it did before.
 func effectiveRuntime(spec appv1alpha1.AppSpec, svcType string) string {
-	if spec.Runtime != "" {
+	if spec.Runtime != "" && !staleImageRuntime(spec) {
 		return spec.Runtime
 	}
 	if svcType == appv1alpha1.TypeStaticSite {
@@ -4208,6 +4208,9 @@ func (f sourceFields) applyTo(a *appv1alpha1.App) {
 	a.Spec.Image = f.image
 	a.Spec.Branch = f.branch
 	a.Spec.RegistryCredentialID = clonePtr(f.registryCredentialID)
+	if staleImageRuntime(a.Spec) {
+		a.Spec.Runtime = ""
+	}
 }
 
 // resolveSourcePatch folds a sourcePatch onto the App's current source,
