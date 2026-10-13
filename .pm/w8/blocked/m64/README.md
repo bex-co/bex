@@ -1,17 +1,17 @@
 # w8 · m64 — Keep Blueprint environment copies consistent across applies
 
-**Worker:** worker8 **Goal:** sibling copies equal the configuration their source will receive, across group links and seed-once edits/reapply. **Status:** todo
+**Worker:** worker8 **Goal:** sibling copies equal the configuration their source will receive, across group links and seed-once edits/reapply. **Status:** blocked — t001–t005 done and shipped (2026-10-13); t006 needs the API deployed to production plus fresh pinned native validation captures and hosted/snapshot dispositions.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Resolve known values from effective link and seed state | 55m | — |
-| t002 | Audit all parser/current-state consumers and inherited 099 DoD | 35m | t001 |
-| t003 | Render parity | 15m | t002 |
-| t004 | Simplify | 10m | t003 |
-| t005 | Meaningful test coverage | 30m | t003 |
-| t006 | Closeout | 10m | t004, t005 |
+| t001 | Resolve known values from effective link and seed state — **DONE 2026-10-13** | 55m | — |
+| t002 | Audit all parser/current-state consumers and inherited 099 DoD — **DONE 2026-10-13** | 35m | t001 |
+| t003 | Render parity — **DONE 2026-10-13** | 15m | t002 |
+| t004 | Simplify — **DONE 2026-10-13** | 10m | t003 |
+| t005 | Meaningful test coverage — **DONE 2026-10-13** | 30m | t003 |
+| t006 | Closeout — **BLOCKED: deployed API + native receipts** | 10m | t004, t005 |
 
 ## Definition of done
 

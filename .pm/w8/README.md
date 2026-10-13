@@ -15,7 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m64** — [Keep Blueprint environment copies consistent across applies](m64/README.md) (6 tasks; 2h35m) ← promoted 099: four group-order and three edited-seed configured-value mismatches through actual local feature services; actual group projections, pinned native declaration/wire receipts; hosted apply untested; complete original DoD/history preserved; no resources.
+- [ ] **m64** — [Keep Blueprint environment copies consistent across applies](blocked/m64/README.md) — **BLOCKED (2026-10-13: t001–t005 done — copies from an existing source follow its current link order with new links appended, and an existing seed or undeclared retained link is a located refusal before any write; needs the API deployed to production plus fresh pinned native validation captures and hosted dispositions before t006)**
 
 - [ ] **m63** — [Keep completed initial hooks out of later deploys](blocked/m63/README.md) — **BLOCKED (2026-10-13: t001–t005 done — the hook has its own spec field, the operator completes it on success and later releases run only the regular command; needs the operator/API deployed to production plus a hosted owned-fixture run with native Bex/Render manual deploys and cleanup before t006)**
 
