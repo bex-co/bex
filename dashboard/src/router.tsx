@@ -6,6 +6,7 @@ import ErrorPage from "@/common/root-route/error-page";
 import NotFoundPage from "@/common/root-route/not-found-page";
 import { pendingInvitationDestination } from "@/features/invites/redirect-pending-invitation";
 import RoutePending from "@/common/root-route/route-pending";
+import { parseSearchWithExactText } from "@/common/lib/search-params/exact-text";
 
 export type { RouterContext } from "@/common/types/router-context";
 
@@ -14,6 +15,8 @@ export function getRouter() {
   const router = createTanStackRouter({
     routeTree,
     scrollRestoration: true,
+    // Free-text search keys keep the digits a link carried (w4/289).
+    parseSearch: parseSearchWithExactText,
     // "intent" preloads a link's chunk + loader on hover; the (default) 30s
     // preloadStaleTime lets the actual click reuse that result instead of
     // re-running it (the previous explicit `0` discarded every preload, so
