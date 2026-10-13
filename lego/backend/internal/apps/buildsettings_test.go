@@ -27,6 +27,7 @@ import (
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -391,4 +392,70 @@ func TestClearedStaticBuildCommandPublishesDirectly(t *testing.T) {
 	if spec := getApp(t, cl, "pinned").Spec; spec.Runtime != "node" || spec.Builder != buildNative {
 		t.Errorf("explicit runtime after clear = runtime %q builder %q, want node/native kept", spec.Runtime, spec.Builder)
 	}
+}
+
+// w8/m59 t003: every write surface clears a build-created static site's
+// command through the same setter, so REST PATCH, GraphQL setBuildCommand and
+// MCP update_service all return it to direct publication.
+func TestEverySurfaceClearsAStaticBuildToDirectPublication(t *testing.T) {
+	ctx := context.Background()
+	built := func(t *testing.T) (*Service, client.Client) {
+		t.Helper()
+		svc, cl := newService(nil)
+		if _, err := svc.Create(ctx, CreateRequest{Name: "site", Type: appv1alpha1.TypeStaticSite, Repo: "https://github.com/acme/site",
+			PublishPath: "dist", BuildCommand: "mkdir -p dist; echo ok > dist/index.html"}); err != nil {
+			t.Fatalf("Create: %v", err)
+		}
+		if got := getApp(t, cl, "site").Spec.Builder; got != buildNative {
+			t.Fatalf("fixture builder = %q, want the implicit native projection", got)
+		}
+		return svc, cl
+	}
+	assertDirect := func(t *testing.T, cl client.Client) {
+		t.Helper()
+		if spec := getApp(t, cl, "site").Spec; spec.BuildCommand != "" || spec.Builder != "" || buildStrategy(spec) != buildPublish {
+			t.Fatalf("after clear: command %q builder %q strategy %q, want direct publication", spec.BuildCommand, spec.Builder, buildStrategy(spec))
+		}
+	}
+
+	t.Run("REST PATCH", func(t *testing.T) {
+		svc, cl := built(t)
+		mux := http.NewServeMux()
+		svc.RegisterREST(mux)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/site",
+			strings.NewReader(`{"serviceDetails":{"buildCommand":"","publishPath":"."}}`)))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("PATCH => %d: %s", rec.Code, rec.Body)
+		}
+		assertDirect(t, cl)
+	})
+	t.Run("GraphQL setBuildCommand", func(t *testing.T) {
+		svc, cl := built(t)
+		res := graphql.Do(graphql.Params{Schema: mustSchema(t, svc), Context: ctx,
+			RequestString: `mutation { setBuildCommand(id:"site", command:"") { buildCommand } }`})
+		if len(res.Errors) > 0 {
+			t.Fatalf("setBuildCommand: %v", res.Errors)
+		}
+		assertDirect(t, cl)
+	})
+	t.Run("MCP update_service", func(t *testing.T) {
+		svc, cl := built(t)
+		srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+		svc.RegisterMCP(srv)
+		serverT, clientT := mcp.NewInMemoryTransports()
+		if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+			t.Fatalf("server connect: %v", err)
+		}
+		mc, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+		if err != nil {
+			t.Fatalf("client connect: %v", err)
+		}
+		t.Cleanup(func() { _ = mc.Close() })
+		res, err := mc.CallTool(ctx, &mcp.CallToolParams{Name: "update_service", Arguments: map[string]any{"serviceId": "site", "buildCommand": "", "publishPath": "."}})
+		if err != nil || res.IsError {
+			t.Fatalf("update_service: err=%v isError=%v", err, res != nil && res.IsError)
+		}
+		assertDirect(t, cl)
+	})
 }
