@@ -1458,7 +1458,8 @@ func pullPolicyFor(image string) corev1.PullPolicy {
 // directStaticPublish reports whether the App takes the no-build static publish
 // path (w9/010): a repo-backed static_site whose spec declares no build input
 // at all — no prebuilt image, no Dockerfile path, no build command, no native
-// runtime, no explicit builder. Its publish Job clones the repo and uploads
+// runtime, no explicit builder (a native one without a runtime only projects a
+// build command, so with none it builds nothing, w8/m59). Its publish Job clones the repo and uploads
 // rootDir/publishPath as-is (Render's no-build static site); any declared
 // build input keeps the build-then-extract path.
 func directStaticPublish(app *appv1alpha1.App) bool {
@@ -1466,7 +1467,7 @@ func directStaticPublish(app *appv1alpha1.App) bool {
 		app.Spec.Image == "" && app.Spec.Repo != "" &&
 		app.Spec.DockerfilePath == "" && app.Spec.BuildCommand == "" &&
 		app.Spec.Runtime == "" &&
-		(app.Spec.Builder == "" || app.Spec.Builder == build.BuilderAuto)
+		(app.Spec.Builder == "" || app.Spec.Builder == build.BuilderAuto || app.Spec.Builder == build.BuilderNative)
 }
 
 // effectiveBuilder keeps the App CR itself Render-compatible: direct CR users

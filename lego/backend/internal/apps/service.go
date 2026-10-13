@@ -2872,7 +2872,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if svcType == appv1alpha1.TypeStaticSite && strings.TrimSpace(req.BuildCommand) != "" &&
 		strings.TrimSpace(req.DockerfilePath) == "" && runtime == "" &&
 		(builder == "" || builder == "auto") {
-		builder = "native"
+		builder = buildNative
 	}
 	buildFilter, err := normalizeBuildFilter(req.BuildFilter)
 	if err != nil {
@@ -4062,7 +4062,7 @@ func (s *Service) SetCommands(ctx context.Context, name string, buildCommand, st
 	}
 	return s.recordedPatch(ctx, core.AuditVerbSetCommands, a, func(a *appv1alpha1.App) {
 		if buildCommand != nil {
-			a.Spec.BuildCommand = strings.TrimSpace(*buildCommand)
+			setBuildCommand(&a.Spec, *buildCommand)
 		}
 		if startCommand != nil {
 			setStartCommand(&a.Spec, *startCommand)

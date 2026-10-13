@@ -328,3 +328,67 @@ func TestCreateServiceWithBuildFilterGraphQL(t *testing.T) {
 		t.Fatalf("spec.BuildFilter.IgnoredPaths = %#v", bf)
 	}
 }
+
+// TestClearedStaticBuildCommandPublishesDirectly is w8/m59: a static site
+// created with a build command persists the implicit native builder, and a
+// clear used to leave it, so the next build demanded the command it no longer
+// had. Through the real create projection and the compound patch the CLI
+// sends, both creation histories end as the same direct publication, and a
+// command added back builds again.
+func TestClearedStaticBuildCommandPublishesDirectly(t *testing.T) {
+	svc, cl := newService(nil)
+	ctx := context.Background()
+	repo := "https://github.com/acme/site"
+	command := "mkdir -p dist; echo ok > dist/index.html"
+	for _, req := range []CreateRequest{
+		{Name: "built", Type: appv1alpha1.TypeStaticSite, Repo: repo, PublishPath: "dist", BuildCommand: command},
+		{Name: "direct", Type: appv1alpha1.TypeStaticSite, Repo: repo, PublishPath: "dist"},
+		{Name: "pinned", Type: appv1alpha1.TypeStaticSite, Repo: repo, PublishPath: "dist", Runtime: "node", BuildCommand: command},
+	} {
+		if _, err := svc.Create(ctx, req); err != nil {
+			t.Fatalf("Create %s: %v", req.Name, err)
+		}
+	}
+	if got := getApp(t, cl, "built").Spec.Builder; got != buildNative {
+		t.Fatalf("created-with-build builder = %q, want the implicit native projection", got)
+	}
+	if _, err := svc.SetCommands(ctx, "direct", &command, nil); err != nil {
+		t.Fatalf("add build command: %v", err)
+	}
+
+	empty, root := "", "."
+	for _, name := range []string{"built", "direct"} {
+		if _, err := svc.ApplyServicePatch(ctx, name, ServicePatch{BuildCommand: &empty, PublishPath: &root}); err != nil {
+			t.Fatalf("clear %s: %v", name, err)
+		}
+		spec := getApp(t, cl, name).Spec
+		if spec.BuildCommand != "" || spec.PublishPath != "." || spec.Builder != "" || buildStrategy(spec) != buildPublish {
+			t.Errorf("%s after clear = command %q path %q builder %q strategy %q, want direct publication",
+				name, spec.BuildCommand, spec.PublishPath, spec.Builder, buildStrategy(spec))
+		}
+	}
+
+	// A record cleared before the setter dropped the builder reads as the
+	// direct publication the operator gives it.
+	legacy := appv1alpha1.AppSpec{Type: appv1alpha1.TypeStaticSite, Repo: repo, Builder: buildNative}
+	if got := buildStrategy(legacy); got != buildPublish {
+		t.Errorf("legacy cleared native strategy = %q, want %q", got, buildPublish)
+	}
+
+	// Omitting the command keeps it; adding one back builds natively again.
+	if _, err := svc.SetCommands(ctx, "built", &command, nil); err != nil {
+		t.Fatalf("re-add build command: %v", err)
+	}
+	if spec := getApp(t, cl, "built").Spec; buildStrategy(spec) != buildNative || spec.BuildCommand != command {
+		t.Errorf("re-added = strategy %q command %q, want native %q", buildStrategy(spec), spec.BuildCommand, command)
+	}
+
+	// An explicit runtime is the strategy itself, not a projection: the clear
+	// leaves it for native validation to refuse, as before.
+	if _, err := svc.SetCommands(ctx, "pinned", &empty, nil); err != nil {
+		t.Fatalf("clear pinned: %v", err)
+	}
+	if spec := getApp(t, cl, "pinned").Spec; spec.Runtime != "node" || spec.Builder != buildNative {
+		t.Errorf("explicit runtime after clear = runtime %q builder %q, want node/native kept", spec.Runtime, spec.Builder)
+	}
+}

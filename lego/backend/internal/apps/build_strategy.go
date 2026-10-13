@@ -55,6 +55,11 @@ func buildStrategy(spec appv1alpha1.AppSpec) string {
 		return buildDockerfile
 	case runtime != "":
 		return buildNative + ":" + runtime
+	case spec.Type == appv1alpha1.TypeStaticSite && spec.Builder == buildNative &&
+		strings.TrimSpace(spec.BuildCommand) == "" && strings.TrimSpace(spec.DockerfilePath) == "":
+		// A static native builder with no runtime projects a command, so
+		// without one it publishes, as the operator does (w8/m59).
+		return buildPublish
 	case spec.Builder != "" && spec.Builder != "auto":
 		return spec.Builder
 	case spec.Type != appv1alpha1.TypeStaticSite, strings.TrimSpace(spec.DockerfilePath) != "":
@@ -63,6 +68,18 @@ func buildStrategy(spec appv1alpha1.AppSpec) string {
 		return buildNative
 	}
 	return buildPublish
+}
+
+// setBuildCommand is an explicit build-command write. A static site's native
+// builder with no runtime only projects its build command (effectiveBuilder
+// re-derives it), so clearing the command drops it too and the site publishes
+// directly, as one created without a command does (w8/m59).
+func setBuildCommand(spec *appv1alpha1.AppSpec, command string) {
+	spec.BuildCommand = strings.TrimSpace(command)
+	if spec.BuildCommand == "" && spec.Type == appv1alpha1.TypeStaticSite &&
+		spec.Runtime == "" && spec.Builder == buildNative {
+		spec.Builder = ""
+	}
 }
 
 // dockerDetails are Render's docker command and build context as a create
