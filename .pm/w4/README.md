@@ -257,6 +257,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **283** — [Mobile sidebar stays open after navigating to another page](283.md) (55m) ← functional QA a342; settled Project Settings/Overview destinations remain covered and hidden after pointer390 and fresh keyboard360 navigation; Escape and desktop controls pass; empty owned project deleted, inventories restored and session revoked.
+
 - [ ] **282** — [Deploy Blueprint enables before the first preview has reviewed the file](282.md) (55m) ← functional QA a318; initial desktop/mobile branch completion enables Deploy with a blank review, measured 404ms before the missing-file request; settled controls pass, no deployment submitted, session revoked.
 
 - [ ] **281** — [Auto-Deploy keeps an old value after receiving newer saved settings](blocked/281.md) — **BLOCKED (release pipeline deploys the dashboard; QA replays the a312 two-tab journey on an owned Free repo-backed service: tab B saves On Commit then Off, and tab A's untouched row, Edit baseline and Cancel follow each polled value on desktop and a fresh 390px page; then cleans up)**. Row correction + saved-value refresh regressions done 2026-10-13: the row binds to the saved prop instead of a mount-time copy; dashboard suite + lint green.
