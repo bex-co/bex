@@ -1,0 +1,25 @@
+import pathlib,json,subprocess,datetime,shutil,sys
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('$REPO/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());sid=(p/'sweep217-kv-id.txt').read_text().strip();x=next(z for z in c['resources'] if z.get('id')==sid);mode=sys.argv[1];assert x['sweep']==217 and x['workspace']=='tea-daif693dqjvc73e7as3g' and x['create_result']['exit']==0 and x['create_response']['id']==sid and x['last_readback']['status']=='available' and x['last_readback']['plan']=='free' and x['connection_setup']['result']['exit']==0 and not x['state'].startswith('deleted:')
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2));cp.chmod(0o600)
+def native(client,args):
+ cfg=p/'render-config/cli.yaml'
+ try:
+  if client=='render':assert not cfg.exists();shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  return json.loads(subprocess.check_output(['python3',str(p/'pty-bounded.py'),*(['--render'] if client=='render' else []),*args],text=True))
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+if mode=='ping':
+ for client,selector in [('bex',x['name']),('render',sid)]:
+  if any(z['client']==client and z.get('pass') for z in x.get('native_pings',[])):continue
+  z={'client':client,'selector':selector,'at':now(),'intent':'exact-owned read-only native PING'};x.setdefault('native_pings',[]).append(z);save();r=native(client,['kv-cli',selector,'--','--raw','PING']);z['result']=r;z['pass']=r['exit']==0 and not r['timeout'] and 'PONG' in [v.strip() for v in r['output'].splitlines()];save();print(json.dumps({'client':client,'selector_kind':'owned name' if selector==x['name'] else 'owned ID','exit':r['exit'],'elapsed':r['elapsed'],'timeout':r['timeout'],'pong':z['pass']}),flush=True);assert z['pass'],'Connection not verified; retry read-only PING at human pace'
+elif mode=='markers':
+ assert len([z for z in x.get('native_pings',[]) if z.get('pass')])==2 and 'unicode_log_generators' not in x
+ prefix='QA217_'+x['nonce'];x['unicode_log_prefix']=prefix;x['numeric_log_marker']='N217_'+x['nonce']+' 9007199254740993';x['unicode_log_start']=now();save()
+ for marker in [prefix+' Ι',prefix+' ι',prefix+' λ',x['numeric_log_marker']]:
+  script='redis.log(redis.LOG_NOTICE, ARGV[1]); return ARGV[1]';args=['kv-cli',sid,'--','--raw','EVAL',script,'0',marker];z={'marker':marker,'at':now(),'command':['bex',*args],'state':'owned native harmless log intent persisted'};x.setdefault('unicode_log_generators',[]).append(z);save();r=native('bex',args);z['result']=r;z['pass']=r['exit']==0 and not r['timeout'] and marker in [v.strip() for v in r['output'].splitlines()];z['state']='native return verified' if z['pass'] else 'native result incomplete; reconcile emitted marker before another mutation';save();print(json.dumps({'marker':marker,'exit':r['exit'],'timeout':r['timeout'],'exact_return':z['pass']}),flush=True);assert z['pass']
+ x['unicode_log_end']=now();save()
+elif mode=='padding':
+ assert x.get('baseline_history_verified') and 'padding_intent' not in x
+ prefix='PAD217_'+x['nonce'];script='for i=1,1005 do redis.log(redis.LOG_NOTICE, ARGV[1].." "..string.format("%04d",i)) end return 1005';args=['kv-cli',sid,'--','--raw','EVAL',script,'0',prefix];x['padding_prefix']=prefix;x['padding_intent']={'at':now(),'command':['render',*args],'count':1005,'qualification':'finite harmless logging only; no datastore keys written; reconcile result before any retry'};save();r=native('render',args);x['padding_result']=r;x['padding_native_return_verified']=r['exit']==0 and not r['timeout'] and '1005' in [v.strip() for v in r['output'].splitlines()];save();print(json.dumps({'padding_count':1005,'exit':r['exit'],'elapsed':r['elapsed'],'timeout':r['timeout'],'exact_return':x['padding_native_return_verified']}),flush=True);assert x['padding_native_return_verified']
+else:raise ValueError(mode)

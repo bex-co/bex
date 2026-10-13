@@ -1,0 +1,34 @@
+import pathlib,json,subprocess,datetime,sys
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('$REPO/.playwright-mcp/cli-qa-w8-checkpoint.json');sid=(p/'sweep217-kv-id.txt').read_text().strip();phase=sys.argv[1];assert phase in ('baseline','saturated')
+def load():
+ c=json.loads(cp.read_text());return c,next(z for z in c['resources'] if z.get('id')==sid)
+def save(c):c['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2));cp.chmod(0o600)
+def objects(raw):
+ decoder=json.JSONDecoder();rows=[]
+ while raw.strip():
+  raw=raw.lstrip();o,n=decoder.raw_decode(raw);raw=raw[n:];rows.extend(o if isinstance(o,list) else o['logs'] if isinstance(o,dict) and 'logs' in o else [o])
+ return rows
+c,x=load();assert x['sweep']==217 and not x['state'].startswith('deleted:');assert all(z['pass'] for z in x['unicode_log_generators']) and len(x['unicode_log_generators'])==4
+if phase=='saturated':assert x['padding_native_return_verified'] and x['baseline_history_verified']
+x['history_stage']=phase;save(c);prefix=x['unicode_log_prefix'];terms=[prefix,'9007199254740993'] if phase=='baseline' else [prefix,prefix+' ι',prefix+' λ','9007199254740993','9007199254740992']
+for client in ('bex','render'):
+ for term in terms:
+  c,x=load();prior=[z for z in x.get('history_checks',[]) if z['phase']==phase and z['client']==client and z['term']==term and z.get('pass')]
+  if prior:continue
+  r=subprocess.run(['python3',str(p/'sweep217-kv-capture.py'),client,term]);assert r.returncode==0
+  c,x=load();o=x['captured_searches'][-1];assert o['stage']==phase and o['client']==client and o['term']==term;native=o['native_result'];caps=o['captures'];assert native['exit']==0 and len(caps)==1 and caps[0].get('status')==200,'Native request failed; reconcile/read-only retry at human pace'
+  api=json.loads(caps[0]['response'])['logs'];got=objects(native['stdout']);api_map={z['id']:z['message'] for z in api};native_map={z['id']:z['message'] for z in got};match=api_map==native_map
+  if phase=='baseline':
+   expected_count=3 if term==prefix else 1;match=match and len(api)==expected_count
+   if match:
+    key='baseline_unicode_rows' if term==prefix else 'baseline_numeric_rows'
+    if key in x:match=match and {z['id']:z['message'] for z in x[key]}==api_map
+    else:x[key]=api
+  else:
+   base=x['baseline_unicode_rows'];expected=base if term==prefix else [z for z in base if z['message'].endswith(('Ι','ι'))] if term==prefix+' ι' else [z for z in base if z['message'].endswith('λ')] if term==prefix+' λ' else x['baseline_numeric_rows'] if term=='9007199254740993' else []
+   match=match and api_map=={z['id']:z['message'] for z in expected}
+  check={'phase':phase,'client':client,'term':term,'count':len(got),'native_API_original_ID_bytes_equal':native_map==api_map,'pass':match,'capture_index':len(x['captured_searches'])-1};x.setdefault('history_checks',[]).append(check);save(c);print(json.dumps(check,ensure_ascii=False),flush=True);assert match,'History mismatch captured; no mutation retry'
+c,x=load()
+if phase=='baseline':x['baseline_history_verified']=all(z['pass'] for z in x['history_checks'] if z['phase']=='baseline') and len([z for z in x['history_checks'] if z['phase']=='baseline' and z['pass']])==4
+else:x['saturated_history_verified']=len([z for z in x['history_checks'] if z['phase']=='saturated' and z['pass']])==10
+save(c)

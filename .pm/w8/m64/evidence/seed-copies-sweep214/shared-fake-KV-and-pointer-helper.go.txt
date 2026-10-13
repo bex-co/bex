@@ -1,0 +1,183 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package apps
+
+import (
+	"context"
+	"encoding/json"
+	"maps"
+	"strings"
+	"testing"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/envgroups"
+	appv1 "github.com/bex-co/bex/lego/types/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+// The only fake feature here is storage. Actual apps/envgroups services create
+// and reapply the Apps and project the harmless group Secrets.
+type qa213KV struct {
+	data     map[string]map[string]string
+	versions map[string]uint64
+}
+
+func (s *qa213KV) Get(_ context.Context, key string) (map[string]string, error) {
+	return maps.Clone(s.data[key]), nil
+}
+func (s *qa213KV) Put(_ context.Context, key string, value map[string]string) error {
+	s.data[key] = maps.Clone(value)
+	s.versions[key]++
+	return nil
+}
+func (s *qa213KV) Delete(_ context.Context, key string) error {
+	delete(s.data, key)
+	delete(s.versions, key)
+	return nil
+}
+func (s *qa213KV) List(_ context.Context, prefix string) ([]string, error) {
+	seen := map[string]bool{}
+	out := []string{}
+	for key := range s.data {
+		if rest, ok := strings.CutPrefix(key, prefix+"/"); ok {
+			child, _, _ := strings.Cut(rest, "/")
+			if !seen[child] {
+				seen[child] = true
+				out = append(out, child)
+			}
+		}
+	}
+	return out, nil
+}
+func (s *qa213KV) GetVersioned(ctx context.Context, key string) (core.SecretKVSnapshot, error) {
+	v, _ := s.Get(ctx, key)
+	return core.SecretKVSnapshot{Data: v, Version: s.versions[key]}, nil
+}
+func (s *qa213KV) PutCAS(ctx context.Context, key string, value map[string]string, version uint64) (uint64, error) {
+	if s.versions[key] != version {
+		return 0, core.ErrConflict
+	}
+	_ = s.Put(ctx, key, value)
+	return s.versions[key], nil
+}
+
+func TestQAGroupCopyReapplyOrder213(t *testing.T) {
+	for _, tc := range []struct {
+		name             string
+		initial, desired []string
+		own              *string
+		mismatch         bool
+	}{
+		{name: "unchanged order control", initial: []string{"a", "b"}, desired: []string{"a", "b"}},
+		{name: "fresh duplicate link", initial: []string{"a", "b", "a"}, desired: []string{"a", "b", "a"}, mismatch: true},
+		{name: "reversed declared links", initial: []string{"a", "b"}, desired: []string{"b", "a"}, mismatch: true},
+		{name: "new earlier declaration appends last", initial: []string{"b"}, desired: []string{"a", "b"}, mismatch: true},
+		{name: "omitted previous link persists", initial: []string{"a", "b"}, desired: []string{"a"}, mismatch: true},
+		{name: "own literal overrides both orders", initial: []string{"a", "b"}, desired: []string{"b", "a"}, own: qa213String("own")},
+		{name: "own empty overrides both orders", initial: []string{"a", "b"}, desired: []string{"b", "a"}, own: qa213String("")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			cl := fakeClient()
+			base := &core.Base{Client: cl, Namespace: "default"}
+			kv := &qa213KV{data: map[string]map[string]string{}, versions: map[string]uint64{}}
+			groups := &envgroups.Service{Base: base, Store: kv}
+			svc := &Service{Base: base, EnvGroups: groups}
+			manifest := func(links []string) string {
+				vars := []any{}
+				for _, name := range links {
+					vars = append(vars, map[string]any{"fromGroup": name})
+				}
+				if tc.own != nil {
+					vars = append(vars, map[string]any{"key": "VALUE", "value": *tc.own})
+				}
+				doc := map[string]any{"envVarGroups": []any{map[string]any{"name": "a", "envVars": []any{map[string]any{"key": "VALUE", "value": "group A"}}}, map[string]any{"name": "b", "envVars": []any{map[string]any{"key": "VALUE", "value": "group B"}}}}, "services": []any{map[string]any{"name": "consumer", "type": "web", "runtime": "image", "image": map[string]any{"url": "nginx:1"}, "envVars": []any{map[string]any{"key": "COPY", "fromService": map[string]any{"type": "web", "name": "source", "envVarKey": "VALUE"}}}}, map[string]any{"name": "source", "type": "web", "runtime": "image", "image": map[string]any{"url": "nginx:1"}, "envVars": vars}}}
+				raw, _ := json.Marshal(doc)
+				return string(raw)
+			}
+			first := manifest(tc.initial)
+			initial, err := svc.DeployStack(ctx, DeployRequest{Manifest: first})
+			if err != nil {
+				t.Fatalf("initial actual DeployStack: %v", err)
+			}
+			initialApps := &appv1.AppList{}
+			if err := cl.List(ctx, initialApps, client.InNamespace("default")); err != nil {
+				t.Fatal(err)
+			}
+			second := manifest(tc.desired)
+			validation, err := svc.ValidateBlueprint(ctx, "", second, "")
+			if err != nil || !validation.Valid {
+				t.Fatalf("validation: %+v %v", validation, err)
+			}
+			applied, err := svc.DeployStack(ctx, DeployRequest{Manifest: second})
+			if err != nil {
+				t.Fatalf("second actual DeployStack: %v", err)
+			}
+			list := &appv1.AppList{}
+			if err := cl.List(ctx, list, client.InNamespace("default")); err != nil {
+				t.Fatal(err)
+			}
+			var source, consumer *appv1.App
+			for i := range list.Items {
+				a := &list.Items[i]
+				switch a.Name {
+				case "source":
+					source = a
+				case "consumer":
+					consumer = a
+				}
+			}
+			if source == nil || consumer == nil {
+				t.Fatal("missing expected source/consumer CR names in local CR-only fixture")
+			}
+			effective := ""
+			present := false
+			for _, name := range source.Spec.EnvFromSecrets {
+				secret := &corev1.Secret{}
+				if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: name}, secret); err != nil {
+					t.Fatal(err)
+				}
+				if value, ok := secret.Data["VALUE"]; ok {
+					effective = string(value)
+					present = true
+				}
+			}
+			for _, e := range source.Spec.Env {
+				if e.Name == "VALUE" {
+					effective = e.Value
+					present = true
+				}
+			}
+			copied := ""
+			copyPresent := false
+			for _, e := range consumer.Spec.Env {
+				if e.Name == "COPY" {
+					copied = e.Value
+					copyPresent = true
+				}
+			}
+			if !present || !copyPresent || (effective != copied) != tc.mismatch {
+				t.Fatalf("current association mismatch expectation: source=%q copied=%q expected mismatch=%v", effective, copied, tc.mismatch)
+			}
+			out := map[string]any{"case": tc.name, "initial_manifest": first, "reapplied_manifest": second, "shared_local_validation_valid": validation.Valid, "initial_persisted_apps": initialApps.Items, "initial_service_ids": initial.Services, "reapplied_service_ids": applied.Services, "persisted_source": source, "persisted_consumer": consumer, "source_secret_order": source.Spec.EnvFromSecrets, "source_value_by_persisted_order": effective, "consumer_COPY": copied, "mismatch": effective != copied, "qualification": "actual backend services over fake storage/Kubernetes; process value inferred from persisted envFrom order, not a hosted pod; no auth or cluster execution claimed"}
+			raw, _ := json.Marshal(out)
+			t.Log("QA213_GROUPCOPY " + string(raw))
+		})
+	}
+}
+func qa213String(value string) *string { return &value }

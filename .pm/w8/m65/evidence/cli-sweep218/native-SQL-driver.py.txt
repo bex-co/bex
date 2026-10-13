@@ -1,0 +1,39 @@
+import csv,datetime,ipaddress,json,os,pathlib,secrets,shutil,socket,subprocess,sys,time,urllib.parse
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('$REPO/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());ws='tea-daif693dqjvc73e7as3g';mode=sys.argv[1]
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+def cli(args,render=False,extra=None):
+ env={k:v for k,v in os.environ.items() if not k.startswith(('RENDER_','BEX_','QA_','PG'))};env.update(extra or {})
+ cfg=p/'render-config/cli.yaml'
+ try:
+  if render:shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  f='run-render.py' if render else 'run.py';a=args if render else ['--release',*args]
+  return json.loads(subprocess.check_output(['python3',str(p/f),*a],env=env,text=True))
+ finally:
+  if render:cfg.unlink(missing_ok=True)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True))
+def data(r):
+ v=json.loads(r['stdout']);v=v.get('data',v);return v.get('postgres',v)
+def baseline_pg_ids():
+ b=c['baseline'].get('postgres',[]);b=b.get('data',b) if isinstance(b,dict) else b
+ return {v if isinstance(v,str) else v.get('postgres',v)['id'] for v in b}
+def pg_list():
+ r=cli(['postgres','list','--confirm','-o','json']);assert r['exit']==0;v=json.loads(r['stdout']);v=v.get('data',v) if isinstance(v,dict) else v
+ return r,{z.get('postgres',z)['id'] for z in v or []}
+sid=(p/'sweep218-id.txt').read_text().strip();x=next(z for z in c['resources'] if z.get('id')==sid);assert x['workspace']==ws and x['create_result']['exit']==0 and x['create_response']['id']==sid and sid not in baseline_pg_ids() and not x['state'].startswith('deleted:') and x['provision_pass'] and x['connection_setup']['result']['exit']==0
+extra={'PGHOSTADDR':(p/'sweep218-ipv4.txt').read_text().strip(),'PGCONNECT_TIMEOUT':'5'}
+if mode=='controls':
+ for render in [False,True]:
+  label='render' if render else 'bex';x.setdefault('sql_controls',{});a={**extra}
+  if render:a['PGSSLROOTCERT']=str(p/'sweep218-ca.pem')
+  if label not in x['sql_controls']:
+   marker='QA218_'+x['nonce']+'_雪';sql="SELECT current_database(), current_user, '"+marker+"';";args=['psql',sid,'-c',sql,'-o','json','--','--csv','-q','-X','--set=ON_ERROR_STOP=on'];z={'at':now(),'intent':['render' if render else 'bex',*args],'qualification':'Own database/user and UTF8 scalar read-only control; decode native JSON output field before parsing psql CSV'};x['sql_controls'][label]=z;save();r=cli(args,render,a);body=json.loads(r['stdout']) if r['exit']==0 else {};rows=list(csv.reader(body.get('output','').splitlines()));expected=[x['expected_database'],x['expected_user'],marker];ok=r['exit']==0 and expected in rows;z.update(result=r,passed=ok,expected_row=expected,decoded_output=body.get('output'));save();print(json.dumps({'client':label,'SQL_control_exit':r['exit'],'elapsed':r['elapsed'],'exact_row':ok,'stderr':r['stderr']}),flush=True)
+  if not x['sql_controls'][label]['passed']:raise SystemExit(1)
+  if label in x.setdefault('sql_negative_controls',{}):continue
+  missing='qa_218_absent_'+x['nonce'];sql='SELECT * FROM '+missing+';';args=['psql',sid,'-c',sql,'-o','json','--','--csv','-q','-X','--set=ON_ERROR_STOP=on'];n={'at':now(),'intent':['render' if render else 'bex',*args],'qualification':'Expected failure for a nonexistent own-fixture relation; no DB mutation'};x['sql_negative_controls'][label]=n;save();r=cli(args,render,a);ok=r['exit']!=0 and missing in r['stderr'] and 'does not exist' in r['stderr'];n.update(result=r,passed=ok);save();print(json.dumps({'client':label,'expected_SQL_failure_exit':r['exit'],'elapsed':r['elapsed'],'diagnostic_preserved':ok}),flush=True)
+elif mode=='markers':
+ assert all(z['passed'] for z in x['sql_controls'].values()) and len(x['sql_controls'])==2 and not x.get('unicode_log_generators');prefix='QA218_'+x['nonce'];x['unicode_log_prefix']=prefix;x['unicode_log_start']=now();save()
+ for suffix in ['Ι','ι','λ']:
+  marker=prefix+' '+suffix;sql="DO $qa218$ BEGIN RAISE LOG '%', '"+marker+"'; END $qa218$;";args=['psql',sid,'--command',sql,'--confirm','-o','json','--','-X','-At','--set','ON_ERROR_STOP=1'];z={'marker':marker,'sql':sql,'command':['bex',*args],'at':now(),'state':'owned native SQL log intent persisted'};x.setdefault('unicode_log_generators',[]).append(z);save();r=cli(args,False,extra);z['result']=r;z['state']='native result captured; ingestion unverified';save();print(json.dumps({'marker':marker,'exit':r['exit'],'elapsed':r['elapsed'],'stderr':r['stderr']}),flush=True);assert r['exit']==0,'Reconcile ordinary native SQL failure before another marker'
+ x['unicode_log_end']=now();save()
+else:raise ValueError(mode)

@@ -1,0 +1,32 @@
+[
+  {
+    "exit": 0,
+    "Entrypoint": [
+      "docker-entrypoint.sh"
+    ],
+    "Cmd": [
+      "node"
+    ],
+    "os": "linux",
+    "architecture": "amd64",
+    "entrypoint_history": [
+      "COPY docker-entrypoint.sh /usr/local/bin/ # buildkit",
+      "ENTRYPOINT [\"docker-entrypoint.sh\"]"
+    ]
+  },
+  {
+    "exit": 0,
+    "Entrypoint": [
+      "docker-entrypoint.sh"
+    ],
+    "Cmd": [
+      "node"
+    ],
+    "os": "linux",
+    "architecture": "arm64",
+    "entrypoint_history": [
+      "COPY docker-entrypoint.sh /usr/local/bin/ # buildkit",
+      "ENTRYPOINT [\"docker-entrypoint.sh\"]"
+    ]
+  }
+]

@@ -1,0 +1,18 @@
+{
+  "envVarGroups": [
+    {
+      "envVars": [
+        {
+          "generateValue": true,
+          "key": "VALUE",
+          "value": ""
+        },
+        {
+          "key": "VALUE",
+          "value": "second"
+        }
+      ],
+      "name": "qa-20261013-3e1b8f-4"
+    }
+  ]
+}

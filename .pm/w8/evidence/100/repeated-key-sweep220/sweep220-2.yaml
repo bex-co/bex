@@ -1,0 +1,22 @@
+{
+  "services": [
+    {
+      "envVars": [
+        {
+          "key": "VALUE",
+          "value": "first"
+        },
+        {
+          "key": "VALUE",
+          "value": "second"
+        }
+      ],
+      "image": {
+        "url": "nginx:1"
+      },
+      "name": "qa-20261013-58b56a-2",
+      "runtime": "image",
+      "type": "web"
+    }
+  ]
+}

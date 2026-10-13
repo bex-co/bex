@@ -1,0 +1,8 @@
+{
+  "head": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+  "version": "qa216-fd46f58c0c72",
+  "binary": "$PRIVATE_QA_DIR/bex-head216",
+  "build_exit": 0,
+  "go": "1.27.0",
+  "upstream": "a764810a768202704e7206eb7b87a47211fcd98e"
+}

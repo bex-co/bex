@@ -1,0 +1,12 @@
+{
+  "cause_reference": "https://github.com/cloudnative-pg/cloudnative-pg/pull/11131",
+  "fix_source": "https://github.com/cloudnative-pg/cloudnative-pg/pull/11131/files#diff",
+  "fixed_release_notes": "https://cloudnative-pg.io/docs/1.29/release_notes/v1.29/",
+  "logging_format_reference": "https://cloudnative-pg.io/docs/current/logging/",
+  "upstream_file": "cmd/manager/main.go:64–90; loggingOptions invokes WithDisabledSampling for process subcommands",
+  "local_configuration": "deploy/gitops/base/cnpg-operator.yaml:15–17; immutable mirrored chart target",
+  "pin": "sha256:67a2cb6e865168d0c211c76c1a10d4369c6465dac7ebda9172cb72bc46217a78",
+  "deployed_manager_version": "unknown; not queried through admin access",
+  "chart_metadata": "anonymous exact-digest Helm lookup bounded at 30s; version unverified",
+  "qualification": "runtime source-loss mechanism inferred from exact two-client index patterns, paced control and primary upstream fix; deployed binary identity not directly inspected"
+}

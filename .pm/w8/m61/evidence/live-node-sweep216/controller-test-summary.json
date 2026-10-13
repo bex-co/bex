@@ -1,0 +1,13 @@
+{
+  "exit": 0,
+  "pattern": "^(TestNativeBuildEnvKeepsAllLiteralValues|TestProjectNativeBuildEnvMergesGroupsAndOwn|TestProjectNativeBuildEnvRevisionStabilityAndInvalidation|TestProjectNativeBuildEnvLiteralsAlonePersistRevision|TestNativeBuildRevisionCoversFiles)$",
+  "passed": [
+    "TestNativeBuildEnvKeepsAllLiteralValues",
+    "TestProjectNativeBuildEnvMergesGroupsAndOwn",
+    "TestProjectNativeBuildEnvRevisionStabilityAndInvalidation",
+    "TestProjectNativeBuildEnvLiteralsAlonePersistRevision",
+    "TestNativeBuildRevisionCoversFiles"
+  ],
+  "failed": [],
+  "scope": "five named projection/cache/file controller tests only"
+}

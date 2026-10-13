@@ -1,0 +1,11 @@
+import pathlib,json,subprocess,urllib.parse,datetime,re
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('$REPO/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());sid=(p/'sweep217-kv-id.txt').read_text().strip();x=next(z for z in c['resources'] if z.get('id')==sid);assert x['sweep']==217 and x['padding_native_return_verified'] and not x['state'].startswith('deleted:')
+params={'ownerId':x['workspace'],'resource':sid,'text':x['padding_prefix'],'limit':'100','direction':'backward'};pages=[];ids=set();messages=set();numbers=set();complete=False
+for page in range(20):
+ path='/v1/logs?'+urllib.parse.urlencode(params);r=json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True));pages.append(r);(p/'sweep217-padding-pages.json').write_text(json.dumps(pages,indent=2));assert r['status']=='200';v=json.loads(r['response']);logs=v['logs'];current={z['id'] for z in logs};assert not ids.intersection(current),'Overlapping padding cursor pages';ids.update(current)
+ for z in logs:
+  messages.add(z['message']);match=re.search(re.escape(x['padding_prefix'])+r' (\d{4})$',z['message']);assert match,'Unexpected padding record';numbers.add(int(match[1]))
+ print(json.dumps({'page':page+1,'rows':len(logs),'distinct_records':len(ids),'hasMore':v.get('hasMore')}),flush=True)
+ if not v.get('hasMore'):complete=True;break
+ assert v.get('nextStartTime') and v.get('nextEndTime'),'No honest next-page bounds';params.update(startTime=v['nextStartTime'],endTime=v['nextEndTime'])
+proof={'pages':len(pages),'stored_padding_records':len(ids),'stored_distinct_messages':len(messages),'padding_numbers_complete':numbers==set(range(1,1006)),'complete':complete,'no_overlap':True,'API_only':'unchanged public logs diagnostic with supported limit 100; not native coverage','pass':complete and len(ids)==len(messages)==1005 and numbers==set(range(1,1006))};x['stored_padding_proof']=proof;c['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2));cp.chmod(0o600);print(json.dumps(proof),flush=True);assert proof['pass'],'Stored saturation incomplete; inspect before native claims'

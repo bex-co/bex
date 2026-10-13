@@ -1,0 +1,2757 @@
+[
+  {
+    "sweep": 216,
+    "case": "omitted",
+    "source_head": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+    "client": "current",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "web_service",
+    "name": "qa-20261013-857253-pathomitted",
+    "nonce": "857253",
+    "marker": "QA216_857253",
+    "time": "2026-10-13T13:55:01.459555+00:00",
+    "dependency_ids": [],
+    "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+    "role": "Native Node PATH omitted control",
+    "command": [
+      "current",
+      "services",
+      "create",
+      "--name",
+      "qa-20261013-857253-pathomitted",
+      "--type",
+      "web_service",
+      "--runtime",
+      "node",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/hello-go",
+      "--build-command",
+      "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\"qa-built.json\",JSON.stringify({marker:\"QA216_857253\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'",
+      "--start-command",
+      "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('\"'\"'http'\"'\"'),os=require('\"'\"'os'\"'\"');const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"','\"'\"'utf8'\"'\"'));http.createServer((req,res)=>{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"','\"'\"'Content-Length'\"'\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'",
+      "--health-check-path",
+      "/",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--env-var",
+      "QA_COMPLEX=QA216_857253\n☃=second\n内側",
+      "--secret-file",
+      "qa-note.txt:$PRIVATE_QA_DIR/sweep216-857253-note.txt",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "capacity_proof": {
+      "at": "2026-10-13T13:55:01.435966+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.383,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49ed6ec3c0957a9-SJC"
+      },
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "expected_bytes": {
+      "env_length": 30,
+      "env_sha256": "6187bd4ef503ffded14af4ac25bd507458a00ca4655db83e4147b782d6d280fc",
+      "file_present": true,
+      "file_length": 24,
+      "file_sha256": "162af9eec3bb45ce1b1754944c5cb17a8c405f92b8d762d3807ae7dd96bf0f96"
+    },
+    "expected_path": null,
+    "program": "const fs=require('fs'),crypto=require('crypto');function hash(b){return crypto.createHash('sha256').update(b).digest('hex');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'<absent>':process.env.QA_COMPLEX,'utf8');const f='/etc/secrets/qa-note.txt';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('http'),os=require('os');const built=JSON.parse(fs.readFileSync('qa-built.json','utf8'));http.createServer((req,res)=>{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'Content-Type':'application/json','Content-Length':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'0.0.0.0');",
+    "build_program": "const fs=require('fs'),crypto=require('crypto');function hash(b){return crypto.createHash('sha256').update(b).digest('hex');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'<absent>':process.env.QA_COMPLEX,'utf8');const f='/etc/secrets/qa-note.txt';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\"qa-built.json\",JSON.stringify({marker:\"QA216_857253\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));",
+    "local_note": "$PRIVATE_QA_DIR/sweep216-857253-note.txt",
+    "create_result": {
+      "binary": "checkout qa216 fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "qa-20261013-857253-pathomitted",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--branch",
+        "main",
+        "--root-directory",
+        "examples/hello-go",
+        "--build-command",
+        "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\"qa-built.json\",JSON.stringify({marker:\"QA216_857253\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'",
+        "--start-command",
+        "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('\"'\"'http'\"'\"'),os=require('\"'\"'os'\"'\"');const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"','\"'\"'utf8'\"'\"'));http.createServer((req,res)=>{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"','\"'\"'Content-Length'\"'\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'",
+        "--health-check-path",
+        "/",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--auto-deploy=false",
+        "--env-var",
+        "QA_COMPLEX=QA216_857253\n☃=second\n内側",
+        "--secret-file",
+        "qa-note.txt:$PRIVATE_QA_DIR/sweep216-857253-note.txt",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 3.639,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-13T13:55:05Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db73ge4479ic73bbj5i0\",\n  \"id\": \"srv-db73ge4479ic73bbj5i0\",\n  \"name\": \"qa-20261013-857253-pathomitted\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-go\",\n  \"serviceDetails\": {\n    \"env\": \"node\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function hash(b){return crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\\\"'\\\"'\\u003cabsent\\u003e'\\\"'\\\"':process.env.QA_COMPLEX,'\\\"'\\\"'utf8'\\\"'\\\"');const f='\\\"'\\\"'/etc/secrets/qa-note.txt'\\\"'\\\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify({marker:\\\"QA216_857253\\\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function hash(b){return crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\\\"'\\\"'\\u003cabsent\\u003e'\\\"'\\\"':process.env.QA_COMPLEX,'\\\"'\\\"'utf8'\\\"'\\\"');const f='\\\"'\\\"'/etc/secrets/qa-note.txt'\\\"'\\\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('\\\"'\\\"'http'\\\"'\\\"'),os=require('\\\"'\\\"'os'\\\"'\\\"');const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));http.createServer((req,res)=\\u003e{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"\n    },\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261013-857253-pathomitted:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"node\",\n    \"url\": \"https://qa-20261013-857253-pathomitted.onbex.co\"\n  },\n  \"slug\": \"qa-20261013-857253-pathomitted\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-13T13:55:05Z\"\n}",
+      "stderr": ""
+    },
+    "id": "srv-db73ge4479ic73bbj5i0",
+    "create_response": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "main",
+      "createdAt": "2026-10-13T13:55:05Z",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db73ge4479ic73bbj5i0",
+      "id": "srv-db73ge4479ic73bbj5i0",
+      "name": "qa-20261013-857253-pathomitted",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/bex-co/bex",
+      "rootDir": "examples/hello-go",
+      "serviceDetails": {
+        "env": "node",
+        "envSpecificDetails": {
+          "buildCommand": "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\"qa-built.json\",JSON.stringify({marker:\"QA216_857253\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'",
+          "preDeployCommand": "",
+          "startCommand": "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('\"'\"'http'\"'\"'),os=require('\"'\"'os'\"'\"');const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"','\"'\"'utf8'\"'\"'));http.createServer((req,res)=>{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"','\"'\"'Content-Length'\"'\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'"
+        },
+        "healthCheckPath": "/",
+        "internalAddress": "qa-20261013-857253-pathomitted:3000",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "free",
+        "port": 3000,
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "node",
+        "url": "https://qa-20261013-857253-pathomitted.onbex.co"
+      },
+      "slug": "qa-20261013-857253-pathomitted",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "web_service",
+      "updatedAt": "2026-10-13T13:55:05Z"
+    },
+    "observations": [
+      {
+        "at": "2026-10-13T13:55:19.774181+00:00",
+        "native_list": {
+          "binary": "checkout qa216 fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db73ge4479ic73bbj5i0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.657,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T13:55:04.029256Z\",\n    \"id\": \"dep-db73ge4479ic73bbj5ig\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T13:55:06.969873Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T13:55:04.029256Z",
+          "id": "dep-db73ge4479ic73bbj5ig",
+          "status": "queued",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T13:55:06.969873Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T13:55:26.808996+00:00",
+        "native_list": {
+          "binary": "checkout qa216 fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db73ge4479ic73bbj5i0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.311,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T13:55:04.029256Z\",\n    \"id\": \"dep-db73ge4479ic73bbj5ig\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T13:55:06.969873Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T13:55:04.029256Z",
+          "id": "dep-db73ge4479ic73bbj5ig",
+          "status": "queued",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T13:55:06.969873Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T13:55:34.104577+00:00",
+        "native_list": {
+          "binary": "checkout qa216 fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db73ge4479ic73bbj5i0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.45,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T13:55:04.029256Z\",\n    \"id\": \"dep-db73ge4479ic73bbj5ig\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T13:55:06.969873Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T13:55:04.029256Z",
+          "id": "dep-db73ge4479ic73bbj5ig",
+          "status": "queued",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T13:55:06.969873Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T13:56:18.510833+00:00",
+        "native_list": {
+          "binary": "checkout qa216 fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db73ge4479ic73bbj5i0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.458,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T13:55:04.029256Z\",\n    \"id\": \"dep-db73ge4479ic73bbj5ig\",\n    \"startedAt\": \"2026-10-13T13:56:06.952257Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T13:56:06.952258Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T13:55:04.029256Z",
+          "id": "dep-db73ge4479ic73bbj5ig",
+          "startedAt": "2026-10-13T13:56:06.952257Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T13:56:06.952258Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T13:56:25.906251+00:00",
+        "native_list": {
+          "binary": "checkout qa216 fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db73ge4479ic73bbj5i0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.679,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T13:55:04.029256Z\",\n    \"id\": \"dep-db73ge4479ic73bbj5ig\",\n    \"startedAt\": \"2026-10-13T13:56:06.952257Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T13:56:06.952258Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T13:55:04.029256Z",
+          "id": "dep-db73ge4479ic73bbj5ig",
+          "startedAt": "2026-10-13T13:56:06.952257Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T13:56:06.952258Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T13:56:32.921685+00:00",
+        "native_list": {
+          "binary": "checkout qa216 fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db73ge4479ic73bbj5i0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.31,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T13:55:04.029256Z\",\n    \"id\": \"dep-db73ge4479ic73bbj5ig\",\n    \"startedAt\": \"2026-10-13T13:56:06.952257Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T13:56:06.952258Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T13:55:04.029256Z",
+          "id": "dep-db73ge4479ic73bbj5ig",
+          "startedAt": "2026-10-13T13:56:06.952257Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T13:56:06.952258Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T13:57:31.746589+00:00",
+        "native_list": {
+          "binary": "checkout qa216 fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db73ge4479ic73bbj5i0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.443,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T13:55:04.029256Z\",\n    \"finishedAt\": \"2026-10-13T13:57:23.050306Z\",\n    \"id\": \"dep-db73ge4479ic73bbj5ig\",\n    \"startedAt\": \"2026-10-13T13:56:06.952257Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T13:57:23.050307Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T13:55:04.029256Z",
+          "finishedAt": "2026-10-13T13:57:23.050306Z",
+          "id": "dep-db73ge4479ic73bbj5ig",
+          "startedAt": "2026-10-13T13:56:06.952257Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T13:57:23.050307Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "200",
+          "body": {
+            "marker": "QA216_857253",
+            "built": {
+              "marker": "QA216_857253",
+              "snapshot": {
+                "env_length": 30,
+                "env_sha256": "6187bd4ef503ffded14af4ac25bd507458a00ca4655db83e4147b782d6d280fc",
+                "file_present": true,
+                "file_length": 24,
+                "file_sha256": "162af9eec3bb45ce1b1754944c5cb17a8c405f92b8d762d3807ae7dd96bf0f96"
+              },
+              "build_path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "built_at": 1791899799060
+            },
+            "runtime": {
+              "env_length": 30,
+              "env_sha256": "6187bd4ef503ffded14af4ac25bd507458a00ca4655db83e4147b782d6d280fc",
+              "file_present": true,
+              "file_length": 24,
+              "file_sha256": "162af9eec3bb45ce1b1754944c5cb17a8c405f92b8d762d3807ae7dd96bf0f96"
+            },
+            "runtime_path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-857253-pathomitted-6djkpw2"
+          },
+          "raw": "{\"marker\":\"QA216_857253\",\"built\":{\"marker\":\"QA216_857253\",\"snapshot\":{\"env_length\":30,\"env_sha256\":\"6187bd4ef503ffded14af4ac25bd507458a00ca4655db83e4147b782d6d280fc\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"162af9eec3bb45ce1b1754944c5cb17a8c405f92b8d762d3807ae7dd96bf0f96\"},\"build_path\":\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"built_at\":1791899799060},\"runtime\":{\"env_length\":30,\"env_sha256\":\"6187bd4ef503ffded14af4ac25bd507458a00ca4655db83e4147b782d6d280fc\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"162af9eec3bb45ce1b1754944c5cb17a8c405f92b8d762d3807ae7dd96bf0f96\"},\"runtime_path\":\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261013-857253-pathomitted-6djkpw2\"}",
+          "stderr": ""
+        }
+      }
+    ],
+    "settled": true,
+    "passed": true,
+    "deploy": {
+      "commit": {
+        "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+        "message": "docs(pm): file generated-key normalization collision (w4/286)"
+      },
+      "createdAt": "2026-10-13T13:55:04.029256Z",
+      "finishedAt": "2026-10-13T13:57:23.050306Z",
+      "id": "dep-db73ge4479ic73bbj5ig",
+      "startedAt": "2026-10-13T13:56:06.952257Z",
+      "status": "live",
+      "trigger": "other",
+      "updatedAt": "2026-10-13T13:57:23.050307Z"
+    },
+    "runtime": {
+      "exit": 0,
+      "http": "200",
+      "body": {
+        "marker": "QA216_857253",
+        "built": {
+          "marker": "QA216_857253",
+          "snapshot": {
+            "env_length": 30,
+            "env_sha256": "6187bd4ef503ffded14af4ac25bd507458a00ca4655db83e4147b782d6d280fc",
+            "file_present": true,
+            "file_length": 24,
+            "file_sha256": "162af9eec3bb45ce1b1754944c5cb17a8c405f92b8d762d3807ae7dd96bf0f96"
+          },
+          "build_path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "built_at": 1791899799060
+        },
+        "runtime": {
+          "env_length": 30,
+          "env_sha256": "6187bd4ef503ffded14af4ac25bd507458a00ca4655db83e4147b782d6d280fc",
+          "file_present": true,
+          "file_length": 24,
+          "file_sha256": "162af9eec3bb45ce1b1754944c5cb17a8c405f92b8d762d3807ae7dd96bf0f96"
+        },
+        "runtime_path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-857253-pathomitted-6djkpw2"
+      },
+      "raw": "{\"marker\":\"QA216_857253\",\"built\":{\"marker\":\"QA216_857253\",\"snapshot\":{\"env_length\":30,\"env_sha256\":\"6187bd4ef503ffded14af4ac25bd507458a00ca4655db83e4147b782d6d280fc\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"162af9eec3bb45ce1b1754944c5cb17a8c405f92b8d762d3807ae7dd96bf0f96\"},\"build_path\":\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"built_at\":1791899799060},\"runtime\":{\"env_length\":30,\"env_sha256\":\"6187bd4ef503ffded14af4ac25bd507458a00ca4655db83e4147b782d6d280fc\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"162af9eec3bb45ce1b1754944c5cb17a8c405f92b8d762d3807ae7dd96bf0f96\"},\"runtime_path\":\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261013-857253-pathomitted-6djkpw2\"}",
+      "stderr": ""
+    },
+    "deploy_children": [
+      {
+        "commit": {
+          "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+          "message": "docs(pm): file generated-key normalization collision (w4/286)"
+        },
+        "createdAt": "2026-10-13T13:55:04.029256Z",
+        "finishedAt": "2026-10-13T13:57:23.050306Z",
+        "id": "dep-db73ge4479ic73bbj5ig",
+        "startedAt": "2026-10-13T13:56:06.952257Z",
+        "status": "live",
+        "trigger": "other",
+        "updatedAt": "2026-10-13T13:57:23.050307Z"
+      }
+    ],
+    "children_enumeration_evidence": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "list",
+        "srv-db73ge4479ic73bbj5i0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.405,
+      "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T13:55:04.029256Z\",\n    \"finishedAt\": \"2026-10-13T13:57:23.050306Z\",\n    \"id\": \"dep-db73ge4479ic73bbj5ig\",\n    \"startedAt\": \"2026-10-13T13:56:06.952257Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T13:57:23.050307Z\"\n  }\n]",
+      "stderr": ""
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db73ge4479ic73bbj5i0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.136,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-13T13:55:05Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db73ge4479ic73bbj5i0\",\n    \"id\": \"srv-db73ge4479ic73bbj5i0\",\n    \"name\": \"qa-20261013-857253-pathomitted\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-go\",\n    \"serviceDetails\": {\n      \"env\": \"node\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function hash(b){return crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\\\"'\\\"'\\u003cabsent\\u003e'\\\"'\\\"':process.env.QA_COMPLEX,'\\\"'\\\"'utf8'\\\"'\\\"');const f='\\\"'\\\"'/etc/secrets/qa-note.txt'\\\"'\\\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify({marker:\\\"QA216_857253\\\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function hash(b){return crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\\\"'\\\"'\\u003cabsent\\u003e'\\\"'\\\"':process.env.QA_COMPLEX,'\\\"'\\\"'utf8'\\\"'\\\"');const f='\\\"'\\\"'/etc/secrets/qa-note.txt'\\\"'\\\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('\\\"'\\\"'http'\\\"'\\\"'),os=require('\\\"'\\\"'os'\\\"'\\\"');const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));http.createServer((req,res)=\\u003e{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261013-857253-pathomitted:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"node\",\n      \"url\": \"https://qa-20261013-857253-pathomitted.onbex.co\"\n    },\n    \"slug\": \"qa-20261013-857253-pathomitted\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-13T13:57:13Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "at": "2026-10-13T13:57:55.330114+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/services/srv-db73ge4479ic73bbj5i0",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "404",
+      "elapsed": 0.263,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49edb2b8b8458ac-SJC"
+      },
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+    },
+    "workspace_after_delete_ids": [
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3v694dm7c7390q930",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db09vbgehcmc739j12i0"
+    ],
+    "runtime_after_delete_checks": [
+      {
+        "exit": 0,
+        "stdout": "404 page not found\n\n404",
+        "stderr": ""
+      }
+    ],
+    "quota_after_delete": {
+      "at": "2026-10-13T13:57:57.041067+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.296,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49edb360ba8fa4e-SJC"
+      },
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    }
+  },
+  {
+    "sweep": 216,
+    "case": "normal",
+    "source_head": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+    "client": "release",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "web_service",
+    "name": "qa-20261013-600290-pathnormal",
+    "nonce": "600290",
+    "marker": "QA216_600290",
+    "time": "2026-10-13T13:58:31.568359+00:00",
+    "dependency_ids": [],
+    "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+    "role": "Native Node PATH normal control",
+    "command": [
+      "release",
+      "services",
+      "create",
+      "--name",
+      "qa-20261013-600290-pathnormal",
+      "--type",
+      "web_service",
+      "--runtime",
+      "node",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/hello-go",
+      "--build-command",
+      "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\"qa-built.json\",JSON.stringify({marker:\"QA216_600290\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'",
+      "--start-command",
+      "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('\"'\"'http'\"'\"'),os=require('\"'\"'os'\"'\"');const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"','\"'\"'utf8'\"'\"'));http.createServer((req,res)=>{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"','\"'\"'Content-Length'\"'\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'",
+      "--health-check-path",
+      "/",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--env-var",
+      "QA_COMPLEX=QA216_600290\n☃=second\n内側",
+      "--secret-file",
+      "qa-note.txt:$PRIVATE_QA_DIR/sweep216-600290-note.txt",
+      "--confirm",
+      "-o",
+      "json",
+      "--env-var",
+      "PATH=/usr/local/bin:/usr/bin:/bin"
+    ],
+    "capacity_proof": {
+      "at": "2026-10-13T13:58:31.555406+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.332,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49edc0d8e6ce817-SJC"
+      },
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "expected_bytes": {
+      "env_length": 30,
+      "env_sha256": "ce17eef6bd40d039ab8581544a122b08635981a1bc98ec5a6fc93989483a284f",
+      "file_present": true,
+      "file_length": 24,
+      "file_sha256": "422aa1b0073310475de5c6678056862d397e5026545af6469ae64189252dee09"
+    },
+    "expected_path": "/usr/local/bin:/usr/bin:/bin",
+    "program": "const fs=require('fs'),crypto=require('crypto');function hash(b){return crypto.createHash('sha256').update(b).digest('hex');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'<absent>':process.env.QA_COMPLEX,'utf8');const f='/etc/secrets/qa-note.txt';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('http'),os=require('os');const built=JSON.parse(fs.readFileSync('qa-built.json','utf8'));http.createServer((req,res)=>{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'Content-Type':'application/json','Content-Length':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'0.0.0.0');",
+    "build_program": "const fs=require('fs'),crypto=require('crypto');function hash(b){return crypto.createHash('sha256').update(b).digest('hex');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'<absent>':process.env.QA_COMPLEX,'utf8');const f='/etc/secrets/qa-note.txt';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\"qa-built.json\",JSON.stringify({marker:\"QA216_600290\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));",
+    "local_note": "$PRIVATE_QA_DIR/sweep216-600290-note.txt",
+    "create_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "qa-20261013-600290-pathnormal",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--branch",
+        "main",
+        "--root-directory",
+        "examples/hello-go",
+        "--build-command",
+        "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\"qa-built.json\",JSON.stringify({marker:\"QA216_600290\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'",
+        "--start-command",
+        "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('\"'\"'http'\"'\"'),os=require('\"'\"'os'\"'\"');const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"','\"'\"'utf8'\"'\"'));http.createServer((req,res)=>{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"','\"'\"'Content-Length'\"'\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'",
+        "--health-check-path",
+        "/",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--auto-deploy=false",
+        "--env-var",
+        "QA_COMPLEX=QA216_600290\n☃=second\n内側",
+        "--secret-file",
+        "qa-note.txt:$PRIVATE_QA_DIR/sweep216-600290-note.txt",
+        "--confirm",
+        "-o",
+        "json",
+        "--env-var",
+        "PATH=/usr/local/bin:/usr/bin:/bin"
+      ],
+      "exit": 0,
+      "elapsed": 1.554,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-13T13:58:33Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db73i24479ic73bbj5m0\",\n  \"id\": \"srv-db73i24479ic73bbj5m0\",\n  \"name\": \"qa-20261013-600290-pathnormal\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-go\",\n  \"serviceDetails\": {\n    \"env\": \"node\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function hash(b){return crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\\\"'\\\"'\\u003cabsent\\u003e'\\\"'\\\"':process.env.QA_COMPLEX,'\\\"'\\\"'utf8'\\\"'\\\"');const f='\\\"'\\\"'/etc/secrets/qa-note.txt'\\\"'\\\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify({marker:\\\"QA216_600290\\\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function hash(b){return crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\\\"'\\\"'\\u003cabsent\\u003e'\\\"'\\\"':process.env.QA_COMPLEX,'\\\"'\\\"'utf8'\\\"'\\\"');const f='\\\"'\\\"'/etc/secrets/qa-note.txt'\\\"'\\\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('\\\"'\\\"'http'\\\"'\\\"'),os=require('\\\"'\\\"'os'\\\"'\\\"');const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));http.createServer((req,res)=\\u003e{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"\n    },\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261013-600290-pathnormal:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"node\",\n    \"url\": \"https://qa-20261013-600290-pathnormal.onbex.co\"\n  },\n  \"slug\": \"qa-20261013-600290-pathnormal\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-13T13:58:33Z\"\n}",
+      "stderr": ""
+    },
+    "id": "srv-db73i24479ic73bbj5m0",
+    "create_response": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "main",
+      "createdAt": "2026-10-13T13:58:33Z",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db73i24479ic73bbj5m0",
+      "id": "srv-db73i24479ic73bbj5m0",
+      "name": "qa-20261013-600290-pathnormal",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/bex-co/bex",
+      "rootDir": "examples/hello-go",
+      "serviceDetails": {
+        "env": "node",
+        "envSpecificDetails": {
+          "buildCommand": "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\"qa-built.json\",JSON.stringify({marker:\"QA216_600290\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'",
+          "preDeployCommand": "",
+          "startCommand": "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('\"'\"'http'\"'\"'),os=require('\"'\"'os'\"'\"');const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"','\"'\"'utf8'\"'\"'));http.createServer((req,res)=>{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"','\"'\"'Content-Length'\"'\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'"
+        },
+        "healthCheckPath": "/",
+        "internalAddress": "qa-20261013-600290-pathnormal:3000",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "free",
+        "port": 3000,
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "node",
+        "url": "https://qa-20261013-600290-pathnormal.onbex.co"
+      },
+      "slug": "qa-20261013-600290-pathnormal",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "web_service",
+      "updatedAt": "2026-10-13T13:58:33Z"
+    },
+    "observations": [
+      {
+        "at": "2026-10-13T13:59:20.359188+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db73i24479ic73bbj5m0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.419,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T13:58:32.734568Z\",\n    \"id\": \"dep-db73i24479ic73bbj5mg\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T13:58:36.895269Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T13:58:32.734568Z",
+          "id": "dep-db73i24479ic73bbj5mg",
+          "status": "queued",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T13:58:36.895269Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T13:59:27.358055+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db73i24479ic73bbj5m0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.301,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T13:58:32.734568Z\",\n    \"id\": \"dep-db73i24479ic73bbj5mg\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T13:58:36.895269Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T13:58:32.734568Z",
+          "id": "dep-db73i24479ic73bbj5mg",
+          "status": "queued",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T13:58:36.895269Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T13:59:34.397415+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db73i24479ic73bbj5m0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.333,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T13:58:32.734568Z\",\n    \"id\": \"dep-db73i24479ic73bbj5mg\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T13:58:36.895269Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T13:58:32.734568Z",
+          "id": "dep-db73i24479ic73bbj5mg",
+          "status": "queued",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T13:58:36.895269Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T14:01:50.944196+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db73i24479ic73bbj5m0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.911,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T13:58:32.734568Z\",\n    \"id\": \"dep-db73i24479ic73bbj5mg\",\n    \"startedAt\": \"2026-10-13T14:00:36.244464Z\",\n    \"status\": \"update_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:01:36.855438Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T13:58:32.734568Z",
+          "id": "dep-db73i24479ic73bbj5mg",
+          "startedAt": "2026-10-13T14:00:36.244464Z",
+          "status": "update_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T14:01:36.855438Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "200",
+          "body": {
+            "marker": "QA216_600290",
+            "built": {
+              "marker": "QA216_600290",
+              "snapshot": {
+                "env_length": 30,
+                "env_sha256": "ce17eef6bd40d039ab8581544a122b08635981a1bc98ec5a6fc93989483a284f",
+                "file_present": true,
+                "file_length": 24,
+                "file_sha256": "422aa1b0073310475de5c6678056862d397e5026545af6469ae64189252dee09"
+              },
+              "build_path": "/usr/local/bin:/usr/bin:/bin",
+              "built_at": 1791900063051
+            },
+            "runtime": {
+              "env_length": 30,
+              "env_sha256": "ce17eef6bd40d039ab8581544a122b08635981a1bc98ec5a6fc93989483a284f",
+              "file_present": true,
+              "file_length": 24,
+              "file_sha256": "422aa1b0073310475de5c6678056862d397e5026545af6469ae64189252dee09"
+            },
+            "runtime_path": "/usr/local/bin:/usr/bin:/bin",
+            "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-600290-pathnormal-558qtrg4"
+          },
+          "raw": "{\"marker\":\"QA216_600290\",\"built\":{\"marker\":\"QA216_600290\",\"snapshot\":{\"env_length\":30,\"env_sha256\":\"ce17eef6bd40d039ab8581544a122b08635981a1bc98ec5a6fc93989483a284f\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"422aa1b0073310475de5c6678056862d397e5026545af6469ae64189252dee09\"},\"build_path\":\"/usr/local/bin:/usr/bin:/bin\",\"built_at\":1791900063051},\"runtime\":{\"env_length\":30,\"env_sha256\":\"ce17eef6bd40d039ab8581544a122b08635981a1bc98ec5a6fc93989483a284f\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"422aa1b0073310475de5c6678056862d397e5026545af6469ae64189252dee09\"},\"runtime_path\":\"/usr/local/bin:/usr/bin:/bin\",\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261013-600290-pathnormal-558qtrg4\"}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T14:01:58.307167+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db73i24479ic73bbj5m0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.645,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T13:58:32.734568Z\",\n    \"finishedAt\": \"2026-10-13T14:01:53.502656Z\",\n    \"id\": \"dep-db73i24479ic73bbj5mg\",\n    \"startedAt\": \"2026-10-13T14:00:36.244464Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:01:53.502657Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T13:58:32.734568Z",
+          "finishedAt": "2026-10-13T14:01:53.502656Z",
+          "id": "dep-db73i24479ic73bbj5mg",
+          "startedAt": "2026-10-13T14:00:36.244464Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T14:01:53.502657Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "200",
+          "body": {
+            "marker": "QA216_600290",
+            "built": {
+              "marker": "QA216_600290",
+              "snapshot": {
+                "env_length": 30,
+                "env_sha256": "ce17eef6bd40d039ab8581544a122b08635981a1bc98ec5a6fc93989483a284f",
+                "file_present": true,
+                "file_length": 24,
+                "file_sha256": "422aa1b0073310475de5c6678056862d397e5026545af6469ae64189252dee09"
+              },
+              "build_path": "/usr/local/bin:/usr/bin:/bin",
+              "built_at": 1791900063051
+            },
+            "runtime": {
+              "env_length": 30,
+              "env_sha256": "ce17eef6bd40d039ab8581544a122b08635981a1bc98ec5a6fc93989483a284f",
+              "file_present": true,
+              "file_length": 24,
+              "file_sha256": "422aa1b0073310475de5c6678056862d397e5026545af6469ae64189252dee09"
+            },
+            "runtime_path": "/usr/local/bin:/usr/bin:/bin",
+            "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-600290-pathnormal-558qtrg4"
+          },
+          "raw": "{\"marker\":\"QA216_600290\",\"built\":{\"marker\":\"QA216_600290\",\"snapshot\":{\"env_length\":30,\"env_sha256\":\"ce17eef6bd40d039ab8581544a122b08635981a1bc98ec5a6fc93989483a284f\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"422aa1b0073310475de5c6678056862d397e5026545af6469ae64189252dee09\"},\"build_path\":\"/usr/local/bin:/usr/bin:/bin\",\"built_at\":1791900063051},\"runtime\":{\"env_length\":30,\"env_sha256\":\"ce17eef6bd40d039ab8581544a122b08635981a1bc98ec5a6fc93989483a284f\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"422aa1b0073310475de5c6678056862d397e5026545af6469ae64189252dee09\"},\"runtime_path\":\"/usr/local/bin:/usr/bin:/bin\",\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261013-600290-pathnormal-558qtrg4\"}",
+          "stderr": ""
+        }
+      }
+    ],
+    "settled": true,
+    "passed": true,
+    "deploy": {
+      "commit": {
+        "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+        "message": "docs(pm): file generated-key normalization collision (w4/286)"
+      },
+      "createdAt": "2026-10-13T13:58:32.734568Z",
+      "finishedAt": "2026-10-13T14:01:53.502656Z",
+      "id": "dep-db73i24479ic73bbj5mg",
+      "startedAt": "2026-10-13T14:00:36.244464Z",
+      "status": "live",
+      "trigger": "other",
+      "updatedAt": "2026-10-13T14:01:53.502657Z"
+    },
+    "runtime": {
+      "exit": 0,
+      "http": "200",
+      "body": {
+        "marker": "QA216_600290",
+        "built": {
+          "marker": "QA216_600290",
+          "snapshot": {
+            "env_length": 30,
+            "env_sha256": "ce17eef6bd40d039ab8581544a122b08635981a1bc98ec5a6fc93989483a284f",
+            "file_present": true,
+            "file_length": 24,
+            "file_sha256": "422aa1b0073310475de5c6678056862d397e5026545af6469ae64189252dee09"
+          },
+          "build_path": "/usr/local/bin:/usr/bin:/bin",
+          "built_at": 1791900063051
+        },
+        "runtime": {
+          "env_length": 30,
+          "env_sha256": "ce17eef6bd40d039ab8581544a122b08635981a1bc98ec5a6fc93989483a284f",
+          "file_present": true,
+          "file_length": 24,
+          "file_sha256": "422aa1b0073310475de5c6678056862d397e5026545af6469ae64189252dee09"
+        },
+        "runtime_path": "/usr/local/bin:/usr/bin:/bin",
+        "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-600290-pathnormal-558qtrg4"
+      },
+      "raw": "{\"marker\":\"QA216_600290\",\"built\":{\"marker\":\"QA216_600290\",\"snapshot\":{\"env_length\":30,\"env_sha256\":\"ce17eef6bd40d039ab8581544a122b08635981a1bc98ec5a6fc93989483a284f\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"422aa1b0073310475de5c6678056862d397e5026545af6469ae64189252dee09\"},\"build_path\":\"/usr/local/bin:/usr/bin:/bin\",\"built_at\":1791900063051},\"runtime\":{\"env_length\":30,\"env_sha256\":\"ce17eef6bd40d039ab8581544a122b08635981a1bc98ec5a6fc93989483a284f\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"422aa1b0073310475de5c6678056862d397e5026545af6469ae64189252dee09\"},\"runtime_path\":\"/usr/local/bin:/usr/bin:/bin\",\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261013-600290-pathnormal-558qtrg4\"}",
+      "stderr": ""
+    },
+    "deploy_children": [
+      {
+        "commit": {
+          "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+          "message": "docs(pm): file generated-key normalization collision (w4/286)"
+        },
+        "createdAt": "2026-10-13T13:58:32.734568Z",
+        "finishedAt": "2026-10-13T14:01:53.502656Z",
+        "id": "dep-db73i24479ic73bbj5mg",
+        "startedAt": "2026-10-13T14:00:36.244464Z",
+        "status": "live",
+        "trigger": "other",
+        "updatedAt": "2026-10-13T14:01:53.502657Z"
+      }
+    ],
+    "children_enumeration_evidence": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "list",
+        "srv-db73i24479ic73bbj5m0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.429,
+      "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T13:58:32.734568Z\",\n    \"finishedAt\": \"2026-10-13T14:01:53.502656Z\",\n    \"id\": \"dep-db73i24479ic73bbj5mg\",\n    \"startedAt\": \"2026-10-13T14:00:36.244464Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:01:53.502657Z\"\n  }\n]",
+      "stderr": ""
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db73i24479ic73bbj5m0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.48,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-13T13:58:33Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db73i24479ic73bbj5m0\",\n    \"id\": \"srv-db73i24479ic73bbj5m0\",\n    \"name\": \"qa-20261013-600290-pathnormal\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-go\",\n    \"serviceDetails\": {\n      \"env\": \"node\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function hash(b){return crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\\\"'\\\"'\\u003cabsent\\u003e'\\\"'\\\"':process.env.QA_COMPLEX,'\\\"'\\\"'utf8'\\\"'\\\"');const f='\\\"'\\\"'/etc/secrets/qa-note.txt'\\\"'\\\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify({marker:\\\"QA216_600290\\\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function hash(b){return crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\\\"'\\\"'\\u003cabsent\\u003e'\\\"'\\\"':process.env.QA_COMPLEX,'\\\"'\\\"'utf8'\\\"'\\\"');const f='\\\"'\\\"'/etc/secrets/qa-note.txt'\\\"'\\\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('\\\"'\\\"'http'\\\"'\\\"'),os=require('\\\"'\\\"'os'\\\"'\\\"');const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));http.createServer((req,res)=\\u003e{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261013-600290-pathnormal:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"node\",\n      \"url\": \"https://qa-20261013-600290-pathnormal.onbex.co\"\n    },\n    \"slug\": \"qa-20261013-600290-pathnormal\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-13T14:01:41Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "at": "2026-10-13T14:02:24.320991+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/services/srv-db73i24479ic73bbj5m0",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "404",
+      "elapsed": 0.672,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49ee1bcfec2bfbc-WAW"
+      },
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+    },
+    "workspace_after_delete_ids": [
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3v694dm7c7390q930",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db09vbgehcmc739j12i0",
+      "srv-db73j0s479ic73bbj5o0"
+    ],
+    "runtime_after_delete_checks": [
+      {
+        "exit": 0,
+        "stdout": "404 page not found\n\n404",
+        "stderr": ""
+      }
+    ],
+    "quota_after_delete": {
+      "at": "2026-10-13T14:02:26.765357+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.683,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49ee1cbec11f491-MAN"
+      },
+      "response": "{\"services\":{\"used\":7,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    }
+  },
+  {
+    "sweep": 216,
+    "case": "empty",
+    "source_head": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+    "client": "render",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "web_service",
+    "name": "qa-20261013-f3becb-pathempty",
+    "nonce": "f3becb",
+    "marker": "QA216_f3becb",
+    "time": "2026-10-13T14:00:34.476909+00:00",
+    "dependency_ids": [],
+    "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+    "role": "Native Node PATH empty control",
+    "command": [
+      "render",
+      "services",
+      "create",
+      "--name",
+      "qa-20261013-f3becb-pathempty",
+      "--type",
+      "web_service",
+      "--runtime",
+      "node",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/hello-go",
+      "--build-command",
+      "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\"qa-built.json\",JSON.stringify({marker:\"QA216_f3becb\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'",
+      "--start-command",
+      "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('\"'\"'http'\"'\"'),os=require('\"'\"'os'\"'\"');const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"','\"'\"'utf8'\"'\"'));http.createServer((req,res)=>{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"','\"'\"'Content-Length'\"'\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'",
+      "--health-check-path",
+      "/",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--env-var",
+      "QA_COMPLEX=QA216_f3becb\n☃=second\n内側",
+      "--secret-file",
+      "qa-note.txt:$PRIVATE_QA_DIR/sweep216-f3becb-note.txt",
+      "--confirm",
+      "-o",
+      "json",
+      "--env-var",
+      "PATH="
+    ],
+    "capacity_proof": {
+      "at": "2026-10-13T14:00:34.464692+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.316,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49edf0ddad82a56-SJC"
+      },
+      "response": "{\"services\":{\"used\":7,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "expected_bytes": {
+      "env_length": 30,
+      "env_sha256": "0b619d6b716d7706cb2d77c911d0cdb8894c9f015f36f411fe95b05f17b3725b",
+      "file_present": true,
+      "file_length": 24,
+      "file_sha256": "000f24c8cf7036b5dfcee6c6afbd74a31c55735e23cdc764a558621e48aedb0b"
+    },
+    "expected_path": "",
+    "program": "const fs=require('fs'),crypto=require('crypto');function hash(b){return crypto.createHash('sha256').update(b).digest('hex');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'<absent>':process.env.QA_COMPLEX,'utf8');const f='/etc/secrets/qa-note.txt';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('http'),os=require('os');const built=JSON.parse(fs.readFileSync('qa-built.json','utf8'));http.createServer((req,res)=>{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'Content-Type':'application/json','Content-Length':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'0.0.0.0');",
+    "build_program": "const fs=require('fs'),crypto=require('crypto');function hash(b){return crypto.createHash('sha256').update(b).digest('hex');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'<absent>':process.env.QA_COMPLEX,'utf8');const f='/etc/secrets/qa-note.txt';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\"qa-built.json\",JSON.stringify({marker:\"QA216_f3becb\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));",
+    "local_note": "$PRIVATE_QA_DIR/sweep216-f3becb-note.txt",
+    "create_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "create",
+        "--name",
+        "qa-20261013-f3becb-pathempty",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--branch",
+        "main",
+        "--root-directory",
+        "examples/hello-go",
+        "--build-command",
+        "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\"qa-built.json\",JSON.stringify({marker:\"QA216_f3becb\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'",
+        "--start-command",
+        "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('\"'\"'http'\"'\"'),os=require('\"'\"'os'\"'\"');const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"','\"'\"'utf8'\"'\"'));http.createServer((req,res)=>{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"','\"'\"'Content-Length'\"'\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'",
+        "--health-check-path",
+        "/",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--auto-deploy=false",
+        "--env-var",
+        "QA_COMPLEX=QA216_f3becb\n☃=second\n内側",
+        "--secret-file",
+        "qa-note.txt:$PRIVATE_QA_DIR/sweep216-f3becb-note.txt",
+        "--confirm",
+        "-o",
+        "json",
+        "--env-var",
+        "PATH="
+      ],
+      "exit": 0,
+      "elapsed": 1.439,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-13T14:00:35Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db73j0s479ic73bbj5o0\",\n  \"id\": \"srv-db73j0s479ic73bbj5o0\",\n  \"name\": \"qa-20261013-f3becb-pathempty\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-go\",\n  \"serviceDetails\": {\n    \"env\": \"node\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function hash(b){return crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\\\"'\\\"'\\u003cabsent\\u003e'\\\"'\\\"':process.env.QA_COMPLEX,'\\\"'\\\"'utf8'\\\"'\\\"');const f='\\\"'\\\"'/etc/secrets/qa-note.txt'\\\"'\\\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify({marker:\\\"QA216_f3becb\\\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function hash(b){return crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\\\"'\\\"'\\u003cabsent\\u003e'\\\"'\\\"':process.env.QA_COMPLEX,'\\\"'\\\"'utf8'\\\"'\\\"');const f='\\\"'\\\"'/etc/secrets/qa-note.txt'\\\"'\\\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('\\\"'\\\"'http'\\\"'\\\"'),os=require('\\\"'\\\"'os'\\\"'\\\"');const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));http.createServer((req,res)=\\u003e{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"\n    },\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261013-f3becb-pathempty:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"node\",\n    \"url\": \"https://qa-20261013-f3becb-pathempty.onbex.co\"\n  },\n  \"slug\": \"qa-20261013-f3becb-pathempty\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-13T14:00:35.556889449Z\"\n}",
+      "stderr": ""
+    },
+    "id": "srv-db73j0s479ic73bbj5o0",
+    "create_response": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "main",
+      "createdAt": "2026-10-13T14:00:35Z",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db73j0s479ic73bbj5o0",
+      "id": "srv-db73j0s479ic73bbj5o0",
+      "name": "qa-20261013-f3becb-pathempty",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/bex-co/bex",
+      "rootDir": "examples/hello-go",
+      "serviceDetails": {
+        "env": "node",
+        "envSpecificDetails": {
+          "buildCommand": "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\"qa-built.json\",JSON.stringify({marker:\"QA216_f3becb\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'",
+          "preDeployCommand": "",
+          "startCommand": "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('\"'\"'http'\"'\"'),os=require('\"'\"'os'\"'\"');const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"','\"'\"'utf8'\"'\"'));http.createServer((req,res)=>{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"','\"'\"'Content-Length'\"'\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'"
+        },
+        "healthCheckPath": "/",
+        "internalAddress": "qa-20261013-f3becb-pathempty:3000",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "free",
+        "port": 3000,
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "node",
+        "url": "https://qa-20261013-f3becb-pathempty.onbex.co"
+      },
+      "slug": "qa-20261013-f3becb-pathempty",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "web_service",
+      "updatedAt": "2026-10-13T14:00:35.556889449Z"
+    },
+    "observations": [
+      {
+        "at": "2026-10-13T14:03:02.226509+00:00",
+        "native_list": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db73j0s479ic73bbj5o0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.533,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:00:35.522158Z\",\n    \"id\": \"dep-db73j0s479ic73bbj5og\",\n    \"startedAt\": \"2026-10-13T14:02:53.019921Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:02:53.019922Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T14:00:35.522158Z",
+          "id": "dep-db73j0s479ic73bbj5og",
+          "startedAt": "2026-10-13T14:02:53.019921Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T14:02:53.019922Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T14:03:09.242321+00:00",
+        "native_list": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db73j0s479ic73bbj5o0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.317,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:00:35.522158Z\",\n    \"id\": \"dep-db73j0s479ic73bbj5og\",\n    \"startedAt\": \"2026-10-13T14:02:53.019921Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:02:53.019922Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T14:00:35.522158Z",
+          "id": "dep-db73j0s479ic73bbj5og",
+          "startedAt": "2026-10-13T14:02:53.019921Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T14:02:53.019922Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T14:03:16.255375+00:00",
+        "native_list": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db73j0s479ic73bbj5o0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.322,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:00:35.522158Z\",\n    \"id\": \"dep-db73j0s479ic73bbj5og\",\n    \"startedAt\": \"2026-10-13T14:02:53.019921Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:02:53.019922Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T14:00:35.522158Z",
+          "id": "dep-db73j0s479ic73bbj5og",
+          "startedAt": "2026-10-13T14:02:53.019921Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T14:02:53.019922Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T14:04:33.308749+00:00",
+        "native_list": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db73j0s479ic73bbj5o0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.933,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:00:35.522158Z\",\n    \"id\": \"dep-db73j0s479ic73bbj5og\",\n    \"startedAt\": \"2026-10-13T14:02:53.019921Z\",\n    \"status\": \"update_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:03:36.873782Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T14:00:35.522158Z",
+          "id": "dep-db73j0s479ic73bbj5og",
+          "startedAt": "2026-10-13T14:02:53.019921Z",
+          "status": "update_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T14:03:36.873782Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "503",
+          "body": null,
+          "raw": "service unavailable\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T14:04:40.761898+00:00",
+        "native_list": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db73j0s479ic73bbj5o0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.751,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:00:35.522158Z\",\n    \"id\": \"dep-db73j0s479ic73bbj5og\",\n    \"startedAt\": \"2026-10-13T14:02:53.019921Z\",\n    \"status\": \"update_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:03:36.873782Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T14:00:35.522158Z",
+          "id": "dep-db73j0s479ic73bbj5og",
+          "startedAt": "2026-10-13T14:02:53.019921Z",
+          "status": "update_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T14:03:36.873782Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "503",
+          "body": null,
+          "raw": "service unavailable\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T14:04:47.763558+00:00",
+        "native_list": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db73j0s479ic73bbj5o0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.303,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:00:35.522158Z\",\n    \"id\": \"dep-db73j0s479ic73bbj5og\",\n    \"startedAt\": \"2026-10-13T14:02:53.019921Z\",\n    \"status\": \"update_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:03:36.873782Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T14:00:35.522158Z",
+          "id": "dep-db73j0s479ic73bbj5og",
+          "startedAt": "2026-10-13T14:02:53.019921Z",
+          "status": "update_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T14:03:36.873782Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "503",
+          "body": null,
+          "raw": "service unavailable\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T14:07:17.297279+00:00",
+        "native_list": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db73j0s479ic73bbj5o0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.411,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:00:35.522158Z\",\n    \"id\": \"dep-db73j0s479ic73bbj5og\",\n    \"startedAt\": \"2026-10-13T14:02:53.019921Z\",\n    \"status\": \"update_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:03:36.873782Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T14:00:35.522158Z",
+          "id": "dep-db73j0s479ic73bbj5og",
+          "startedAt": "2026-10-13T14:02:53.019921Z",
+          "status": "update_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T14:03:36.873782Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "503",
+          "body": null,
+          "raw": "service unavailable\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T14:07:24.348844+00:00",
+        "native_list": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db73j0s479ic73bbj5o0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.355,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:00:35.522158Z\",\n    \"id\": \"dep-db73j0s479ic73bbj5og\",\n    \"startedAt\": \"2026-10-13T14:02:53.019921Z\",\n    \"status\": \"update_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:03:36.873782Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T14:00:35.522158Z",
+          "id": "dep-db73j0s479ic73bbj5og",
+          "startedAt": "2026-10-13T14:02:53.019921Z",
+          "status": "update_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T14:03:36.873782Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "503",
+          "body": null,
+          "raw": "service unavailable\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T14:07:31.345382+00:00",
+        "native_list": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db73j0s479ic73bbj5o0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.296,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:00:35.522158Z\",\n    \"id\": \"dep-db73j0s479ic73bbj5og\",\n    \"startedAt\": \"2026-10-13T14:02:53.019921Z\",\n    \"status\": \"update_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:03:36.873782Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T14:00:35.522158Z",
+          "id": "dep-db73j0s479ic73bbj5og",
+          "startedAt": "2026-10-13T14:02:53.019921Z",
+          "status": "update_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T14:03:36.873782Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "503",
+          "body": null,
+          "raw": "service unavailable\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T14:20:24.177990+00:00",
+        "native_list": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db73j0s479ic73bbj5o0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 7.185,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:00:35.522158Z\",\n    \"finishedAt\": \"2026-10-13T14:18:36.846616Z\",\n    \"id\": \"dep-db73j0s479ic73bbj5og\",\n    \"startedAt\": \"2026-10-13T14:02:53.019921Z\",\n    \"status\": \"update_failed\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:18:36.846616Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T14:00:35.522158Z",
+          "finishedAt": "2026-10-13T14:18:36.846616Z",
+          "id": "dep-db73j0s479ic73bbj5og",
+          "startedAt": "2026-10-13T14:02:53.019921Z",
+          "status": "update_failed",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T14:18:36.846616Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "503",
+          "body": null,
+          "raw": "service unavailable\n",
+          "stderr": ""
+        }
+      }
+    ],
+    "settled": true,
+    "passed": false,
+    "deploy": {
+      "commit": {
+        "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+        "message": "docs(pm): file generated-key normalization collision (w4/286)"
+      },
+      "createdAt": "2026-10-13T14:00:35.522158Z",
+      "finishedAt": "2026-10-13T14:18:36.846616Z",
+      "id": "dep-db73j0s479ic73bbj5og",
+      "startedAt": "2026-10-13T14:02:53.019921Z",
+      "status": "update_failed",
+      "trigger": "other",
+      "updatedAt": "2026-10-13T14:18:36.846616Z"
+    },
+    "runtime": {
+      "exit": 0,
+      "http": "503",
+      "body": null,
+      "raw": "service unavailable\n",
+      "stderr": ""
+    },
+    "original_stalled_deploy": {
+      "commit": {
+        "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+        "message": "docs(pm): file generated-key normalization collision (w4/286)"
+      },
+      "createdAt": "2026-10-13T14:00:35.522158Z",
+      "finishedAt": "2026-10-13T14:18:36.846616Z",
+      "id": "dep-db73j0s479ic73bbj5og",
+      "startedAt": "2026-10-13T14:02:53.019921Z",
+      "status": "update_failed",
+      "trigger": "other",
+      "updatedAt": "2026-10-13T14:18:36.846616Z"
+    },
+    "original_latest_events": {
+      "at": "2026-10-13T14:21:28.478078+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/services/srv-db73j0s479ic73bbj5o0/events?limit=20",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.734,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49efda95a865913-PDX"
+      },
+      "response": "[{\"event\":{\"id\":\"evt-6b2pjbpgj5bmuhc8geip\",\"timestamp\":\"2026-10-13T14:18:36Z\",\"serviceId\":\"srv-db73j0s479ic73bbj5o0\",\"type\":\"deploy_ended\",\"details\":{\"deployId\":\"dep-db73j0s479ic73bbj5og\",\"deployStatus\":\"failed\",\"fullDeployStatus\":\"update_failed\",\"failureReason\":\"container could not start: the startup program \\\"docker-entrypoint.sh\\\" does not exist in this image. The program never ran, so there is no application output in the logs. Check the Docker Command and the image's entrypoint.\",\"commitId\":\"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\"commitMessage\":\"docs(pm): file generated-key normalization collision (w4/286)\",\"startedAt\":\"2026-10-13T14:02:53Z\",\"finishedAt\":\"2026-10-13T14:18:36Z\",\"triggeredByUser\":\"[QA user ID redacted]\"}},\"cursor\":\"MjAyNi0xMC0xM1QxNDoxODozNi44NDY2MTZafGRlcC1kYjczajBzNDc5aWM3M2JiajVvZzplbmRlZA\"},{\"event\":{\"id\":\"evt-inqce62g26pj3bn7q9oi\",\"timestamp\":\"2026-10-13T14:03:36Z\",\"serviceId\":\"srv-db73j0s479ic73bbj5o0\",\"type\":\"build_ended\",\"details\":{\"deployId\":\"dep-db73j0s479ic73bbj5og\",\"status\":\"succeeded\"}},\"cursor\":\"MjAyNi0xMC0xM1QxNDowMzozNi44NjQxMTVafGZhY3Q6ZGVwbG95OmRlcC1kYjczajBzNDc5aWM3M2JiajVvZzpidWlsZF9lbmRlZA\"},{\"event\":{\"id\":\"evt-isbf9u8qe2vs56ac73fo\",\"timestamp\":\"2026-10-13T14:02:53Z\",\"serviceId\":\"srv-db73j0s479ic73bbj5o0\",\"type\":\"build_started\",\"details\":{\"deployId\":\"dep-db73j0s479ic73bbj5og\"}},\"cursor\":\"MjAyNi0xMC0xM1QxNDowMjo1My4wMTE5NTVafGZhY3Q6ZGVwbG95OmRlcC1kYjczajBzNDc5aWM3M2JiajVvZzpidWlsZF9zdGFydGVk\"},{\"event\":{\"id\":\"evt-uabeejqotkqm2mufrb1s\",\"timestamp\":\"2026-10-13T14:00:35Z\",\"serviceId\":\"srv-db73j0s479ic73bbj5o0\",\"type\":\"deploy_started\",\"details\":{\"deployId\":\"dep-db73j0s479ic73bbj5og\",\"trigger\":{\"firstBuild\":true,\"envUpdated\":false,\"manual\":false,\"deployedByRender\":false,\"clearCache\":false,\"rollback\":false,\"deployHook\":false},\"commitId\":\"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\"commitMessage\":\"docs(pm): file generated-key normalization collision (w4/286)\",\"startedAt\":\"2026-10-13T14:02:53Z\",\"finishedAt\":\"2026-10-13T14:18:36Z\",\"triggeredByUser\":\"[QA user ID redacted]\"}},\"cursor\":\"MjAyNi0xMC0xM1QxNDowMDozNS41MjIxNThafGRlcC1kYjczajBzNDc5aWM3M2JiajVvZzpzdGFydGVk\"}]\n"
+    },
+    "original_stall_events": {
+      "at": "2026-10-13T14:21:28.478078+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/services/srv-db73j0s479ic73bbj5o0/events?limit=20",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.734,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49efda95a865913-PDX"
+      },
+      "response": "[{\"event\":{\"id\":\"evt-6b2pjbpgj5bmuhc8geip\",\"timestamp\":\"2026-10-13T14:18:36Z\",\"serviceId\":\"srv-db73j0s479ic73bbj5o0\",\"type\":\"deploy_ended\",\"details\":{\"deployId\":\"dep-db73j0s479ic73bbj5og\",\"deployStatus\":\"failed\",\"fullDeployStatus\":\"update_failed\",\"failureReason\":\"container could not start: the startup program \\\"docker-entrypoint.sh\\\" does not exist in this image. The program never ran, so there is no application output in the logs. Check the Docker Command and the image's entrypoint.\",\"commitId\":\"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\"commitMessage\":\"docs(pm): file generated-key normalization collision (w4/286)\",\"startedAt\":\"2026-10-13T14:02:53Z\",\"finishedAt\":\"2026-10-13T14:18:36Z\",\"triggeredByUser\":\"[QA user ID redacted]\"}},\"cursor\":\"MjAyNi0xMC0xM1QxNDoxODozNi44NDY2MTZafGRlcC1kYjczajBzNDc5aWM3M2JiajVvZzplbmRlZA\"},{\"event\":{\"id\":\"evt-inqce62g26pj3bn7q9oi\",\"timestamp\":\"2026-10-13T14:03:36Z\",\"serviceId\":\"srv-db73j0s479ic73bbj5o0\",\"type\":\"build_ended\",\"details\":{\"deployId\":\"dep-db73j0s479ic73bbj5og\",\"status\":\"succeeded\"}},\"cursor\":\"MjAyNi0xMC0xM1QxNDowMzozNi44NjQxMTVafGZhY3Q6ZGVwbG95OmRlcC1kYjczajBzNDc5aWM3M2JiajVvZzpidWlsZF9lbmRlZA\"},{\"event\":{\"id\":\"evt-isbf9u8qe2vs56ac73fo\",\"timestamp\":\"2026-10-13T14:02:53Z\",\"serviceId\":\"srv-db73j0s479ic73bbj5o0\",\"type\":\"build_started\",\"details\":{\"deployId\":\"dep-db73j0s479ic73bbj5og\"}},\"cursor\":\"MjAyNi0xMC0xM1QxNDowMjo1My4wMTE5NTVafGZhY3Q6ZGVwbG95OmRlcC1kYjczajBzNDc5aWM3M2JiajVvZzpidWlsZF9zdGFydGVk\"},{\"event\":{\"id\":\"evt-uabeejqotkqm2mufrb1s\",\"timestamp\":\"2026-10-13T14:00:35Z\",\"serviceId\":\"srv-db73j0s479ic73bbj5o0\",\"type\":\"deploy_started\",\"details\":{\"deployId\":\"dep-db73j0s479ic73bbj5og\",\"trigger\":{\"firstBuild\":true,\"envUpdated\":false,\"manual\":false,\"deployedByRender\":false,\"clearCache\":false,\"rollback\":false,\"deployHook\":false},\"commitId\":\"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\"commitMessage\":\"docs(pm): file generated-key normalization collision (w4/286)\",\"startedAt\":\"2026-10-13T14:02:53Z\",\"finishedAt\":\"2026-10-13T14:18:36Z\",\"triggeredByUser\":\"[QA user ID redacted]\"}},\"cursor\":\"MjAyNi0xMC0xM1QxNDowMDozNS41MjIxNThafGRlcC1kYjczajBzNDc5aWM3M2JiajVvZzpzdGFydGVk\"}]\n"
+    },
+    "original_stall_age_seconds": 1254,
+    "original_runtime_start_failed": true,
+    "recovery_intent": {
+      "at": "2026-10-13T14:21:28.607253+00:00",
+      "api_only": true,
+      "method": "PATCH",
+      "path": "/v1/services/srv-db73j0s479ic73bbj5o0/environment",
+      "body": {
+        "envVars": [
+          {
+            "key": "PATH",
+            "value": "/usr/local/bin:/usr/bin:/bin"
+          }
+        ],
+        "saveMode": "save_only"
+      },
+      "qualification": "Exact-owned PATH-only control; absolute commands, marker/file bytes and original commit unchanged; original deploy stalled, not called terminal failed"
+    },
+    "recovery_setup": {
+      "status": "200",
+      "exit": 0,
+      "response": "{\"envVarKeys\":[\"PATH\",\"QA_COMPLEX\"],\"secretFileNames\":[\"qa-note.txt\"],\"rolledOut\":false,\"revision\":null}\n",
+      "stderr": ""
+    },
+    "recovery_native_intent": {
+      "at": "2026-10-13T14:21:29.656454+00:00",
+      "command": [
+        "render",
+        "deploys",
+        "create",
+        "srv-db73j0s479ic73bbj5o0",
+        "--commit",
+        "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "same_initial_commit": true
+    },
+    "recovery_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "deploys",
+        "create",
+        "srv-db73j0s479ic73bbj5o0",
+        "--commit",
+        "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.177,
+      "stdout": "{\n  \"commit\": {\n    \"createdAt\": \"2026-10-13T13:42:56Z\",\n    \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n    \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n  },\n  \"createdAt\": \"2026-10-13T14:21:30.882596Z\",\n  \"id\": \"dep-db73sqk479ic73bbj66g\",\n  \"status\": \"created\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-13T14:21:30.882596Z\"\n}",
+      "stderr": ""
+    },
+    "recovery_deploy_id": "dep-db73sqk479ic73bbj66g",
+    "recovery_observations": [
+      {
+        "at": "2026-10-13T14:23:11.516924+00:00",
+        "native_list": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db73j0s479ic73bbj5o0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.475,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-13T13:42:56Z\",\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:21:30.882596Z\",\n    \"finishedAt\": \"2026-10-13T14:22:53.031837Z\",\n    \"id\": \"dep-db73sqk479ic73bbj66g\",\n    \"startedAt\": \"2026-10-13T14:21:36.873368Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-13T14:22:53.031838Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:00:35.522158Z\",\n    \"finishedAt\": \"2026-10-13T14:18:36.846616Z\",\n    \"id\": \"dep-db73j0s479ic73bbj5og\",\n    \"startedAt\": \"2026-10-13T14:02:53.019921Z\",\n    \"status\": \"update_failed\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:18:36.846616Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "createdAt": "2026-10-13T13:42:56Z",
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T14:21:30.882596Z",
+          "finishedAt": "2026-10-13T14:22:53.031837Z",
+          "id": "dep-db73sqk479ic73bbj66g",
+          "startedAt": "2026-10-13T14:21:36.873368Z",
+          "status": "live",
+          "trigger": "api",
+          "updatedAt": "2026-10-13T14:22:53.031838Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "200",
+          "body": {
+            "marker": "QA216_f3becb",
+            "built": {
+              "marker": "QA216_f3becb",
+              "snapshot": {
+                "env_length": 30,
+                "env_sha256": "0b619d6b716d7706cb2d77c911d0cdb8894c9f015f36f411fe95b05f17b3725b",
+                "file_present": true,
+                "file_length": 24,
+                "file_sha256": "000f24c8cf7036b5dfcee6c6afbd74a31c55735e23cdc764a558621e48aedb0b"
+              },
+              "build_path": "/usr/local/bin:/usr/bin:/bin",
+              "built_at": 1791901329797
+            },
+            "runtime": {
+              "env_length": 30,
+              "env_sha256": "0b619d6b716d7706cb2d77c911d0cdb8894c9f015f36f411fe95b05f17b3725b",
+              "file_present": true,
+              "file_length": 24,
+              "file_sha256": "000f24c8cf7036b5dfcee6c6afbd74a31c55735e23cdc764a558621e48aedb0b"
+            },
+            "runtime_path": "/usr/local/bin:/usr/bin:/bin",
+            "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-f3becb-pathempty-7bf6gt75l"
+          },
+          "raw": "{\"marker\":\"QA216_f3becb\",\"built\":{\"marker\":\"QA216_f3becb\",\"snapshot\":{\"env_length\":30,\"env_sha256\":\"0b619d6b716d7706cb2d77c911d0cdb8894c9f015f36f411fe95b05f17b3725b\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"000f24c8cf7036b5dfcee6c6afbd74a31c55735e23cdc764a558621e48aedb0b\"},\"build_path\":\"/usr/local/bin:/usr/bin:/bin\",\"built_at\":1791901329797},\"runtime\":{\"env_length\":30,\"env_sha256\":\"0b619d6b716d7706cb2d77c911d0cdb8894c9f015f36f411fe95b05f17b3725b\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"000f24c8cf7036b5dfcee6c6afbd74a31c55735e23cdc764a558621e48aedb0b\"},\"runtime_path\":\"/usr/local/bin:/usr/bin:/bin\",\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261013-f3becb-pathempty-7bf6gt75l\"}",
+          "stderr": ""
+        }
+      }
+    ],
+    "recovery_settled": true,
+    "recovery_pass": true,
+    "recovery_deploy": {
+      "commit": {
+        "createdAt": "2026-10-13T13:42:56Z",
+        "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+        "message": "docs(pm): file generated-key normalization collision (w4/286)"
+      },
+      "createdAt": "2026-10-13T14:21:30.882596Z",
+      "finishedAt": "2026-10-13T14:22:53.031837Z",
+      "id": "dep-db73sqk479ic73bbj66g",
+      "startedAt": "2026-10-13T14:21:36.873368Z",
+      "status": "live",
+      "trigger": "api",
+      "updatedAt": "2026-10-13T14:22:53.031838Z"
+    },
+    "recovery_runtime": {
+      "exit": 0,
+      "http": "200",
+      "body": {
+        "marker": "QA216_f3becb",
+        "built": {
+          "marker": "QA216_f3becb",
+          "snapshot": {
+            "env_length": 30,
+            "env_sha256": "0b619d6b716d7706cb2d77c911d0cdb8894c9f015f36f411fe95b05f17b3725b",
+            "file_present": true,
+            "file_length": 24,
+            "file_sha256": "000f24c8cf7036b5dfcee6c6afbd74a31c55735e23cdc764a558621e48aedb0b"
+          },
+          "build_path": "/usr/local/bin:/usr/bin:/bin",
+          "built_at": 1791901329797
+        },
+        "runtime": {
+          "env_length": 30,
+          "env_sha256": "0b619d6b716d7706cb2d77c911d0cdb8894c9f015f36f411fe95b05f17b3725b",
+          "file_present": true,
+          "file_length": 24,
+          "file_sha256": "000f24c8cf7036b5dfcee6c6afbd74a31c55735e23cdc764a558621e48aedb0b"
+        },
+        "runtime_path": "/usr/local/bin:/usr/bin:/bin",
+        "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-f3becb-pathempty-7bf6gt75l"
+      },
+      "raw": "{\"marker\":\"QA216_f3becb\",\"built\":{\"marker\":\"QA216_f3becb\",\"snapshot\":{\"env_length\":30,\"env_sha256\":\"0b619d6b716d7706cb2d77c911d0cdb8894c9f015f36f411fe95b05f17b3725b\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"000f24c8cf7036b5dfcee6c6afbd74a31c55735e23cdc764a558621e48aedb0b\"},\"build_path\":\"/usr/local/bin:/usr/bin:/bin\",\"built_at\":1791901329797},\"runtime\":{\"env_length\":30,\"env_sha256\":\"0b619d6b716d7706cb2d77c911d0cdb8894c9f015f36f411fe95b05f17b3725b\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"000f24c8cf7036b5dfcee6c6afbd74a31c55735e23cdc764a558621e48aedb0b\"},\"runtime_path\":\"/usr/local/bin:/usr/bin:/bin\",\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261013-f3becb-pathempty-7bf6gt75l\"}",
+      "stderr": ""
+    },
+    "deploy_children": [
+      {
+        "commit": {
+          "createdAt": "2026-10-13T13:42:56Z",
+          "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+          "message": "docs(pm): file generated-key normalization collision (w4/286)"
+        },
+        "createdAt": "2026-10-13T14:21:30.882596Z",
+        "finishedAt": "2026-10-13T14:22:53.031837Z",
+        "id": "dep-db73sqk479ic73bbj66g",
+        "startedAt": "2026-10-13T14:21:36.873368Z",
+        "status": "live",
+        "trigger": "api",
+        "updatedAt": "2026-10-13T14:22:53.031838Z"
+      },
+      {
+        "commit": {
+          "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+          "message": "docs(pm): file generated-key normalization collision (w4/286)"
+        },
+        "createdAt": "2026-10-13T14:00:35.522158Z",
+        "finishedAt": "2026-10-13T14:18:36.846616Z",
+        "id": "dep-db73j0s479ic73bbj5og",
+        "startedAt": "2026-10-13T14:02:53.019921Z",
+        "status": "update_failed",
+        "trigger": "other",
+        "updatedAt": "2026-10-13T14:18:36.846616Z"
+      }
+    ],
+    "children_enumeration_evidence": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "list",
+        "srv-db73j0s479ic73bbj5o0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.16,
+      "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-13T13:42:56Z\",\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:21:30.882596Z\",\n    \"finishedAt\": \"2026-10-13T14:22:53.031837Z\",\n    \"id\": \"dep-db73sqk479ic73bbj66g\",\n    \"startedAt\": \"2026-10-13T14:21:36.873368Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-13T14:22:53.031838Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:00:35.522158Z\",\n    \"finishedAt\": \"2026-10-13T14:18:36.846616Z\",\n    \"id\": \"dep-db73j0s479ic73bbj5og\",\n    \"startedAt\": \"2026-10-13T14:02:53.019921Z\",\n    \"status\": \"update_failed\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:18:36.846616Z\"\n  }\n]",
+      "stderr": ""
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db73j0s479ic73bbj5o0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 3.765,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-13T14:00:35Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db73j0s479ic73bbj5o0\",\n    \"id\": \"srv-db73j0s479ic73bbj5o0\",\n    \"name\": \"qa-20261013-f3becb-pathempty\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-go\",\n    \"serviceDetails\": {\n      \"env\": \"node\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function hash(b){return crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\\\"'\\\"'\\u003cabsent\\u003e'\\\"'\\\"':process.env.QA_COMPLEX,'\\\"'\\\"'utf8'\\\"'\\\"');const f='\\\"'\\\"'/etc/secrets/qa-note.txt'\\\"'\\\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify({marker:\\\"QA216_f3becb\\\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function hash(b){return crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\\\"'\\\"'\\u003cabsent\\u003e'\\\"'\\\"':process.env.QA_COMPLEX,'\\\"'\\\"'utf8'\\\"'\\\"');const f='\\\"'\\\"'/etc/secrets/qa-note.txt'\\\"'\\\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('\\\"'\\\"'http'\\\"'\\\"'),os=require('\\\"'\\\"'os'\\\"'\\\"');const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));http.createServer((req,res)=\\u003e{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261013-f3becb-pathempty:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"node\",\n      \"url\": \"https://qa-20261013-f3becb-pathempty.onbex.co\"\n    },\n    \"slug\": \"qa-20261013-f3becb-pathempty\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-13T14:38:30Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "at": "2026-10-13T20:00:19.426478+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/services/srv-db73j0s479ic73bbj5o0",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "404",
+      "elapsed": 1.027,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a0ee0688e1957f-DUB"
+      },
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+    },
+    "workspace_after_delete_ids": [
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3v694dm7c7390q930",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db09vbgehcmc739j12i0",
+      "srv-db73r9na4m3s73d9i5r0"
+    ],
+    "runtime_after_delete_checks": [
+      {
+        "exit": 0,
+        "stdout": "404 page not found\n\n404",
+        "stderr": ""
+      }
+    ],
+    "quota_after_delete": {
+      "at": "2026-10-13T20:00:23.836974+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.885,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a0ee22caebb4db-DUB"
+      },
+      "response": "{\"services\":{\"used\":7,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    }
+  },
+  {
+    "sweep": 216,
+    "case": "empty-bex",
+    "source_head": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+    "client": "release",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "web_service",
+    "name": "qa-20261013-450084-pbempty",
+    "nonce": "450084",
+    "marker": "QA216_450084",
+    "time": "2026-10-13T14:18:12.608376+00:00",
+    "dependency_ids": [],
+    "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+    "role": "Native Node PATH empty-bex control",
+    "command": [
+      "release",
+      "services",
+      "create",
+      "--name",
+      "qa-20261013-450084-pbempty",
+      "--type",
+      "web_service",
+      "--runtime",
+      "node",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/hello-go",
+      "--build-command",
+      "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\"qa-built.json\",JSON.stringify({marker:\"QA216_450084\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'",
+      "--start-command",
+      "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('\"'\"'http'\"'\"'),os=require('\"'\"'os'\"'\"');const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"','\"'\"'utf8'\"'\"'));http.createServer((req,res)=>{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"','\"'\"'Content-Length'\"'\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'",
+      "--health-check-path",
+      "/",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--env-var",
+      "QA_COMPLEX=QA216_450084\n☃=second\n内側",
+      "--secret-file",
+      "qa-note.txt:$PRIVATE_QA_DIR/sweep216-450084-note.txt",
+      "--confirm",
+      "-o",
+      "json",
+      "--env-var",
+      "PATH="
+    ],
+    "capacity_proof": {
+      "at": "2026-10-13T14:18:12.598336+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.606,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49ef8e40d205874-MAD"
+      },
+      "response": "{\"services\":{\"used\":7,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "expected_bytes": {
+      "env_length": 30,
+      "env_sha256": "0c03120fdee684c21e176386c70d95e468ef20365f8cf20451c235a3b54e51da",
+      "file_present": true,
+      "file_length": 24,
+      "file_sha256": "7a1d295f1f4f3fccc3eb2d4d6c8211115bbcac205e9929a6f9d40a5b896a16aa"
+    },
+    "expected_path": "",
+    "program": "const fs=require('fs'),crypto=require('crypto');function hash(b){return crypto.createHash('sha256').update(b).digest('hex');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'<absent>':process.env.QA_COMPLEX,'utf8');const f='/etc/secrets/qa-note.txt';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('http'),os=require('os');const built=JSON.parse(fs.readFileSync('qa-built.json','utf8'));http.createServer((req,res)=>{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'Content-Type':'application/json','Content-Length':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'0.0.0.0');",
+    "build_program": "const fs=require('fs'),crypto=require('crypto');function hash(b){return crypto.createHash('sha256').update(b).digest('hex');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'<absent>':process.env.QA_COMPLEX,'utf8');const f='/etc/secrets/qa-note.txt';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\"qa-built.json\",JSON.stringify({marker:\"QA216_450084\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));",
+    "local_note": "$PRIVATE_QA_DIR/sweep216-450084-note.txt",
+    "create_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "qa-20261013-450084-pbempty",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--branch",
+        "main",
+        "--root-directory",
+        "examples/hello-go",
+        "--build-command",
+        "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\"qa-built.json\",JSON.stringify({marker:\"QA216_450084\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'",
+        "--start-command",
+        "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('\"'\"'http'\"'\"'),os=require('\"'\"'os'\"'\"');const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"','\"'\"'utf8'\"'\"'));http.createServer((req,res)=>{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"','\"'\"'Content-Length'\"'\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'",
+        "--health-check-path",
+        "/",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--auto-deploy=false",
+        "--env-var",
+        "QA_COMPLEX=QA216_450084\n☃=second\n内側",
+        "--secret-file",
+        "qa-note.txt:$PRIVATE_QA_DIR/sweep216-450084-note.txt",
+        "--confirm",
+        "-o",
+        "json",
+        "--env-var",
+        "PATH="
+      ],
+      "exit": 0,
+      "elapsed": 2.001,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-13T14:18:14Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db73r9na4m3s73d9i5r0\",\n  \"id\": \"srv-db73r9na4m3s73d9i5r0\",\n  \"name\": \"qa-20261013-450084-pbempty\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-go\",\n  \"serviceDetails\": {\n    \"env\": \"node\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function hash(b){return crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\\\"'\\\"'\\u003cabsent\\u003e'\\\"'\\\"':process.env.QA_COMPLEX,'\\\"'\\\"'utf8'\\\"'\\\"');const f='\\\"'\\\"'/etc/secrets/qa-note.txt'\\\"'\\\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify({marker:\\\"QA216_450084\\\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function hash(b){return crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\\\"'\\\"'\\u003cabsent\\u003e'\\\"'\\\"':process.env.QA_COMPLEX,'\\\"'\\\"'utf8'\\\"'\\\"');const f='\\\"'\\\"'/etc/secrets/qa-note.txt'\\\"'\\\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('\\\"'\\\"'http'\\\"'\\\"'),os=require('\\\"'\\\"'os'\\\"'\\\"');const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));http.createServer((req,res)=\\u003e{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"\n    },\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261013-450084-pbempty:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"node\",\n    \"url\": \"https://qa-20261013-450084-pbempty.onbex.co\"\n  },\n  \"slug\": \"qa-20261013-450084-pbempty\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-13T14:18:14.118066851Z\"\n}",
+      "stderr": ""
+    },
+    "id": "srv-db73r9na4m3s73d9i5r0",
+    "create_response": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "main",
+      "createdAt": "2026-10-13T14:18:14Z",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db73r9na4m3s73d9i5r0",
+      "id": "srv-db73r9na4m3s73d9i5r0",
+      "name": "qa-20261013-450084-pbempty",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/bex-co/bex",
+      "rootDir": "examples/hello-go",
+      "serviceDetails": {
+        "env": "node",
+        "envSpecificDetails": {
+          "buildCommand": "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\"qa-built.json\",JSON.stringify({marker:\"QA216_450084\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'",
+          "preDeployCommand": "",
+          "startCommand": "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');function hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('\"'\"'http'\"'\"'),os=require('\"'\"'os'\"'\"');const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"','\"'\"'utf8'\"'\"'));http.createServer((req,res)=>{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"','\"'\"'Content-Length'\"'\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'"
+        },
+        "healthCheckPath": "/",
+        "internalAddress": "qa-20261013-450084-pbempty:3000",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "free",
+        "port": 3000,
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "node",
+        "url": "https://qa-20261013-450084-pbempty.onbex.co"
+      },
+      "slug": "qa-20261013-450084-pbempty",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "web_service",
+      "updatedAt": "2026-10-13T14:18:14.118066851Z"
+    },
+    "observations": [
+      {
+        "at": "2026-10-13T14:22:16.496688+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db73r9na4m3s73d9i5r0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.528,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:18:14.097609Z\",\n    \"id\": \"dep-db73r9na4m3s73d9i5rg\",\n    \"startedAt\": \"2026-10-13T14:19:23.047784Z\",\n    \"status\": \"update_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:20:23.11594Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T14:18:14.097609Z",
+          "id": "dep-db73r9na4m3s73d9i5rg",
+          "startedAt": "2026-10-13T14:19:23.047784Z",
+          "status": "update_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T14:20:23.11594Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "503",
+          "body": null,
+          "raw": "service unavailable\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T14:22:23.571414+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db73r9na4m3s73d9i5r0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.373,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:18:14.097609Z\",\n    \"id\": \"dep-db73r9na4m3s73d9i5rg\",\n    \"startedAt\": \"2026-10-13T14:19:23.047784Z\",\n    \"status\": \"update_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:20:23.11594Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T14:18:14.097609Z",
+          "id": "dep-db73r9na4m3s73d9i5rg",
+          "startedAt": "2026-10-13T14:19:23.047784Z",
+          "status": "update_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T14:20:23.11594Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "503",
+          "body": null,
+          "raw": "service unavailable\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T14:22:30.944361+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db73r9na4m3s73d9i5r0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.678,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:18:14.097609Z\",\n    \"id\": \"dep-db73r9na4m3s73d9i5rg\",\n    \"startedAt\": \"2026-10-13T14:19:23.047784Z\",\n    \"status\": \"update_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:20:23.11594Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T14:18:14.097609Z",
+          "id": "dep-db73r9na4m3s73d9i5rg",
+          "startedAt": "2026-10-13T14:19:23.047784Z",
+          "status": "update_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T14:20:23.11594Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "503",
+          "body": null,
+          "raw": "service unavailable\n",
+          "stderr": ""
+        }
+      }
+    ],
+    "original_stalled_deploy": {
+      "commit": {
+        "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+        "message": "docs(pm): file generated-key normalization collision (w4/286)"
+      },
+      "createdAt": "2026-10-13T14:18:14.097609Z",
+      "id": "dep-db73r9na4m3s73d9i5rg",
+      "startedAt": "2026-10-13T14:19:23.047784Z",
+      "status": "update_in_progress",
+      "trigger": "other",
+      "updatedAt": "2026-10-13T14:20:23.11594Z"
+    },
+    "original_latest_events": {
+      "at": "2026-10-13T14:23:38.122026+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/services/srv-db73r9na4m3s73d9i5r0/events?limit=20",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.268,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49f00d638233493-SJC"
+      },
+      "response": "[{\"event\":{\"id\":\"evt-jevtafae3ofm86lmvn2s\",\"timestamp\":\"2026-10-13T14:20:23Z\",\"serviceId\":\"srv-db73r9na4m3s73d9i5r0\",\"type\":\"build_ended\",\"details\":{\"deployId\":\"dep-db73r9na4m3s73d9i5rg\",\"status\":\"succeeded\"}},\"cursor\":\"MjAyNi0xMC0xM1QxNDoyMDoyMy4xMDkyNTRafGZhY3Q6ZGVwbG95OmRlcC1kYjczcjluYTRtM3M3M2Q5aTVyZzpidWlsZF9lbmRlZA\"},{\"event\":{\"id\":\"evt-jf9tjhaa2n7loekn0kie\",\"timestamp\":\"2026-10-13T14:19:23Z\",\"serviceId\":\"srv-db73r9na4m3s73d9i5r0\",\"type\":\"build_started\",\"details\":{\"deployId\":\"dep-db73r9na4m3s73d9i5rg\"}},\"cursor\":\"MjAyNi0xMC0xM1QxNDoxOToyMy4wNDE2MzZafGZhY3Q6ZGVwbG95OmRlcC1kYjczcjluYTRtM3M3M2Q5aTVyZzpidWlsZF9zdGFydGVk\"},{\"event\":{\"id\":\"evt-c5r0041fb934tu2kgq57\",\"timestamp\":\"2026-10-13T14:18:14Z\",\"serviceId\":\"srv-db73r9na4m3s73d9i5r0\",\"type\":\"deploy_started\",\"details\":{\"deployId\":\"dep-db73r9na4m3s73d9i5rg\",\"stallReason\":\"container could not start: the startup program \\\"docker-entrypoint.sh\\\" does not exist in this image. The program never ran, so there is no application output in the logs. Check the Docker Command and the image's entrypoint.\",\"trigger\":{\"firstBuild\":true,\"envUpdated\":false,\"manual\":false,\"deployedByRender\":false,\"clearCache\":false,\"rollback\":false,\"deployHook\":false},\"commitId\":\"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\"commitMessage\":\"docs(pm): file generated-key normalization collision (w4/286)\",\"startedAt\":\"2026-10-13T14:19:23Z\",\"triggeredByUser\":\"[QA user ID redacted]\"}},\"cursor\":\"MjAyNi0xMC0xM1QxNDoxODoxNC4wOTc2MDlafGRlcC1kYjczcjluYTRtM3M3M2Q5aTVyZzpzdGFydGVk\"}]\n"
+    },
+    "original_stall_events": {
+      "at": "2026-10-13T14:23:38.122026+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/services/srv-db73r9na4m3s73d9i5r0/events?limit=20",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.268,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49f00d638233493-SJC"
+      },
+      "response": "[{\"event\":{\"id\":\"evt-jevtafae3ofm86lmvn2s\",\"timestamp\":\"2026-10-13T14:20:23Z\",\"serviceId\":\"srv-db73r9na4m3s73d9i5r0\",\"type\":\"build_ended\",\"details\":{\"deployId\":\"dep-db73r9na4m3s73d9i5rg\",\"status\":\"succeeded\"}},\"cursor\":\"MjAyNi0xMC0xM1QxNDoyMDoyMy4xMDkyNTRafGZhY3Q6ZGVwbG95OmRlcC1kYjczcjluYTRtM3M3M2Q5aTVyZzpidWlsZF9lbmRlZA\"},{\"event\":{\"id\":\"evt-jf9tjhaa2n7loekn0kie\",\"timestamp\":\"2026-10-13T14:19:23Z\",\"serviceId\":\"srv-db73r9na4m3s73d9i5r0\",\"type\":\"build_started\",\"details\":{\"deployId\":\"dep-db73r9na4m3s73d9i5rg\"}},\"cursor\":\"MjAyNi0xMC0xM1QxNDoxOToyMy4wNDE2MzZafGZhY3Q6ZGVwbG95OmRlcC1kYjczcjluYTRtM3M3M2Q5aTVyZzpidWlsZF9zdGFydGVk\"},{\"event\":{\"id\":\"evt-c5r0041fb934tu2kgq57\",\"timestamp\":\"2026-10-13T14:18:14Z\",\"serviceId\":\"srv-db73r9na4m3s73d9i5r0\",\"type\":\"deploy_started\",\"details\":{\"deployId\":\"dep-db73r9na4m3s73d9i5rg\",\"stallReason\":\"container could not start: the startup program \\\"docker-entrypoint.sh\\\" does not exist in this image. The program never ran, so there is no application output in the logs. Check the Docker Command and the image's entrypoint.\",\"trigger\":{\"firstBuild\":true,\"envUpdated\":false,\"manual\":false,\"deployedByRender\":false,\"clearCache\":false,\"rollback\":false,\"deployHook\":false},\"commitId\":\"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\"commitMessage\":\"docs(pm): file generated-key normalization collision (w4/286)\",\"startedAt\":\"2026-10-13T14:19:23Z\",\"triggeredByUser\":\"[QA user ID redacted]\"}},\"cursor\":\"MjAyNi0xMC0xM1QxNDoxODoxNC4wOTc2MDlafGRlcC1kYjczcjluYTRtM3M3M2Q5aTVyZzpzdGFydGVk\"}]\n"
+    },
+    "original_stall_age_seconds": 326,
+    "original_runtime_start_failed": true,
+    "recovery_intent": {
+      "at": "2026-10-13T14:23:38.248034+00:00",
+      "api_only": true,
+      "method": "PATCH",
+      "path": "/v1/services/srv-db73r9na4m3s73d9i5r0/environment",
+      "body": {
+        "envVars": [
+          {
+            "key": "PATH",
+            "value": "/usr/local/bin:/usr/bin:/bin"
+          }
+        ],
+        "saveMode": "save_only"
+      },
+      "qualification": "Exact-owned PATH-only control; absolute commands, marker/file bytes and original commit unchanged; original deploy stalled, not called terminal failed"
+    },
+    "recovery_setup": {
+      "status": "200",
+      "exit": 0,
+      "response": "{\"envVarKeys\":[\"PATH\",\"QA_COMPLEX\"],\"secretFileNames\":[\"qa-note.txt\"],\"rolledOut\":false,\"revision\":null}\n",
+      "stderr": ""
+    },
+    "recovery_native_intent": {
+      "at": "2026-10-13T14:23:39.401839+00:00",
+      "command": [
+        "release",
+        "deploys",
+        "create",
+        "srv-db73r9na4m3s73d9i5r0",
+        "--commit",
+        "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "same_initial_commit": true
+    },
+    "recovery_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "create",
+        "srv-db73r9na4m3s73d9i5r0",
+        "--commit",
+        "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.179,
+      "stdout": "{\n  \"commit\": {\n    \"createdAt\": \"2026-10-13T13:42:56Z\",\n    \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n    \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n  },\n  \"createdAt\": \"2026-10-13T14:23:40.664588Z\",\n  \"id\": \"dep-db73tr4479ic73bbj690\",\n  \"status\": \"queued\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-13T14:23:40.664588Z\"\n}",
+      "stderr": ""
+    },
+    "recovery_deploy_id": "dep-db73tr4479ic73bbj690",
+    "recovery_observations": [
+      {
+        "at": "2026-10-13T20:00:46.381267+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db73r9na4m3s73d9i5r0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 1.998,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-13T13:42:56Z\",\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:23:40.664588Z\",\n    \"finishedAt\": \"2026-10-13T14:25:06.92475Z\",\n    \"id\": \"dep-db73tr4479ic73bbj690\",\n    \"startedAt\": \"2026-10-13T14:23:53.227561Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-13T14:25:06.924751Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:18:14.097609Z\",\n    \"finishedAt\": \"2026-10-13T14:23:53.213426Z\",\n    \"id\": \"dep-db73r9na4m3s73d9i5rg\",\n    \"startedAt\": \"2026-10-13T14:19:23.047784Z\",\n    \"status\": \"canceled\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:23:53.213427Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "createdAt": "2026-10-13T13:42:56Z",
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T14:23:40.664588Z",
+          "finishedAt": "2026-10-13T14:25:06.92475Z",
+          "id": "dep-db73tr4479ic73bbj690",
+          "startedAt": "2026-10-13T14:23:53.227561Z",
+          "status": "live",
+          "trigger": "api",
+          "updatedAt": "2026-10-13T14:25:06.924751Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "503",
+          "body": {
+            "error": "service not ready",
+            "retryAfter": 5
+          },
+          "raw": "{\"error\":\"service not ready\",\"retryAfter\":5}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T20:00:53.627141+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db73r9na4m3s73d9i5r0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.417,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-13T13:42:56Z\",\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:23:40.664588Z\",\n    \"finishedAt\": \"2026-10-13T14:25:06.92475Z\",\n    \"id\": \"dep-db73tr4479ic73bbj690\",\n    \"startedAt\": \"2026-10-13T14:23:53.227561Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-13T14:25:06.924751Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:18:14.097609Z\",\n    \"finishedAt\": \"2026-10-13T14:23:53.213426Z\",\n    \"id\": \"dep-db73r9na4m3s73d9i5rg\",\n    \"startedAt\": \"2026-10-13T14:19:23.047784Z\",\n    \"status\": \"canceled\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:23:53.213427Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "createdAt": "2026-10-13T13:42:56Z",
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T14:23:40.664588Z",
+          "finishedAt": "2026-10-13T14:25:06.92475Z",
+          "id": "dep-db73tr4479ic73bbj690",
+          "startedAt": "2026-10-13T14:23:53.227561Z",
+          "status": "live",
+          "trigger": "api",
+          "updatedAt": "2026-10-13T14:25:06.924751Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "503",
+          "body": {
+            "error": "service not ready",
+            "retryAfter": 5
+          },
+          "raw": "{\"error\":\"service not ready\",\"retryAfter\":5}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T20:03:52.190252+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db73r9na4m3s73d9i5r0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 1.515,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-13T13:42:56Z\",\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:23:40.664588Z\",\n    \"finishedAt\": \"2026-10-13T14:25:06.92475Z\",\n    \"id\": \"dep-db73tr4479ic73bbj690\",\n    \"startedAt\": \"2026-10-13T14:23:53.227561Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-13T14:25:06.924751Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:18:14.097609Z\",\n    \"finishedAt\": \"2026-10-13T14:23:53.213426Z\",\n    \"id\": \"dep-db73r9na4m3s73d9i5rg\",\n    \"startedAt\": \"2026-10-13T14:19:23.047784Z\",\n    \"status\": \"canceled\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:23:53.213427Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "createdAt": "2026-10-13T13:42:56Z",
+            "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+            "message": "docs(pm): file generated-key normalization collision (w4/286)"
+          },
+          "createdAt": "2026-10-13T14:23:40.664588Z",
+          "finishedAt": "2026-10-13T14:25:06.92475Z",
+          "id": "dep-db73tr4479ic73bbj690",
+          "startedAt": "2026-10-13T14:23:53.227561Z",
+          "status": "live",
+          "trigger": "api",
+          "updatedAt": "2026-10-13T14:25:06.924751Z"
+        },
+        "runtime": {
+          "exit": 0,
+          "http": "200",
+          "body": {
+            "marker": "QA216_450084",
+            "built": {
+              "marker": "QA216_450084",
+              "snapshot": {
+                "env_length": 30,
+                "env_sha256": "0c03120fdee684c21e176386c70d95e468ef20365f8cf20451c235a3b54e51da",
+                "file_present": true,
+                "file_length": 24,
+                "file_sha256": "7a1d295f1f4f3fccc3eb2d4d6c8211115bbcac205e9929a6f9d40a5b896a16aa"
+              },
+              "build_path": "/usr/local/bin:/usr/bin:/bin",
+              "built_at": 1791901458210
+            },
+            "runtime": {
+              "env_length": 30,
+              "env_sha256": "0c03120fdee684c21e176386c70d95e468ef20365f8cf20451c235a3b54e51da",
+              "file_present": true,
+              "file_length": 24,
+              "file_sha256": "7a1d295f1f4f3fccc3eb2d4d6c8211115bbcac205e9929a6f9d40a5b896a16aa"
+            },
+            "runtime_path": "/usr/local/bin:/usr/bin:/bin",
+            "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-450084-pbempty-7f9c4d8kzpl"
+          },
+          "raw": "{\"marker\":\"QA216_450084\",\"built\":{\"marker\":\"QA216_450084\",\"snapshot\":{\"env_length\":30,\"env_sha256\":\"0c03120fdee684c21e176386c70d95e468ef20365f8cf20451c235a3b54e51da\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"7a1d295f1f4f3fccc3eb2d4d6c8211115bbcac205e9929a6f9d40a5b896a16aa\"},\"build_path\":\"/usr/local/bin:/usr/bin:/bin\",\"built_at\":1791901458210},\"runtime\":{\"env_length\":30,\"env_sha256\":\"0c03120fdee684c21e176386c70d95e468ef20365f8cf20451c235a3b54e51da\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"7a1d295f1f4f3fccc3eb2d4d6c8211115bbcac205e9929a6f9d40a5b896a16aa\"},\"runtime_path\":\"/usr/local/bin:/usr/bin:/bin\",\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261013-450084-pbempty-7f9c4d8kzpl\"}",
+          "stderr": ""
+        }
+      }
+    ],
+    "recovery_settled": true,
+    "recovery_pass": true,
+    "recovery_deploy": {
+      "commit": {
+        "createdAt": "2026-10-13T13:42:56Z",
+        "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+        "message": "docs(pm): file generated-key normalization collision (w4/286)"
+      },
+      "createdAt": "2026-10-13T14:23:40.664588Z",
+      "finishedAt": "2026-10-13T14:25:06.92475Z",
+      "id": "dep-db73tr4479ic73bbj690",
+      "startedAt": "2026-10-13T14:23:53.227561Z",
+      "status": "live",
+      "trigger": "api",
+      "updatedAt": "2026-10-13T14:25:06.924751Z"
+    },
+    "recovery_runtime": {
+      "exit": 0,
+      "http": "200",
+      "body": {
+        "marker": "QA216_450084",
+        "built": {
+          "marker": "QA216_450084",
+          "snapshot": {
+            "env_length": 30,
+            "env_sha256": "0c03120fdee684c21e176386c70d95e468ef20365f8cf20451c235a3b54e51da",
+            "file_present": true,
+            "file_length": 24,
+            "file_sha256": "7a1d295f1f4f3fccc3eb2d4d6c8211115bbcac205e9929a6f9d40a5b896a16aa"
+          },
+          "build_path": "/usr/local/bin:/usr/bin:/bin",
+          "built_at": 1791901458210
+        },
+        "runtime": {
+          "env_length": 30,
+          "env_sha256": "0c03120fdee684c21e176386c70d95e468ef20365f8cf20451c235a3b54e51da",
+          "file_present": true,
+          "file_length": 24,
+          "file_sha256": "7a1d295f1f4f3fccc3eb2d4d6c8211115bbcac205e9929a6f9d40a5b896a16aa"
+        },
+        "runtime_path": "/usr/local/bin:/usr/bin:/bin",
+        "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-450084-pbempty-7f9c4d8kzpl"
+      },
+      "raw": "{\"marker\":\"QA216_450084\",\"built\":{\"marker\":\"QA216_450084\",\"snapshot\":{\"env_length\":30,\"env_sha256\":\"0c03120fdee684c21e176386c70d95e468ef20365f8cf20451c235a3b54e51da\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"7a1d295f1f4f3fccc3eb2d4d6c8211115bbcac205e9929a6f9d40a5b896a16aa\"},\"build_path\":\"/usr/local/bin:/usr/bin:/bin\",\"built_at\":1791901458210},\"runtime\":{\"env_length\":30,\"env_sha256\":\"0c03120fdee684c21e176386c70d95e468ef20365f8cf20451c235a3b54e51da\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"7a1d295f1f4f3fccc3eb2d4d6c8211115bbcac205e9929a6f9d40a5b896a16aa\"},\"runtime_path\":\"/usr/local/bin:/usr/bin:/bin\",\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261013-450084-pbempty-7f9c4d8kzpl\"}",
+      "stderr": ""
+    },
+    "deploy_children": [
+      {
+        "commit": {
+          "createdAt": "2026-10-13T13:42:56Z",
+          "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+          "message": "docs(pm): file generated-key normalization collision (w4/286)"
+        },
+        "createdAt": "2026-10-13T14:23:40.664588Z",
+        "finishedAt": "2026-10-13T14:25:06.92475Z",
+        "id": "dep-db73tr4479ic73bbj690",
+        "startedAt": "2026-10-13T14:23:53.227561Z",
+        "status": "live",
+        "trigger": "api",
+        "updatedAt": "2026-10-13T14:25:06.924751Z"
+      },
+      {
+        "commit": {
+          "id": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+          "message": "docs(pm): file generated-key normalization collision (w4/286)"
+        },
+        "createdAt": "2026-10-13T14:18:14.097609Z",
+        "finishedAt": "2026-10-13T14:23:53.213426Z",
+        "id": "dep-db73r9na4m3s73d9i5rg",
+        "startedAt": "2026-10-13T14:19:23.047784Z",
+        "status": "canceled",
+        "trigger": "other",
+        "updatedAt": "2026-10-13T14:23:53.213427Z"
+      }
+    ],
+    "children_enumeration_evidence": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "list",
+        "srv-db73r9na4m3s73d9i5r0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.376,
+      "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-13T13:42:56Z\",\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:23:40.664588Z\",\n    \"finishedAt\": \"2026-10-13T14:25:06.92475Z\",\n    \"id\": \"dep-db73tr4479ic73bbj690\",\n    \"startedAt\": \"2026-10-13T14:23:53.227561Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-13T14:25:06.924751Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\n      \"message\": \"docs(pm): file generated-key normalization collision (w4/286)\"\n    },\n    \"createdAt\": \"2026-10-13T14:18:14.097609Z\",\n    \"finishedAt\": \"2026-10-13T14:23:53.213426Z\",\n    \"id\": \"dep-db73r9na4m3s73d9i5rg\",\n    \"startedAt\": \"2026-10-13T14:19:23.047784Z\",\n    \"status\": \"canceled\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T14:23:53.213427Z\"\n  }\n]",
+      "stderr": ""
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db73r9na4m3s73d9i5r0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.945,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-13T14:18:14Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db73r9na4m3s73d9i5r0\",\n    \"id\": \"srv-db73r9na4m3s73d9i5r0\",\n    \"name\": \"qa-20261013-450084-pbempty\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-go\",\n    \"serviceDetails\": {\n      \"env\": \"node\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function hash(b){return crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\\\"'\\\"'\\u003cabsent\\u003e'\\\"'\\\"':process.env.QA_COMPLEX,'\\\"'\\\"'utf8'\\\"'\\\"');const f='\\\"'\\\"'/etc/secrets/qa-note.txt'\\\"'\\\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify({marker:\\\"QA216_450084\\\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');function hash(b){return crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\\\"'\\\"'\\u003cabsent\\u003e'\\\"'\\\"':process.env.QA_COMPLEX,'\\\"'\\\"'utf8'\\\"'\\\"');const f='\\\"'\\\"'/etc/secrets/qa-note.txt'\\\"'\\\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}const http=require('\\\"'\\\"'http'\\\"'\\\"'),os=require('\\\"'\\\"'os'\\\"'\\\"');const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));http.createServer((req,res)=\\u003e{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261013-450084-pbempty:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"node\",\n      \"url\": \"https://qa-20261013-450084-pbempty.onbex.co\"\n    },\n    \"slug\": \"qa-20261013-450084-pbempty\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-13T20:00:57Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "at": "2026-10-13T20:04:48.160201+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/services/srv-db73r9na4m3s73d9i5r0",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "404",
+      "elapsed": 0.264,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a0f497bcd949d2-SJC"
+      },
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+    },
+    "workspace_after_delete_ids": [
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3v694dm7c7390q930",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db09vbgehcmc739j12i0"
+    ],
+    "runtime_after_delete_checks": [
+      {
+        "exit": 0,
+        "stdout": "404 page not found\n\n404",
+        "stderr": ""
+      }
+    ],
+    "quota_after_delete": {
+      "at": "2026-10-13T20:04:50.910111+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.742,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a0f4a7f8a6aad8-KIX"
+      },
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    }
+  }
+]

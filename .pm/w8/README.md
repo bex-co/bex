@@ -15,13 +15,15 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m64** — [Keep Blueprint environment copies consistent across applies](blocked/m64/README.md) — **BLOCKED (2026-10-13: t001–t005 done — copies from an existing source follow its current link order with new links appended, and an existing seed or undeclared retained link is a located refusal before any write; needs the API deployed to production plus fresh pinned native validation captures and hosted dispositions before t006)**
+- [ ] **m65** — Retain PostgreSQL process logs during bursts (7 tasks, ~2h30) ← live CLI sweep218; source-loss pattern through both clients, compatible patched CNPG manager required
+
+- [ ] **m64** — Keep Blueprint environment copies consistent across applies (8 tasks, ~3h30m) ← shipped group/seed fixes retained; sweeps219/222 own mutable overrides and immutable literal/seed priority need t007/t008 plus complete shared acceptance
 
 - [ ] **m63** — [Keep completed initial hooks out of later deploys](blocked/m63/README.md) — **BLOCKED (2026-10-13: t001–t005 done — the hook has its own spec field, the operator completes it on success and later releases run only the regular command; needs the operator/API deployed to production plus a hosted owned-fixture run with native Bex/Render manual deploys and cleanup before t006)**
 
 - [ ] **m62** — [Reject unlaunchable environment values](blocked/m62/README.md) — **BLOCKED (2026-10-12: t001/t002/t004/t005 done — every environment writer and Blueprint validation refuse newly supplied NUL values before any effect; needs the fix deployed to production plus fresh native Bex/Render validation receipts and surface checks before t003/t006 can close)**
 
-- [x] **m61** — [Honor application PATH during native builds](done/m61/README.md) — **DONE 2026-10-13** (fix `137820b94`; live Python both clients + Bex Node PATH cases, helper-level normal/omitted/empty/literal controls; hosted empty/literal-Blueprint PATH recorded as boundaries)
+- [ ] **m61** — Honor application PATH during native builds and runtime startup (7 tasks, ~3h15) ← reopened after sweep216 empty-PATH Node entrypoint failure; t007 and full acceptance remain open
 
 - [ ] **m60** — [Preserve accepted arguments when copying CLI commands](blocked/m60/README.md) — **BLOCKED (2026-10-12: t001/t002 prepared and tested with `blocked/m60/evidence/upstream-copy-command-formatter.patch` + caller audit; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release, and native Bex/Render receipts; no fork/backend workaround per scope/DO_NOT_DO)**
 
@@ -111,7 +113,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **101** — [Blueprint static rule errors point to the service instead of the invalid rule](done/101.md) — **DONE 2026-10-13** (fix `2fb562c4a`; sweep212 native matrix passes with exact field locations; GraphQL/MCP details agree in code)
 
-- [ ] **100** — [Blueprint environment errors point to unrelated or nonexistent fields](blocked/100.md) — **BLOCKED (2026-10-13: reference and ordinary service/group env refusals now locate the authored envVars entry; needs the fix deployed to production plus fresh native Bex/Render replay of the sweep208 matrix)**
+- [ ] **100** — [Blueprint environment errors point to unrelated or nonexistent fields](100.md) — **TODO (sweep223 now reproduces later invalid repeated-key mislocations live in Bex/Render: four failures and eight controls, twelve exact captures; current-source ordinal repair remains 45m; wider base-fix acceptance is unverified)**
 
 - [x] **098** — [Blueprint validation accepts Key Value envVarKey refs that resolve to an empty key](done/098.md) — **DONE 2026-10-13** (fixes `fcd0d1124`/`0daac2275`; sweeps 207/212 native matrices pass; REST/GraphQL/MCP agreement in code; hosted apply recorded as a boundary)
 

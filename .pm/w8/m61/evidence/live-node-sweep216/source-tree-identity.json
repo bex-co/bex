@@ -1,0 +1,9 @@
+{
+  "before": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+  "after": "ecf4b921de45ad7fffc49f3407d828a515cd1b34",
+  "scope": "all lego source/modules; current CLI/native generator/consumer unchanged",
+  "git_diff_exit": 0,
+  "actual_deployed_SHA": "unknown",
+  "compiled_checkout_SHA": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+  "shared_main_updates": "PM/docs only; source equivalence verified, no QA commit"
+}

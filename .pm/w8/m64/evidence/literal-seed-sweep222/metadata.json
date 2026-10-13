@@ -1,0 +1,16 @@
+{
+  "source_head": "13d45c32e296b5df8635458d849603977eaf23b1",
+  "deployed_revision": "unknown; desired platform pin 3d3ef082c358 is not observed runtime identity",
+  "published_bex": "v0.3.2 a6350da0d6e451e063143432e06c548ba7b5851b",
+  "unmodified_render_pin": "v2.27.0 a764810a768202704e7206eb7b87a47211fcd98e",
+  "source_cases": 8,
+  "first_apply_mismatches": 2,
+  "immutable_literal_false_refusals": 4,
+  "native_fresh_commands_and_unchanged_multipart_captures": 16,
+  "native_scope": "fresh declaration admission only; no existing-state validation, hosted apply, or runtime claim",
+  "source_scope": "actual apps/secrets feature methods over fake Kubernetes/versioned store; effective source inferred from actual persisted own Secret plus explicit Env precedence",
+  "control": "seed-only existing-source refusal is intentionally correct; generated/literal pairs and literal-only remain eligible",
+  "diagnostic_exit": "zero proves execution, not a fixed regression or full suite",
+  "cleanup": "no hosted resources; all forwarding servers and copied configs removed",
+  "QA_product_edit_commit_push": false
+}

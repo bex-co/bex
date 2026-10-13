@@ -1,0 +1,24 @@
+package apps
+import("context";"encoding/json";"testing";"github.com/bex-co/bex/lego/backend/internal/core";"github.com/bex-co/bex/lego/backend/internal/envgroups";"github.com/bex-co/bex/lego/backend/internal/secrets";appv1 "github.com/bex-co/bex/lego/types/v1alpha1";corev1 "k8s.io/api/core/v1";"sigs.k8s.io/controller-runtime/pkg/client")
+func TestQA219GroupCopyOwnOverride(t *testing.T){
+ for _,tc:=range []struct{name,key,value string; literal bool}{
+  {name:"own edited VALUE overrides group",key:"VALUE",value:"edited own"},
+  {name:"own empty VALUE overrides group",key:"VALUE",value:""},
+  {name:"unrelated own variable control",key:"OTHER",value:"other"},
+  {name:"manifest literal wins control",key:"OTHER",value:"other",literal:true},
+  {name:"no own store control"},
+ }{t.Run(tc.name,func(t *testing.T){
+  ctx:=context.Background();cl:=fakeClient();base:=&core.Base{Client:cl,Namespace:"default"};kv:=&qa213KV{data:map[string]map[string]string{},versions:map[string]uint64{}};groups:=&envgroups.Service{Base:base,Store:kv};own:=&secrets.Service{Base:base,Store:kv};svc:=&Service{Base:base,EnvGroups:groups,EnvSeeder:own,EnvNames:own}
+  sourceVars:=[]any{map[string]any{"fromGroup":"a"}};if tc.literal{sourceVars=append(sourceVars,map[string]any{"key":"VALUE","value":"manifest own"})}
+  doc:=map[string]any{"envVarGroups":[]any{map[string]any{"name":"a","envVars":[]any{map[string]any{"key":"VALUE","value":"group A"}}}},"services":[]any{map[string]any{"name":"consumer","type":"web","runtime":"image","image":map[string]any{"url":"nginx:1"},"envVars":[]any{map[string]any{"key":"COPY","fromService":map[string]any{"type":"web","name":"source","envVarKey":"VALUE"}}}},map[string]any{"name":"source","type":"web","runtime":"image","image":map[string]any{"url":"nginx:1"},"envVars":sourceVars}}};raw,_:=json.Marshal(doc);manifest:=string(raw)
+  _,err:=svc.DeployStack(ctx,DeployRequest{Manifest:manifest});if err!=nil{t.Fatal(err)}
+  if tc.key!=""{_,err=own.SetEnvVar(ctx,"source",tc.key,secrets.EnvVarWrite{Value:tc.value});if err!=nil{t.Fatal(err)}}
+  names,err:=own.ListEnvVarNames(ctx,"source");if err!=nil{t.Fatal(err)};validation,validationErr:=svc.ValidateBlueprint(ctx,"",manifest,"");_,applyErr:=svc.DeployStack(ctx,DeployRequest{Manifest:manifest})
+  source,consumer:=&appv1.App{},&appv1.App{};if err:=cl.Get(ctx,client.ObjectKey{Namespace:"default",Name:"source"},source);err!=nil{t.Fatal(err)};if err:=cl.Get(ctx,client.ObjectKey{Namespace:"default",Name:"consumer"},consumer);err!=nil{t.Fatal(err)}
+  effective:="";present:=false;ordered:=append([]string{},source.Spec.EnvFromSecrets...);if source.Spec.EnvFromSecret!=""{ordered=append(ordered,source.Spec.EnvFromSecret)}
+  for _,name:=range ordered{s:=&corev1.Secret{};if err:=cl.Get(ctx,client.ObjectKey{Namespace:"default",Name:name},s);err!=nil{t.Fatal(err)};if b,ok:=s.Data["VALUE"];ok{effective=string(b);present=true}}
+  for _,e:=range source.Spec.Env{if e.Name=="VALUE"{effective=e.Value;present=true}}
+  copied:="";copyPresent:=false;for _,e:=range consumer.Spec.Env{if e.Name=="COPY"{copied=e.Value;copyPresent=true}}
+  result:=map[string]any{"case":tc.name,"manifest":manifest,"normal_edit_key":tc.key,"normal_edit_value":tc.value,"available_own_key_names":names,"validation":validation,"validation_error":validationErr,"apply_error":applyErr,"persisted_source":source,"persisted_consumer":consumer,"effective_source_secret_order":ordered,"source_VALUE":effective,"consumer_COPY":copied,"mismatch":present&&copyPresent&&effective!=copied,"source_and_copy_present":present&&copyPresent,"scope":"actual apps/envgroups/secrets with fake versioned store/Kubernetes; runtime value inferred by persisted last-source/literal precedence; no hosted apply/auth/container claim"};b,_:=json.Marshal(result);t.Log("QA219_OVERRIDE "+string(b))
+ })}
+}

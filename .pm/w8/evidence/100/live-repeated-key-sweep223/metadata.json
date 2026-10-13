@@ -1,0 +1,16 @@
+{
+  "source_head": "13d45c32e296b5df8635458d849603977eaf23b1",
+  "deployed_revision": "unknown; desired pin 3d3ef082c358 does not establish runtime revision",
+  "published_bex": "v0.3.2 a6350da0d6e451e063143432e06c548ba7b5851b",
+  "unmodified_render_pin": "v2.27.0 a764810a768202704e7206eb7b87a47211fcd98e",
+  "source_cases": 6,
+  "source_mismatches": 2,
+  "native_commands_and_exact_captures": 12,
+  "native_repeated_second_entry_mislocations": 4,
+  "native_first_invalid_or_valid_controls": 8,
+  "observed_transition": "sweep220 container/header locations changed to first matching env entry; first-invalid controls now pass, second-invalid repeats still fail",
+  "scope": "live validation only; no resource creation, hosted apply, wider sweep208 replay or non-REST live claim",
+  "source_diagnostics": "actual current ValidateBlueprint with fake Kubernetes/versioned store; diagnostic execution, not fixed regression or full suite",
+  "cleanup": "no hosted resources; copied configs and forwarding servers removed",
+  "QA_product_edit_commit_push": false
+}

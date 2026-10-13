@@ -1,0 +1,37 @@
+{
+  "services": [
+    {
+      "envVars": [
+        {
+          "fromService": {
+            "envVarKey": "VALUE",
+            "name": "qa-20261013-47e3df-7-1",
+            "type": "web"
+          },
+          "key": "COPY"
+        }
+      ],
+      "image": {
+        "url": "nginx:1"
+      },
+      "name": "qa-20261013-47e3df-7-0",
+      "runtime": "image",
+      "type": "web"
+    },
+    {
+      "envVars": [
+        {
+          "key": "VALUE",
+          "sync": false,
+          "value": "seed"
+        }
+      ],
+      "image": {
+        "url": "nginx:1"
+      },
+      "name": "qa-20261013-47e3df-7-1",
+      "runtime": "image",
+      "type": "web"
+    }
+  ]
+}
