@@ -774,3 +774,52 @@ error: failed to solve: process "/bin/bash -c . /opt/bex/load-env\necho \"done\"
 		}
 	}
 }
+
+// TestNativeImageStartsWithEmptyPATH is w8/m61 t007's runtime boundary: the
+// node toolchain's inherited docker-entrypoint.sh is resolved on the user's
+// PATH, so PATH= stopped the container before the authored absolute start
+// command. It builds the generated Dockerfile and runs it with an empty PATH.
+// Opt-in: needs Docker and pulls the pinned node toolchain.
+func TestNativeImageStartsWithEmptyPATH(t *testing.T) {
+	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
+		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the generated image")
+	}
+	dir := t.TempDir()
+	o := nativeOptions()
+	o.Runtime = "node"
+	o.BuildCommand = "/usr/local/bin/node -e 1"
+	o.StartCommand = `/usr/local/bin/node -e 'console.log("started PATH=[" + process.env.PATH + "]")'`
+	if err := os.WriteFile(filepath.Join(dir, "Dockerfile"), []byte(nativeDockerfile(o)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	bundle := filepath.Join(dir, "render-env")
+	if err := os.WriteFile(bundle, []byte("PATH=\n"), 0o600); err != nil { // an empty PATH, base64 of ""
+		t.Fatal(err)
+	}
+	tag := fmt.Sprintf("bex-native-empty-path-it:%d", os.Getpid())
+	t.Cleanup(func() { _ = exec.Command("docker", "image", "rm", "-f", tag).Run() })
+	build := exec.Command("docker", "build", "-q", "-t", tag, "--secret", "id=render-env,src="+bundle, dir)
+	build.Env = append(os.Environ(), "DOCKER_BUILDKIT=1")
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build: %v\n%s", err, out)
+	}
+	out, err := exec.Command("docker", "run", "--rm", "-e", "PATH=", tag).CombinedOutput()
+	if err != nil || !strings.Contains(string(out), "started PATH=[]") {
+		t.Fatalf("run with PATH= = %v\n%s; want the authored command to start with PATH still empty", err, out)
+	}
+}
+
+// The generated service image clears the toolchain ENTRYPOINT before its
+// absolute CMD (w8/m61); a static build has no CMD and keeps neither.
+func TestNativeDockerfileClearsTheToolchainEntrypoint(t *testing.T) {
+	df := nativeDockerfile(nativeOptions())
+	entry, cmd := strings.Index(df, "\nENTRYPOINT []\n"), strings.Index(df, "\nCMD ")
+	if entry < 0 || cmd < 0 || entry > cmd {
+		t.Fatalf("service Dockerfile must clear ENTRYPOINT before CMD:\n%s", df)
+	}
+	static := nativeOptions()
+	static.StaticSite = true
+	if df := nativeDockerfile(static); strings.Contains(df, "ENTRYPOINT") || strings.Contains(df, "\nCMD ") {
+		t.Fatalf("static Dockerfile gained a launch contract:\n%s", df)
+	}
+}

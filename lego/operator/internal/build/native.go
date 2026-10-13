@@ -264,8 +264,12 @@ RUN --mount=type=secret,id=render-env,target=%s%s %s
 		// Job's extract initContainer (ADR029) and never runs as a workload.
 		return base
 	}
+	// The toolchain image's own ENTRYPOINT (node's docker-entrypoint.sh) is
+	// looked up on the user's PATH, which may be empty or narrow; the absolute
+	// bash CMD needs none of it, so the generated image runs that alone (w8/m61).
 	start := shellJSON(o.StartCommand)
 	return base + fmt.Sprintf(`ENV PORT=10000
+ENTRYPOINT []
 CMD %s
 `, start)
 }

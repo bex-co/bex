@@ -1,17 +1,17 @@
 # w8 · m61 — Honor application PATH during native builds
 
-**Worker:** worker8 **Goal:** exact application PATH reaches native build and runtime commands independently of platform helpers and inherited image entrypoints. **Status:** todo — build-loader fixes and narrow/normal/omitted controls pass; empty-PATH Node runtime failure is confirmed; t007 and final acceptance remain open.
+**Worker:** worker8 **Goal:** exact application PATH reaches native build and runtime commands independently of platform helpers and inherited image entrypoints. **Status:** blocked — t001–t005 done; t007 code and runtime regression done (2026-10-13: generated native images clear the toolchain ENTRYPOINT); t007 live acceptance and t006 need the operator deployed to production plus fresh empty-PATH Node journeys in both native clients and cleanup.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | Preserve application PATH across both native preparation stages — **DONE 2026-10-12** | 45m | — |
-| t007 | Remove inherited relative-entrypoint dependency — **TODO: empty-PATH runtime fails** | 30m | t001 |
-| t002 | Audit native consumers and verify hosted recovery | 30m | t007 |
+| t007 | Remove inherited relative-entrypoint dependency — code + runtime regression done 2026-10-13; **BLOCKED: live empty-PATH journeys after deploy** | 30m | t001 |
+| t002 | Audit native consumers and verify hosted recovery — **DONE 2026-10-13** | 30m | t007 |
 | t003 | Render parity — **TODO: Python and Bex Node pass; complete surface/control acceptance remains** | 20m | t002 |
-| t004 | Simplify — **REOPENED for runtime entrypoint correction** | 15m | t003 |
-| t005 | Test coverage — **REOPENED for image startup regression** | 35m | t003 |
+| t004 | Simplify — **DONE 2026-10-13** | 15m | t003 |
+| t005 | Test coverage — **DONE 2026-10-13** | 35m | t003 |
 | t006 | Closeout — **BLOCKED** | 20m | t004, t005 |
 
 ## Definition of done
@@ -33,7 +33,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** user-requested continuous `$qa-find-bugs-cli` in w8, sweep163, 2026-10-12 UTC. [Finding](finding.md) and [sanitized evidence](../evidence/m61/README.md).
+- **Source:** user-requested continuous `$qa-find-bugs-cli` in w8, sweep163, 2026-10-12 UTC. [Finding](finding.md) and [sanitized evidence](../../evidence/m61/README.md).
 - **Goal linkage:** ADR008 core hosting, ADR004 source builds and ADR018 Render compatibility. Accepted application configuration must not stop the platform before the user command runs.
 - **Expected outcome:** a custom application PATH works for an absolute build command, independently of the names or order of other configured variables.
 - **Why now:** two fresh native clients produce `build_failed`; changing only PATH and redeploying the same commit recovers both. Actual generated-loader and generated-preparer executions identify two affected stages.
