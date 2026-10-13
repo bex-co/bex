@@ -29,7 +29,7 @@ A third manual run, **crr-7348vmkuthllmsagf16l**, was accepted at **04:09:16.954
 
 The process emitted qa-a321-end at **04:10:50**, after cancellation acceptance. Immediate physical termination/grace timing was not established; this is not filed as a separate cancellation defect, and the canceled run is not counted in the two-successful-run completeness assertion.
 
-Two programmatic SSE attempts returned 200 with no parsed events. The capture did not establish raw producer bytes or the live UI's behavior. **No separate SSE defect or raw-pod completeness claim is made.** The follow-up task must collect actual pod/CRI and live wire records rather than treating this inconclusive harness capture as an oracle.
+Two programmatic stream attempts returned 200 with no parsed events. Source review at `lego/backend/internal/logs/rest.go:430–469` then identified a capture issue: Fetch did not request `Accept: text/event-stream`, so the endpoint used its default JSON-lines format while the observer parsed SSE packets. This capture cannot establish SSE health, raw producer bytes or the live UI's behavior. **No separate SSE defect or raw-pod completeness claim is made.** The follow-up task must collect actual pod/CRI and correctly negotiated live wire records.
 
 Screenshot **.playwright-mcp/qa-cron-prefix-a321-mobile.png** (67489 bytes) was viewed. It shows the original end-only instance, the fresh complete instance and the cancellation-control instance. The durable evidence is the complete requests/responses in [a321-evidence.json](a321-evidence.json); the ignored local ledger is supplementary.
 
