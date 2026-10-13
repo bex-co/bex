@@ -1,0 +1,461 @@
+{
+  "pass": "a347",
+  "researchHead": "d15c1e7fc",
+  "finding": "Browser Back from deploy detail discards both history search and status filters",
+  "severity": "minor",
+  "scope": "Functional dashboard filing only. Desktop and independently fresh 390px page; Free owned image web service with two deploys. Static sibling source-traced, not live-replayed. No history-paging acceptance claim.",
+  "receipts": {
+    "a347Baseline": {
+      "at": "2026-10-13T12:00:28.113Z",
+      "request": {
+        "operationName": "QaA347Inventory",
+        "query": "query QaA347Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      }
+    },
+    "a347Ready": {
+      "at": "2026-10-13T12:00:29.155Z",
+      "freeChecked": true,
+      "enabled": true
+    },
+    "a347Create": {
+      "at": "2026-10-13T12:00:30.655Z",
+      "request": [
+        {
+          "operationName": "CreateService",
+          "variables": {
+            "image": "docker.io/library/busybox:1.37",
+            "name": "qa-20261013-a347-history",
+            "type": "web_service",
+            "registryCredentialId": "",
+            "runtime": "image",
+            "startCommand": "sh -c 'mkdir -p /tmp/qa-a347-www; printf \"qa-a347-live\\n\" > /tmp/qa-a347-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a347-www'",
+            "plan": "free",
+            "port": 3000,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "createService": {
+              "__typename": "Service",
+              "environmentId": null,
+              "id": "srv-db71qnna4m3s73d9i4ag",
+              "latestDeployId": "dep-db71qnna4m3s73d9i4b0",
+              "name": "qa-20261013-a347-history",
+              "phase": "",
+              "projectId": null,
+              "registryCredentialId": "",
+              "type": "web_service"
+            }
+          }
+        }
+      ]
+    },
+    "a347DeployLatest": {
+      "at": "2026-10-13T12:01:17.680Z",
+      "request": [
+        {
+          "operationName": "TriggerDeploy",
+          "variables": {
+            "serviceId": "srv-db71qnna4m3s73d9i4ag"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation TriggerDeploy($serviceId: String!, $commitId: String, $deployMode: String, $clearCache: String, $confirm: String) {\n  triggerDeploy(\n    serviceId: $serviceId\n    commitId: $commitId\n    deployMode: $deployMode\n    clearCache: $clearCache\n    confirm: $confirm\n  ) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "triggerDeploy": {
+              "__typename": "Deploy",
+              "createdAt": "2026-10-13T12:01:17.583175Z",
+              "id": "dep-db71r3c479ic73bbj4e0",
+              "image": "docker.io/library/busybox:1.37",
+              "rollbackOf": "",
+              "status": "created",
+              "trigger": "api"
+            }
+          }
+        }
+      ]
+    },
+    "a347SearchNoMatch": {
+      "at": "2026-10-13T12:02:13.803Z",
+      "aria": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261013-a347-history\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a347-history\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db71qnna4m3s73d9i4ag/deploys/dep-db71r3c479ic73bbj4e0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db71qnna4m3s73d9i4ag/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db71qnna4m3s73d9i4ag\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a347-history.onbex.co\":\n    - /url: https://qa-20261013-a347-history.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a347-history\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-2\n  - term: Created\n  - definition:\n    - time: 1m\n  - text: Deploys\n  - paragraph: 0 deploys\n  - textbox \"Search loaded deploys and commits\":\n    - /placeholder: Search loaded deploys and commits…\n    - text: qa-a347-no-match\n  - combobox \"Filter by status\": All statuses\n  - paragraph: No loaded deploys match your search."
+    },
+    "a347SearchUpperId": {
+      "at": "2026-10-13T12:02:14.340Z",
+      "aria": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261013-a347-history\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a347-history\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db71qnna4m3s73d9i4ag/deploys/dep-db71r3c479ic73bbj4e0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db71qnna4m3s73d9i4ag/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db71qnna4m3s73d9i4ag\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a347-history.onbex.co\":\n    - /url: https://qa-20261013-a347-history.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a347-history\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-2\n  - term: Created\n  - definition:\n    - time: 1m\n  - text: Deploys\n  - paragraph: 1 deploy\n  - textbox \"Search loaded deploys and commits\":\n    - /placeholder: Search loaded deploys and commits…\n    - text: DEP-DB71QNNA4M3S73D9I4B0\n  - combobox \"Filter by status\": All statuses\n  - table:\n    - rowgroup:\n      - row \"Deploy Trigger Duration Actions\":\n        - columnheader \"Deploy\"\n        - columnheader \"Trigger\"\n        - columnheader \"Duration\"\n        - columnheader \"Actions\"\n    - rowgroup:\n      - row \"Deactivated dep-db71qnna4m3s73d9i4b0 Deployed 1 minute ago First Deploy 16s Roll back to dep-db71qnna4m3s73d9i4b0\":\n        - cell \"Deactivated dep-db71qnna4m3s73d9i4b0 Deployed 1 minute ago\":\n          - link \"Deactivated dep-db71qnna4m3s73d9i4b0\":\n            - /url: /services/srv-db71qnna4m3s73d9i4ag/deploys/dep-db71qnna4m3s73d9i4b0\n          - time: Deployed 1 minute ago\n        - cell \"First Deploy\"\n        - cell \"16s\"\n        - cell \"Roll back to dep-db71qnna4m3s73d9i4b0\":\n          - button \"Roll back to dep-db71qnna4m3s73d9i4b0\" [disabled]: Rollback"
+    },
+    "a347LiveFilter": {
+      "at": "2026-10-13T12:02:26.864Z",
+      "request": [
+        {
+          "operationName": "Deploys",
+          "variables": {
+            "serviceId": "srv-db71qnna4m3s73d9i4ag",
+            "status": ["live"],
+            "limit": 20
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query Deploys($serviceId: String!, $status: [String], $createdBefore: String, $createdAfter: String, $updatedBefore: String, $updatedAfter: String, $finishedBefore: String, $finishedAfter: String, $cursor: String, $limit: Int) {\n  deploys(\n    serviceId: $serviceId\n    status: $status\n    createdBefore: $createdBefore\n    createdAfter: $createdAfter\n    updatedBefore: $updatedBefore\n    updatedAfter: $updatedAfter\n    finishedBefore: $finishedBefore\n    finishedAfter: $finishedAfter\n    cursor: $cursor\n    limit: $limit\n  ) {\n    id\n    status\n    trigger\n    image\n    rollbackOf\n    commitId\n    commitMessage\n    commitCreatedAt\n    createdAt\n    updatedAt\n    startedAt\n    finishedAt\n    preDeployStatus\n    failureReason\n    cancelReason\n    stallReason\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "deploys": [
+              {
+                "__typename": "Deploy",
+                "cancelReason": "",
+                "commitCreatedAt": "",
+                "commitId": "",
+                "commitMessage": "",
+                "createdAt": "2026-10-13T12:01:17.583175Z",
+                "failureReason": "",
+                "finishedAt": "2026-10-13T12:01:36.87476Z",
+                "id": "dep-db71r3c479ic73bbj4e0",
+                "image": "docker.io/library/busybox:1.37",
+                "preDeployStatus": "",
+                "rollbackOf": "",
+                "stallReason": "",
+                "startedAt": "2026-10-13T12:01:23.055235Z",
+                "status": "live",
+                "trigger": "api",
+                "updatedAt": "2026-10-13T12:01:36.874761Z"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "a347LiveFilterState": {
+      "at": "2026-10-13T12:02:27.880Z",
+      "aria": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261013-a347-history\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a347-history\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db71qnna4m3s73d9i4ag/deploys/dep-db71r3c479ic73bbj4e0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db71qnna4m3s73d9i4ag/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db71qnna4m3s73d9i4ag\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a347-history.onbex.co\":\n    - /url: https://qa-20261013-a347-history.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a347-history\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-2\n  - term: Created\n  - definition:\n    - time: 1m\n  - text: Deploys\n  - paragraph: 1 deploy\n  - textbox \"Search loaded deploys and commits\":\n    - /placeholder: Search loaded deploys and commits…\n  - combobox \"Filter by status\": Live\n  - table:\n    - rowgroup:\n      - row \"Deploy Trigger Duration Actions\":\n        - columnheader \"Deploy\"\n        - columnheader \"Trigger\"\n        - columnheader \"Duration\"\n        - columnheader \"Actions\"\n    - rowgroup:\n      - row \"Live dep-db71r3c479ic73bbj4e0 Deployed just now Manual Deploy 13s\":\n        - cell \"Live dep-db71r3c479ic73bbj4e0 Deployed just now\":\n          - link \"Live dep-db71r3c479ic73bbj4e0\":\n            - /url: /services/srv-db71qnna4m3s73d9i4ag/deploys/dep-db71r3c479ic73bbj4e0\n          - time: Deployed just now\n        - cell \"Manual Deploy\"\n        - cell \"13s\"\n        - cell"
+    },
+    "a347BeforeDetail": {
+      "at": "2026-10-13T12:03:01.809Z",
+      "url": "https://dashboard.bex.co/services/srv-db71qnna4m3s73d9i4ag/deploys",
+      "search": "DEP-DB71QNNA4M3S73D9I4B0",
+      "statusFilter": "Deactivated"
+    },
+    "a347DetailSettled": {
+      "at": "2026-10-13T12:03:19.226Z",
+      "url": "https://dashboard.bex.co/services/srv-db71qnna4m3s73d9i4ag/deploys/dep-db71qnna4m3s73d9i4b0",
+      "historyControls": 0,
+      "aria": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261013-a347-history\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a347-history\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db71qnna4m3s73d9i4ag/deploys/dep-db71r3c479ic73bbj4e0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db71qnna4m3s73d9i4ag/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db71qnna4m3s73d9i4ag\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a347-history.onbex.co\":\n    - /url: https://qa-20261013-a347-history.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a347-history\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-2\n  - term: Created\n  - definition:\n    - time: 2m\n  - text: Deploy status Deactivated First Deploy dep-db71qnna4m3s73d9i4b0\n  - button \"Roll back to dep-db71qnna4m3s73d9i4b0\": Rollback\n  - paragraph: docker.io/library/busybox:1.37\n  - term: \"Created:\"\n  - definition: October 13, 2026 at 5:00 AM\n  - term: \"Updated:\"\n  - definition: October 13, 2026 at 5:01 AM\n  - term: \"Started:\"\n  - definition: October 13, 2026 at 5:00 AM\n  - term: \"Finished:\"\n  - definition: October 13, 2026 at 5:00 AM\n  - term: \"Duration:\"\n  - definition: 16s\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 13, 2026 at 5:00 AM\n    - listitem:\n      - paragraph: Deploy started\n      - time: October 13, 2026 at 5:00 AM\n    - listitem:\n      - paragraph: Live\n      - time: October 13, 2026 at 5:00 AM\n    - listitem:\n      - paragraph: Deactivated\n      - time: October 13, 2026 at 5:01 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\"\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 05:00:30 AM\n  - button \"Filter logs by instance srv-db71qnna4m3s73d9i4ag-2jd0vd7st3d6vttporjr\": \"[2jd0v]\"\n  - text: ==> Deploy queued 05:00:36 AM\n  - button \"Filter logs by instance srv-db71qnna4m3s73d9i4ag-2jd0vd7st3d6vttporjr\": \"[2jd0v]\"\n  - text: ==> Deploying image docker.io/library/busybox:1.37 05:00:53 AM\n  - button \"Filter logs by instance srv-db71qnna4m3s73d9i4ag-2jd0vd7st3d6vttporjr\": \"[2jd0v]\"\n  - text: ==> Your service is live 🎉"
+    },
+    "a347BackToHistory": {
+      "at": "2026-10-13T12:03:19.787Z",
+      "url": "https://dashboard.bex.co/services/srv-db71qnna4m3s73d9i4ag/deploys",
+      "search": "",
+      "statusFilter": "All statuses",
+      "aria": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261013-a347-history\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a347-history\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db71qnna4m3s73d9i4ag/deploys/dep-db71r3c479ic73bbj4e0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db71qnna4m3s73d9i4ag/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db71qnna4m3s73d9i4ag\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a347-history.onbex.co\":\n    - /url: https://qa-20261013-a347-history.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a347-history\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-2\n  - term: Created\n  - definition:\n    - time: 2m\n  - text: Deploys\n  - paragraph: 2 deploys\n  - textbox \"Search loaded deploys and commits\":\n    - /placeholder: Search loaded deploys and commits…\n  - combobox \"Filter by status\": All statuses\n  - table:\n    - rowgroup:\n      - row \"Deploy Trigger Duration Actions\":\n        - columnheader \"Deploy\"\n        - columnheader \"Trigger\"\n        - columnheader \"Duration\"\n        - columnheader \"Actions\"\n    - rowgroup:\n      - row \"Live dep-db71r3c479ic73bbj4e0 Deployed 1 minute ago Manual Deploy 13s\":\n        - cell \"Live dep-db71r3c479ic73bbj4e0 Deployed 1 minute ago\":\n          - link \"Live dep-db71r3c479ic73bbj4e0\":\n            - /url: /services/srv-db71qnna4m3s73d9i4ag/deploys/dep-db71r3c479ic73bbj4e0\n          - time: Deployed 1 minute ago\n        - cell \"Manual Deploy\"\n        - cell \"13s\"\n        - cell\n      - row \"Deactivated dep-db71qnna4m3s73d9i4b0 Deployed 2 minutes ago First Deploy 16s Roll back to dep-db71qnna4m3s73d9i4b0\":\n        - cell \"Deactivated dep-db71qnna4m3s73d9i4b0 Deployed 2 minutes ago\":\n          - link \"Deactivated dep-db71qnna4m3s73d9i4b0\":\n            - /url: /services/srv-db71qnna4m3s73d9i4ag/deploys/dep-db71qnna4m3s73d9i4b0\n          - time: Deployed 2 minutes ago\n        - cell \"First Deploy\"\n        - cell \"16s\"\n        - cell \"Roll back to dep-db71qnna4m3s73d9i4b0\":\n          - button \"Roll back to dep-db71qnna4m3s73d9i4b0\" [disabled]: Rollback"
+    },
+    "a347MobileFiltered": {
+      "at": "2026-10-13T12:04:13.540Z",
+      "url": "https://dashboard.bex.co/services/srv-db71qnna4m3s73d9i4ag/deploys",
+      "width": 390,
+      "aria": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261013-a347-history\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a347-history\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db71qnna4m3s73d9i4ag/deploys/dep-db71r3c479ic73bbj4e0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db71qnna4m3s73d9i4ag/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db71qnna4m3s73d9i4ag\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a347-history.onbex.co\":\n    - /url: https://qa-20261013-a347-history.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a347-history\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-2\n  - term: Created\n  - definition:\n    - time: 3m\n  - text: Deploys\n  - paragraph: 1 deploy\n  - textbox \"Search loaded deploys and commits\":\n    - /placeholder: Search loaded deploys and commits…\n    - text: DB71QNNA4M3S73D9I4B0\n  - combobox \"Filter by status\": Deactivated\n  - table:\n    - rowgroup:\n      - row \"Deploy Actions\":\n        - columnheader \"Deploy\"\n        - columnheader \"Actions\"\n    - rowgroup:\n      - row \"Deactivated dep-db71qnna4m3s73d9i4b0 Deployed 3 minutes ago First Deploy 16s Roll back to dep-db71qnna4m3s73d9i4b0\":\n        - cell \"Deactivated dep-db71qnna4m3s73d9i4b0 Deployed 3 minutes ago First Deploy 16s\":\n          - link \"Deactivated dep-db71qnna4m3s73d9i4b0\":\n            - /url: /services/srv-db71qnna4m3s73d9i4ag/deploys/dep-db71qnna4m3s73d9i4b0\n          - time: Deployed 3 minutes ago\n          - text: First Deploy 16s\n        - cell \"Roll back to dep-db71qnna4m3s73d9i4b0\":\n          - button \"Roll back to dep-db71qnna4m3s73d9i4b0\" [disabled]: Rollback"
+    },
+    "a347MobileDetail": {
+      "at": "2026-10-13T12:04:15.378Z",
+      "url": "https://dashboard.bex.co/services/srv-db71qnna4m3s73d9i4ag/deploys/dep-db71qnna4m3s73d9i4b0",
+      "historyControls": 0
+    },
+    "a347MobileBack": {
+      "at": "2026-10-13T12:04:16.613Z",
+      "url": "https://dashboard.bex.co/services/srv-db71qnna4m3s73d9i4ag/deploys",
+      "width": 390,
+      "search": "",
+      "statusFilter": "All statuses",
+      "aria": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261013-a347-history\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a347-history\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db71qnna4m3s73d9i4ag/deploys/dep-db71r3c479ic73bbj4e0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db71qnna4m3s73d9i4ag/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db71qnna4m3s73d9i4ag\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a347-history.onbex.co\":\n    - /url: https://qa-20261013-a347-history.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a347-history\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-2\n  - term: Created\n  - definition:\n    - time: 3m\n  - text: Deploys\n  - paragraph: 2 deploys\n  - textbox \"Search loaded deploys and commits\":\n    - /placeholder: Search loaded deploys and commits…\n  - combobox \"Filter by status\": All statuses\n  - table:\n    - rowgroup:\n      - row \"Deploy Actions\":\n        - columnheader \"Deploy\"\n        - columnheader \"Actions\"\n    - rowgroup:\n      - row \"Live dep-db71r3c479ic73bbj4e0 Deployed 2 minutes ago Manual Deploy 13s\":\n        - cell \"Live dep-db71r3c479ic73bbj4e0 Deployed 2 minutes ago Manual Deploy 13s\":\n          - link \"Live dep-db71r3c479ic73bbj4e0\":\n            - /url: /services/srv-db71qnna4m3s73d9i4ag/deploys/dep-db71r3c479ic73bbj4e0\n          - time: Deployed 2 minutes ago\n          - text: Manual Deploy 13s\n        - cell\n      - row \"Deactivated dep-db71qnna4m3s73d9i4b0 Deployed 3 minutes ago First Deploy 16s Roll back to dep-db71qnna4m3s73d9i4b0\":\n        - cell \"Deactivated dep-db71qnna4m3s73d9i4b0 Deployed 3 minutes ago First Deploy 16s\":\n          - link \"Deactivated dep-db71qnna4m3s73d9i4b0\":\n            - /url: /services/srv-db71qnna4m3s73d9i4ag/deploys/dep-db71qnna4m3s73d9i4b0\n          - time: Deployed 3 minutes ago\n          - text: First Deploy 16s\n        - cell \"Roll back to dep-db71qnna4m3s73d9i4b0\":\n          - button \"Roll back to dep-db71qnna4m3s73d9i4b0\" [disabled]: Rollback"
+    },
+    "a347CanceledMobileSettled": {
+      "at": "2026-10-13T12:05:05.348Z",
+      "url": "https://dashboard.bex.co/services/srv-db71qnna4m3s73d9i4ag/deploys",
+      "aria": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261013-a347-history\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a347-history\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db71qnna4m3s73d9i4ag/deploys/dep-db71r3c479ic73bbj4e0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db71qnna4m3s73d9i4ag/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db71qnna4m3s73d9i4ag\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a347-history.onbex.co\":\n    - /url: https://qa-20261013-a347-history.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a347-history\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-2\n  - term: Created\n  - definition:\n    - time: 4m\n  - text: Deploys\n  - paragraph: 0 deploys\n  - textbox \"Search loaded deploys and commits\":\n    - /placeholder: Search loaded deploys and commits…\n  - combobox \"Filter by status\": Canceled\n  - paragraph: No deploys match the selected status."
+    },
+    "a347FinalState": {
+      "at": "2026-10-13T12:05:09.290Z",
+      "request": {
+        "operationName": "QaA347FinalState",
+        "query": "query QaA347FinalState($id:String!){service(id:$id){id phase revision plan} deploys(serviceId:$id){id status startedAt finishedAt}}",
+        "variables": {
+          "id": "srv-db71qnna4m3s73d9i4ag"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "finishedAt": "2026-10-13T12:01:36.87476Z",
+              "id": "dep-db71r3c479ic73bbj4e0",
+              "startedAt": "2026-10-13T12:01:23.055235Z",
+              "status": "live"
+            },
+            {
+              "finishedAt": "2026-10-13T12:00:53.04126Z",
+              "id": "dep-db71qnna4m3s73d9i4b0",
+              "startedAt": "2026-10-13T12:00:36.966903Z",
+              "status": "deactivated"
+            }
+          ],
+          "service": {
+            "id": "srv-db71qnna4m3s73d9i4ag",
+            "phase": "Running",
+            "plan": "free",
+            "revision": "rev-2"
+          }
+        }
+      },
+      "publicStatus": 200,
+      "publicBody": "qa-a347-live\n",
+      "deleteCount": 1
+    },
+    "a347Delete": {
+      "at": "2026-10-13T12:05:42.433Z",
+      "request": [
+        {
+          "operationName": "DeleteService",
+          "variables": {
+            "id": "srv-db71qnna4m3s73d9i4ag"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "deleteService": true
+          }
+        }
+      ]
+    },
+    "a347Cleanup": {
+      "at": "2026-10-13T12:05:48.084Z",
+      "request": {
+        "operationName": "QaA347Inventory",
+        "query": "query QaA347Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      },
+      "serviceStatus": 404,
+      "publicStatus": 404
+    },
+    "a347SessionCleanup": {
+      "at": "2026-10-13T12:06:04.837Z",
+      "ownersStatus": 401,
+      "url": "about:blank",
+      "cookieCount": 0
+    }
+  }
+}
