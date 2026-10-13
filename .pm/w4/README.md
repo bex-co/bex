@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m203** — [Anchor a newly selected relative range at the current time](m203/README.md) (6 tasks, 140m) ← functional QA 2026-10-12 a314; desktop/mobile first Logs queries and Metrics retain a stale endpoint, reload/tick controls pass; owned fixture deleted and session revoked.
+
 - [ ] **m202** — [Honor image commands after switching from native Git](blocked/m202/README.md) (6 tasks) — **BLOCKED (release pipeline deploys the operator; QA replays the [finding.md](blocked/m202/finding.md) DoD on owned Free fixtures: public-Git Node service → cancel initial build → Existing Image BusyBox 1.37 + the recorded Docker Command reaches Live with HTTP 200 `qa-a311-recovered`; fresh 390px Cancel + Manual Deploy → Deploy latest image also Live; image-created control unchanged; then cleans up (t006))**. t001–t005 done 2026-10-13: one launch decision (`shellRunsStartCommand`) for Deployment and cron. The saved prebuilt image runs its command whatever native settings it keeps. Selected releases and staged source switches keep the launch their recorded pod template shows, passed as a typed parameter. ADR004/ADR018 updated; operator `make test` + lint green.
 
 - [x] **m201** — [Restart selects the revision already serving](done/m201/README.md) (7 tasks, 245m) ← functional QA 2026-10-11 a209; two cutover windows select an older SQL-Live configuration despite the new runtime serving, while settled Restart passes; owned fixture/session cleanup verified.
