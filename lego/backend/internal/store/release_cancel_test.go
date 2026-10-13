@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -326,5 +327,162 @@ func TestStampedReleaseClosesItsStrandedRow(t *testing.T) {
 	}
 	if got.Status != DeployCanceled || got.CancelReason != "" {
 		t.Fatalf("stranded row = %s %q, want canceled with a user cancel's empty reason", got.Status, got.CancelReason)
+	}
+}
+
+// conflictingWrites makes each of the first n stamp attempts lose the
+// optimistic lock for real: another writer updates the stored App after the
+// cancel read it, so the fake API server itself refuses the stale patch.
+// rival edits the App the way that other writer would.
+func conflictingWrites(n int, attempts *int, rival func(*appv1alpha1.App)) interceptor.Funcs {
+	return interceptor.Funcs{
+		Patch: func(ctx context.Context, cl client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+			*attempts++
+			if *attempts <= n {
+				var live appv1alpha1.App
+				if err := cl.Get(ctx, client.ObjectKeyFromObject(obj), &live); err != nil {
+					return err
+				}
+				rival(&live)
+				if err := cl.Update(ctx, &live); err != nil {
+					return err
+				}
+			}
+			return cl.Patch(ctx, obj, patch, opts...)
+		},
+	}
+}
+
+func rolloutProgress(a *appv1alpha1.App) {
+	metav1.SetMetaDataLabel(&a.ObjectMeta, "rollout-step", a.ResourceVersion)
+}
+
+// w4/287: the operator writes the App throughout a rollout, so a cancel's
+// stamp can lose the optimistic lock. One attempt turned that into an internal
+// error and the rollout the user canceled went live. The stamp now re-reads
+// and tries again, keeping what the other writer wrote.
+func TestCancelReleaseRetriesALostStamp(t *testing.T) {
+	ctx := context.Background()
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a", UID: "uid-web"}}
+	attempts := 0
+	cl := cancelTestClient(t, app.DeepCopy(), conflictingWrites(1, &attempts, rolloutProgress))
+	if err := CancelRelease(ctx, cl, app.DeepCopy(), 7, ""); err != nil {
+		t.Fatalf("CancelRelease = %v, want the stamp to land on its second attempt", err)
+	}
+	var stored appv1alpha1.App
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(app), &stored); err != nil {
+		t.Fatal(err)
+	}
+	if got := stored.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration]; got != "7" || attempts != 2 {
+		t.Fatalf("stamp = %q after %d attempts, want 7 after two", got, attempts)
+	}
+	if stored.Labels["rollout-step"] == "" {
+		t.Fatal("the retried stamp dropped what the other writer wrote")
+	}
+}
+
+// A stamp that keeps losing stops after a bounded number of attempts and
+// answers a conflict the caller can retry; nothing is stamped.
+func TestCancelReleaseGivesUpAsAConflict(t *testing.T) {
+	ctx := context.Background()
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a", UID: "uid-web"}}
+	attempts := 0
+	cl := cancelTestClient(t, app.DeepCopy(), conflictingWrites(1000, &attempts, rolloutProgress))
+	err := CancelRelease(ctx, cl, app.DeepCopy(), 7, "")
+	if !errors.Is(err, core.ErrConflict) || errors.Is(err, core.ErrServiceReplaced) {
+		t.Fatalf("CancelRelease = %v, want a retryable conflict", err)
+	}
+	if attempts < 2 || attempts > 10 {
+		t.Fatalf("attempts = %d, want a small bounded number above one", attempts)
+	}
+	var stored appv1alpha1.App
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(app), &stored); err != nil {
+		t.Fatal(err)
+	}
+	if _, stamped := canceledReleaseGeneration(&stored); stamped {
+		t.Fatal("a cancel that gave up left its stamp")
+	}
+}
+
+// Only a lost lock is retried: any other read or write failure fails at once
+// and keeps its own class.
+func TestCancelReleaseDoesNotRetryOtherFailures(t *testing.T) {
+	ctx := context.Background()
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a", UID: "uid-web"}}
+	down := errors.New("apiserver unavailable")
+	for name, funcs := range map[string]func(*int) interceptor.Funcs{
+		"patch": func(calls *int) interceptor.Funcs {
+			return interceptor.Funcs{Patch: func(context.Context, client.WithWatch, client.Object, client.Patch, ...client.PatchOption) error {
+				*calls++
+				return down
+			}}
+		},
+		"read": func(calls *int) interceptor.Funcs {
+			return interceptor.Funcs{Get: func(context.Context, client.WithWatch, client.ObjectKey, client.Object, ...client.GetOption) error {
+				*calls++
+				return down
+			}}
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			calls := 0
+			err := CancelRelease(ctx, cancelTestClient(t, app.DeepCopy(), funcs(&calls)), app.DeepCopy(), 7, "")
+			if !errors.Is(err, down) || errors.Is(err, core.ErrConflict) || calls != 1 {
+				t.Fatalf("CancelRelease = %v after %d calls, want the failure itself after one", err, calls)
+			}
+		})
+	}
+}
+
+// The writer that beat the stamp may itself have canceled this release or a
+// newer one. The retry reads that marker and writes nothing over it.
+func TestCancelReleaseRetryKeepsANewerCancelThatLandedMeanwhile(t *testing.T) {
+	ctx := context.Background()
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a", UID: "uid-web"}}
+	attempts := 0
+	cl := cancelTestClient(t, app.DeepCopy(), conflictingWrites(1, &attempts, func(a *appv1alpha1.App) {
+		metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.AnnotationCanceledReleaseGeneration, "9")
+	}))
+	if err := CancelRelease(ctx, cl, app.DeepCopy(), 7, ""); err != nil {
+		t.Fatal(err)
+	}
+	var stored appv1alpha1.App
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(app), &stored); err != nil {
+		t.Fatal(err)
+	}
+	if got := stored.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration]; got != "9" || attempts != 1 {
+		t.Fatalf("stamp = %q after %d attempts, want the newer cancel 9 kept and no second write", got, attempts)
+	}
+}
+
+// A service deleted and recreated under its name between attempts is another
+// service: the retry refuses it rather than stamping the namesake (w5/157).
+func TestCancelReleaseRetryLeavesANamesakeRecreatedMeanwhileAlone(t *testing.T) {
+	ctx := context.Background()
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a", UID: "uid-web"}}
+	attempts := 0
+	cl := cancelTestClient(t, app.DeepCopy(), interceptor.Funcs{
+		Patch: func(ctx context.Context, cl client.WithWatch, obj client.Object, _ client.Patch, _ ...client.PatchOption) error {
+			attempts++
+			if err := cl.Delete(ctx, obj.DeepCopyObject().(client.Object)); err != nil {
+				return err
+			}
+			namesake := app.DeepCopy()
+			namesake.UID = "uid-namesake"
+			if err := cl.Create(ctx, namesake); err != nil {
+				return err
+			}
+			return apierrors.NewConflict(schema.GroupResource{Group: "app.bex.co", Resource: "apps"}, obj.GetName(), errors.New("the object has been modified"))
+		},
+	})
+	if err := CancelRelease(ctx, cl, app.DeepCopy(), 7, ""); !errors.Is(err, core.ErrServiceReplaced) {
+		t.Fatalf("CancelRelease = %v, want the conflict that the service changed", err)
+	}
+	var stored appv1alpha1.App
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(app), &stored); err != nil {
+		t.Fatal(err)
+	}
+	if _, stamped := canceledReleaseGeneration(&stored); stamped || attempts != 1 {
+		t.Fatalf("namesake stamped = %v after %d attempts, want it untouched after one", stamped, attempts)
 	}
 }

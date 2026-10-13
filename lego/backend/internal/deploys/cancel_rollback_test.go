@@ -31,8 +31,12 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -604,5 +608,87 @@ func TestMCPRegistersCancelAndRollback(t *testing.T) {
 	}
 	if got.Trigger != "rollback" || got.RollbackOf != first.ID {
 		t.Errorf("rollback_deploy result = %+v", got)
+	}
+}
+
+// rolloutWriter is a client whose first n App patches each lose the optimistic
+// lock to another writer, as a cancel does while the operator is writing the
+// rollout's progress.
+func rolloutWriter(n int, objs ...client.Object) client.Client {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	attempts := 0
+	return fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).WithInterceptorFuncs(interceptor.Funcs{
+		Patch: func(ctx context.Context, cl client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+			if _, isApp := obj.(*appv1alpha1.App); isApp {
+				if attempts++; attempts <= n {
+					var live appv1alpha1.App
+					if err := cl.Get(ctx, client.ObjectKeyFromObject(obj), &live); err != nil {
+						return err
+					}
+					metav1.SetMetaDataLabel(&live.ObjectMeta, "rollout-step", live.ResourceVersion)
+					if err := cl.Update(ctx, &live); err != nil {
+						return err
+					}
+				}
+			}
+			return cl.Patch(ctx, obj, patch, opts...)
+		},
+	}).Build()
+}
+
+// w4/287: a Cancel that arrived while the operator was writing the rollout
+// answered "internal error" and left the deploy running to Live. One lost
+// write is now retried: the release is stamped with the row's own generation
+// and the row closes canceled, once.
+func TestCancelSurvivesAConcurrentRolloutWrite(t *testing.T) {
+	ctx := context.Background()
+	ds := newFakeStore()
+	open, _ := ds.CreateDeploy(ctx, "srv-1", "api", "web:v2", 4, store.CommitInfo{}, "")
+	cl := rolloutWriter(1, sampleApp("web", "srv-1"))
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Clock: fixedNow}, Store: ds}
+
+	got, err := svc.Cancel(ctx, "web", open.ID)
+	if err != nil || got.Status != store.DeployCanceled {
+		t.Fatalf("Cancel = %+v, %v; want the deploy canceled", got, err)
+	}
+	app := getApp(t, cl, "web")
+	if marker := app.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration]; marker != "4" {
+		t.Fatalf("canceled release marker = %q, want the row's generation 4", marker)
+	}
+	if app.Labels["rollout-step"] == "" || app.Labels[store.LabelAppID] != "srv-1" {
+		t.Fatalf("labels = %v, want the other writer's and the service's own kept", app.Labels)
+	}
+	if _, err := svc.Cancel(ctx, "web", open.ID); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("second Cancel = %v, want the already-terminal conflict", err)
+	}
+}
+
+// When the stamp keeps losing, every surface answers a conflict, the row stays
+// open and nothing claims the deploy was canceled; a later Cancel succeeds.
+func TestCancelThatKeepsLosingIsAConflictOnEverySurface(t *testing.T) {
+	ctx := context.Background()
+	ds := newFakeStore()
+	open, _ := ds.CreateDeploy(ctx, "srv-1", "api", "web:v2", 4, store.CommitInfo{}, "")
+	busy := &Service{Base: &core.Base{Client: rolloutWriter(1000, sampleApp("web", "srv-1")), Namespace: "default", Clock: fixedNow}, Store: ds}
+
+	if _, err := busy.Cancel(ctx, "web", open.ID); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("Cancel = %v, want a conflict", err)
+	}
+	mux := http.NewServeMux()
+	busy.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/deploys/"+open.ID+"/cancel", nil))
+	if rec.Code != http.StatusConflict || strings.Contains(rec.Body.String(), "internal error") {
+		t.Fatalf("REST cancel: code=%d body=%s, want 409 naming the conflict", rec.Code, rec.Body)
+	}
+	if stored, err := ds.GetDeploy(ctx, "srv-1", open.ID); err != nil || stored.FinishedAt != nil {
+		t.Fatalf("deploy after refused cancels = %+v (err %v), want it still open", stored, err)
+	}
+
+	calm, _ := newService(ds, sampleApp("web", "srv-1"))
+	if got, err := calm.Cancel(ctx, "web", open.ID); err != nil || got.Status != store.DeployCanceled {
+		t.Fatalf("retried Cancel = %+v, %v; want the deploy canceled", got, err)
 	}
 }
