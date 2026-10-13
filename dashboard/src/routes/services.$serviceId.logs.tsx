@@ -73,8 +73,8 @@ function RouteComponent() {
             rangeEnd: isCustomRange(range) ? range.endTime : undefined,
           })
         }
-        initialFilters={logFiltersFromSearch(search)}
-        initialLive={search.live !== 0}
+        urlFilters={logFiltersFromSearch(search)}
+        urlLive={search.live !== 0}
         onFiltersChange={(filters, live) =>
           write({
             // A filter change preserves whatever range is active — preset id or
@@ -101,15 +101,15 @@ export function ServiceLogsPage({
   serviceId,
   range,
   onRangeChange,
-  initialFilters,
-  initialLive,
+  urlFilters,
+  urlLive,
   onFiltersChange,
 }: {
   serviceId: string;
   range?: RangeSelection;
   onRangeChange?: (range: RangeSelection) => void;
-  initialFilters?: LogFilters;
-  initialLive?: boolean;
+  urlFilters?: LogFilters;
+  urlLive?: boolean;
   onFiltersChange?: (filters: LogFilters, live: boolean) => void;
 }) {
   return (
@@ -117,8 +117,8 @@ export function ServiceLogsPage({
       resource={serviceId}
       range={range}
       onRangeChange={onRangeChange}
-      initialFilters={initialFilters}
-      initialLive={initialLive}
+      urlFilters={urlFilters}
+      urlLive={urlLive}
       onFiltersChange={onFiltersChange}
     />
   );
