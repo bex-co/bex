@@ -384,7 +384,7 @@ var servicePatchTable = []servicePatchOp{
 				return err
 			}
 			if p.BuildCommand != nil {
-				probe.Spec.BuildCommand = strings.TrimSpace(*p.BuildCommand)
+				setBuildCommand(&probe.Spec, *p.BuildCommand)
 			}
 			if p.StartCommand != nil {
 				setStartCommand(&probe.Spec, *p.StartCommand)
