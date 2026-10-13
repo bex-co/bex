@@ -1899,6 +1899,17 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't save cron job settings. Please try again.",
     description: "Toast after updateCronJob fails",
   },
+  "services.deployRefreshFailed": {
+    message:
+      "Cron job settings saved, but this page couldn't refresh. Try again or reload to see the saved settings.",
+    description:
+      "Warning after a cron save committed but its authoritative re-read failed; the save must not be retried or reported as failed (w4/276)",
+  },
+  "services.deployRefreshPending": {
+    message: "Settings saved — waiting for a fresh read before further edits.",
+    description:
+      "Reason shown while cron rows stay unwritable after a committed save whose refresh failed (w4/276)",
+  },
   "services.deployScheduleLabel": {
     message: "Schedule",
     description: "Cron job Settings tab: Deploy section schedule field label",

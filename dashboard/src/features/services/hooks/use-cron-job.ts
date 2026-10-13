@@ -1,7 +1,8 @@
 import { useCallback, useState } from "react";
-import { useMutation } from "@apollo/client/react";
+import type { ApolloClient } from "@apollo/client";
+import { useApolloClient, useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
-import { UpdateCronJobDocument } from "@/graphql/definitions";
+import { ServerDocument, UpdateCronJobDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useAskForProtectedConfirmation } from "@/common/providers/protected-retry-context";
@@ -31,6 +32,39 @@ export interface UseCronJobResult {
     command: string | null,
   ) => Promise<boolean>;
   busy: boolean;
+  /**
+   * The service whose save committed but whose authoritative re-read has not
+   * published yet (its refresh failed), or null. That service's rows must
+   * stay unwritable: their displayed values may be the pre-save snapshot a
+   * late read restored, and a sibling-field save would replay it (w4/276).
+   */
+  staleId: string | null;
+}
+
+/**
+ * Publish a committed cron save (w4/276), following the rename ordering in
+ * use-rename-project: settle this service's in-flight Server reads first —
+ * refetchQueries dedupes onto a read already in flight, and each result is
+ * settled on its own because the aggregate rejects on the first failure
+ * while others may still be writing the pre-save snapshot — and only then
+ * re-read by id. queryDeduplication:false keeps that last read from joining
+ * an older in-flight one. Whatever it returns is authoritative, including a
+ * newer configuration another actor saved in the meantime.
+ */
+async function refreshCronServer(client: ApolloClient, id: string) {
+  const reads = client.refetchQueries({
+    include: [ServerDocument],
+    onQueryUpdated: (query) =>
+      query.variables.id === id && query.getCurrentResult().loading,
+  });
+  reads.catch(() => undefined); // each result is settled below
+  await Promise.allSettled(reads.results);
+  await client.query({
+    query: ServerDocument,
+    variables: { id },
+    fetchPolicy: "network-only",
+    context: { queryDeduplication: false },
+  });
 }
 
 /**
@@ -42,12 +76,45 @@ export interface UseCronJobResult {
  */
 export function useCronJob(): UseCronJobResult {
   const { t } = useTranslations();
+  const client = useApolloClient();
   const [mutate] = useMutation(UpdateCronJobDocument);
   const [busy, setBusy] = useState(false);
+  const [staleId, setStaleId] = useState<string | null>(null);
   const askForConfirmation = useAskForProtectedConfirmation();
+
+  // The write already committed: a failed refresh is never a failed save,
+  // and its retry re-reads without saving again. Until it succeeds the
+  // service stays staleId-blocked so no save can replay pre-save values.
+  const publish = useCallback(
+    (id: string): Promise<void> => {
+      const attempt = async () => {
+        try {
+          await refreshCronServer(client, id);
+        } catch {
+          setStaleId(id);
+          toast.warning(t("services.deployRefreshFailed"), {
+            action: {
+              label: t("common.tryAgain"),
+              onClick: () => void attempt(),
+            },
+          });
+          return;
+        }
+        setStaleId((prev) => (prev === id ? null : prev));
+        toast.success(t("services.deploySuccess"), {
+          description: t("services.deployConverging"),
+        });
+      };
+      return attempt();
+    },
+    [client, t],
+  );
 
   const updateCronJob = useCallback(
     async (id: string, schedule: string, command: string | null) => {
+      // A previous save for this service committed but never published:
+      // the caller's sibling value may be the restored pre-save snapshot.
+      if (staleId === id) return false;
       setBusy(true);
       try {
         // Changing the command changes what the job runs, which a protected
@@ -57,20 +124,20 @@ export function useCronJob(): UseCronJobResult {
             variables: { id, schedule, command, confirm },
           }),
         );
-        toast.success(t("services.deploySuccess"), {
-          description: t("services.deployConverging"),
-        });
-        return true;
       } catch (err) {
         if (err instanceof ProtectedConfirmationDismissed) return false;
         toast.error(mutationErrorMessage(err, t("services.deployError")));
         return false;
+      }
+      try {
+        await publish(id);
+        return true;
       } finally {
         setBusy(false);
       }
     },
-    [mutate, t, askForConfirmation],
+    [mutate, publish, staleId, t, askForConfirmation],
   );
 
-  return { updateCronJob, busy };
+  return { updateCronJob, busy, staleId };
 }

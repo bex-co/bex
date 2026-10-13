@@ -1855,6 +1855,17 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法保存定时任务设置，请重试。",
     description: "Toast after updateCronJob fails",
   },
+  "services.deployRefreshFailed": {
+    message:
+      "定时任务设置已保存，但页面无法刷新。重试或重新加载以查看已保存的设置。",
+    description:
+      "Warning after a cron save committed but its authoritative re-read failed; the save must not be retried or reported as failed (w4/276)",
+  },
+  "services.deployRefreshPending": {
+    message: "设置已保存 — 等待最新读取后才能继续编辑。",
+    description:
+      "Reason shown while cron rows stay unwritable after a committed save whose refresh failed (w4/276)",
+  },
   "services.deployScheduleLabel": {
     message: "计划",
     description: "Cron job Settings tab: Deploy section schedule field label",
