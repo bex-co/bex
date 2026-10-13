@@ -99,6 +99,9 @@ ingress:
     className: traefik
     annotations:
       cert-manager.io/cluster-issuer: letsencrypt-prod
+      # CLI Dashboard links built on the OAuth origin go to the dashboard
+      # (charts/cli-dashboard-links, w8/089).
+      traefik.ingress.kubernetes.io/router.middlewares: auth-cli-dashboard-redirect@kubernetescrd
     hosts:
       - host: oauth.bex.co
         paths:

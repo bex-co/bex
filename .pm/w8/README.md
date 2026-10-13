@@ -120,7 +120,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **090** — [Fresh CLI configs open dashboard resources as filesystem paths](090.md) (minor; 55m) ← functional CLI sweep127: both native clients emit relative opener paths; explicit-origin controls pass; launcher default researched, read-only metadata.
 
-- [ ] **089** — [CLI dashboard actions open the OAuth host and return 404](089.md) (minor; 55m) ← functional CLI sweep126: both native clients open the wrong origin; copied-config controls and shared link/routing probes; read-only metadata, no hosting fixture.
+- [ ] **089** — [CLI dashboard actions open the OAuth host and return 404](blocked/089.md) — **BLOCKED (2026-10-12: routing shipped — a Traefik redirect on the hydra Ingress sends `oauth.bex.co/<dashboard-alias>/…` to `dashboard.bex.co`; needs the production Argo sync plus live 302, native Dashboard-action and device-login receipts)**
 
 - [ ] **088** — [Git source changes retain image runtime metadata and break CLI cloning](blocked/088.md) — **BLOCKED (2026-10-12: fix shipped — an image-born service switched to Git reads the default Docker runtime and clones without `--runtime`; needs the fix deployed to production plus fresh native Bex/Render clone receipts and cleanup)**
 

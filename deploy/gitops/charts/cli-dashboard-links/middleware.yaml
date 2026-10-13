@@ -1,0 +1,19 @@
+# The Render CLI saves its dashboard origin from the device grant's
+# verification URI, which Hydra serves on oauth.bex.co, so its Dashboard
+# actions open oauth.bex.co/<kind>/<id> and Hydra answers 404 (w8/089). This
+# sends only the dashboard's Render-alias prefixes (dashboard/src/common/lib/
+# render-alias.ts) to the dashboard with the full path and query kept; every
+# OAuth/OIDC route keeps reaching Hydra. Delivered by the hydra Application
+# itself, a sync wave ahead of the chart's Ingress that references it: a
+# missing middleware would fail every oauth.bex.co route.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: cli-dashboard-redirect
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  redirectRegex:
+    regex: "^https://oauth[.]bex[.]co/(web|worker|pserv|static|cron|d|r)/(.+)$"
+    replacement: "https://dashboard.bex.co/${1}/${2}"
+    permanent: false
