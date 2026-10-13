@@ -1918,6 +1918,7 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 			refVars: se.refVars,
 		})
 		idx.serviceKnownEnv[req.Name] = se.known
+		idx.serviceTypes[req.Name] = req.Type
 		if req.Type == appv1alpha1.TypeWebService || req.Type == appv1alpha1.TypePrivateService {
 			port := req.Port
 			if port <= 0 {
@@ -2021,6 +2022,20 @@ type stackIndex struct {
 	// literals + sync:false seed values), the resolvable target set for a
 	// fromService.envVarKey copy (a from*/generateValue var has no parse-time value).
 	serviceKnownEnv map[string]map[string]string
+	// serviceTypes: name -> the App type each declared service resolved to, so
+	// a fromService reference's own type can be checked against it (w8/096).
+	serviceTypes map[string]string
+}
+
+// serviceRefTypes are the fromService.type values that name each App type:
+// blueprintTypeSpelling's export spelling, plus the schema's static, since
+// Render declares a static site as type web (runtime static).
+var serviceRefTypes = map[string][]string{
+	appv1alpha1.TypeWebService:       {"web"},
+	appv1alpha1.TypeStaticSite:       {"web", "static"},
+	appv1alpha1.TypePrivateService:   {"pserv"},
+	appv1alpha1.TypeBackgroundWorker: {"worker"},
+	appv1alpha1.TypeCronJob:          {"cron"},
 }
 
 func newStackIndex(serviceCount, databaseCount int) *stackIndex {
@@ -2030,6 +2045,7 @@ func newStackIndex(serviceCount, databaseCount int) *stackIndex {
 		databasePoolers: make(map[string]bool, databaseCount),
 		servicePorts:    make(map[string]int32, serviceCount),
 		serviceKnownEnv: make(map[string]map[string]string, serviceCount),
+		serviceTypes:    make(map[string]string, serviceCount),
 	}
 }
 
@@ -2055,6 +2071,14 @@ func (idx *stackIndex) classifyRefs(svc parsedService, refVars []bexEnvVar) (par
 		allowExistingServiceHost := r.FromService != nil && r.FromService.EnvVarKey == "" && r.FromService.Property == serviceRefPropertyHost
 		if r.FromService != nil && !idx.names[r.FromService.Name] && !allowExistingServiceHost {
 			return parsedService{}, fmt.Errorf("%w: service %q: fromService references unknown service %q (declare it under services: in the same file)", core.ErrBadRequest, svc.req.Name, r.FromService.Name)
+		}
+		// A supplied type must describe the declared target, or a reference
+		// meant for a worker silently resolves against a web service (w8/096).
+		if r.FromService != nil {
+			if target, declared := idx.serviceTypes[r.FromService.Name]; declared && !slices.Contains(serviceRefTypes[target], r.FromService.Type) {
+				return parsedService{}, fmt.Errorf("%w: service %q: envVars[%q] fromService.type %q does not match %q (want type %s)",
+					core.ErrBadRequest, svc.req.Name, r.Key, r.FromService.Type, r.FromService.Name, strings.Join(serviceRefTypes[target], " or "))
+			}
 		}
 		// host, hostport and port all name a declared sibling's network address,
 		// which only web/private services have; a worker, cron job or static
