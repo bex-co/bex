@@ -263,6 +263,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **291** — [Search loses its opener's keyboard focus after Escape](291.md) (55m) ← functional QA a397–a398; fresh desktop/mobile and Tab-only dismissal leave focus on BODY, so Enter cannot reopen; query/filter controls pass, no fixtures created and both sessions revoked.
 - [ ] **290** — [A deleted environment stays selected after its delete refresh settles](290.md) (55m) ← functional QA a377; native and fresh mobile deletes join older list reads, retaining a removed placement after the dialog closes; a settled control publishes an empty list, six owned fixtures deleted and session revoked.
 
 - [ ] **288** — [A Git-to-image source switch leaves Blueprint export unable to generate](288.md) (55m) ← functional QA a359; retained Git rootDir enters an image manifest and fails its self-check across desktop/mobile/REST/MCP; image-created and staged-Git controls pass, both owned Free services deleted and session revoked.
