@@ -122,7 +122,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **089** — [CLI dashboard actions open the OAuth host and return 404](089.md) (minor; 55m) ← functional CLI sweep126: both native clients open the wrong origin; copied-config controls and shared link/routing probes; read-only metadata, no hosting fixture.
 
-- [ ] **088** — [Git source changes retain image runtime metadata and break CLI cloning](088.md) (major; 55m) ← CLI sweep117: both native clients fail same-type clones after image-to-Git saves; explicit Docker controls reach Live/HTTP200; four local sibling mismatches; all four services cleaned.
+- [ ] **088** — [Git source changes retain image runtime metadata and break CLI cloning](blocked/088.md) — **BLOCKED (2026-10-12: fix shipped — an image-born service switched to Git reads the default Docker runtime and clones without `--runtime`; needs the fix deployed to production plus fresh native Bex/Render clone receipts and cleanup)**
 
 - [ ] **087** — [Clearing a datastore project filter leaves its active scope in place](blocked/087.md) — **BLOCKED (2026-10-12: upstream patch prepared and tested — [`087-upstream.patch`](blocked/087-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
 

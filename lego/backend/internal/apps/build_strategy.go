@@ -48,6 +48,9 @@ const blueprintBuildpackRuntime = "docker"
 // effectiveBuilder and directStaticPublish).
 func buildStrategy(spec appv1alpha1.AppSpec) string {
 	runtime := strings.ToLower(strings.TrimSpace(spec.Runtime))
+	if staleImageRuntime(spec) {
+		runtime = ""
+	}
 	switch {
 	case runtime == "image" || (spec.Image != "" && spec.Repo == ""):
 		return buildImage
@@ -80,6 +83,14 @@ func setBuildCommand(spec *appv1alpha1.AppSpec, command string) {
 		spec.Runtime == "" && spec.Builder == buildNative {
 		spec.Builder = ""
 	}
+}
+
+// staleImageRuntime reports a runtime "image" left from a prebuilt-image
+// source after a Git repo replaced it: it no longer describes the build, which
+// the repo and builder decide (w8/088). Source saves clear it; reads of a
+// record saved before that ignore it.
+func staleImageRuntime(spec appv1alpha1.AppSpec) bool {
+	return strings.EqualFold(strings.TrimSpace(spec.Runtime), buildImage) && spec.Repo != "" && spec.Image == ""
 }
 
 // dockerDetails are Render's docker command and build context as a create

@@ -144,6 +144,9 @@ func (s *Service) checkDockerfilePath(ctx context.Context, a *appv1alpha1.App, n
 		return "", err
 	}
 	runtime := strings.ToLower(strings.TrimSpace(a.Spec.Runtime))
+	if staleImageRuntime(a.Spec) {
+		runtime = ""
+	}
 	builder := strings.ToLower(strings.TrimSpace(a.Spec.Builder))
 	if (runtime != "" && runtime != "docker") || builder == "native" || builder == "buildpack" {
 		return "", errDockerfileBuildOnly("dockerfile path")
