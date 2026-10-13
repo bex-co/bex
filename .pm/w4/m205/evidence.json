@@ -1,0 +1,1018 @@
+{
+  "pass": "a362",
+  "kind": "functional overlapping secret-file selections",
+  "researchHead": "0235ae759",
+  "fixtureId": "evg-db754dc479ic73bbj6q0",
+  "inputRecipe": {
+    "batchA": {
+      "count": 64,
+      "fileName": "qa-a362-XX.txt (XX=00..63)",
+      "bytesPerFile": 6144,
+      "content": "UTF-8 qa-a362-native-file-XX\\n followed by ASCII x bytes to total 6144 bytes"
+    },
+    "batchB": {
+      "fileName": "qa-a362-00.txt",
+      "content": "qa-a362-second-selection\n",
+      "bytes": 25
+    },
+    "totalBytesIncludingDuplicate": 393241,
+    "limits": {
+      "files": 500,
+      "totalBytes": 524288,
+      "perFileBytes": 1048576
+    },
+    "nativeFileArrayBuffers": true,
+    "noInjectedFileReadDelay": true
+  },
+  "screenshot": {
+    "path": ".playwright-mcp/qa-upload-duplicate-a362-mobile-detail.png",
+    "bytes": 58534,
+    "viewed": true
+  },
+  "inventoryCheck": [
+    {
+      "family": "blueprints",
+      "equal": true
+    },
+    {
+      "family": "databases",
+      "equal": true
+    },
+    {
+      "family": "envGroups",
+      "equal": true
+    },
+    {
+      "family": "keyValues",
+      "equal": true
+    },
+    {
+      "family": "projects",
+      "equal": true
+    },
+    {
+      "family": "services",
+      "equal": true
+    },
+    {
+      "family": "webhookEndpoints",
+      "equal": true
+    }
+  ],
+  "limits": [
+    "Group create wire receipt unavailable; create was not repeated, own fresh route/heading and independent empty group read retained.",
+    "Initial 12 x 128KiB diagnostic exceeded total aggregate limit and is excluded. The 12 x32KiB rapid-selection control passed. Decisive 64 x6144-byte desktop/mobile inputs satisfy all observed size/count limits.",
+    "Back-to-back input change timestamps are 5ms/6ms apart after first native file-selection call returns. No browser/file-read mocks or delays; no timing-generalization to a human picker or slower device.",
+    "Two UI duplicate-name refusals and disabled Save; no failing Save or backend data-loss claim.",
+    "Settled first batch plus same duplicate is skipped and remains saveable. Single 25-byte file Save only succeeds and exact content read back.",
+    "Only unlinked group live; shared service adapter, cancellation/new-draft/unmount during unresolved reads and other completion order require deterministic tests.",
+    "No product fix or full m44/234/243 closeout; no API/auth/credential-policy change."
+  ],
+  "a362Baseline": {
+    "at": "2026-10-13T15:45:43.133Z",
+    "request": {
+      "operationName": "QaA362Inventory",
+      "query": "query QaA362Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    },
+    "createReady": true
+  },
+  "a362CreateRecover": {
+    "at": "2026-10-13T15:46:28.036Z",
+    "url": "https://dashboard.bex.co/env-groups/evg-db754dc479ic73bbj6q0",
+    "heading": ["qa-20261013-a362-upload"],
+    "editCount": 1
+  },
+  "a362Valid64RapidDesktop": {
+    "at": "2026-10-13T15:51:54.339Z",
+    "before": "2026-10-13T15:51:53.303Z",
+    "firstDispatch": "2026-10-13T15:51:53.532Z",
+    "secondDispatch": "2026-10-13T15:51:53.537Z",
+    "fileNames": [
+      "qa-a362-00.txt",
+      "qa-a362-00.txt",
+      "qa-a362-01.txt",
+      "qa-a362-02.txt",
+      "qa-a362-03.txt",
+      "qa-a362-04.txt",
+      "qa-a362-05.txt",
+      "qa-a362-06.txt",
+      "qa-a362-07.txt",
+      "qa-a362-08.txt",
+      "qa-a362-09.txt",
+      "qa-a362-10.txt",
+      "qa-a362-11.txt",
+      "qa-a362-12.txt",
+      "qa-a362-13.txt",
+      "qa-a362-14.txt",
+      "qa-a362-15.txt",
+      "qa-a362-16.txt",
+      "qa-a362-17.txt",
+      "qa-a362-18.txt",
+      "qa-a362-19.txt",
+      "qa-a362-20.txt",
+      "qa-a362-21.txt",
+      "qa-a362-22.txt",
+      "qa-a362-23.txt",
+      "qa-a362-24.txt",
+      "qa-a362-25.txt",
+      "qa-a362-26.txt",
+      "qa-a362-27.txt",
+      "qa-a362-28.txt",
+      "qa-a362-29.txt",
+      "qa-a362-30.txt",
+      "qa-a362-31.txt",
+      "qa-a362-32.txt",
+      "qa-a362-33.txt",
+      "qa-a362-34.txt",
+      "qa-a362-35.txt",
+      "qa-a362-36.txt",
+      "qa-a362-37.txt",
+      "qa-a362-38.txt",
+      "qa-a362-39.txt",
+      "qa-a362-40.txt",
+      "qa-a362-41.txt",
+      "qa-a362-42.txt",
+      "qa-a362-43.txt",
+      "qa-a362-44.txt",
+      "qa-a362-45.txt",
+      "qa-a362-46.txt",
+      "qa-a362-47.txt",
+      "qa-a362-48.txt",
+      "qa-a362-49.txt",
+      "qa-a362-50.txt",
+      "qa-a362-51.txt",
+      "qa-a362-52.txt",
+      "qa-a362-53.txt",
+      "qa-a362-54.txt",
+      "qa-a362-55.txt",
+      "qa-a362-56.txt",
+      "qa-a362-57.txt",
+      "qa-a362-58.txt",
+      "qa-a362-59.txt",
+      "qa-a362-60.txt",
+      "qa-a362-61.txt",
+      "qa-a362-62.txt",
+      "qa-a362-63.txt"
+    ],
+    "alerts": [
+      "Each secret file name must be unique.",
+      "Each secret file name must be unique."
+    ],
+    "saveEnabled": false,
+    "width": 1440
+  },
+  "a362Valid64RapidMobile": {
+    "at": "2026-10-13T15:57:04.134Z",
+    "before": "2026-10-13T15:57:03.194Z",
+    "firstDispatch": "2026-10-13T15:57:03.276Z",
+    "secondDispatch": "2026-10-13T15:57:03.282Z",
+    "fileNames": [
+      "qa-a362-00.txt",
+      "qa-a362-00.txt",
+      "qa-a362-01.txt",
+      "qa-a362-02.txt",
+      "qa-a362-03.txt",
+      "qa-a362-04.txt",
+      "qa-a362-05.txt",
+      "qa-a362-06.txt",
+      "qa-a362-07.txt",
+      "qa-a362-08.txt",
+      "qa-a362-09.txt",
+      "qa-a362-10.txt",
+      "qa-a362-11.txt",
+      "qa-a362-12.txt",
+      "qa-a362-13.txt",
+      "qa-a362-14.txt",
+      "qa-a362-15.txt",
+      "qa-a362-16.txt",
+      "qa-a362-17.txt",
+      "qa-a362-18.txt",
+      "qa-a362-19.txt",
+      "qa-a362-20.txt",
+      "qa-a362-21.txt",
+      "qa-a362-22.txt",
+      "qa-a362-23.txt",
+      "qa-a362-24.txt",
+      "qa-a362-25.txt",
+      "qa-a362-26.txt",
+      "qa-a362-27.txt",
+      "qa-a362-28.txt",
+      "qa-a362-29.txt",
+      "qa-a362-30.txt",
+      "qa-a362-31.txt",
+      "qa-a362-32.txt",
+      "qa-a362-33.txt",
+      "qa-a362-34.txt",
+      "qa-a362-35.txt",
+      "qa-a362-36.txt",
+      "qa-a362-37.txt",
+      "qa-a362-38.txt",
+      "qa-a362-39.txt",
+      "qa-a362-40.txt",
+      "qa-a362-41.txt",
+      "qa-a362-42.txt",
+      "qa-a362-43.txt",
+      "qa-a362-44.txt",
+      "qa-a362-45.txt",
+      "qa-a362-46.txt",
+      "qa-a362-47.txt",
+      "qa-a362-48.txt",
+      "qa-a362-49.txt",
+      "qa-a362-50.txt",
+      "qa-a362-51.txt",
+      "qa-a362-52.txt",
+      "qa-a362-53.txt",
+      "qa-a362-54.txt",
+      "qa-a362-55.txt",
+      "qa-a362-56.txt",
+      "qa-a362-57.txt",
+      "qa-a362-58.txt",
+      "qa-a362-59.txt",
+      "qa-a362-60.txt",
+      "qa-a362-61.txt",
+      "qa-a362-62.txt",
+      "qa-a362-63.txt"
+    ],
+    "alerts": [
+      "Each secret file name must be unique.",
+      "Each secret file name must be unique."
+    ],
+    "saveEnabled": false,
+    "width": {
+      "viewport": 390,
+      "pageWidth": 390
+    },
+    "screenshot": "qa-upload-duplicate-a362-mobile.png"
+  },
+  "a362Unchanged": {
+    "at": "2026-10-13T15:59:45.794Z",
+    "request": {
+      "operationName": "QaA362Unchanged",
+      "query": "query QaA362Unchanged($id:String!){envGroup(id:$id){id name revision serviceLinks envVars{key} secretFiles{name}}}",
+      "variables": {
+        "id": "evg-db754dc479ic73bbj6q0"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "envGroup": {
+          "envVars": [],
+          "id": "evg-db754dc479ic73bbj6q0",
+          "name": "qa-20261013-a362-upload",
+          "revision": "egr1_AAAAAAAAAAE",
+          "secretFiles": [],
+          "serviceLinks": []
+        }
+      }
+    },
+    "screenshot": "qa-upload-duplicate-a362-mobile-detail.png"
+  },
+  "a362SettledControl": {
+    "at": "2026-10-13T16:05:02.959Z",
+    "before": {
+      "at": "2026-10-13T16:05:02.434Z",
+      "count": 64,
+      "saveEnabled": true,
+      "alerts": []
+    },
+    "count": 64,
+    "fileNames": [
+      "qa-a362-00.txt",
+      "qa-a362-01.txt",
+      "qa-a362-02.txt",
+      "qa-a362-03.txt",
+      "qa-a362-04.txt",
+      "qa-a362-05.txt",
+      "qa-a362-06.txt",
+      "qa-a362-07.txt",
+      "qa-a362-08.txt",
+      "qa-a362-09.txt",
+      "qa-a362-10.txt",
+      "qa-a362-11.txt",
+      "qa-a362-12.txt",
+      "qa-a362-13.txt",
+      "qa-a362-14.txt",
+      "qa-a362-15.txt",
+      "qa-a362-16.txt",
+      "qa-a362-17.txt",
+      "qa-a362-18.txt",
+      "qa-a362-19.txt",
+      "qa-a362-20.txt",
+      "qa-a362-21.txt",
+      "qa-a362-22.txt",
+      "qa-a362-23.txt",
+      "qa-a362-24.txt",
+      "qa-a362-25.txt",
+      "qa-a362-26.txt",
+      "qa-a362-27.txt",
+      "qa-a362-28.txt",
+      "qa-a362-29.txt",
+      "qa-a362-30.txt",
+      "qa-a362-31.txt",
+      "qa-a362-32.txt",
+      "qa-a362-33.txt",
+      "qa-a362-34.txt",
+      "qa-a362-35.txt",
+      "qa-a362-36.txt",
+      "qa-a362-37.txt",
+      "qa-a362-38.txt",
+      "qa-a362-39.txt",
+      "qa-a362-40.txt",
+      "qa-a362-41.txt",
+      "qa-a362-42.txt",
+      "qa-a362-43.txt",
+      "qa-a362-44.txt",
+      "qa-a362-45.txt",
+      "qa-a362-46.txt",
+      "qa-a362-47.txt",
+      "qa-a362-48.txt",
+      "qa-a362-49.txt",
+      "qa-a362-50.txt",
+      "qa-a362-51.txt",
+      "qa-a362-52.txt",
+      "qa-a362-53.txt",
+      "qa-a362-54.txt",
+      "qa-a362-55.txt",
+      "qa-a362-56.txt",
+      "qa-a362-57.txt",
+      "qa-a362-58.txt",
+      "qa-a362-59.txt",
+      "qa-a362-60.txt",
+      "qa-a362-61.txt",
+      "qa-a362-62.txt",
+      "qa-a362-63.txt"
+    ],
+    "saveEnabled": true,
+    "alerts": [
+      "Some files were skipped. Use unique safe names, UTF-8 text content, and files no larger than 1 MiB. For a binary file (keystore, .p12, DER certificate), upload it base64-encoded and decode it at start, e.g. base64 -d /etc/secrets/keystore.b64 > /tmp/keystore.p12."
+    ]
+  },
+  "a362SmallSaveControl": {
+    "at": "2026-10-13T16:07:43.684Z",
+    "save": {
+      "at": "2026-10-13T16:07:42.046Z",
+      "request": [
+        {
+          "operationName": "PatchEnvGroupEnvironment",
+          "variables": {
+            "id": "evg-db754dc479ic73bbj6q0",
+            "envVars": [],
+            "secretFiles": [
+              {
+                "name": "qa-a362-00.txt",
+                "content": "qa-a362-second-selection\n"
+              }
+            ],
+            "saveMode": "save_only",
+            "expectedRevision": "egr1_AAAAAAAAAAE"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation PatchEnvGroupEnvironment($id: String!, $envVars: [EnvGroupVarPatchInput!], $secretFiles: [EnvGroupSecretFilePatchInput!], $saveMode: String!, $expectedRevision: String) {\n  patchEnvGroupEnvironment(\n    id: $id\n    envVars: $envVars\n    secretFiles: $secretFiles\n    saveMode: $saveMode\n    expectedRevision: $expectedRevision\n  ) {\n    envVarKeys\n    secretFileNames\n    revision\n    affectedServiceIds\n    failedServiceIds\n    pendingServiceIds\n    rolledOut\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "patchEnvGroupEnvironment": {
+              "__typename": "EnvGroupEnvironmentPatchResult",
+              "affectedServiceIds": [],
+              "envVarKeys": [],
+              "failedServiceIds": [],
+              "pendingServiceIds": [],
+              "revision": "egr1_AAAAAAAAAAI",
+              "rolledOut": false,
+              "secretFileNames": ["qa-a362-00.txt"]
+            }
+          }
+        }
+      ]
+    },
+    "stored": {
+      "status": 200,
+      "body": {
+        "name": "qa-a362-00.txt",
+        "content": "qa-a362-second-selection\n"
+      }
+    }
+  },
+  "a362Delete": {
+    "at": "2026-10-13T16:09:31.179Z",
+    "request": [
+      {
+        "operationName": "DeleteEnvGroup",
+        "variables": {
+          "id": "evg-db754dc479ic73bbj6q0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteEnvGroup($id: String!) {\n  deleteEnvGroup(id: $id)\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "deleteEnvGroup": true
+        }
+      }
+    ]
+  },
+  "a362Cleanup": {
+    "at": "2026-10-13T16:09:49.965Z",
+    "request": {
+      "operationName": "QaA362Cleanup",
+      "query": "query QaA362Cleanup($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    },
+    "detailStatus": 404
+  },
+  "a362Logout": {
+    "at": "2026-10-13T16:12:40.667Z",
+    "ownersStatus": 401,
+    "cookieCount": 0,
+    "url": "about:blank",
+    "pageCount": 1
+  },
+  "inputs": [
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-00.txt",
+      "name": "qa-a362-00.txt",
+      "bytes": 6144,
+      "sha256": "41c5a53aa1d4c24b242197fdc93e1c7f917c5b73d20c326a4c0bdf26f5e68e8d"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-01.txt",
+      "name": "qa-a362-01.txt",
+      "bytes": 6144,
+      "sha256": "230c02e1591d0af1c09bf21fdde1a7294dff1c61adb687128d434e63125392f0"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-02.txt",
+      "name": "qa-a362-02.txt",
+      "bytes": 6144,
+      "sha256": "043406ef1e5b8e4e0c97667208905b3714368d0c41cace285670df3735eb5e04"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-03.txt",
+      "name": "qa-a362-03.txt",
+      "bytes": 6144,
+      "sha256": "b6a98a7602b38d3079bf2c5e677274ee6e9227407ff2e0bd3535ab4e93d3979b"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-04.txt",
+      "name": "qa-a362-04.txt",
+      "bytes": 6144,
+      "sha256": "92bacda4450f91e40a0320e124906a00f855a5054019cb08e6ca2156074eaa52"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-05.txt",
+      "name": "qa-a362-05.txt",
+      "bytes": 6144,
+      "sha256": "4924f4bc1fdba2164a8d0283b5977cb9db1e7e9005dd12109c48256659369a97"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-06.txt",
+      "name": "qa-a362-06.txt",
+      "bytes": 6144,
+      "sha256": "0d3bcde441a93d632b032785e09e8e7cb256314d4c264d188d256b6869055dfe"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-07.txt",
+      "name": "qa-a362-07.txt",
+      "bytes": 6144,
+      "sha256": "f7bd5abab26e459171d06fc2684237e44dc993ca5132a8cc5f6603720b7561ac"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-08.txt",
+      "name": "qa-a362-08.txt",
+      "bytes": 6144,
+      "sha256": "3c7a08d80a09df2d2c38f9768727dbe935f0c30d752b9cc1105a513651cd4998"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-09.txt",
+      "name": "qa-a362-09.txt",
+      "bytes": 6144,
+      "sha256": "53a4dc38cb3d5c7d0299b1d2d045288fe2d23d6c7d579e57f97e2dc7cdf87e20"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-10.txt",
+      "name": "qa-a362-10.txt",
+      "bytes": 6144,
+      "sha256": "819f317404cf8a9a70c742787aafd5004386894dfab3762b7b7379d9b5dbf59b"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-11.txt",
+      "name": "qa-a362-11.txt",
+      "bytes": 6144,
+      "sha256": "6257f1069bc3aca26f369ac43937ab63fb0c2b5670171635ff4c16c5f2de16aa"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-12.txt",
+      "name": "qa-a362-12.txt",
+      "bytes": 6144,
+      "sha256": "5534382a20400c61eb5f7e450666cbeeddde83b7e4a9b55486d46b0bfdfc1603"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-13.txt",
+      "name": "qa-a362-13.txt",
+      "bytes": 6144,
+      "sha256": "d40b3a5e02c8e578cecf406bf2020e93da38bf3e23984502136af0d296b99ece"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-14.txt",
+      "name": "qa-a362-14.txt",
+      "bytes": 6144,
+      "sha256": "08157ff7fd6a7aa42f0cbeffca58e14ff82e9f1def0afff2c2f7cf15641c7cef"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-15.txt",
+      "name": "qa-a362-15.txt",
+      "bytes": 6144,
+      "sha256": "c16129e4cf624011a58eb1964f946b9bc2700591088fb595a5a4c00ea7ab6ff1"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-16.txt",
+      "name": "qa-a362-16.txt",
+      "bytes": 6144,
+      "sha256": "54f7299c9ea91468b2b18e64efc947043aa8baf91756b2b3603239dd41ef6e3f"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-17.txt",
+      "name": "qa-a362-17.txt",
+      "bytes": 6144,
+      "sha256": "d0bbd8bf440b8a56c5313fdd9d40b4455ebae9b9cb50e548eea97a30a2251ac2"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-18.txt",
+      "name": "qa-a362-18.txt",
+      "bytes": 6144,
+      "sha256": "5fc76036400085529078e52724cc61a9ee96269e75e9e40ad1259f67fa0d4980"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-19.txt",
+      "name": "qa-a362-19.txt",
+      "bytes": 6144,
+      "sha256": "225834f77feef167f07ae3461c8e0361c7c31ca0c38281f399a816dd037454bf"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-20.txt",
+      "name": "qa-a362-20.txt",
+      "bytes": 6144,
+      "sha256": "dc76921aba5c42a04abbcf6672bfb201cd95b022d589ba5c2e80eeb86d48db5c"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-21.txt",
+      "name": "qa-a362-21.txt",
+      "bytes": 6144,
+      "sha256": "78542aebbbaa324907b5d3768317eef2e8621fe920500db28df9b56d81a9ebbb"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-22.txt",
+      "name": "qa-a362-22.txt",
+      "bytes": 6144,
+      "sha256": "125e12670227f8b6b9dd761114bbf18b24ff40e9d116a35b17c3d7d9be637f07"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-23.txt",
+      "name": "qa-a362-23.txt",
+      "bytes": 6144,
+      "sha256": "e873207cb2e6768f5b4305a4660e9dbdc7538c16a1e0d074c1af715908948deb"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-24.txt",
+      "name": "qa-a362-24.txt",
+      "bytes": 6144,
+      "sha256": "40e24b3e679b47bfadda6e14e5f505042c1f6c3d6e8f7444391b9d667681d00b"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-25.txt",
+      "name": "qa-a362-25.txt",
+      "bytes": 6144,
+      "sha256": "5c55f4859b8499153a0be9002ac5a59402b7be7f4f4d233a81640a44e695d680"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-26.txt",
+      "name": "qa-a362-26.txt",
+      "bytes": 6144,
+      "sha256": "07169ec27418ad4b4220b978aff20548381fb789bbf46fc100445995d7ee447e"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-27.txt",
+      "name": "qa-a362-27.txt",
+      "bytes": 6144,
+      "sha256": "f4c763b4e4d0465b04032624b0b44bd5dbc8481d03e4648a112af03f8feb6ed8"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-28.txt",
+      "name": "qa-a362-28.txt",
+      "bytes": 6144,
+      "sha256": "77c1bd0873b2dbbb9e6b08acda9bc8f22a0c787cbc7f2b95371f09e4de190ec3"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-29.txt",
+      "name": "qa-a362-29.txt",
+      "bytes": 6144,
+      "sha256": "77913c798982177473ebd028a64a00563dfc53c85a0711f1fa02199d572328c5"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-30.txt",
+      "name": "qa-a362-30.txt",
+      "bytes": 6144,
+      "sha256": "3c6c8640e39cfede7ee4f1268b5a2486ea4ae1ed7ae806360dc19bab797f25a1"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-31.txt",
+      "name": "qa-a362-31.txt",
+      "bytes": 6144,
+      "sha256": "fe0fbb6ee01165ec05ceed523adfbe7eecdf0210cd95ad24dfde21b24649886d"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-32.txt",
+      "name": "qa-a362-32.txt",
+      "bytes": 6144,
+      "sha256": "3c2e24fa6c0a2b103122b7f61010fe3e72d56227d06b829cd10c74693c29154f"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-33.txt",
+      "name": "qa-a362-33.txt",
+      "bytes": 6144,
+      "sha256": "cda29ee83f333af3de6217c6210bff04a66f821dba3d1f3c9ab9c9a77081be6c"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-34.txt",
+      "name": "qa-a362-34.txt",
+      "bytes": 6144,
+      "sha256": "98c793b912e0221c42ea81c2be815d37f39b2965f0bc55e7d98f3a8286e3c5b6"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-35.txt",
+      "name": "qa-a362-35.txt",
+      "bytes": 6144,
+      "sha256": "cfa0792770ddd47d78bca74933ac5ed265620dfaa410b63cabe80502db166c18"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-36.txt",
+      "name": "qa-a362-36.txt",
+      "bytes": 6144,
+      "sha256": "ad4888b69915ea11bfd98dcb23d2f0fa91feaaab7fe3ad1a8c3c6f577956e43f"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-37.txt",
+      "name": "qa-a362-37.txt",
+      "bytes": 6144,
+      "sha256": "43e87379f8d4bffbdc0f8eabfd786148e53a3ff86f0cfe9ef412d1473a229a7e"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-38.txt",
+      "name": "qa-a362-38.txt",
+      "bytes": 6144,
+      "sha256": "399b5469e7a003eb25302a1a14a9c11ea51e39a9c26afe5a7f6aa870fcde9278"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-39.txt",
+      "name": "qa-a362-39.txt",
+      "bytes": 6144,
+      "sha256": "c4cd4b899dbcd847a350734559fa0fcf527aef73607675e946b033df272dd2c6"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-40.txt",
+      "name": "qa-a362-40.txt",
+      "bytes": 6144,
+      "sha256": "e894afe7c6e062abb46d721338275b588c3c9030cab73afc39dbc80d2a950c6e"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-41.txt",
+      "name": "qa-a362-41.txt",
+      "bytes": 6144,
+      "sha256": "43563fce5c603cfaaaace6b4ac6bd939e4dd06f71d3ee53a9589322855995492"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-42.txt",
+      "name": "qa-a362-42.txt",
+      "bytes": 6144,
+      "sha256": "d192c1d2a5088575440afdea1997ba44da3107ee9fe76fffb470cd83b4daa72b"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-43.txt",
+      "name": "qa-a362-43.txt",
+      "bytes": 6144,
+      "sha256": "b4f2c6b28c5f636728155d20f820dc25c2e64878a0b574b0462d46cddf806fe3"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-44.txt",
+      "name": "qa-a362-44.txt",
+      "bytes": 6144,
+      "sha256": "d0dfd4c25e4a76b6c1cf62a07f0158821dafc548ecd22d63cdc219d1da63e2a5"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-45.txt",
+      "name": "qa-a362-45.txt",
+      "bytes": 6144,
+      "sha256": "3631bc7a0c6022a749b6a43a998915f2d467fca0239cea3803780f899bf531ff"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-46.txt",
+      "name": "qa-a362-46.txt",
+      "bytes": 6144,
+      "sha256": "c57baa24dca100f4f949de55dac09afaad511b74980a81e68bf6c9263f286578"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-47.txt",
+      "name": "qa-a362-47.txt",
+      "bytes": 6144,
+      "sha256": "6093181b7a4ad4fc9d3cb80c2d8a7d28a845f87f46f6f653bf185b95c9edfb08"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-48.txt",
+      "name": "qa-a362-48.txt",
+      "bytes": 6144,
+      "sha256": "edafeaa2e875b51970a333e6436909717e440f842e83833ce8bb77b9035a730e"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-49.txt",
+      "name": "qa-a362-49.txt",
+      "bytes": 6144,
+      "sha256": "7b8aaddfc76ef335ad5c41334b34a592fc4525e5e82aa1b57656c9b5abeda460"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-50.txt",
+      "name": "qa-a362-50.txt",
+      "bytes": 6144,
+      "sha256": "a8cd4ddb78c84b33c95c3467bf376eb0d5479da9c59442e1b9582fae7c93ffb5"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-51.txt",
+      "name": "qa-a362-51.txt",
+      "bytes": 6144,
+      "sha256": "5400b12af3abc7e04909a6fc238f82a9ea1e4186e0243d9836b41c3a205a8010"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-52.txt",
+      "name": "qa-a362-52.txt",
+      "bytes": 6144,
+      "sha256": "4e7738c44af2a2f8bec0d6ec0297acfd9917675d139d5f4c0908c7350b9449cc"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-53.txt",
+      "name": "qa-a362-53.txt",
+      "bytes": 6144,
+      "sha256": "b5fea95058cdbcd1bde5ccd68cd0a38668342d0ce9c30c645e49ce0ceb21c2f5"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-54.txt",
+      "name": "qa-a362-54.txt",
+      "bytes": 6144,
+      "sha256": "8c2a6ce1d37f29d2e9f1c7fff3dbf7734f692cf38665a59a79b013cc3377359d"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-55.txt",
+      "name": "qa-a362-55.txt",
+      "bytes": 6144,
+      "sha256": "2d5c0e3073393cceecd2106ee0c3c0575ee9416ad802c5d12511e1f37c284b4b"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-56.txt",
+      "name": "qa-a362-56.txt",
+      "bytes": 6144,
+      "sha256": "62cce4ba8a406f446a561d51e2d3c7c6d997c2ecc7cc1a70f63d792c922b0cc4"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-57.txt",
+      "name": "qa-a362-57.txt",
+      "bytes": 6144,
+      "sha256": "462b8980210caaf3f4e6d9d63552ce6b6ba6db08e7ba35148b6fb0cc0f998a32"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-58.txt",
+      "name": "qa-a362-58.txt",
+      "bytes": 6144,
+      "sha256": "99553f90dd97a18bf9a3b8fa4b57004ffe06d81707f31c11ac66662d02cd1445"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-59.txt",
+      "name": "qa-a362-59.txt",
+      "bytes": 6144,
+      "sha256": "085e6184bf97755510989f892df6fc3d7128ff20cddd5d1c5dddd1e81746b912"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-60.txt",
+      "name": "qa-a362-60.txt",
+      "bytes": 6144,
+      "sha256": "7a31e581dab6fb45c79904a6b0baa3e879120b974c4d22e1d57e232f70d4269b"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-61.txt",
+      "name": "qa-a362-61.txt",
+      "bytes": 6144,
+      "sha256": "80b7315ecc00170d3cce1bb7d0b0852d9a1d092a58bd3fdd859440f3088e91b1"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-62.txt",
+      "name": "qa-a362-62.txt",
+      "bytes": 6144,
+      "sha256": "4c3d36e1c57a9ebdf21701b45dc6645910dbb320d756f98ff53f5a6197ec9ab5"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-a/qa-a362-63.txt",
+      "name": "qa-a362-63.txt",
+      "bytes": 6144,
+      "sha256": "fc6c60a3964b9b5b74409357c58005f7f425e952deaabca7ef5adc481241797f"
+    },
+    {
+      "path": ".playwright-mcp/qa-a362-upload/batch-b/qa-a362-00.txt",
+      "name": "qa-a362-00.txt",
+      "bytes": 25,
+      "sha256": "eb376b506da741ab9ad35dbc2d0a7920af3e706c5c67bd0d9b546a7e99464de1"
+    }
+  ]
+}
