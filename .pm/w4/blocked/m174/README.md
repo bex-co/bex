@@ -4,17 +4,20 @@
 
 ## Tasks (in order)
 
-| id   | title                                                                  | est | depends_on   |
-| ---- | ---------------------------------------------------------------------- | --- | ------------ |
-| t001 | Pin the mechanism: why the API tailer drops stderr from a fast exit — **DONE**    | 30m | —            |
-| t002 | Ship tenant App container logs from the node's CRI files               | 1h  | w4/m174/t001 |
-| t003 | Render parity                                                          | 20m | w4/m174/t002 |
-| t004 | Simplify — **DONE**                                                               | 15m | w4/m174/t003 |
-| t005 | Test coverage — **DONE**                                                          | 45m | w4/m174/t003 |
-| t007 | Find the residual one-line loss after the CRI-file switch               | 45m | w4/m174/t002 |
-| t006 | Closeout                                                               | 10m | w4/m174/t005, w4/m174/t007 |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Pin the mechanism: why the API tailer drops stderr from a fast exit — **DONE** | 30m | — |
+| t002 | Ship tenant App container logs from the node's CRI files | 1h | w4/m174/t001 |
+| t007 | Find the residual one-line loss after the CRI-file switch | 45m | w4/m174/t002 |
+| t008 | Verify delayed stdout prefixes at startup and history intake | 35m | w4/m174/t007 |
+| t003 | Render parity | 20m | w4/m174/t002, w4/m174/t008 |
+| t004 | Simplify — **DONE** | 15m | w4/m174/t003 |
+| t005 | Test coverage — **DONE** | 45m | w4/m174/t003 |
+| t006 | Closeout | 10m | w4/m174/t005, w4/m174/t007, w4/m174/t008 |
 
 ## Definition of done
+
+Eight tasks. [a321 delayed stdout follow-up](delayed-stdout-a321.md) records one missing prefix in two successful 90-second runs, matching REST/GraphQL/UI and a fresh passing control. t008 adds this delayed verification; it does not replace any original DoD item. Root cause and live producer identity remain unverified; status stays blocked.
 
 Live, on owned Free fixtures in `bex-canary` (deleted afterwards):
 
