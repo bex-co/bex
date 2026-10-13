@@ -1,0 +1,1007 @@
+{
+  "pass": "a359",
+  "kind": "functional Blueprint generation after source switching",
+  "researchHead": "59fa3e7df",
+  "fixtureIds": ["srv-db741q7a4m3s73d9i5u0", "srv-db743p4479ic73bbj6h0"],
+  "command": "sh -c 'mkdir -p /tmp/qa-a359-www; printf \"qa-a359-export\\n\" > /tmp/qa-a359-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a359-www'",
+  "inventoryCheck": [
+    {
+      "family": "blueprints",
+      "equal": true
+    },
+    {
+      "family": "databases",
+      "equal": true
+    },
+    {
+      "family": "envGroups",
+      "equal": true
+    },
+    {
+      "family": "keyValues",
+      "equal": true
+    },
+    {
+      "family": "projects",
+      "equal": true
+    },
+    {
+      "family": "services",
+      "equal": true
+    },
+    {
+      "family": "webhookEndpoints",
+      "equal": true
+    }
+  ],
+  "screenshot": {
+    "path": ".playwright-mcp/qa-blueprint-image-root-a359-mobile.png",
+    "bytes": 76844,
+    "viewed": true
+  },
+  "controlDownload": {
+    "path": ".playwright-mcp/qa-a359-image-control.yaml",
+    "bytes": 279,
+    "sha256": "ca124df7c469d61b609c6a5f5520642e8c48bb8c604f9385ab998c77e355915c"
+  },
+  "limits": [
+    "Failing GraphQL observed on desktop before settle and fresh 390px after Live; REST/MCP own selection fails identically after Live.",
+    "Native-export control is a staged source save: no native build/deployment submitted, same previous BusyBox response continues; manifest self-validates.",
+    "Initial MCP call used ownerId; correct MCP workspaceId call is preserved separately. The excluded ownerId argument refusal is harness input, not this finding.",
+    "No Blueprint create, sync or adoption submitted; native-Docker/static/private/worker/cron/datastore exports traced rather than independently failed.",
+    "Only rootDir failure is observed; adjacent retained buildFilter has the same policy but is not live-failed or claimed as a second bug.",
+    "Runtime label Node remains recorded context; generator selects image runtime correctly."
+  ],
+  "a359Baseline": {
+    "at": "2026-10-13T14:31:40.438Z",
+    "request": {
+      "operationName": "QaA359Inventory",
+      "query": "query QaA359Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    },
+    "textboxes": [
+      {
+        "aria": null,
+        "id": "svc-git-url",
+        "value": ""
+      },
+      {
+        "aria": null,
+        "id": "svc-name",
+        "value": ""
+      },
+      {
+        "aria": null,
+        "id": "svc-branch",
+        "value": ""
+      },
+      {
+        "aria": null,
+        "id": "svc-rootdir",
+        "value": ""
+      },
+      {
+        "aria": null,
+        "id": "svc-build-command",
+        "value": "npm install"
+      },
+      {
+        "aria": null,
+        "id": "svc-start-command",
+        "value": "npm start"
+      },
+      {
+        "aria": null,
+        "id": "svc-port",
+        "value": "3000"
+      }
+    ],
+    "main": "- main:\n  - navigation \"Breadcrumbs\": New Service\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - heading \"New Web Service\" [level=1]\n  - text: Deploy a web service from a Git repo or Docker image. Service Type\n  - radiogroup:\n    - radio \"Web Service Expose your service on a public URL\" [checked]\n    - radio \"Private Service Accessible only within the platform network\"\n    - radio \"Background Worker Run background processing with no port or URL\"\n    - radio \"Cron Job Run a command on a recurring schedule\"\n    - radio \"Static Site Build and serve a static site from object storage\"\n  - text: Source\n  - tablist:\n    - tab \"GitHub\"\n    - tab \"Public Git URL\" [selected]\n    - tab \"Existing Image\"\n  - tabpanel \"Public Git URL\":\n    - text: Repository URL\n    - textbox \"Repository URL\":\n      - /placeholder: https://github.com/you/your-repo\n  - paragraph: Settings\n  - text: Name\n  - textbox \"Name\":\n    - /placeholder: my-service\n  - text: Branch\n  - textbox \"Branch\":\n    - /placeholder: main\n  - text: Root Directory\n  - textbox \"Root Directory\":\n    - /placeholder: e.g. backend\n  - paragraph: Subdirectory to build from. Leave blank to use the repo root.\n  - text: Runtime\n  - combobox \"Runtime\": Node\n  - text: Build Command\n  - textbox \"Build Command\": npm install\n  - text: Start Command\n  - textbox \"Start Command\": npm start\n  - text: Port\n  - textbox \"Port\":\n    - /placeholder: \"3000\"\n    - text: \"3000\"\n  - paragraph: Your container must listen on port 3000 — bex routes traffic there and injects it as $PORT. Change it to match the image you are deploying.\n  - text: Instance Type\n  - radiogroup:\n    - radio \"Free $0.00/month 512 MB RAM · 0.1 CPU\" [checked]\n    - radio \"Starter $4.90/month 512 MB RAM · 0.5 CPU\"\n    - radio \"Standard $17.50/month 2 GB RAM · 1 CPU\"\n    - radio \"Pro $59.50/month 4 GB RAM · 2 CPU\"\n    - radio \"Pro Plus $122.50/month 8 GB RAM · 4 CPU\"\n    - radio \"Pro Max $157.50/month 16 GB RAM · 4 CPU\"\n    - radio \"Pro Ultra $315.00/month 32 GB RAM · 8 CPU\"\n  - text: Project and Environment\n  - combobox \"Project\": No project\n  - combobox \"Environment\" [disabled]: No environment\n  - paragraph: When creating a resource, selecting a Project filters its Environments. Choose an Environment to add the resource to that Project. Leaving No environment selected creates the resource outside any Project. If the Project has no Environment yet, create one from the Project's page first.\n  - text: Auto-deploy on push\n  - paragraph: Automatically redeploy when you push to this branch.\n  - switch \"Auto-deploy on push\" [checked]\n  - text: Environment Variables\n  - button \"Add Variable\"\n  - text: Secret Files\n  - paragraph: Mounted read-only under /etc/secrets from the first deploy.\n  - button \"Add Secret File\"\n  - button \"Cancel\"\n  - button \"Deploy Service\" [disabled]"
+  },
+  "a359Create": {
+    "at": "2026-10-13T14:32:09.298Z",
+    "request": [
+      {
+        "operationName": "CreateService",
+        "variables": {
+          "repo": "https://github.com/bex-co/bex",
+          "branch": "main",
+          "name": "qa-20261013-a359-source-export",
+          "type": "web_service",
+          "rootDir": "examples/hello-node",
+          "runtime": "node",
+          "buildCommand": "sleep 90 && npm install",
+          "startCommand": "npm start",
+          "plan": "free",
+          "autoDeploy": false,
+          "port": 3000,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db741q7a4m3s73d9i5u0",
+            "latestDeployId": "dep-db741q7a4m3s73d9i5ug",
+            "name": "qa-20261013-a359-source-export",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": null,
+            "type": "web_service"
+          }
+        }
+      }
+    ],
+    "url": "https://dashboard.bex.co/services/srv-db741q7a4m3s73d9i5u0/deploys/dep-db741q7a4m3s73d9i5ug"
+  },
+  "a359CancelInitial": {
+    "at": "2026-10-13T14:32:20.261Z",
+    "request": [
+      {
+        "operationName": "CancelDeploy",
+        "variables": {
+          "serviceId": "srv-db741q7a4m3s73d9i5u0",
+          "deployId": "dep-db741q7a4m3s73d9i5ug"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CancelDeploy($serviceId: String!, $deployId: String!) {\n  cancelDeploy(serviceId: $serviceId, deployId: $deployId) {\n    id\n    status\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "cancelDeploy": {
+            "__typename": "Deploy",
+            "id": "dep-db741q7a4m3s73d9i5ug",
+            "status": "canceled"
+          }
+        }
+      }
+    ]
+  },
+  "a359SetImage": {
+    "at": "2026-10-13T14:32:47.997Z",
+    "request": [
+      {
+        "operationName": "SetImage",
+        "variables": {
+          "id": "srv-db741q7a4m3s73d9i5u0",
+          "image": "docker.io/library/busybox:1.37",
+          "registryCredentialId": null
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation SetImage($id: String!, $image: String!, $registryCredentialId: String, $confirm: String) {\n  setImage(\n    id: $id\n    image: $image\n    registryCredentialId: $registryCredentialId\n    confirm: $confirm\n  ) {\n    id\n    repo\n    branch\n    imagePath\n    registryCredentialId\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "setImage": {
+            "__typename": "Service",
+            "branch": "",
+            "id": "srv-db741q7a4m3s73d9i5u0",
+            "imagePath": "docker.io/library/busybox:1.37",
+            "registryCredentialId": null,
+            "repo": ""
+          }
+        }
+      }
+    ]
+  },
+  "a359SetCommand": {
+    "at": "2026-10-13T14:33:20.798Z",
+    "request": [
+      {
+        "operationName": "SetStartCommand",
+        "variables": {
+          "id": "srv-db741q7a4m3s73d9i5u0",
+          "command": "sh -c 'mkdir -p /tmp/qa-a359-www; printf \"qa-a359-export\\n\" > /tmp/qa-a359-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a359-www'"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation SetStartCommand($id: String!, $command: String!, $confirm: String) {\n  setStartCommand(id: $id, command: $command, confirm: $confirm) {\n    id\n    startCommand\n    phase\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "setStartCommand": {
+            "__typename": "Service",
+            "id": "srv-db741q7a4m3s73d9i5u0",
+            "phase": "Canceled",
+            "startCommand": "sh -c 'mkdir -p /tmp/qa-a359-www; printf \"qa-a359-export\\n\" > /tmp/qa-a359-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a359-www'"
+          }
+        }
+      }
+    ]
+  },
+  "a359ExportSelection": {
+    "at": "2026-10-13T14:33:29.084Z",
+    "checked": ["qa-20261013-a359-source-export"],
+    "buttonEnabled": true
+  },
+  "a359Generate": {
+    "at": "2026-10-13T14:33:47.866Z",
+    "request": [
+      {
+        "operationName": "GenerateBlueprint",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "serviceIds": ["srv-db741q7a4m3s73d9i5u0"],
+          "postgresIds": [],
+          "keyValueIds": [],
+          "envGroupIds": []
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query GenerateBlueprint($ownerId: String, $serviceIds: [String], $postgresIds: [String], $keyValueIds: [String], $envGroupIds: [String]) {\n  generateBlueprint(\n    ownerId: $ownerId\n    serviceIds: $serviceIds\n    postgresIds: $postgresIds\n    keyValueIds: $keyValueIds\n    envGroupIds: $envGroupIds\n  ) {\n    manifest\n    filename\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "generateBlueprint": null
+        },
+        "errors": [
+          {
+            "message": "bex could not export srv-db741q7a4m3s73d9i5u0 as a Blueprint: the generated manifest failed its own validation (prebuilt image services cannot declare rootDir; remove it or deploy from repo instead); this is a bex bug, please report it",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ],
+            "path": ["generateBlueprint"],
+            "extensions": {
+              "code": "BLUEPRINT_GENERATE_FAILED",
+              "resourceId": "srv-db741q7a4m3s73d9i5u0"
+            }
+          }
+        ]
+      }
+    ],
+    "dialog": "- dialog \"Generate Blueprint\":\n  - heading \"Generate Blueprint\" [level=2]\n  - paragraph: Select existing resources to export as a render.yaml you can commit to a repo and connect as a Blueprint.\n  - paragraph: Services\n  - checkbox \"agentmarketcap-1\"\n  - text: agentmarketcap-1\n  - checkbox \"beancount-cms-v2\"\n  - text: beancount-cms-v2\n  - checkbox \"beancount-forum\"\n  - text: beancount-forum\n  - checkbox \"eden-dash-v3\"\n  - text: eden-dash-v3\n  - checkbox \"eden-cms-v2\"\n  - text: eden-cms-v2\n  - checkbox \"qa-20261013-a359-source-export\" [checked]\n  - text: qa-20261013-a359-source-export\n  - paragraph: Databases\n  - checkbox \"beancount-forum-db\"\n  - text: beancount-forum-db\n  - checkbox \"tianpan-forum-db\"\n  - text: tianpan-forum-db\n  - checkbox \"blockeden-forum-db\"\n  - text: blockeden-forum-db\n  - checkbox \"qa-20261007-r16-owner-f208ab\"\n  - text: qa-20261007-r16-owner-f208ab\n  - paragraph: Key Value\n  - checkbox \"beancount-forum-redis\"\n  - text: beancount-forum-redis\n  - checkbox \"blockeden-forum-redis\"\n  - text: blockeden-forum-redis\n  - paragraph: Environment Groups\n  - checkbox \"qa-20261003-keys-r85\"\n  - text: qa-20261003-keys-r85\n  - button \"Generate\"\n  - button \"Close\""
+  },
+  "a359Live": {
+    "at": "2026-10-13T14:34:30.617Z",
+    "request": {
+      "operationName": "QaA359Live",
+      "query": "query QaA359Live($id:String!){server(id:$id){id phase plan revision repo branch runtime rootDir imagePath buildCommand startCommand} deploys(serviceId:$id){id status image startedAt finishedAt}}",
+      "variables": {
+        "id": "srv-db741q7a4m3s73d9i5u0"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deploys": [
+          {
+            "finishedAt": "2026-10-13T14:33:36.884246Z",
+            "id": "dep-db742c4479ic73bbj6eg",
+            "image": "docker.io/library/busybox:1.37",
+            "startedAt": "2026-10-13T14:33:23.067227Z",
+            "status": "live"
+          },
+          {
+            "finishedAt": "2026-10-13T14:32:20.073645Z",
+            "id": "dep-db741q7a4m3s73d9i5ug",
+            "image": "",
+            "startedAt": "",
+            "status": "canceled"
+          }
+        ],
+        "server": {
+          "branch": "",
+          "buildCommand": "sleep 90 && npm install",
+          "id": "srv-db741q7a4m3s73d9i5u0",
+          "imagePath": "docker.io/library/busybox:1.37",
+          "phase": "Running",
+          "plan": "free",
+          "repo": "",
+          "revision": "rev-3",
+          "rootDir": "examples/hello-node",
+          "runtime": "node",
+          "startCommand": "sh -c 'mkdir -p /tmp/qa-a359-www; printf \"qa-a359-export\\n\" > /tmp/qa-a359-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a359-www'"
+        }
+      }
+    },
+    "publicStatus": 200,
+    "publicBody": "qa-a359-export\n"
+  },
+  "a359MobileGenerate": {
+    "at": "2026-10-13T14:35:12.631Z",
+    "request": [
+      {
+        "operationName": "GenerateBlueprint",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "serviceIds": ["srv-db741q7a4m3s73d9i5u0"],
+          "postgresIds": [],
+          "keyValueIds": [],
+          "envGroupIds": []
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query GenerateBlueprint($ownerId: String, $serviceIds: [String], $postgresIds: [String], $keyValueIds: [String], $envGroupIds: [String]) {\n  generateBlueprint(\n    ownerId: $ownerId\n    serviceIds: $serviceIds\n    postgresIds: $postgresIds\n    keyValueIds: $keyValueIds\n    envGroupIds: $envGroupIds\n  ) {\n    manifest\n    filename\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "generateBlueprint": null
+        },
+        "errors": [
+          {
+            "message": "bex could not export srv-db741q7a4m3s73d9i5u0 as a Blueprint: the generated manifest failed its own validation (prebuilt image services cannot declare rootDir; remove it or deploy from repo instead); this is a bex bug, please report it",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ],
+            "path": ["generateBlueprint"],
+            "extensions": {
+              "code": "BLUEPRINT_GENERATE_FAILED",
+              "resourceId": "srv-db741q7a4m3s73d9i5u0"
+            }
+          }
+        ]
+      }
+    ],
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "downloadButtonCount": 0,
+    "toast": [
+      "Bex could not export srv-db741q7a4m3s73d9i5u0 as a Blueprint: the generated manifest failed its own validation (prebuilt image services cannot declare rootDir; remove it or deploy from repo instead); this is a bex bug, please report it"
+    ],
+    "screenshot": "qa-blueprint-image-root-a359-mobile.png"
+  },
+  "a359GenerateAdapters": {
+    "at": "2026-10-13T14:36:44.256Z",
+    "rest": {
+      "request": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "serviceIds": ["srv-db741q7a4m3s73d9i5u0"],
+        "postgresIds": [],
+        "keyValueIds": [],
+        "envGroupIds": []
+      },
+      "status": 503,
+      "body": {
+        "code": "BLUEPRINT_GENERATE_FAILED",
+        "error": "bex could not export srv-db741q7a4m3s73d9i5u0 as a Blueprint: the generated manifest failed its own validation (prebuilt image services cannot declare rootDir; remove it or deploy from repo instead); this is a bex bug, please report it",
+        "id": "unavailable",
+        "message": "bex could not export srv-db741q7a4m3s73d9i5u0 as a Blueprint: the generated manifest failed its own validation (prebuilt image services cannot declare rootDir; remove it or deploy from repo instead); this is a bex bug, please report it",
+        "params": {
+          "resourceId": "srv-db741q7a4m3s73d9i5u0"
+        }
+      }
+    },
+    "mcp": {
+      "request": {
+        "jsonrpc": "2.0",
+        "id": "qa-a359-generate",
+        "method": "tools/call",
+        "params": {
+          "name": "generate_blueprint",
+          "arguments": {
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "serviceIds": ["srv-db741q7a4m3s73d9i5u0"],
+            "postgresIds": [],
+            "keyValueIds": [],
+            "envGroupIds": []
+          }
+        }
+      },
+      "status": 200,
+      "messages": [
+        {
+          "jsonrpc": "2.0",
+          "id": "qa-a359-generate",
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "ownerId is not supported by MCP tools; use workspaceId"
+              }
+            ],
+            "isError": true
+          }
+        }
+      ]
+    }
+  },
+  "a359McpGenerate": {
+    "at": "2026-10-13T14:37:06.584Z",
+    "request": {
+      "jsonrpc": "2.0",
+      "id": "qa-a359-generate-valid",
+      "method": "tools/call",
+      "params": {
+        "name": "generate_blueprint",
+        "arguments": {
+          "workspaceId": "tea-d98210cbbpdc73dcrkvg",
+          "serviceIds": ["srv-db741q7a4m3s73d9i5u0"],
+          "postgresIds": [],
+          "keyValueIds": [],
+          "envGroupIds": []
+        }
+      }
+    },
+    "status": 200,
+    "messages": [
+      {
+        "jsonrpc": "2.0",
+        "id": "qa-a359-generate-valid",
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "BLUEPRINT_GENERATE_FAILED: bex could not export srv-db741q7a4m3s73d9i5u0 as a Blueprint: the generated manifest failed its own validation (prebuilt image services cannot declare rootDir; remove it or deploy from repo instead); this is a bex bug, please report it"
+            }
+          ],
+          "isError": true
+        }
+      }
+    ]
+  },
+  "a359ControlCreate": {
+    "at": "2026-10-13T14:36:21.101Z",
+    "request": [
+      {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "docker.io/library/busybox:1.37",
+          "name": "qa-20261013-a359-img-ctl",
+          "type": "web_service",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "sh -c 'mkdir -p /tmp/qa-a359-www; printf \"qa-a359-export\\n\" > /tmp/qa-a359-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a359-www'",
+          "plan": "free",
+          "port": 3000,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db743p4479ic73bbj6h0",
+            "latestDeployId": "dep-db743p4479ic73bbj6hg",
+            "name": "qa-20261013-a359-img-ctl",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      }
+    ]
+  },
+  "a359ControlLive": {
+    "at": "2026-10-13T14:37:17.687Z",
+    "request": {
+      "operationName": "QaA359ControlLive",
+      "query": "query QaA359ControlLive($id:String!){server(id:$id){id phase plan revision runtime repo imagePath rootDir buildCommand startCommand} deploys(serviceId:$id){id status image startedAt finishedAt}}",
+      "variables": {
+        "id": "srv-db743p4479ic73bbj6h0"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deploys": [
+          {
+            "finishedAt": "2026-10-13T14:36:36.881983Z",
+            "id": "dep-db743p4479ic73bbj6hg",
+            "image": "docker.io/library/busybox:1.37",
+            "startedAt": "2026-10-13T14:36:23.051381Z",
+            "status": "live"
+          }
+        ],
+        "server": {
+          "buildCommand": "",
+          "id": "srv-db743p4479ic73bbj6h0",
+          "imagePath": "docker.io/library/busybox:1.37",
+          "phase": "Running",
+          "plan": "free",
+          "repo": "",
+          "revision": "rev-1",
+          "rootDir": "",
+          "runtime": "image",
+          "startCommand": "sh -c 'mkdir -p /tmp/qa-a359-www; printf \"qa-a359-export\\n\" > /tmp/qa-a359-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a359-www'"
+        }
+      }
+    },
+    "publicStatus": 200,
+    "publicBody": "qa-a359-export\n",
+    "selected": ["qa-20261013-a359-img-ctl"]
+  },
+  "a359ControlGenerate": {
+    "at": "2026-10-13T14:37:43.698Z",
+    "request": [
+      {
+        "operationName": "GenerateBlueprint",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "serviceIds": ["srv-db743p4479ic73bbj6h0"],
+          "postgresIds": [],
+          "keyValueIds": [],
+          "envGroupIds": []
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query GenerateBlueprint($ownerId: String, $serviceIds: [String], $postgresIds: [String], $keyValueIds: [String], $envGroupIds: [String]) {\n  generateBlueprint(\n    ownerId: $ownerId\n    serviceIds: $serviceIds\n    postgresIds: $postgresIds\n    keyValueIds: $keyValueIds\n    envGroupIds: $envGroupIds\n  ) {\n    manifest\n    filename\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "generateBlueprint": {
+            "__typename": "GeneratedBlueprint",
+            "filename": "render.yaml",
+            "manifest": "services:\n- dockerCommand: sh -c 'mkdir -p /tmp/qa-a359-www; printf \"qa-a359-export\\n\" > /tmp/qa-a359-www/index.html;\n    exec httpd -f -p \"$PORT\" -h /tmp/qa-a359-www'\n  image:\n    url: docker.io/library/busybox:1.37\n  name: qa-20261013-a359-img-ctl\n  runtime: image\n  type: web\n"
+          }
+        }
+      }
+    ],
+    "buttons": ["Back", "Copy", "Download render.yaml", "Close"]
+  },
+  "a359ControlDownload": {
+    "at": "2026-10-13T14:38:25.672Z",
+    "suggestedFilename": "render.yaml",
+    "failure": null,
+    "savedPath": ".playwright-mcp/qa-a359-image-control.yaml"
+  },
+  "a359ControlValidate": {
+    "at": "2026-10-13T14:38:26.830Z",
+    "request": {
+      "operationName": "QaA359ValidateControl",
+      "query": "query QaA359ValidateControl($bexYaml:String!){validateBlueprint(bexYaml:$bexYaml){valid errors}}",
+      "variables": {
+        "bexYaml": "services:\n- dockerCommand: sh -c 'mkdir -p /tmp/qa-a359-www; printf \"qa-a359-export\\n\" > /tmp/qa-a359-www/index.html;\n    exec httpd -f -p \"$PORT\" -h /tmp/qa-a359-www'\n  image:\n    url: docker.io/library/busybox:1.37\n  name: qa-20261013-a359-img-ctl\n  runtime: image\n  type: web\n"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "validateBlueprint": {
+          "errors": [],
+          "valid": true
+        }
+      }
+    }
+  },
+  "a359SetRepo": {
+    "at": "2026-10-13T14:41:28.647Z",
+    "request": [
+      {
+        "operationName": "SetRepo",
+        "variables": {
+          "id": "srv-db741q7a4m3s73d9i5u0",
+          "repo": "https://github.com/bex-co/bex",
+          "branch": "main"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation SetRepo($id: String!, $repo: String!, $branch: String, $confirm: String) {\n  setRepo(id: $id, repo: $repo, branch: $branch, confirm: $confirm) {\n    id\n    repo\n    branch\n    imagePath\n    registryCredentialId\n    phase\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "setRepo": {
+            "__typename": "Service",
+            "branch": "main",
+            "id": "srv-db741q7a4m3s73d9i5u0",
+            "imagePath": "",
+            "phase": "Running",
+            "registryCredentialId": null,
+            "repo": "https://github.com/bex-co/bex"
+          }
+        }
+      }
+    ]
+  },
+  "a359NativeGenerate": {
+    "at": "2026-10-13T14:41:38.417Z",
+    "request": [
+      {
+        "operationName": "GenerateBlueprint",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "serviceIds": ["srv-db741q7a4m3s73d9i5u0"],
+          "postgresIds": [],
+          "keyValueIds": [],
+          "envGroupIds": []
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query GenerateBlueprint($ownerId: String, $serviceIds: [String], $postgresIds: [String], $keyValueIds: [String], $envGroupIds: [String]) {\n  generateBlueprint(\n    ownerId: $ownerId\n    serviceIds: $serviceIds\n    postgresIds: $postgresIds\n    keyValueIds: $keyValueIds\n    envGroupIds: $envGroupIds\n  ) {\n    manifest\n    filename\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "generateBlueprint": {
+            "__typename": "GeneratedBlueprint",
+            "filename": "render.yaml",
+            "manifest": "services:\n- autoDeployTrigger: \"off\"\n  buildCommand: sleep 90 && npm install\n  name: qa-20261013-a359-source-export\n  repo: https://github.com/bex-co/bex\n  rootDir: examples/hello-node\n  runtime: node\n  startCommand: sh -c 'mkdir -p /tmp/qa-a359-www; printf \"qa-a359-export\\n\" > /tmp/qa-a359-www/index.html;\n    exec httpd -f -p \"$PORT\" -h /tmp/qa-a359-www'\n  type: web\n"
+          }
+        }
+      }
+    ]
+  },
+  "a359NativeStagedRead": {
+    "at": "2026-10-13T14:42:15.873Z",
+    "request": {
+      "operationName": "QaA359NativeStagedRead",
+      "query": "query QaA359NativeStagedRead($id:String!){server(id:$id){id phase plan revision repo branch runtime rootDir imagePath buildCommand startCommand undeployedChanges} deploys(serviceId:$id){id status image startedAt finishedAt}}",
+      "variables": {
+        "id": "srv-db741q7a4m3s73d9i5u0"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deploys": [
+          {
+            "finishedAt": "2026-10-13T14:33:36.884246Z",
+            "id": "dep-db742c4479ic73bbj6eg",
+            "image": "docker.io/library/busybox:1.37",
+            "startedAt": "2026-10-13T14:33:23.067227Z",
+            "status": "live"
+          },
+          {
+            "finishedAt": "2026-10-13T14:32:20.073645Z",
+            "id": "dep-db741q7a4m3s73d9i5ug",
+            "image": "",
+            "startedAt": "",
+            "status": "canceled"
+          }
+        ],
+        "server": {
+          "branch": "main",
+          "buildCommand": "sleep 90 && npm install",
+          "id": "srv-db741q7a4m3s73d9i5u0",
+          "imagePath": "",
+          "phase": "Running",
+          "plan": "free",
+          "repo": "https://github.com/bex-co/bex",
+          "revision": "rev-3",
+          "rootDir": "examples/hello-node",
+          "runtime": "node",
+          "startCommand": "sh -c 'mkdir -p /tmp/qa-a359-www; printf \"qa-a359-export\\n\" > /tmp/qa-a359-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a359-www'",
+          "undeployedChanges": false
+        }
+      }
+    },
+    "publicStatus": 200,
+    "publicBody": "qa-a359-export\n",
+    "deleteReady": true
+  },
+  "a359DeleteSource": {
+    "at": "2026-10-13T14:42:35.184Z",
+    "request": [
+      {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db741q7a4m3s73d9i5u0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "deleteService": true
+        }
+      }
+    ]
+  },
+  "a359DeleteControl": {
+    "at": "2026-10-13T14:42:38.428Z",
+    "request": [
+      {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db743p4479ic73bbj6h0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "deleteService": true
+        }
+      }
+    ]
+  },
+  "a359Cleanup": {
+    "at": "2026-10-13T14:46:06.302Z",
+    "request": {
+      "operationName": "QaA359Cleanup",
+      "query": "query QaA359Cleanup($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    },
+    "details": [
+      {
+        "id": "srv-db741q7a4m3s73d9i5u0",
+        "detailStatus": 404,
+        "publicStatus": 404
+      },
+      {
+        "id": "srv-db743p4479ic73bbj6h0",
+        "detailStatus": 404,
+        "publicStatus": 404
+      }
+    ]
+  },
+  "a359Logout": {
+    "at": "2026-10-13T14:47:33.981Z",
+    "ownersStatus": 401,
+    "cookieCount": 0,
+    "url": "about:blank",
+    "pageCount": 1
+  }
+}
