@@ -105,7 +105,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **102** — [Blueprint environment copies use a literal shadowed by a reference](102.md) (major; 55m) ← functional CLI sweep204: eight native accepted masked-reference cases, eight controls and six native captures; current public apply persists four copy mismatches, hosted apply untested; no resources created.
 
-- [ ] **101** — [Blueprint static rule errors point to the service instead of the invalid rule](101.md) (minor; 35m) ← functional CLI sweep202: 16 native wrong locations with 16 valid controls, four native captures and eight current-source diagnostics; validation only, no resources created.
+- [ ] **101** — [Blueprint static rule errors point to the service instead of the invalid rule](blocked/101.md) — **BLOCKED (2026-10-13: fix shipped — static route/header refusals point at the authored rule field and line; needs the fix deployed to production plus fresh native Bex/Render validation receipts)**
 
 - [ ] **100** — [Blueprint reference errors point to unrelated or nonexistent fields](blocked/100.md) — **BLOCKED (2026-10-13: fix shipped — parse-time reference refusals name and locate the authored envVars entry instead of a phantom service field; needs the fix deployed to production plus fresh native Bex/Render validation receipts)**
 

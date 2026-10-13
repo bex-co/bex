@@ -765,6 +765,8 @@ func blueprintResourceValidationErrors(source *BlueprintSource, ir BlueprintIR, 
 				pointer = fmt.Sprintf("%s/envVars/%d", resource.SourcePath, i)
 			} else if i, ok := blueprintDomainIndex(resource, msg); ok {
 				pointer = fmt.Sprintf("%s/domains/%d", resource.SourcePath, i)
+			} else if rule, ok := blueprintStaticRulePointer(resource, msg); ok {
+				pointer = resource.SourcePath + rule
 			} else if field, ok := blueprintCodedField(problem.err, resource); ok {
 				pointer = resource.SourcePath + "/" + field
 			}
@@ -829,6 +831,31 @@ func blueprintEnvVarIndex(resource BlueprintResourceIR, msg string) (int, bool) 
 		}
 	}
 	return 0, false
+}
+
+var blueprintStaticRuleRE = regexp.MustCompile(`\b(routes|headers)\[(\d+)\]\.(type|source|destination|path|name|value)\b`)
+
+// blueprintStaticRulePointer resolves a static-site rule refusal naming
+// routes[i].field or headers[i].field to that authored rule (w8/101): the
+// field when the entry declares it, else the entry. An index the resource
+// does not declare falls back to the keyword locator.
+func blueprintStaticRulePointer(resource BlueprintResourceIR, msg string) (string, bool) {
+	match := blueprintStaticRuleRE.FindStringSubmatch(msg)
+	if match == nil {
+		return "", false
+	}
+	rules, _ := resource.Fields[match[1]].Value.([]any)
+	i, err := strconv.Atoi(match[2])
+	if err != nil || i >= len(rules) {
+		return "", false
+	}
+	pointer := fmt.Sprintf("/%s/%d", match[1], i)
+	if entry, _ := rules[i].(map[string]any); entry != nil {
+		if _, declared := entry[match[3]]; declared {
+			pointer += "/" + match[3]
+		}
+	}
+	return pointer, true
 }
 
 var blueprintQuotedRE = regexp.MustCompile(`"([^"]+)"`)
