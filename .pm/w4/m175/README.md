@@ -1,18 +1,21 @@
-# w4 · m175 — Total Requests drops the newest bucket: 24h/7d windows read "No data" for recent traffic
+# w4 · m175 — Include newest request buckets and clip them to the selected window
 
-**Worker:** worker4 **Goal:** `http_requests` counts every request in `[start, end]` for every resolution, including the bucket that contains `end`, so N driven requests sum to N on every window and surface (the full w4/m119 guarantee, "for any query alignment"). **Status:** blocked
+**Worker:** worker4 **Goal:** `http_requests` counts every request in `[start, end]` for every resolution, including the bucket that contains `end`, so N driven requests sum to N on every window and surface (the full w4/m119 guarantee, "for any query alignment"). **Status:** todo (a313 boundary-clipping residual; original t001 retained, t003/t004 reopened for the added work)
 
 ## Tasks (in order)
 
-| id   | title                                                               | est | depends_on   |
-| ---- | ------------------------------------------------------------------- | --- | ------------ |
-| t001 | Include the bucket containing `end` in Loki-backed request reads — **DONE**    | 45m | —            |
-| t002 | Render parity                                                       | 20m | w4/m175/t001 |
-| t003 | Simplify — **DONE**                                                            | 15m | w4/m175/t002 |
-| t004 | Test coverage — **DONE**                                                       | 45m | w4/m175/t002 |
-| t005 | Closeout                                                            | 10m | w4/m175/t004 |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Include the bucket containing `end` in Loki-backed request reads — **DONE** | 45m | — |
+| t006 | Clip request entries to the requested time window before aggregation | 45m | w4/m175/t001 |
+| t002 | Render parity | 20m | w4/m175/t006 |
+| t003 | Simplify the clipping update (original review retained) | 15m | w4/m175/t002 |
+| t004 | Test boundary clipping (original coverage retained) | 45m | w4/m175/t002 |
+| t005 | Closeout | 10m | w4/m175/t004 |
 
 ## Definition of done
+
+The [a313 boundary followup](boundary-followup.md) is an observed residual of this goal. Repeat its custom 124-minute excluded window, excluded-start and excluded-end direct reads, and aligned empty/containing controls; only entries inside the requested window contribute. The fresh desktop/mobile excluded view must be empty for both count and host/path latency. Keep all eight contained-preset controls and the original guarantees below. The original 125-request/four-surface DoD is not closed by this partial replay.
 
 Live on an owned Free web service (`traefik/whoami`, `WHOAMI_PORT_NUMBER=8080`, port 8080; deleted afterwards). Send exactly 100 `GET` and 25 `POST` to `/<marker>`, wait 1 min, then read **within one bucket of the traffic** (before the next epoch-aligned boundary):
 
@@ -23,6 +26,8 @@ Live on an owned Free web service (`traefik/whoami`, `WHOAMI_PORT_NUMBER=8080`, 
 - **REST / GraphQL / MCP agree** for the same window, and m119's bullets still hold: 60 s windows exact; counts reconcile with `GET /v1/logs?type=request`.
 
 ## Source + Goal linkage
+
+- **Followup:** user-requested functional QA a313, 2026-10-12 Pacific / 2026-10-13 UTC. [Exact live wire, local pinned-Loki expression proof, controls and cleanup](boundary-followup.md). This reopens implementation/review/coverage within the existing m175 exact-window guarantee; it creates no duplicate milestone and implements no Bex code.
 
 - **Source:** infinite `/qa-find-bugs` loop46, 2026-10-05 UTC, muse.env, `bex-canary`, pin `c7afefad5`. Fixture `qa-20261005-l46-met` (`srv-db1rpt8ti8qc73bltd1g`, deleted afterwards).
   - Traffic: 100 GET + 25 POST to `/l46probe` between 15:06:41 and 15:07:52, all 200.
