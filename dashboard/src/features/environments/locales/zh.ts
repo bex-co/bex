@@ -131,6 +131,11 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     message: "已删除环境“{name}”。",
     description: "Toast shown after an environment is deleted",
   },
+  "environments.deleteRefreshFailed": {
+    message: "环境“{name}”已删除，但列表刷新失败。请重试或重新加载以更新。",
+    description:
+      "Warning after the environment was deleted but re-reading the list failed; deletion must not be retried or reported as failed (w4/290)",
+  },
   "environments.deleteError": {
     message: "删除环境“{name}”失败。",
     description: "Toast shown when deleting an environment fails",
