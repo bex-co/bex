@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+import { useRouterState } from "@tanstack/react-router";
 import { CircleHelp, Github, Library, SquareTerminal } from "lucide-react";
 import { Authenticated } from "@/common/components/authenticated";
 import { UserNav } from "@/common/components/user-nav.tsx";
@@ -21,7 +23,18 @@ import { NewResourceMenu } from "./new-resource-menu";
  * same navigation instead of rendering an empty header.
  */
 export function DashboardHeader() {
-  const { isMobile, openMobile } = useSidebar();
+  const { isMobile, openMobile, setOpenMobile } = useSidebar();
+  // The shell persists across routes, so nothing unmounts the mobile drawer
+  // when one of its links navigates: close it once a different destination
+  // commits (w4/283). Mounting, a modified click that opens another tab and a
+  // cancelled navigation leave the href, and so the drawer, alone.
+  const href = useRouterState({ select: (state) => state.location.href });
+  const shownHref = useRef(href);
+  useEffect(() => {
+    if (shownHref.current === href) return;
+    shownHref.current = href;
+    setOpenMobile(false);
+  }, [href, setOpenMobile]);
   // Desktop always shows the icon rail (with its own toggle in the sidebar
   // header, w2/m63), so the content-header trigger is only needed on mobile,
   // where the sidebar is an off-canvas Sheet — show it when that Sheet is
