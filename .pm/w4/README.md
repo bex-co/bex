@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m202** — [Honor image commands after switching from native Git](m202/README.md) (6 tasks, 170m) ← functional QA 2026-10-12 a311; saved Docker Command omitted after native-to-image source switch, fresh manual retry 503 while identical image-created control is Live/200; owned fixtures deleted and session revoked.
+
 - [x] **m201** — [Restart selects the revision already serving](done/m201/README.md) (7 tasks, 245m) ← functional QA 2026-10-11 a209; two cutover windows select an older SQL-Live configuration despite the new runtime serving, while settled Restart passes; owned fixture/session cleanup verified.
 
 - [ ] **m200** — [Preserve logical records in mixed stdout/stderr pod logs](blocked/m200/README.md) (8 tasks) — **BLOCKED (needs the user to approve the `production-snapshot` environment for a `snapshot.yml` bake of the patched-kubelet node image, then the canary and node roll per `infra/packer/README.md`)**. Tasks t001, t003 and t006 are done. The patched kubelet is built reproducibly, published (`bex-kubelet/v1.34.9-cri-records.1`), wired into the Packer bake and proven on a real kubelet's pod API. Still open: t002 steps 3–4, the t004 live replay, t005, the t007 zero-Loki check and t008.
