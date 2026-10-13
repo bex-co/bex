@@ -1,0 +1,366 @@
+{
+  "pass": "a342",
+  "researchHead": "b85ec5718",
+  "receipts": {
+    "a342Baseline": {
+      "at": "2026-10-13T10:42:16.714Z",
+      "request": {
+        "operationName": "QaA342Inventory",
+        "query": "query QaA342Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      },
+      "enabled": true
+    },
+    "a342Create": {
+      "at": "2026-10-13T10:44:38.356Z",
+      "request": [
+        {
+          "operationName": "CreateProject",
+          "variables": {
+            "name": "qa-20261013-a342-sidebar",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation CreateProject($name: String!, $ownerId: String!) {\n  createProject(name: $name, ownerId: $ownerId) {\n    ...ProjectFields\n    __typename\n  }\n}\n\nfragment ProjectFields on Project {\n  id\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  __typename\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "createProject": {
+              "__typename": "Project",
+              "createdAt": "2026-10-13T10:44:38Z",
+              "databaseIds": [],
+              "id": "prj-db70n5k479ic73bbj2qg",
+              "keyValueIds": [],
+              "name": "qa-20261013-a342-sidebar",
+              "ownerId": "tea-d98210cbbpdc73dcrkvg",
+              "serviceIds": []
+            }
+          }
+        }
+      ],
+      "url": "https://dashboard.bex.co/project/prj-db70n5k479ic73bbj2qg"
+    },
+    "a342SidebarOpen": {
+      "at": "2026-10-13T10:44:39.681Z",
+      "url": "https://dashboard.bex.co/project/prj-db70n5k479ic73bbj2qg",
+      "dialog": "- dialog \"Sidebar\":\n  - heading \"Sidebar\" [level=2]\n  - paragraph: Displays the mobile sidebar.\n  - link \"Go home\":\n    - /url: /\n    - img \"bex\"\n  - list:\n    - listitem:\n      - button \"bex\"\n  - button \"Toggle Sidebar\"\n  - link \"Dashboard\":\n    - /url: /\n  - paragraph: qa-20261013-a342-sidebar\n  - list:\n    - listitem:\n      - link \"Overview\":\n        - /url: /project/prj-db70n5k479ic73bbj2qg\n  - text: Manage\n  - list:\n    - listitem:\n      - link \"Settings\":\n        - /url: /project/prj-db70n5k479ic73bbj2qg/settings"
+    },
+    "a342SettingsNav": {
+      "at": "2026-10-13T10:46:09.194Z",
+      "before": "https://dashboard.bex.co/project/prj-db70n5k479ic73bbj2qg",
+      "url": "https://dashboard.bex.co/project/prj-db70n5k479ic73bbj2qg/settings",
+      "sidebarCount": 1,
+      "dialog": "- dialog \"Sidebar\":\n  - heading \"Sidebar\" [level=2]\n  - paragraph: Displays the mobile sidebar.\n  - link \"Go home\":\n    - /url: /\n    - img \"bex\"\n  - list:\n    - listitem:\n      - button \"bex\"\n  - button \"Toggle Sidebar\"\n  - link \"Project\":\n    - /url: /project/prj-db70n5k479ic73bbj2qg\n  - paragraph: qa-20261013-a342-sidebar\n  - list:\n    - listitem:\n      - link \"Overview\":\n        - /url: /project/prj-db70n5k479ic73bbj2qg\n  - text: Manage\n  - list:\n    - listitem:\n      - link \"Settings\":\n        - /url: /project/prj-db70n5k479ic73bbj2qg/settings",
+      "main": "",
+      "backgroundHeadings": ["qa-20261013-a342-sidebar", "Environments"],
+      "mainHidden": true
+    },
+    "a342SettingsSettled": {
+      "at": "2026-10-13T10:47:54.656Z",
+      "url": "https://dashboard.bex.co/project/prj-db70n5k479ic73bbj2qg/settings",
+      "sidebarCount": 1,
+      "backgroundHeadings": ["Project settings"],
+      "backgroundButtons": [
+        "qa-20261013-a342-sidebar",
+        "Search⌘ K",
+        "NewNew",
+        "",
+        "P",
+        "Edit",
+        "Delete Project"
+      ],
+      "mainHidden": true
+    },
+    "a342KeyboardOverview": {
+      "at": "2026-10-13T10:49:40.235Z",
+      "before": {
+        "url": "https://dashboard.bex.co/project/prj-db70n5k479ic73bbj2qg/settings",
+        "sidebarCount": 0,
+        "mainHidden": false,
+        "headings": ["Project settings"]
+      },
+      "url": "https://dashboard.bex.co/project/prj-db70n5k479ic73bbj2qg",
+      "sidebarCount": 1,
+      "mainHidden": true,
+      "backgroundHeadings": ["Project settings"],
+      "dialog": "- dialog \"Sidebar\":\n  - heading \"Sidebar\" [level=2]\n  - paragraph: Displays the mobile sidebar.\n  - link \"Go home\":\n    - /url: /\n    - img \"bex\"\n  - button \"Toggle Sidebar\"\n  - link \"Dashboard\":\n    - /url: /\n  - paragraph: prj-db70n5k479ic73bbj2qg\n  - list:\n    - listitem:\n      - link \"Overview\":\n        - /url: /project/prj-db70n5k479ic73bbj2qg\n  - text: Manage\n  - list:\n    - listitem:\n      - link \"Settings\":\n        - /url: /project/prj-db70n5k479ic73bbj2qg/settings"
+    },
+    "a342OverviewSettled": {
+      "at": "2026-10-13T10:51:17.227Z",
+      "url": "https://dashboard.bex.co/project/prj-db70n5k479ic73bbj2qg",
+      "sidebarCount": 1,
+      "dialog": "- dialog \"Sidebar\":\n  - heading \"Sidebar\" [level=2]\n  - paragraph: Displays the mobile sidebar.\n  - link \"Go home\":\n    - /url: /\n    - img \"bex\"\n  - list:\n    - listitem:\n      - button \"bex\"\n  - button \"Toggle Sidebar\"\n  - link \"Dashboard\":\n    - /url: /\n  - paragraph: qa-20261013-a342-sidebar\n  - list:\n    - listitem:\n      - link \"Overview\":\n        - /url: /project/prj-db70n5k479ic73bbj2qg\n  - text: Manage\n  - list:\n    - listitem:\n      - link \"Settings\":\n        - /url: /project/prj-db70n5k479ic73bbj2qg/settings",
+      "mainHidden": true,
+      "backgroundHeadings": ["qa-20261013-a342-sidebar", "Environments"],
+      "backgroundText": "qa-20261013-a342-sidebar\nNew\nP\n\nPROJECT\n\nqa-20261013-a342-sidebar\nEnvironments\nNew Service\nNew Environment\nNo environments yet. Create one (e.g. staging or production) to group this project's resources.",
+      "width": {
+        "viewport": 360,
+        "body": 360
+      }
+    },
+    "a342EscapeControl": {
+      "at": "2026-10-13T10:53:36.874Z",
+      "url": "https://dashboard.bex.co/project/prj-db70n5k479ic73bbj2qg",
+      "sidebarCount": 1,
+      "mainHidden": true,
+      "headings": ["qa-20261013-a342-sidebar"]
+    },
+    "a342DismissedControl": {
+      "at": "2026-10-13T10:55:12.188Z",
+      "url": "https://dashboard.bex.co/project/prj-db70n5k479ic73bbj2qg",
+      "sidebarCount": 0,
+      "mainHidden": false,
+      "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261013-a342-sidebar\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"qa-20261013-a342-sidebar\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-db70n5k479ic73bbj2qg\n  - button \"New Environment\"\n  - text: No environments yet. Create one (e.g. staging or production) to group this project's resources.",
+      "triggerCount": 1
+    },
+    "a342DesktopControl": {
+      "at": "2026-10-13T10:55:15.022Z",
+      "url": "https://dashboard.bex.co/project/prj-db70n5k479ic73bbj2qg/settings",
+      "before": ["expanded"],
+      "after": ["expanded"],
+      "sidebarCount": 0,
+      "mainHidden": false,
+      "heading": ["Project settings"]
+    },
+    "a342Delete": {
+      "at": "2026-10-13T11:07:26.443Z",
+      "request": [
+        {
+          "operationName": "DeleteProject",
+          "variables": {
+            "id": "prj-db70n5k479ic73bbj2qg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation DeleteProject($id: String!) {\n  deleteProject(id: $id)\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "deleteProject": "prj-db70n5k479ic73bbj2qg"
+          }
+        }
+      ]
+    },
+    "a342Cleanup": {
+      "at": "2026-10-13T11:07:34.796Z",
+      "request": {
+        "operationName": "QaA342Cleanup",
+        "query": "query QaA342Cleanup($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      },
+      "ownStatus": 404
+    },
+    "a342Logout": {
+      "at": "2026-10-13T11:08:15.547Z",
+      "ownersStatus": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "a342InventoryExact": true
+  },
+  "screenshot": {
+    "path": ".playwright-mcp/qa-sidebar-navigation-a342-mobile.png",
+    "bytes": 16965,
+    "viewed": true
+  },
+  "limits": [
+    "Immediate post-navigation snapshots still contained outgoing content; the separately captured settled headings prove the destination loaded.",
+    "Immediate Escape snapshot still had the closing dialog; the later dismissed control proves normal closure.",
+    "Only Project navigation reproduced this pass; earlier service Logs drawer persistence was explicitly outside w4/m204.",
+    "No exact authenticated Render mobile comparison, modified-click/new-tab, Back/Forward, Chinese or slow/error route replay this pass."
+  ]
+}
