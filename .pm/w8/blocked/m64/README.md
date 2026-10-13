@@ -1,18 +1,18 @@
 # w8 · m64 — Keep Blueprint environment copies consistent across applies
 
-**Worker:** worker8 **Goal:** sibling copies equal the source configuration across group links, seed state, immutable literal priority and own mutable overrides. **Status:** todo — shipped group/seed fixes retained; own-override and same-key literal/seed gaps require t007/t008 and complete acceptance.
+**Worker:** worker8 **Goal:** sibling copies equal the source configuration across group links, seed state, immutable literal priority and own mutable overrides. **Status:** blocked — t001–t005, t007, t008 done and shipped (2026-10-13); t006 needs the API deployed to production plus fresh pinned native validation captures and hosted/snapshot dispositions.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | Resolve known values from effective link and seed state — **DONE 2026-10-13** | 55m | — |
-| t007 | Guard unknown own mutable overrides — **TODO** | 25m | t001 |
-| t008 | Preserve immutable literal priority over same-key seeds — **TODO** | 30m | t007 |
-| t002 | Audit all parser/current-state consumers and inherited 099 DoD — **REOPENED** | 35m | t008 |
-| t003 | Render parity — **REOPENED** | 15m | t002 |
-| t004 | Simplify — **REOPENED** | 10m | t003 |
-| t005 | Meaningful test coverage — **REOPENED** | 30m | t003 |
+| t007 | Guard unknown own mutable overrides — **DONE 2026-10-13** | 25m | t001 |
+| t008 | Preserve immutable literal priority over same-key seeds — **DONE 2026-10-13** | 30m | t007 |
+| t002 | Audit all parser/current-state consumers and inherited 099 DoD — **DONE 2026-10-13** | 35m | t008 |
+| t003 | Render parity — **DONE 2026-10-13** | 15m | t002 |
+| t004 | Simplify — **DONE 2026-10-13** | 10m | t003 |
+| t005 | Meaningful test coverage — **DONE 2026-10-13** | 30m | t003 |
 | t006 | Closeout — **BLOCKED: deployed API + native receipts** | 10m | t004, t005 |
 
 ## Definition of done

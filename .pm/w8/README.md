@@ -17,7 +17,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m65** — Retain PostgreSQL process logs during bursts (7 tasks, ~2h30) ← live CLI sweep218; source-loss pattern through both clients, compatible patched CNPG manager required
 
-- [ ] **m64** — Keep Blueprint environment copies consistent across applies (8 tasks, ~3h30m) ← shipped group/seed fixes retained; sweeps219/222 own mutable overrides and immutable literal/seed priority need t007/t008 plus complete shared acceptance
+- [ ] **m64** — [Keep Blueprint environment copies consistent across applies](blocked/m64/README.md) — **BLOCKED (2026-10-13: t001–t005, t007, t008 done — copies follow the source effective links and seeds, manifest literals beat same-key seeds, and a same-key own store variable is a located refusal; needs the API deployed to production plus fresh pinned native validation captures and hosted dispositions before t006)**
 
 - [ ] **m63** — [Keep completed initial hooks out of later deploys](blocked/m63/README.md) — **BLOCKED (2026-10-13: t001–t005 done — the hook has its own spec field, the operator completes it on success and later releases run only the regular command; needs the operator/API deployed to production plus a hosted owned-fixture run with native Bex/Render manual deploys and cleanup before t006)**
 

@@ -1378,6 +1378,7 @@ func (s *Service) currentStateCopyProblems(ctx context.Context, st parsedStack, 
 		declared[g.name] = true
 	}
 	known := map[string]map[string]knownValue{} // per existing source
+	ownNames := map[string][]string{}           // per existing source, names only
 	var problems blueprintResourceErrors
 	for i := range st.services {
 		consumer := &st.services[i]
@@ -1409,6 +1410,24 @@ func (s *Service) currentStateCopyProblems(ctx context.Context, st parsedStack, 
 			if !ok {
 				problems = append(problems, copyRefusal(consumer, c, "which has no such plainly-defined variable in its current links"))
 				continue
+			}
+			// The source's own store projects after its groups: a same-key
+			// variable there (even empty) wins, and its value is not read here
+			// (w8/m64 t007). Names only.
+			if v.group != "" && s.EnvNames != nil {
+				names, cached := ownNames[c.source]
+				if !cached {
+					listed, err := s.EnvNames.ListEnvVarNames(ctx, existing.Name)
+					if err != nil {
+						return nil, err
+					}
+					names = listed
+					ownNames[c.source] = names
+				}
+				if slices.Contains(names, c.sourceKey) {
+					problems = append(problems, copyRefusal(consumer, c, "which its own environment also sets over the group value, so its current value is not knowable from the Blueprint"))
+					continue
+				}
 			}
 			for j := range consumer.req.Env {
 				if consumer.req.Env[j].Name == c.key && consumer.req.Env[j].ValueFrom == nil {
@@ -2361,9 +2380,14 @@ func knownServiceEnv(se serviceEnv, groups []parsedEnvGroup) map[string]knownVal
 	for _, k := range se.promptKeys {
 		delete(known, k)
 	}
-	for k, v := range se.known {
-		_, seeded := se.seedLiterals[k]
-		known[k] = knownValue{value: v, seed: seeded}
+	// The service's own store (seeds, answered prompts) projects after its
+	// groups; its manifest literals are container env and win over both, in
+	// either entry order (w8/m64 t008).
+	for k, v := range se.seedLiterals {
+		known[k] = knownValue{value: v, seed: true}
+	}
+	for k, v := range se.literals {
+		known[k] = knownValue{value: v}
 	}
 	// A reference resolves after every literal and is appended after them in
 	// spec.Env, so it wins at runtime: a same-key literal, in either entry
@@ -2399,7 +2423,7 @@ type serviceEnv struct {
 	seedLiterals  map[string]string // sync:false literals, seeded once into the mutable env store
 	seedGenerates []string          // generateValue keys, minted + seeded once
 	promptKeys    []string          // sync:false keys with no manifest value
-	known         map[string]string // this service's parse-time-known env (for a sibling's fromService.envVarKey)
+	literals      map[string]string // plain manifest literals (spec.Env), which win over the store at runtime
 }
 
 // parseService maps one services[] entry onto a CreateRequest (with repo/branch
@@ -2597,7 +2621,7 @@ func manifestStartAndAutoDeploy(a bexService) (string, *bool, error) {
 // overwrites nor re-mints. fromDatabase/fromService are resolved in pass 2 once
 // every name is known.
 func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv1alpha1.EnvVar, serviceEnv, error) {
-	se := serviceEnv{seedLiterals: map[string]string{}, known: map[string]string{}}
+	se := serviceEnv{seedLiterals: map[string]string{}, literals: map[string]string{}}
 	literal := make([]appv1alpha1.EnvVar, 0, len(a.EnvVars))
 	for _, e := range a.EnvVars {
 		if e.FromGroup != "" {
@@ -2642,17 +2666,15 @@ func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv
 			// that DeployRequest.EnvVarValues may seed exactly once.
 			if e.hasValue() {
 				se.seedLiterals[e.Key] = e.Value
-				se.known[e.Key] = e.Value
 			} else {
 				se.promptKeys = append(se.promptKeys, e.Key)
 				if value, ok := overrides.envVarValues[e.Key]; ok {
 					se.seedLiterals[e.Key] = value
-					se.known[e.Key] = value
 				}
 			}
 		default:
 			literal = append(literal, appv1alpha1.EnvVar{Name: e.Key, Value: e.Value})
-			se.known[e.Key] = e.Value
+			se.literals[e.Key] = e.Value
 		}
 	}
 	if len(literal) == 0 {

@@ -53,7 +53,8 @@ func TestBlueprintCopiesFollowTheSourcesEffectiveConfiguration(t *testing.T) {
 		base := &core.Base{Client: fakeClient(), Namespace: "default", Clock: func() time.Time { return time.Unix(1_000_000, 0).UTC() }}
 		kv := newMemKV()
 		eg := &envgroups.Service{Base: base, Store: kv}
-		return &Service{Base: base, EnvGroups: eg, EnvSeeder: &secrets.Service{Base: base, Store: kv}}, eg
+		sec := &secrets.Service{Base: base, Store: kv}
+		return &Service{Base: base, EnvGroups: eg, EnvSeeder: sec, EnvNames: sec}, eg
 	}
 	copyOf := func(t *testing.T, svc *Service) string {
 		t.Helper()
@@ -135,4 +136,69 @@ func TestBlueprintCopiesFollowTheSourcesEffectiveConfiguration(t *testing.T) {
 			t.Fatalf("validation = %+v, %v; want one refusal at the consumer's COPY entry", v, err)
 		}
 	})
+
+	// t007: the source's own store projects after its groups, so a same-key
+	// variable there, even empty, wins; its value is not read, so the copy is
+	// refused. An unrelated own key keeps the copy. (The store refuses a write to
+	// a manifest-owned key, so a manifest literal cannot be shadowed there.)
+	for _, tc := range []struct {
+		name, ownKey, ownValue, sourceEnv, want string
+	}{
+		{"edited own override", "VALUE", "edited", link("a"), ""},
+		{"empty own override", "VALUE", "", link("a"), ""},
+		{"unrelated own key", "OTHER", "x", link("a"), "group a"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, _ := newServices()
+			ctx := context.Background()
+			manifest := doc(tc.sourceEnv)
+			if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: manifest}); err != nil {
+				t.Fatalf("first apply: %v", err)
+			}
+			if _, err := svc.EnvSeeder.(*secrets.Service).SetEnvVar(ctx, "source", tc.ownKey, secrets.EnvVarWrite{Value: tc.ownValue}); err != nil {
+				t.Fatalf("own override: %v", err)
+			}
+			before := getApp(t, svc.Client, "consumer").ResourceVersion
+			_, err := svc.DeployStack(ctx, DeployRequest{Manifest: manifest})
+			if tc.want == "" {
+				if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "its own environment also sets") {
+					t.Fatalf("reapply = %v, want the own-override refusal", err)
+				}
+				if after := getApp(t, svc.Client, "consumer").ResourceVersion; after != before {
+					t.Fatalf("a refused reapply wrote the consumer")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("reapply: %v", err)
+			}
+			if got := copyOf(t, svc); got != tc.want {
+				t.Fatalf("COPY = %q, want %q", got, tc.want)
+			}
+		})
+	}
+
+	// t008: a manifest literal is container env and wins over a same-key
+	// sync:false seed in either entry order, so the copy is the literal on
+	// first apply and stays eligible on reapply.
+	for _, tc := range []struct{ name, sourceEnv, want string }{
+		{"literal then seed", `{"key":"VALUE","value":"literal"},{"key":"VALUE","value":"seed","sync":false}`, "literal"},
+		{"seed then literal", `{"key":"VALUE","value":"seed","sync":false},{"key":"VALUE","value":"literal"}`, "literal"},
+		{"empty literal then seed", `{"key":"VALUE","value":""},{"key":"VALUE","value":"seed","sync":false}`, ""},
+		{"seed then empty literal", `{"key":"VALUE","value":"seed","sync":false},{"key":"VALUE","value":""}`, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, _ := newServices()
+			ctx := context.Background()
+			manifest := doc(tc.sourceEnv)
+			for i := 0; i < 2; i++ {
+				if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: manifest}); err != nil {
+					t.Fatalf("apply %d: %v", i+1, err)
+				}
+				if got := copyOf(t, svc); got != tc.want {
+					t.Fatalf("apply %d COPY = %q, want the literal %q", i+1, got, tc.want)
+				}
+			}
+		})
+	}
 }
