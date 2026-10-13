@@ -459,10 +459,13 @@ describe("LogViewer combined live reader (w4/m192)", () => {
   };
 
   it("reads older live replay above newer history, newest at the bottom", () => {
-    historyState.lines = [row("QA n=369", 60_000)];
+    // One object for the overlap: two row() calls can straddle a millisecond
+    // and mint different keys, which defeats the dedupe under CI load.
+    const overlap = row("QA n=369", 60_000);
+    historyState.lines = [overlap];
     liveState.lines = [
       row("QA START", 600_000),
-      row("QA n=369", 60_000),
+      overlap,
       row("QA n=370", 30_000),
     ];
     render(<LogViewer resource="web" />);
