@@ -1,17 +1,17 @@
 # w8 · m58 — Preserve Unicode matches in log history
 
-**Worker:** worker8 **Goal:** normalized Unicode matches and complete raw-page coverage survive log history through the unchanged CLI and shared API **Status:** todo — reopened by live sweep179: raw searches skip matches behind a full page; t007 is actionable. Partial App and nonsaturated managed-data controls pass; complete acceptance remains required.
+**Worker:** worker8 **Goal:** normalized Unicode matches and complete raw-page coverage survive log history through the unchanged CLI and shared API **Status:** blocked — t001/t007/t002/t004/t005 done and shipped (raw text history pages by raw candidate coverage, 2026-10-13); t003 live native acceptance and t006 need the fix deployed to production plus fresh saturated App/KV/PG receipts and cleanup.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | Make the Loki text prefilter preserve normalized Unicode matches — **DONE 2026-10-12** | 50m | — |
-| t007 | Advance raw text scans by raw candidate coverage | 45m | t001 |
-| t002 | Verify shared history callers and resource families — reopened for t007 | 30m | t007 |
-| t003 | Render parity and live native CLI acceptance — reopened; saturated App fails | 20m | t002 |
-| t004 | Simplify — reopened for t007 | 10m | t003 |
-| t005 | Meaningful Unicode and pagination regression coverage — reopened for realistic bounds | 35m | t003 |
+| t007 | Advance raw text scans by raw candidate coverage — **DONE 2026-10-13** | 45m | t001 |
+| t002 | Verify shared history callers and resource families — **DONE 2026-10-13** | 30m | t007 |
+| t003 | Render parity and live native CLI acceptance — **BLOCKED: needs deployed fix + saturated native receipts** | 20m | t002 |
+| t004 | Simplify — **DONE 2026-10-13** | 10m | t003 |
+| t005 | Meaningful Unicode and pagination regression coverage — **DONE 2026-10-13** | 35m | t003 |
 | t006 | Closeout — full observable DoD still required | 10m | t004, t005 |
 
 ## Definition of done
@@ -26,6 +26,7 @@ Managed Key Value acceptance: use the native EVAL marker commands in sweep 101 a
 
 ## Progress / remaining work
 
+- **2026-10-13:** t007 shipped — raw and display text searches share raw-candidate coverage paging (`textScanPage`), so a match behind a full raw page is reached; realistic-bounds regressions fail on the old scanner. Parked again pending deployment and the saturated native replay (t003) plus closeout (t006).
 - **2026-10-12, live sweep179:** [raw pagination regression](evidence/live-app-sweep179/README.md) reproduces four false-empty native searches across both clients, plus four passing end-bound controls; display REST returns all 21. Eight actual native wire captures and realistic current-source probes isolate missing raw-candidate coverage. Add t007 (45m), reopen t002–t006, and move this milestone from blocked/m58 to active m58. The previous implementation/tests are historical evidence, not proof that the complete DoD holds. Exact App cleanup passes; no product fix or ship by QA.
 
 - **2026-10-12, live sweep178:** [managed PostgreSQL acceptance](evidence/live-pg-sweep178/README.md) passes the exact three-marker/three-prefix/two-iota/one-lambda matrix through both clients, with six actual native HTTP captures and original IDs/bytes preserved. Four native SQL success/error controls pass. Exact owned DB deletion is confirmed by detail 404/listempty, former SQL endpoint no row and PGquota0/termination0. Both managed-data sections pass; complete App/GraphQL/native App wire gates remain and t003/t006 stay blocked.
@@ -41,7 +42,7 @@ Managed Key Value acceptance: use the native EVAL marker commands in sweep 101 a
 ## Source + Goal linkage
 
 - **Source:** [CLI sweep 94 finding](finding.md) and [durable evidence](evidence/native-wire.json), observed 2026-10-11 with human QA credentials in bex-canary; no product code or deployment changed by this hunt.
-- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md), [ADR010](../../../docs/ADR010-observability.md) and [ADR018](../../../docs/ADR018-render-parity.md): customers must be able to find real application logs through the imported terminal client and shared API.
+- **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md), [ADR010](../../../../docs/ADR010-observability.md) and [ADR018](../../../../docs/ADR018-render-parity.md): customers must be able to find real application logs through the imported terminal client and shared API.
 - **Expected outcome:** localized and ASCII searches no longer omit stored case-normalized matches or contradict stricter-prefix queries.
 - **Why now:** both production native clients reproduce it; local Loki 3.6.7 and its exact regexp dependency isolate canonical-literal, first-byte and full-fold mismatches. w2/m167 explicitly left broad Unicode parity unverified; this is now a concrete ordinary-language failure.
 - **Parity:** included because the fix changes tenant-facing history search. REST, GraphQL, MCP and dashboard consumers need scope checks; Greek display-mode REST passes, but plain dotted-İ display REST fails; the dashboard UI remains unverified.

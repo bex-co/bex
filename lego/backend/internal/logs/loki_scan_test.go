@@ -44,7 +44,7 @@ func TestScanLokiWindowStopsAtTheFirstSliceThatFillsThePage(t *testing.T) {
 	got, err := scanLokiWindow(context.Background(), q, scanStart, scanEnd, true, time.Minute,
 		func(_ context.Context, from, to time.Time) ([]LogEntry, error) {
 			calls = append(calls, sliceCall{from, to})
-			return []LogEntry{lineAt(to.Add(-2*time.Minute), "a"), lineAt(to.Add(-time.Minute), "b")}, nil
+			return []LogEntry{lineAt(to.Add(-2*time.Minute), "GET a"), lineAt(to.Add(-time.Minute), "GET b")}, nil
 		})
 	if err != nil || len(got) != 2 {
 		t.Fatalf("got %d lines, err %v", len(got), err)
