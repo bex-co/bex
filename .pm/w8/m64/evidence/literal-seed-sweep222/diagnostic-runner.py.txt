@@ -1,0 +1,40 @@
+from pathlib import Path
+import subprocess, os, json, re
+
+p = Path(__file__).parent
+root = Path('$REPO')
+overlay = {'Replace': {
+    str(root / 'lego/backend/internal/apps/qa213_group_order_probe_test.go'): str(p / 'sweep213-group-order-probe_test.go'),
+    str(root / 'lego/backend/internal/apps/qa222_literal_seed_probe_test.go'): str(p / 'sweep222-literal-seed-probe_test.go'),
+}}
+file = p / 'sweep222-overlay.json'
+file.write_text(json.dumps(overlay))
+env = {k: v for k, v in os.environ.items() if not k.startswith(('BEX_', 'RENDER_', 'QA_', 'PG', 'REDISCLI_'))}
+env.update(GOWORK='off', GOTOOLCHAIN='go1.26.8')
+head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
+with (p / 'sweep222-events.jsonl').open('w') as output, (p / 'sweep222-stderr.log').open('w') as error:
+    result = subprocess.run(['go', 'test', '-overlay', str(file), './internal/apps',
+        '-run', '^TestQA222LiteralSeedPriority$', '-count=1', '-json'],
+        cwd=root / 'lego/backend', env=env, text=True, stdout=output, stderr=error)
+assert result.returncode == 0, 'Inspect private test output before classifying'
+combined = {}
+for line in (p / 'sweep222-events.jsonl').read_text().splitlines():
+    event = json.loads(line)
+    if event.get('Action') == 'output':
+        name = event.get('Test', '')
+        combined[name] = combined.get(name, '') + event.get('Output', '')
+rows = []
+for output in combined.values():
+    for match in re.finditer(r'QA222_PRIORITY (\{[^\n]+\})', output):
+        row = json.loads(match[1])
+        row['source_head'] = head
+        rows.append(row)
+assert len(rows) == 8
+(p / 'sweep222-results.json').write_text(json.dumps(rows, indent=2, ensure_ascii=False) + '\n')
+for row in rows:
+    print(json.dumps({'case': row['case'], 'fresh_valid': row['fresh_validation']['valid'],
+        'source_VALUE': row.get('source_VALUE'), 'consumer_COPY': row.get('consumer_COPY'),
+        'first_apply_mismatch': row.get('first_apply_mismatch'),
+        'existing_valid': row.get('existing_validation', {}).get('valid'),
+        'immutable_literal_false_refusal': row.get('immutable_literal_false_refusal')}), flush=True)
+print('Eight diagnostics executed; no hosted resources or product source edits.', flush=True)

@@ -1,0 +1,15 @@
+{
+  "source_head_before": "ba4a44de5a8b24a257fb6e767c439c5dc8215db1",
+  "source_head_after": "ba4a44de5a8b24a257fb6e767c439c5dc8215db1",
+  "deployed_API_revision": "unknown; desired pin aab6a2b20acb predates m64 source fix",
+  "cases": 5,
+  "current_feature_method_mismatches": 2,
+  "controls_agree": 3,
+  "native_fresh_admission": 8,
+  "native_scope": "fresh declaration validation only; no live existing-state, hosted apply or native HTTP capture",
+  "implementation_scope": "actual apps/envgroups/secrets methods, fake versioned store/Kubernetes; source VALUE inferred from actual persisted Secret order + literal precedence, not a running pod",
+  "names_seam": "apps.Service.EnvNames -> secrets.ListEnvVarNames; production server wires it; target VALUE is listed in both mismatches",
+  "root": "apps/deploy.go currentStateCopyProblems derives known group values but does not check same-key own mutable names; operator/envFromSources puts own after groups",
+  "no_live_fixture_or_QA_source_edit": true,
+  "no_QA_commit_push": true
+}

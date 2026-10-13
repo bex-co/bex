@@ -1,0 +1,17 @@
+package build
+import("encoding/json";"os";"testing";corev1 "k8s.io/api/core/v1")
+func TestQA216LiteralPATHPrecedence(t *testing.T){
+ cases:=[]struct{name string;stored *string;literal *string}{
+ {"literal_narrow_over_stored",new("/secret/bin"),new("/literal/bin")},
+ {"literal_empty_over_stored",new("/secret/bin"),new("")},
+ {"literal_over_stored_empty",new(""),new("/usr/local/bin:/usr/bin:/bin")},
+ {"stored_empty_without_literal",new(""),nil},
+ {"omitted_both",nil,nil},
+ }
+ for _,tc:=range cases{t.Run(tc.name,func(t *testing.T){
+  o:=nativeOptions();o.BuildCommand=`printf '%s|%s' "$PATH" "$QA_NOTE"`;o.BuildEnv=[]corev1.EnvVar{{Name:"QA_NOTE",Value:"literal=ü\n\n"}};stored:=[]corev1.EnvVar{{Name:"QA_NOTE",Value:"stored"}};want:=os.Getenv("PATH")
+  if tc.stored!=nil{stored=append(stored,corev1.EnvVar{Name:"PATH",Value:*tc.stored});want=*tc.stored}
+  if tc.literal!=nil{o.BuildEnv=append(o.BuildEnv,corev1.EnvVar{Name:"PATH",Value:*tc.literal});want=*tc.literal}
+  got,err:=runNativeBuildShell(t,o,prepareNativeEnv(t,o,stored));pass:=err==nil&&string(got)==want+"|literal=ü\n\n";b,_:=json.Marshal(map[string]any{"case":tc.name,"pass":pass,"actual":string(got),"expected":want+"|literal=ü\n\n","error":err});t.Log("QA216_RESULT "+string(b));if !pass{t.Fail()}
+ })}
+}

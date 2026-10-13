@@ -1,0 +1,32 @@
+import pathlib,json,subprocess,datetime,time,urllib.parse,os
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('$REPO/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());sid=(p/'sweep217-kv-id.txt').read_text();x=next(z for z in c['resources'] if z.get('id')==sid);ws='tea-daif693dqjvc73e7as3g'
+base=c['baseline'].get('keyvalues',[]);base=base.get('data',base) if isinstance(base,dict) else base
+assert x['sweep']==217 and x['last_readback']['plan']=='free';assert not base and x['workspace']==ws and x['create_result']['exit']==0 and x['create_response']['id']==sid and x['dependency_ids']==[] and not x['state'].startswith('deleted:') and 'delete_result' not in x
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+def cli(a):return json.loads(subprocess.check_output(['python3',str(p/'run.py'),'--release',*a],text=True))
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True))
+r=wire('/v1/key-value/'+sid+'/connection-info');x['cleanup_connection_metadata_status']=r['status'];save();redis_args=None;redis_env=None
+if r['status']=='200':
+ import yaml
+ cfg=yaml.safe_load((p/'config/cli.yaml').read_text());api=cfg['api'];token=api.get('token') or api.get('key') or api.get('access_token');assert token
+ ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n';body=p/'sweep217-private-connection-info.json';oldmask=os.umask(0o077)
+ try:reply=subprocess.run(['curl','--disable','-sS','--max-time','20','--config','-','-o',str(body),'-w','%{http_code}','https://api.bex.co/v1/key-value/'+sid+'/connection-info'],input=auth,text=True,capture_output=True,timeout=25)
+ finally:os.umask(oldmask)
+ assert reply.returncode==0 and reply.stdout=='200';body.chmod(0o600);v=json.loads(body.read_text());body.unlink(missing_ok=True);v=v.get('data',v);url=v['externalConnectionString'];parsed=urllib.parse.urlparse(url);host=parsed.hostname;assert url.startswith('rediss://') and host.startswith(sid+'.');redis_env={k:v for k,v in os.environ.items() if not k.startswith('REDISCLI_')};redis_env['REDISCLI_AUTH']=urllib.parse.unquote(parsed.password);redis_args=['redis-cli','-h',host,'-p',str(parsed.port or 6379),'--tls','--sni',host]+(['--user',urllib.parse.unquote(parsed.username)] if parsed.username else [])+['--raw','PING']
+def ping():
+ if redis_args is None:return {'at':now(),'exit':'unavailable','pong':False,'qualification':'No cached endpoint; runtime teardown unverified'}
+ try:
+  r=subprocess.run(redis_args,env=redis_env,capture_output=True,text=True,timeout=10)
+  return {'at':now(),'exit':r.returncode,'pong':r.stdout.strip()=='PONG','stderr_present':bool(r.stderr),'connection_refused':'Connection refused' in r.stderr or 'Connection reset' in r.stderr}
+ except subprocess.TimeoutExpired:return {'at':now(),'exit':'timeout','pong':False}
+x['cached_connection_before_delete']=ping();save();print('Cached own Redis positive control',x['cached_connection_before_delete'],flush=True)
+x['delete_intent']={'at':now(),'id':sid,'workspace':ws};x['state']='exact owned KV deletion pending';save();r=cli(['keyvalues','delete',sid,'--confirm','-o','json']);x['delete_result']=r;save();print('Native KV delete',r['exit'],r['elapsed'],flush=True)
+r=wire('/v1/key-value/'+sid);x['detail_after_delete']=r;save();print('Own detail',r['status'],flush=True)
+r=cli(['keyvalues','list','--confirm','-o','json']);x['list_after_delete']=r;save();assert r['exit']==0;v=json.loads(r['stdout']);v=v.get('data',v) if isinstance(v,dict) else v;assert not v;print('Native KV list empty',flush=True)
+r=cli(['services','--confirm','-o','json']);assert r['exit']==0;ids={z.get('service',z)['id'] for z in json.loads(r['stdout']) or []};base={z if isinstance(z,str) else z.get('service',z)['id'] for z in c['baseline']['services']};assert base<=ids;x['baseline_service_ids_after_delete']=sorted(ids);save();print('All six baseline services present',flush=True)
+for attempt in range(3):
+ r=ping();x.setdefault('cached_connection_after_delete',[]).append(r);q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';quota=json.loads(q['response']);x['quota_after_delete']=q;save();print('Former own Redis endpoint',r,'; quota',quota,flush=True)
+ if r['exit'] not in [0,'timeout','unavailable'] and quota['keyValues']['used']==0 and quota['keyValues']['terminating']==0:break
+ if attempt<2:time.sleep(15)
+x['state']='deleted: CLIack/detail404/listempty/baseline present/former Redis endpoint no-PONG/quota0 termination0' if x['delete_result']['exit']==0 and x['detail_after_delete']['status']=='404' and r['exit'] not in [0,'timeout','unavailable'] and quota['keyValues']['used']==0 and quota['keyValues']['terminating']==0 else 'delete acknowledged: bounded metadata/runtime/quota reconciliation pending';save();print('Cleanup state',x['state'],flush=True)

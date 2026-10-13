@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-13T14:10:29.630173+00:00",
+  "request": {
+    "method": "GET",
+    "path": "/v1/services/srv-db73j0s479ic73bbj5o0/events?limit=20",
+    "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "authorization": "[REDACTED]"
+  },
+  "status": "200",
+  "elapsed": 1.361,
+  "curl_exit": 0,
+  "stderr": "",
+  "headers": {
+    "content-type": "application/json",
+    "cf-ray": "a49eed9229fb01b2-GRU"
+  },
+  "response": "[{\"event\":{\"id\":\"evt-inqce62g26pj3bn7q9oi\",\"timestamp\":\"2026-10-13T14:03:36Z\",\"serviceId\":\"srv-db73j0s479ic73bbj5o0\",\"type\":\"build_ended\",\"details\":{\"deployId\":\"dep-db73j0s479ic73bbj5og\",\"status\":\"succeeded\"}},\"cursor\":\"MjAyNi0xMC0xM1QxNDowMzozNi44NjQxMTVafGZhY3Q6ZGVwbG95OmRlcC1kYjczajBzNDc5aWM3M2JiajVvZzpidWlsZF9lbmRlZA\"},{\"event\":{\"id\":\"evt-isbf9u8qe2vs56ac73fo\",\"timestamp\":\"2026-10-13T14:02:53Z\",\"serviceId\":\"srv-db73j0s479ic73bbj5o0\",\"type\":\"build_started\",\"details\":{\"deployId\":\"dep-db73j0s479ic73bbj5og\"}},\"cursor\":\"MjAyNi0xMC0xM1QxNDowMjo1My4wMTE5NTVafGZhY3Q6ZGVwbG95OmRlcC1kYjczajBzNDc5aWM3M2JiajVvZzpidWlsZF9zdGFydGVk\"},{\"event\":{\"id\":\"evt-uabeejqotkqm2mufrb1s\",\"timestamp\":\"2026-10-13T14:00:35Z\",\"serviceId\":\"srv-db73j0s479ic73bbj5o0\",\"type\":\"deploy_started\",\"details\":{\"deployId\":\"dep-db73j0s479ic73bbj5og\",\"stallReason\":\"container could not start: the startup program \\\"docker-entrypoint.sh\\\" does not exist in this image. The program never ran, so there is no application output in the logs. Check the Docker Command and the image's entrypoint.\",\"trigger\":{\"firstBuild\":true,\"envUpdated\":false,\"manual\":false,\"deployedByRender\":false,\"clearCache\":false,\"rollback\":false,\"deployHook\":false},\"commitId\":\"fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7\",\"commitMessage\":\"docs(pm): file generated-key normalization collision (w4/286)\",\"startedAt\":\"2026-10-13T14:02:53Z\",\"triggeredByUser\":\"[QA user ID redacted]\"}},\"cursor\":\"MjAyNi0xMC0xM1QxNDowMDozNS41MjIxNThafGRlcC1kYjczajBzNDc5aWM3M2JiajVvZzpzdGFydGVk\"}]\n"
+}

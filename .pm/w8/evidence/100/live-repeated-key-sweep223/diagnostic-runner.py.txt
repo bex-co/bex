@@ -1,0 +1,36 @@
+from pathlib import Path
+import subprocess, os, json, re
+
+p = Path(__file__).parent
+root = Path('$REPO')
+overlay = {'Replace': {
+    str(root / 'lego/backend/internal/apps/qa213_group_order_probe_test.go'): str(p / 'sweep213-group-order-probe_test.go'),
+    str(root / 'lego/backend/internal/apps/qa223_location_probe_test.go'): str(p / 'sweep223-location-probe_test.go'),
+}}
+file = p / 'sweep223-overlay.json'
+file.write_text(json.dumps(overlay))
+env = {k: v for k, v in os.environ.items() if not k.startswith(('BEX_', 'RENDER_', 'QA_', 'PG', 'REDISCLI_'))}
+env.update(GOWORK='off', GOTOOLCHAIN='go1.26.8')
+head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
+with (p / 'sweep223-events.jsonl').open('w') as output, (p / 'sweep223-stderr.log').open('w') as error:
+    result = subprocess.run(['go', 'test', '-overlay', str(file), './internal/apps',
+        '-run', '^TestQA223DuplicateEnvLocation$', '-count=1', '-json'],
+        cwd=root / 'lego/backend', env=env, text=True, stdout=output, stderr=error)
+assert result.returncode == 0, 'Inspect private test output before classifying'
+combined = {}
+for line in (p / 'sweep223-events.jsonl').read_text().splitlines():
+    event = json.loads(line)
+    if event.get('Action') == 'output':
+        name = event.get('Test', '')
+        combined[name] = combined.get(name, '') + event.get('Output', '')
+rows = []
+for output in combined.values():
+    for match in re.finditer(r'QA223_LOCATION (\{[^\n]+\})', output):
+        row = json.loads(match[1])
+        row['source_head'] = head
+        rows.append(row)
+assert len(rows) == 6
+(p / 'sweep223-results.json').write_text(json.dumps(rows, indent=2, ensure_ascii=False) + '\n')
+for row in rows:
+    print(json.dumps({'case':row['case'],'valid':row['validation']['valid'],'actual_path':row['actual_path'],'expected_path':row['expected_path'],'pass':row['location_or_valid_control_pass']}),flush=True)
+print('Six current-source diagnostics executed; no product source edits.',flush=True)

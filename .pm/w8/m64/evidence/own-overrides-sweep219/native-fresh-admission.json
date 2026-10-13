@@ -1,0 +1,186 @@
+[
+  {
+    "client": "bex",
+    "case": "group",
+    "file": "sweep219-group.yaml",
+    "result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "$PRIVATE_QA_DIR/sweep219-group.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.197,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa20261013-34a2f0g\"\n    ],\n    \"services\": [\n      \"qa20261013-34a2f0c\",\n      \"qa20261013-34a2f0s\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "fresh_manifest_valid": true,
+    "scope": "fresh declaration admission only; no hosted current-state/apply evidence"
+  },
+  {
+    "client": "render",
+    "case": "group",
+    "file": "sweep219-group.yaml",
+    "result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "$PRIVATE_QA_DIR/sweep219-group.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.377,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa20261013-34a2f0g\"\n    ],\n    \"services\": [\n      \"qa20261013-34a2f0c\",\n      \"qa20261013-34a2f0s\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "fresh_manifest_valid": true,
+    "scope": "fresh declaration admission only; no hosted current-state/apply evidence"
+  },
+  {
+    "client": "bex",
+    "case": "literal",
+    "file": "sweep219-literal.yaml",
+    "result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "$PRIVATE_QA_DIR/sweep219-literal.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.061,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa20261013-34a2f0g\"\n    ],\n    \"services\": [\n      \"qa20261013-34a2f0c\",\n      \"qa20261013-34a2f0s\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "fresh_manifest_valid": true,
+    "scope": "fresh declaration admission only; no hosted current-state/apply evidence"
+  },
+  {
+    "client": "render",
+    "case": "literal",
+    "file": "sweep219-literal.yaml",
+    "result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "$PRIVATE_QA_DIR/sweep219-literal.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.231,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa20261013-34a2f0g\"\n    ],\n    \"services\": [\n      \"qa20261013-34a2f0c\",\n      \"qa20261013-34a2f0s\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "fresh_manifest_valid": true,
+    "scope": "fresh declaration admission only; no hosted current-state/apply evidence"
+  },
+  {
+    "client": "bex",
+    "case": "empty",
+    "file": "sweep219-empty.yaml",
+    "result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "$PRIVATE_QA_DIR/sweep219-empty.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.18,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa20261013-34a2f0g\"\n    ],\n    \"services\": [\n      \"qa20261013-34a2f0c\",\n      \"qa20261013-34a2f0s\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "fresh_manifest_valid": true,
+    "scope": "fresh declaration admission only; no hosted current-state/apply evidence"
+  },
+  {
+    "client": "render",
+    "case": "empty",
+    "file": "sweep219-empty.yaml",
+    "result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "$PRIVATE_QA_DIR/sweep219-empty.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.961,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa20261013-34a2f0g\"\n    ],\n    \"services\": [\n      \"qa20261013-34a2f0c\",\n      \"qa20261013-34a2f0s\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "fresh_manifest_valid": true,
+    "scope": "fresh declaration admission only; no hosted current-state/apply evidence"
+  },
+  {
+    "client": "bex",
+    "case": "unrelated",
+    "file": "sweep219-unrelated.yaml",
+    "result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "$PRIVATE_QA_DIR/sweep219-unrelated.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.393,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa20261013-34a2f0g\"\n    ],\n    \"services\": [\n      \"qa20261013-34a2f0c\",\n      \"qa20261013-34a2f0s\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "fresh_manifest_valid": true,
+    "scope": "fresh declaration admission only; no hosted current-state/apply evidence"
+  },
+  {
+    "client": "render",
+    "case": "unrelated",
+    "file": "sweep219-unrelated.yaml",
+    "result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "$PRIVATE_QA_DIR/sweep219-unrelated.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.164,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa20261013-34a2f0g\"\n    ],\n    \"services\": [\n      \"qa20261013-34a2f0c\",\n      \"qa20261013-34a2f0s\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "fresh_manifest_valid": true,
+    "scope": "fresh declaration admission only; no hosted current-state/apply evidence"
+  }
+]

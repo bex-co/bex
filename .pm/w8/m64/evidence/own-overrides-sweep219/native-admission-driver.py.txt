@@ -1,0 +1,15 @@
+from pathlib import Path
+import json,secrets,datetime,subprocess,shutil
+p=Path(__file__).parent;cases=[];nonce=secrets.token_hex(3);date=datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d');prefix='qa'+date+'-'+nonce
+for name,literal in [('group',None),('literal','own'),('empty',''),('unrelated',None)]:
+ vars=[{'fromGroup':prefix+'g'}]
+ if literal is not None:vars.append({'key':'VALUE','value':literal})
+ if name=='unrelated':vars.append({'key':'OTHER','value':'other'})
+ doc={'envVarGroups':[{'name':prefix+'g','envVars':[{'key':'VALUE','value':'group A'}]}],'services':[{'name':prefix+'c','type':'web','runtime':'image','image':{'url':'nginx:1'},'envVars':[{'key':'COPY','fromService':{'type':'web','name':prefix+'s','envVarKey':'VALUE'}}]},{'name':prefix+'s','type':'web','runtime':'image','image':{'url':'nginx:1'},'envVars':vars}]};file=p/('sweep219-'+name+'.yaml');file.write_text(json.dumps(doc,indent=2)+'\n');file.chmod(0o600)
+ for client in ['bex','render']:
+  cfg=p/'render-config/cli.yaml'
+  try:
+   if client=='render':assert not cfg.exists();shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+   runner=['python3',str(p/'run-render.py')] if client=='render' else ['python3',str(p/'run.py'),'--release'];r=json.loads(subprocess.check_output([*runner,'blueprints','validate',str(file),'--confirm','-o','json'],text=True));body=json.loads(r['stdout']) if r['stdout'].strip() else {};v=body.get('data',body);passed=r['exit']==0 and v.get('valid') is True;row={'client':client,'case':name,'file':file.name,'result':r,'fresh_manifest_valid':passed,'scope':'fresh declaration admission only; no hosted current-state/apply evidence'};cases.append(row);(p/'sweep219-native-cases.json').write_text(json.dumps(cases,indent=2,ensure_ascii=False));print(json.dumps({'client':client,'case':name,'exit':r['exit'],'valid':v.get('valid'),'pass':passed}),flush=True);assert passed
+  finally:
+   if client=='render':cfg.unlink(missing_ok=True)

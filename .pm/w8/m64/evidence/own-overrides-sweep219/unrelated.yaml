@@ -1,0 +1,50 @@
+{
+  "envVarGroups": [
+    {
+      "name": "qa20261013-34a2f0g",
+      "envVars": [
+        {
+          "key": "VALUE",
+          "value": "group A"
+        }
+      ]
+    }
+  ],
+  "services": [
+    {
+      "name": "qa20261013-34a2f0c",
+      "type": "web",
+      "runtime": "image",
+      "image": {
+        "url": "nginx:1"
+      },
+      "envVars": [
+        {
+          "key": "COPY",
+          "fromService": {
+            "type": "web",
+            "name": "qa20261013-34a2f0s",
+            "envVarKey": "VALUE"
+          }
+        }
+      ]
+    },
+    {
+      "name": "qa20261013-34a2f0s",
+      "type": "web",
+      "runtime": "image",
+      "image": {
+        "url": "nginx:1"
+      },
+      "envVars": [
+        {
+          "fromGroup": "qa20261013-34a2f0g"
+        },
+        {
+          "key": "OTHER",
+          "value": "other"
+        }
+      ]
+    }
+  ]
+}

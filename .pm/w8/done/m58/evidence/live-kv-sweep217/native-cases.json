@@ -1,0 +1,128 @@
+[
+  {
+    "phase": "baseline",
+    "client": "bex",
+    "term": "QA217_5603fc",
+    "count": 3,
+    "native_API_original_ID_bytes_equal": true,
+    "pass": true,
+    "capture_index": 0
+  },
+  {
+    "phase": "baseline",
+    "client": "bex",
+    "term": "9007199254740993",
+    "count": 1,
+    "native_API_original_ID_bytes_equal": true,
+    "pass": true,
+    "capture_index": 1
+  },
+  {
+    "phase": "baseline",
+    "client": "render",
+    "term": "QA217_5603fc",
+    "count": 3,
+    "native_API_original_ID_bytes_equal": true,
+    "pass": true,
+    "capture_index": 2
+  },
+  {
+    "phase": "baseline",
+    "client": "render",
+    "term": "9007199254740993",
+    "count": 1,
+    "native_API_original_ID_bytes_equal": true,
+    "pass": true,
+    "capture_index": 3
+  },
+  {
+    "phase": "saturated",
+    "client": "bex",
+    "term": "QA217_5603fc",
+    "count": 3,
+    "native_API_original_ID_bytes_equal": true,
+    "pass": true,
+    "capture_index": 4
+  },
+  {
+    "phase": "saturated",
+    "client": "bex",
+    "term": "QA217_5603fc ι",
+    "count": 2,
+    "native_API_original_ID_bytes_equal": true,
+    "pass": true,
+    "capture_index": 5
+  },
+  {
+    "phase": "saturated",
+    "client": "bex",
+    "term": "QA217_5603fc λ",
+    "count": 1,
+    "native_API_original_ID_bytes_equal": true,
+    "pass": true,
+    "capture_index": 6
+  },
+  {
+    "phase": "saturated",
+    "client": "bex",
+    "term": "9007199254740993",
+    "count": 1,
+    "native_API_original_ID_bytes_equal": true,
+    "pass": true,
+    "capture_index": 7
+  },
+  {
+    "phase": "saturated",
+    "client": "bex",
+    "term": "9007199254740992",
+    "count": 0,
+    "native_API_original_ID_bytes_equal": true,
+    "pass": true,
+    "capture_index": 8
+  },
+  {
+    "phase": "saturated",
+    "client": "render",
+    "term": "QA217_5603fc",
+    "count": 3,
+    "native_API_original_ID_bytes_equal": true,
+    "pass": true,
+    "capture_index": 9
+  },
+  {
+    "phase": "saturated",
+    "client": "render",
+    "term": "QA217_5603fc ι",
+    "count": 2,
+    "native_API_original_ID_bytes_equal": true,
+    "pass": true,
+    "capture_index": 10
+  },
+  {
+    "phase": "saturated",
+    "client": "render",
+    "term": "QA217_5603fc λ",
+    "count": 1,
+    "native_API_original_ID_bytes_equal": true,
+    "pass": true,
+    "capture_index": 11
+  },
+  {
+    "phase": "saturated",
+    "client": "render",
+    "term": "9007199254740993",
+    "count": 1,
+    "native_API_original_ID_bytes_equal": true,
+    "pass": true,
+    "capture_index": 12
+  },
+  {
+    "phase": "saturated",
+    "client": "render",
+    "term": "9007199254740992",
+    "count": 0,
+    "native_API_original_ID_bytes_equal": true,
+    "pass": true,
+    "capture_index": 13
+  }
+]

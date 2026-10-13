@@ -1,0 +1,16 @@
+{
+  "head": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+  "production_options_handoff": "app_controller.go:1025; one production EnsureBuild call",
+  "preparer": "build.go:1126; one construction; native.go:297",
+  "loader": "native.go:234; one generated Dockerfile/loader",
+  "runtimes": [
+    "elixir",
+    "go",
+    "node",
+    "python",
+    "ruby",
+    "rust"
+  ],
+  "behavior": "one native projection/preparer/loader shared by native App types and toolchain families; static skips runtime CMD",
+  "limits": "source census plus targeted local tests only; does not certify hosted literal Blueprint, every runtime, release snapshot, browser/GraphQL/MCP, or descendants"
+}

@@ -1,0 +1,90 @@
+{
+  "sweep": 218,
+  "at": "2026-10-13T21:14:43.582359+00:00",
+  "source_head": "aab6a2b20acb51dc7c7fc23155fece2306a94d4b",
+  "posthead": "aab6a2b20acb51dc7c7fc23155fece2306a94d4b",
+  "deployed_API_operator_CNPG_revisions": "unknown",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "fixture": "dpg-db79gdna4m3s73d9i99g",
+  "versions": [
+    "published Bex0.3.2/a6350da0d6e4",
+    "unmodified Render2.27/a764810a7682"
+  ],
+  "new_finding": "PostgreSQL process logs silently sample unique burst records",
+  "Render_burst": {
+    "SQL_statement_emits": 1005,
+    "SQL_exit": 0,
+    "records_retained": 109,
+    "missing": 896,
+    "indices": "1–100 and 200,300,…1000"
+  },
+  "Bex_burst": {
+    "SQL_statement_emits": 300,
+    "SQL_exit": 0,
+    "records_retained": 102,
+    "missing": 198,
+    "indices": "1–100 plus 200 and 300",
+    "initial_ingestion_empty": "first read before ingestion; reconciled to stable102; not claimed as total loss"
+  },
+  "paced_control": {
+    "interval_seconds": 0.025,
+    "emitted": 1005,
+    "stored": 1005,
+    "cursor_pages": 11,
+    "duplicates": 0,
+    "native_baseline_queries": 2,
+    "native_saturated_queries": 6,
+    "all_exact_ID_message_checks": true
+  },
+  "native_burst_views": [
+    {
+      "client": "bex",
+      "native_API_byte_ID_equal": true,
+      "visible_rows": 100,
+      "stored_burst_total": 102,
+      "SQL_emitted": 300
+    },
+    {
+      "client": "render",
+      "native_API_byte_ID_equal": true,
+      "visible_rows": 100,
+      "stored_burst_total": 102,
+      "SQL_emitted": 300
+    }
+  ],
+  "native_SQL_success_and_expected_error_controls": 4,
+  "actual_native_GET_captures": 10,
+  "cleanup": {
+    "native_ack_detail404_listempty": true,
+    "former_SQL_no_row": true,
+    "baseline_services": 6,
+    "quota": {
+      "services": {
+        "used": 6,
+        "terminating": 0,
+        "limit": 25
+      },
+      "postgres": {
+        "used": 0,
+        "terminating": 0,
+        "limit": 1
+      },
+      "keyValues": {
+        "used": 0,
+        "terminating": 0,
+        "limit": 1
+      }
+    },
+    "private_connection_CA_IPv4_and_Render_config_removed": true
+  },
+  "limitations": [
+    "installed/pinned chart version unresolved",
+    "no direct pod/manager image inspection",
+    "no patch deployment or product source edit by QA",
+    "no live GraphQL/MCP/dashboard sampling replay",
+    "no actual SQL wire capture",
+    "no Kubernetes descendant absence claim",
+    "explicit own IPv4/CA controls retain the existing default-IPv6 limitation"
+  ],
+  "QA_commit_push": false
+}

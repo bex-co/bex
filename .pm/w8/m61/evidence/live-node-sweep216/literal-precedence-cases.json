@@ -1,0 +1,37 @@
+[
+  {
+    "actual": "/literal/bin|literal=ü\n\n",
+    "case": "literal_narrow_over_stored",
+    "error": null,
+    "expected": "/literal/bin|literal=ü\n\n",
+    "pass": true
+  },
+  {
+    "actual": "|literal=ü\n\n",
+    "case": "literal_empty_over_stored",
+    "error": null,
+    "expected": "|literal=ü\n\n",
+    "pass": true
+  },
+  {
+    "actual": "/usr/local/bin:/usr/bin:/bin|literal=ü\n\n",
+    "case": "literal_over_stored_empty",
+    "error": null,
+    "expected": "/usr/local/bin:/usr/bin:/bin|literal=ü\n\n",
+    "pass": true
+  },
+  {
+    "actual": "|literal=ü\n\n",
+    "case": "stored_empty_without_literal",
+    "error": null,
+    "expected": "|literal=ü\n\n",
+    "pass": true
+  },
+  {
+    "actual": "$LOCAL_USER/.go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/bin:$LOCAL_USER/.codex/packages/app-server-daemon/releases/0.162.1-aarch64-apple-darwin/codex-path:$LOCAL_USER/.grok/bin:$LOCAL_USER/.kimi-code/bin:/opt/homebrew/opt/libpq/bin:/Users/tp-mini/.codeium/windsurf/bin:/opt/homebrew/opt/bison/bin:/Applications/WebStorm.app/Contents/MacOS:/Applications/GoLand.app/Contents/MacOS:/usr/local/opt/ruby/bin:$LOCAL_USER/.nvm/versions/node/v22.17.1/bin:/opt/homebrew/bin:/opt/homebrew/sbin:$LOCAL_USER/.local/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Library/Apple/usr/bin:/opt/homebrew/bin:$LOCAL_USER/.codex/tmp/arg0/codex-arg0sFgS0j:$LOCAL_USER/.codex/packages/app-server-daemon/releases/0.162.1-aarch64-apple-darwin/codex-path:$LOCAL_USER/.codex/tmp/arg0/codex-arg01ez2N1:$LOCAL_USER/.codex/packages/app-server-daemon/releases/0.162.0-aarch64-apple-darwin/codex-path:$LOCAL_USER/.codex/tmp/arg0/codex-arg0CXrFFx:$LOCAL_USER/.codex/packages/app-server-daemon/releases/0.161.0-aarch64-apple-darwin/codex-path:$LOCAL_USER/.codex/tmp/arg0/codex-arg0kwfPNn:$LOCAL_USER/.codex/packages/app-server-daemon/releases/0.160.1-aarch64-apple-darwin/codex-path:$LOCAL_USER/.codex/tmp/arg0/codex-arg03GH44e:$LOCAL_USER/.codex/packages/app-server-daemon/releases/0.160.0-aarch64-apple-darwin/codex-path:$LOCAL_USER/.codex/tmp/arg0/codex-arg0EcaytA:$LOCAL_USER/.codex/packages/standalone/releases/0.160.0-aarch64-apple-darwin/codex-path:$LOCAL_USER/.grok/bin:$LOCAL_USER/.kimi-code/bin:/opt/homebrew/opt/libpq/bin:/Users/tp-mini/.codeium/windsurf/bin:/opt/homebrew/opt/bison/bin:/Applications/WebStorm.app/Contents/MacOS:/Applications/GoLand.app/Contents/MacOS:/usr/local/opt/ruby/bin:$LOCAL_USER/.nvm/versions/node/v22.17.1/bin:/opt/homebrew/sbin:$LOCAL_USER/.local/bin:$LOCAL_USER/.cargo/bin:$LOCAL_USER/.orbstack/bin:$LOCAL_USER/Library/Application Support/JetBrains/Toolbox/scripts:$LOCAL_USER/.go/bin:/opt/homebrew/opt/go/libexec/bin:$LOCAL_USER/.codeium/windsurf/bin:$LOCAL_USER/.rvm/bin:$LOCAL_USER/.orbstack/bin:$LOCAL_USER/Library/Application Support/JetBrains/Toolbox/scripts:$LOCAL_USER/.go/bin:/opt/homebrew/opt/go/libexec/bin:$LOCAL_USER/Library/Application Support/JetBrains/Toolbox/scripts:$LOCAL_USER/.codeium/windsurf/bin:$LOCAL_USER/.rvm/bin|literal=ü\n\n",
+    "case": "omitted_both",
+    "error": null,
+    "expected": "$LOCAL_USER/.go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/bin:$LOCAL_USER/.codex/packages/app-server-daemon/releases/0.162.1-aarch64-apple-darwin/codex-path:$LOCAL_USER/.grok/bin:$LOCAL_USER/.kimi-code/bin:/opt/homebrew/opt/libpq/bin:/Users/tp-mini/.codeium/windsurf/bin:/opt/homebrew/opt/bison/bin:/Applications/WebStorm.app/Contents/MacOS:/Applications/GoLand.app/Contents/MacOS:/usr/local/opt/ruby/bin:$LOCAL_USER/.nvm/versions/node/v22.17.1/bin:/opt/homebrew/bin:/opt/homebrew/sbin:$LOCAL_USER/.local/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Library/Apple/usr/bin:/opt/homebrew/bin:$LOCAL_USER/.codex/tmp/arg0/codex-arg0sFgS0j:$LOCAL_USER/.codex/packages/app-server-daemon/releases/0.162.1-aarch64-apple-darwin/codex-path:$LOCAL_USER/.codex/tmp/arg0/codex-arg01ez2N1:$LOCAL_USER/.codex/packages/app-server-daemon/releases/0.162.0-aarch64-apple-darwin/codex-path:$LOCAL_USER/.codex/tmp/arg0/codex-arg0CXrFFx:$LOCAL_USER/.codex/packages/app-server-daemon/releases/0.161.0-aarch64-apple-darwin/codex-path:$LOCAL_USER/.codex/tmp/arg0/codex-arg0kwfPNn:$LOCAL_USER/.codex/packages/app-server-daemon/releases/0.160.1-aarch64-apple-darwin/codex-path:$LOCAL_USER/.codex/tmp/arg0/codex-arg03GH44e:$LOCAL_USER/.codex/packages/app-server-daemon/releases/0.160.0-aarch64-apple-darwin/codex-path:$LOCAL_USER/.codex/tmp/arg0/codex-arg0EcaytA:$LOCAL_USER/.codex/packages/standalone/releases/0.160.0-aarch64-apple-darwin/codex-path:$LOCAL_USER/.grok/bin:$LOCAL_USER/.kimi-code/bin:/opt/homebrew/opt/libpq/bin:/Users/tp-mini/.codeium/windsurf/bin:/opt/homebrew/opt/bison/bin:/Applications/WebStorm.app/Contents/MacOS:/Applications/GoLand.app/Contents/MacOS:/usr/local/opt/ruby/bin:$LOCAL_USER/.nvm/versions/node/v22.17.1/bin:/opt/homebrew/sbin:$LOCAL_USER/.local/bin:$LOCAL_USER/.cargo/bin:$LOCAL_USER/.orbstack/bin:$LOCAL_USER/Library/Application Support/JetBrains/Toolbox/scripts:$LOCAL_USER/.go/bin:/opt/homebrew/opt/go/libexec/bin:$LOCAL_USER/.codeium/windsurf/bin:$LOCAL_USER/.rvm/bin:$LOCAL_USER/.orbstack/bin:$LOCAL_USER/Library/Application Support/JetBrains/Toolbox/scripts:$LOCAL_USER/.go/bin:/opt/homebrew/opt/go/libexec/bin:$LOCAL_USER/Library/Application Support/JetBrains/Toolbox/scripts:$LOCAL_USER/.codeium/windsurf/bin:$LOCAL_USER/.rvm/bin|literal=ü\n\n",
+    "pass": true
+  }
+]

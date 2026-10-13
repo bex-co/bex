@@ -1,0 +1,20 @@
+{
+  "binary": "released v0.3.2",
+  "command": [
+    "bex",
+    "logs",
+    "--resources",
+    "srv-db73j0s479ic73bbj5o0",
+    "--type",
+    "app",
+    "--limit",
+    "100",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "exit": 0,
+  "elapsed": 6.682,
+  "stdout": "",
+  "stderr": ""
+}

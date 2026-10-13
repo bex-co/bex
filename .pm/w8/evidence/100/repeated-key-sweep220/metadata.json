@@ -1,0 +1,16 @@
+{
+  "source_head": "66e74d6bf4cc755a0914aaa00f7d4b4fdf455da0",
+  "deployed_revision": "unknown",
+  "published_bex": "v0.3.2 a6350da0d6e451e063143432e06c548ba7b5851b",
+  "unmodified_render_pin": "v2.27.0 a764810a768202704e7206eb7b87a47211fcd98e",
+  "source_diagnostics": 6,
+  "current_source_location_mismatches": 2,
+  "native_commands": 12,
+  "native_unchanged_multipart_captures": 12,
+  "native_scope": "validation only; deployed older location behavior does not prove the repeated-key gap on a deployment of 3d3ef082c",
+  "source_scope": "actual current ValidateBlueprint with fake Kubernetes/versioned storage; no hosted apply or full-suite claim",
+  "diagnostic_exit": "zero proves the diagnostic ran; it records the product mismatch rather than asserting the proposed fix",
+  "control_decoder": "pinned validation type intentionally omits extended pricing fields; valid/errors match wire, full wire retained",
+  "cleanup": "no hosted resources created; all twelve copied client configs and forwarding servers removed",
+  "own_source_edits_commit_push": false
+}

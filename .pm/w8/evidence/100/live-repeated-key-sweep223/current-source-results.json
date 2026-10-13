@@ -1,0 +1,146 @@
+[
+  {
+    "actual_path": "services[0].envVars[0]",
+    "case": "service/second invalid",
+    "expected_path": "services[0].envVars[1]",
+    "location_or_valid_control_pass": false,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"first\"\n        },\n        {\n          \"generateValue\": true,\n          \"key\": \"VALUE\",\n          \"value\": \"\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint with fake Kubernetes/storage; no hosted apply or source fix",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "own-source envVars[\"VALUE\"]: sets both value and generateValue — pick one",
+          "line": 5,
+          "column": 9,
+          "path": "services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "13d45c32e296b5df8635458d849603977eaf23b1"
+  },
+  {
+    "actual_path": "services[0].envVars[0]",
+    "case": "service/first invalid",
+    "expected_path": "services[0].envVars[0]",
+    "location_or_valid_control_pass": true,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"generateValue\": true,\n          \"key\": \"VALUE\",\n          \"value\": \"\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"second\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint with fake Kubernetes/storage; no hosted apply or source fix",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "own-source envVars[\"VALUE\"]: sets both value and generateValue — pick one",
+          "line": 5,
+          "column": 9,
+          "path": "services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "13d45c32e296b5df8635458d849603977eaf23b1"
+  },
+  {
+    "actual_path": "",
+    "case": "service/both valid",
+    "expected_path": "services[0].envVars[1]",
+    "location_or_valid_control_pass": true,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"first\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"second\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint with fake Kubernetes/storage; no hosted apply or source fix",
+    "validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "own-source"
+        ],
+        "totalActions": 1,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "own-source",
+            "sourcePath": "#/services/0"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "source_head": "13d45c32e296b5df8635458d849603977eaf23b1"
+  },
+  {
+    "actual_path": "envVarGroups[0].envVars[0]",
+    "case": "group/second invalid",
+    "expected_path": "envVarGroups[0].envVars[1]",
+    "location_or_valid_control_pass": false,
+    "manifest": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"first\"\n        },\n        {\n          \"generateValue\": true,\n          \"key\": \"VALUE\",\n          \"value\": \"\"\n        }\n      ],\n      \"name\": \"own-group\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint with fake Kubernetes/storage; no hosted apply or source fix",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "env group \"own-group\" envVars[\"VALUE\"]: sets both value and generateValue",
+          "line": 5,
+          "column": 9,
+          "path": "envVarGroups[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "13d45c32e296b5df8635458d849603977eaf23b1"
+  },
+  {
+    "actual_path": "envVarGroups[0].envVars[0]",
+    "case": "group/first invalid",
+    "expected_path": "envVarGroups[0].envVars[0]",
+    "location_or_valid_control_pass": true,
+    "manifest": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"generateValue\": true,\n          \"key\": \"VALUE\",\n          \"value\": \"\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"second\"\n        }\n      ],\n      \"name\": \"own-group\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint with fake Kubernetes/storage; no hosted apply or source fix",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "env group \"own-group\" envVars[\"VALUE\"]: sets both value and generateValue",
+          "line": 5,
+          "column": 9,
+          "path": "envVarGroups[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "13d45c32e296b5df8635458d849603977eaf23b1"
+  },
+  {
+    "actual_path": "",
+    "case": "group/both valid",
+    "expected_path": "envVarGroups[0].envVars[1]",
+    "location_or_valid_control_pass": true,
+    "manifest": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"first\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"second\"\n        }\n      ],\n      \"name\": \"own-group\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint with fake Kubernetes/storage; no hosted apply or source fix",
+    "validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "envGroups": [
+          "own-group"
+        ],
+        "totalActions": 1,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "env_var_group",
+            "name": "own-group",
+            "sourcePath": "#/envVarGroups/0"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "source_head": "13d45c32e296b5df8635458d849603977eaf23b1"
+  }
+]

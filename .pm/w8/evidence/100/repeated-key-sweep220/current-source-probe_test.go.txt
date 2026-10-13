@@ -1,0 +1,9 @@
+package apps
+import("context";"encoding/json";"testing";"github.com/bex-co/bex/lego/backend/internal/core";"github.com/bex-co/bex/lego/backend/internal/envgroups")
+func TestQA220DuplicateEnvLocation(t *testing.T){
+ for _,kind:=range []string{"service","group"}{for _,mode:=range []string{"second invalid","first invalid","both valid"}{t.Run(kind+"/"+mode,func(t *testing.T){
+  vars:=[]any{map[string]any{"key":"VALUE","value":"first"},map[string]any{"key":"VALUE","value":"second"}};bad:=1;if mode=="first invalid"{bad=0};if mode!="both valid"{vars[bad]=map[string]any{"key":"VALUE","value":"","generateValue":true}}
+  doc:=map[string]any{};wanted:="";if kind=="service"{doc["services"]=[]any{map[string]any{"name":"own-source","type":"web","runtime":"image","image":map[string]any{"url":"nginx:1"},"envVars":vars}};wanted="services[0].envVars[1]";if bad==0{wanted="services[0].envVars[0]"}}else{doc["envVarGroups"]=[]any{map[string]any{"name":"own-group","envVars":vars}};wanted="envVarGroups[0].envVars[1]";if bad==0{wanted="envVarGroups[0].envVars[0]"}}
+  body,_:=json.MarshalIndent(doc,"","  ");base:=&core.Base{Client:fakeClient(),Namespace:"default"};kv:=&qa213KV{data:map[string]map[string]string{},versions:map[string]uint64{}};svc:=&Service{Base:base,EnvGroups:&envgroups.Service{Base:base,Store:kv}};v,err:=svc.ValidateBlueprint(context.Background(),"",string(body),"");if err!=nil{t.Fatal(err)};got:="";if len(v.Errors)>0&&v.Errors[0].Path!=nil{got=*v.Errors[0].Path};correct:=v.Valid;if mode!="both valid"{correct=!v.Valid&&got==wanted};out:=map[string]any{"case":kind+"/"+mode,"manifest":string(body),"expected_path":wanted,"actual_path":got,"validation":v,"location_or_valid_control_pass":correct,"qualification":"actual current ValidateBlueprint with fake Kubernetes/storage; no hosted apply or source fix"};b,_:=json.Marshal(out);t.Log("QA220_LOCATION "+string(b))
+ })}}
+}

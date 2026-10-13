@@ -1,0 +1,62 @@
+{
+  "sweep": 217,
+  "at": "2026-10-13T20:29:55.418715+00:00",
+  "source_head_before": "96a15ae6bc2eac36c123e54b32900866666eef23",
+  "source_head_after": "96a15ae6bc2eac36c123e54b32900866666eef23",
+  "all_lego_source_unchanged_during_sweep": true,
+  "deployed_SHA": "unknown",
+  "clients": [
+    "published Bex0.3.2/a6350da0d6e4",
+    "unmodified Render2.27/a764810a7682"
+  ],
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "native_coverage": {
+    "PONG_by_owned_Bex_name_and_Render_ID": 2,
+    "finite_native_log_commands": 5,
+    "baseline_native_searches": 4,
+    "saturated_native_searches": 10,
+    "actual_native_HTTP_captures": 14,
+    "all_exact_original_ID_message_checks_pass": true,
+    "stored_padding_records": 1005,
+    "cursor_pages": 11,
+    "page_overlap": false
+  },
+  "cleanup": {
+    "owned_KV": "red-db792ac479ic73bbj930",
+    "native_ack_detail404_listempty": true,
+    "former_endpoint_no_PONG": true,
+    "baseline_services_present": 6,
+    "quota": {
+      "services": {
+        "used": 6,
+        "terminating": 0,
+        "limit": 25
+      },
+      "postgres": {
+        "used": 0,
+        "terminating": 0,
+        "limit": 1
+      },
+      "keyValues": {
+        "used": 0,
+        "terminating": 0,
+        "limit": 1
+      }
+    },
+    "credential_body_and_Render_config_removed": true
+  },
+  "limits": [
+    "saturated Postgres acceptance",
+    "full GraphQL/MCP/dashboard",
+    "instance/budget/pod-fallback/live-tail/full observable m58 DoD",
+    "actual deployed revision",
+    "Kubernetes descendant absence"
+  ],
+  "numeric_sibling": "CLI literal 9007199254740993 remains exact, neighbor 9007199254740992 yields zero; this does not certify or close dashboard issue w4/289",
+  "QA_source_fix_commit_push": false,
+  "reconciliation218": {
+    "upstream_commit": "8c8219d6b",
+    "status": "completed milestone retained; additional KV acceptance added",
+    "limits_are": "further unexercised live QA boundaries, not a new implementation defect"
+  }
+}

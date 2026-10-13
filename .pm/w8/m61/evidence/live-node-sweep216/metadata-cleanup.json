@@ -1,0 +1,74 @@
+{
+  "sweep": 216,
+  "at": "2026-10-13T20:07:45.016543+00:00",
+  "source_sync_head": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+  "checkout_build": {
+    "head": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+    "version": "qa216-fd46f58c0c72",
+    "binary": "$PRIVATE_QA_DIR/bex-head216",
+    "build_exit": 0,
+    "go": "1.27.0",
+    "upstream": "a764810a768202704e7206eb7b87a47211fcd98e"
+  },
+  "posthead": "ecf4b921de45ad7fffc49f3407d828a515cd1b34",
+  "deployed_SHA": "unknown",
+  "scope": "ordinary native Node hosting PATH; existing m61 expanded, no duplicate issue",
+  "matrix": {
+    "omitted": "fresh checkout Bex: Live/HTTP200 exact default PATH and bytes",
+    "normal": "published Bex: Live/HTTP200 exact PATH and bytes",
+    "empty_Render": "build succeeded, terminal update_failed/HTTP503, startup docker-entrypoint.sh failure; same-commit PATH-only recovery Live/HTTP200 exact bytes",
+    "empty_Bex": "build succeeded, bounded update_in_progress/HTTP503 with same startup failure; superseded by same-commit PATH-only recovery Live/HTTP200 exact bytes"
+  },
+  "cleanup": {
+    "owned_services": 4,
+    "child_deploys": 6,
+    "all_deleted": true,
+    "baseline_services": 6,
+    "final_quota": {
+      "services": {
+        "used": 6,
+        "terminating": 0,
+        "limit": 25
+      },
+      "postgres": {
+        "used": 0,
+        "terminating": 0,
+        "limit": 1
+      },
+      "keyValues": {
+        "used": 0,
+        "terminating": 0,
+        "limit": 1
+      }
+    },
+    "local_harmless_inputs_removed": true,
+    "Render_comparison_config_removed": true
+  },
+  "primary_metadata": "exact source-pinned Node image index; Linux amd64 and arm64 both ENTRYPOINT docker-entrypoint.sh and COPY to /usr/local/bin; deployed artifact config itself not inspected",
+  "wire": "native create/deploy HTTP not captured; native stdout/stderr/exit/time plus actual same-authority events GET and PATH-only setup PATCH replies retained",
+  "excluded_setup": "one oversized QA name correctly refused 400 and list-absent; Darwin OCI metadata selection and tag+digest reader errors corrected; not product findings",
+  "convergence": "one Bex metadata read connection reset and temporary Live/public503 converged on retry; not filed as defects",
+  "redactions": [
+    "private temporary/repository/local-user paths",
+    "QA event actor ID"
+  ],
+  "limits": [
+    "hosted literal Blueprint apply",
+    "all six hosted runtimes and App kinds",
+    "full GraphQL/MCP/dashboard",
+    "deployed operator/API SHA",
+    "Kubernetes descendant absence",
+    "runtime repair not implemented by QA",
+    "Bex initial terminal failure not claimed"
+  ],
+  "no_QA_source_fix_commit_push": true,
+  "source_tree_identity": {
+    "before": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+    "after": "ecf4b921de45ad7fffc49f3407d828a515cd1b34",
+    "scope": "all lego source/modules; current CLI/native generator/consumer unchanged",
+    "git_diff_exit": 0,
+    "actual_deployed_SHA": "unknown",
+    "compiled_checkout_SHA": "fd46f58c0c729bc8a6f9bfcbb00001598e3a9af7",
+    "shared_main_updates": "PM/docs only; source equivalence verified, no QA commit"
+  }
+}

@@ -1,0 +1,41 @@
+import datetime,json,os,pathlib,pty,re,select,signal,subprocess,sys,termios,time,yaml
+p=pathlib.Path(__file__).parent;args=sys.argv[1:];render=bool(args and args[0]=='--render')
+if render:args.pop(0)
+assert args;cfg=p/('render-config/cli.yaml' if render else 'config/cli.yaml');assert cfg.exists();private=set()
+def gather(v,path=()):
+ if isinstance(v,dict):
+  for k,x in v.items():
+   q=(*path,str(k))
+   if isinstance(x,str) and re.search(r'token|secret|password|api[._-]?key|email','.'.join(q),re.I) and len(x)>=8:private.add(x)
+   gather(x,q)
+ elif isinstance(v,list):
+  for x in v:gather(x,path)
+gather(yaml.safe_load(cfg.read_text()))
+def redact(s):
+ for value in private:s=s.replace(value,'[PRIVATE VALUE REDACTED]')
+ return re.sub(r'(?:postgres(?:ql)?|rediss?)://[^\s"<>]+','[CONNECTION URL REDACTED]',s)
+env={k:v for k,v in os.environ.items() if not k.startswith(('RENDER_','BEX_','QA_'))};prefix='RENDER_' if render else 'BEX_';env.update({prefix+'HOST':'https://api.bex.co/v1/',prefix+'CLI_CONFIG_DIR':str(cfg.parent),prefix+'CLI_CONFIG_PATH':str(cfg),prefix+'WORKSPACE':(p/'workspace.txt').read_text().strip(),prefix+'NO_UPDATE_NOTIFIER':'1','DO_NOT_TRACK':'1','BROWSER':'/usr/bin/true'});env['BEX_CLI_DISABLE_ANALYTICS']='1';master,slave=pty.openpty();a=termios.tcgetattr(slave);a[3]&=~termios.ECHO;termios.tcsetattr(slave,termios.TCSANOW,a);binary=p/'render-pin' if render else p/'release/bex';t=time.monotonic();proc=subprocess.Popen([str(binary),*args],stdin=slave,stdout=slave,stderr=slave,env=env,start_new_session=True);os.close(slave);raw=bytearray();timedout=False
+try:
+ while True:
+  if time.monotonic()-t>24:
+   timedout=True;os.killpg(proc.pid,signal.SIGTERM)
+   try:proc.wait(timeout=2)
+   except subprocess.TimeoutExpired:os.killpg(proc.pid,signal.SIGKILL);proc.wait(timeout=2)
+   break
+  ready,_,_=select.select([master],[],[],0.2)
+  if ready:
+   try:b=os.read(master,65536)
+   except OSError:break
+   if not b:break
+   raw.extend(b)
+   if len(raw)>1024*1024:raise RuntimeError('Owned PTY output budget exceeded')
+  elif proc.poll() is not None:break
+ proc.wait(timeout=2)
+finally:
+ os.close(master)
+ if proc.poll() is None:os.killpg(proc.pid,signal.SIGTERM);proc.wait(timeout=2)
+record={'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'binary':'unmodified Render2.27.0' if render else 'released Bex0.3.2','command':['render' if render else 'bex',*args],'exit':proc.returncode,'elapsed':round(time.monotonic()-t,3),'timeout':timedout,'stdin_tty':True,'output':redact(raw.decode('utf8',errors='replace'))};f=p/'pty-recovered.jsonl';oldmask=os.umask(0o077)
+try:
+ with f.open('a') as out:out.write(json.dumps(record,ensure_ascii=False)+'\n')
+finally:os.umask(oldmask)
+f.chmod(0o600);print(json.dumps(record,ensure_ascii=False))

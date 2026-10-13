@@ -1,0 +1,6 @@
+{
+  "exit": "bounded timeout after 30s",
+  "reference": "oci://ghcr.io/bex-co/bex-charts/cloudnative-pg@sha256:67a2cb6e865168d0c211c76c1a10d4369c6465dac7ebda9172cb72bc46217a78",
+  "version": "unverified",
+  "qualification": "anonymous read-only isolated Helm config; no registry/admin credentials borrowed"
+}

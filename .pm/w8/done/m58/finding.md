@@ -192,3 +192,17 @@ Sweep 102 confirms managed-data live subscriptions are deliberately unsupported.
 ## Saturated App production acceptance — sweep215, 2026-10-13 UTC
 
 [Saturated native App acceptance](evidence/live-app-sweep215/README.md) now passes through published Bex 0.3.2 and pinned Render: 34 exact message/ID matrix checks and eight real native wire replies find 21 original records and the hidden marker behind 1005 independently stored nonmatches. All eleven padding cursor pages have no overlap and complete honestly. The original false-empty App boundary is corrected; actual deployed SHA remains unknown. One fixture/one child deploy is enumerated and deleted; baseline 6/quota 6/term 0. Prior nonsaturated PG/KV acceptance is retained, while latest saturated managed-data, non-REST/GraphQL, instance/budget and other full-DoD gates remain. No QA source implementation or ship.
+
+## Saturated Key Value production acceptance — sweep217, 2026-10-13 UTC
+
+[Fresh native Key Value evidence](evidence/live-kv-sweep217/README.md): both clients return exact three-prefix/two-iota/one-lambda records behind 1005 independently stored nonmatches. The padding is complete across eleven nonoverlapping supported cursor pages. Ten saturated checks plus four baseline checks have fourteen actual native wire replies, preserving original messages/IDs. The large numeric literal remains exact and its one-digit neighbor returns zero; this does not certify the dashboard w4/289 consumer.
+
+Both native PONG controls and five finite native logger commands complete. Exact-owned KV deletion is acknowledged and reconciled by detail404/listempty/former-endpoint no-PONG, baseline six and final quota services6/PG0/KV0/termination0; temporary credential body and copied Render configuration are removed. Deployed SHA remains unknown. Latest saturated KV acceptance now passes; saturated Postgres and remaining live-surface/instance/budget/pod-fallback/live-tail coverage is unexercised. No new implementation issue, QA product fix or ship.
+
+## Reconciliation with upstream closeout — sweep218
+
+Commit 8c8219d6b completes code-level REST/GraphQL/MCP agreement over the real Loki source, alongside prior live native acceptance. The completed milestone is retained with explicit unexercised live boundaries; sweep217 adds passing saturated KV evidence and proves no new implementation defect. Additional QA coverage is not mislabeled as an unfinished fix.
+
+## Additional saturated Postgres acceptance — sweep218
+
+[Complete native evidence](../../m65/evidence/cli-sweep218/README.md) proves a paced1005-record PostgreSQL history, eleven nonoverlapping cursor pages, two baseline and six saturated3/2/1 native checks through both clients, with eight wire replies preserving original bytes/IDs and full cleanup. The fast-series source loss is separately filed as m65; it occurs before stored-log paging, so m58 remains completed. No deployed revision or live non-CLI surface is inferred.
