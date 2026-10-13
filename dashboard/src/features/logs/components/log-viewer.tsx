@@ -9,7 +9,6 @@ import {
 import { AlertCircle, WifiOff } from "lucide-react";
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useDebounce } from "@/common/hooks/use-debounce";
 import { EmptyState } from "@/common/components/empty-state";
 import { LogEmptyState } from "./log-empty-state";
 import { useLogHistory } from "../hooks/use-log-history";
@@ -23,6 +22,7 @@ import {
   EMPTY_LOG_FILTERS,
   LOG_PAGE_SIZE,
   LOG_TEXT_MODE_DISPLAY,
+  STRUCTURED_FILTER_KEYS,
   hasActiveLogFilters,
   storeOnlyFilterKey,
   usesStoreOnlyFilters,
@@ -42,12 +42,13 @@ interface LogViewerProps {
   range?: RangeSelection;
   onRangeChange?: (range: RangeSelection) => void;
   /**
-   * Initial filter state (from the URL, w7/m42); read ONCE at mount — a later
-   * search-only navigation to an already-mounted viewer is ignored (URL→state
-   * back/forward sync is deferred with that feature).
+   * The filter + live state the URL names (w7/m42). The viewer starts from it
+   * and adopts it again whenever a navigation it did not write changes it — a
+   * nav link, back/forward (w4/m204). Its own writes echoing back are left
+   * alone, so they can't clobber text typed since.
    */
-  initialFilters?: LogFilters;
-  initialLive?: boolean;
+  urlFilters?: LogFilters;
+  urlLive?: boolean;
   /**
    * URL sync (w7/m42): fired with the debounced filter + live state after each
    * real change (never at mount — that state was just derived from the URL) so
@@ -67,50 +68,90 @@ export function LogViewer({
   createEventSource,
   range = DEFAULT_LOG_RANGE,
   onRangeChange = () => undefined,
-  initialFilters,
-  initialLive,
+  urlFilters = EMPTY_LOG_FILTERS,
+  urlLive = true,
   onFiltersChange,
 }: LogViewerProps) {
   const { t } = useTranslations();
-  const [filters, setFilters] = useState<LogFilters>(
-    initialFilters ?? EMPTY_LOG_FILTERS,
-  );
-  const [live, setLive] = useState(initialLive ?? true);
+  const urlKey = logStateKey(urlFilters, urlLive);
+  const [state, setState] = useState(() => viewFromUrl(urlFilters, urlLive));
+  // What this viewer has itself shown since the URL it last adopted. A URL
+  // change naming one of these is its own write echoing back, even when a
+  // control has moved on since; any other URL is a navigation it did not make.
+  const [sync, setSync] = useState({ urlKey, ownKeys: [urlKey] });
 
-  // Debounce the free-text filters so a keystroke doesn't refetch history and
-  // reopen the stream on every character. Scalar deps (not the filters object,
-  // whose identity churns per keystroke) keep queryFilters' identity stable
-  // while typing, so the URL-sync effect below fires only on settled values.
-  const debouncedText = useDebounce(filters.text, 300);
-  const debouncedPath = useDebounce(filters.path, 300);
+  // Adopt a foreign URL during render, and use the adopted state for the rest
+  // of this pass: the history query reobserves while rendering, and the range
+  // prop changes in the same pass, so one render with the source's filters
+  // would query them against the destination's range.
+  let shown = state;
+  let ownKeys = sync.ownKeys;
+  if (sync.urlKey !== urlKey) {
+    const echoed = ownKeys.lastIndexOf(urlKey);
+    if (echoed === -1) {
+      shown = viewFromUrl(urlFilters, urlLive);
+      setState(shown);
+      ownKeys = [urlKey];
+    } else {
+      ownKeys = ownKeys.slice(echoed);
+    }
+  }
+  const { filters, live, committed } = shown;
+  const shownKey = logStateKey({ ...filters, ...committed }, live);
+  if (ownKeys.at(-1) !== shownKey) {
+    ownKeys = [...ownKeys, shownKey].slice(-OWN_KEYS_KEPT);
+  }
+  if (sync.urlKey !== urlKey || sync.ownKeys !== ownKeys) {
+    setSync({ urlKey, ownKeys });
+  }
+
+  // An adopted URL sets each draft and its committed value together, which
+  // cancels a timer still pending for text typed before the navigation.
+  const { text: committedText, path: committedPath } = committed;
+  const { text: draftText, path: draftPath } = filters;
+  useEffect(() => {
+    if (draftText === committedText) return;
+    const id = setTimeout(
+      () => setState((previous) => commitDraft(previous, "text", draftText)),
+      COMMIT_DELAY_MS,
+    );
+    return () => clearTimeout(id);
+  }, [draftText, committedText]);
+  useEffect(() => {
+    if (draftPath === committedPath) return;
+    const id = setTimeout(
+      () => setState((previous) => commitDraft(previous, "path", draftPath)),
+      COMMIT_DELAY_MS,
+    );
+    return () => clearTimeout(id);
+  }, [draftPath, committedPath]);
+
+  // Scalar deps (not the filters object, whose identity churns per keystroke)
+  // keep queryFilters' identity stable while typing, so the URL-sync effect
+  // below fires only on settled values.
+  const { type, level, method, statusCode, instance } = filters;
   const queryFilters = useMemo<LogFilters>(
     () => ({
-      type: filters.type,
-      level: filters.level,
-      method: filters.method,
-      statusCode: filters.statusCode,
-      instance: filters.instance,
-      text: debouncedText,
-      path: debouncedPath,
+      type,
+      level,
+      method,
+      statusCode,
+      instance,
+      text: committedText,
+      path: committedPath,
     }),
-    [
-      filters.type,
-      filters.level,
-      filters.method,
-      filters.statusCode,
-      filters.instance,
-      debouncedText,
-      debouncedPath,
-    ],
+    [type, level, method, statusCode, instance, committedText, committedPath],
   );
 
-  // Mirror the debounced state into the URL (w7/m42). The first run is
+  // Mirror the committed state into the URL (w7/m42). The first run is
   // skipped — the mount state was just derived from the URL, and navigating
   // during hydration triggers a full document reload loop under TanStack
   // Start (observed live). The ref keeps the route's inline callback out of
   // the sync effect's deps so only real filter/live changes fire; it is
   // refreshed in its own every-render effect (declared first, so it has run
-  // by the time the sync effect fires in the same flush).
+  // by the time the sync effect fires in the same flush). A URL change fires
+  // it too: an echo that a newer change has overtaken is answered with the
+  // current state, so the URL converges on what the viewer shows.
   const onFiltersChangeRef = useRef(onFiltersChange);
   useEffect(() => {
     onFiltersChangeRef.current = onFiltersChange;
@@ -122,7 +163,7 @@ export function LogViewer({
       return;
     }
     onFiltersChangeRef.current?.(queryFilters, live);
-  }, [queryFilters, live]);
+  }, [queryFilters, live, urlKey]);
 
   // The live tail reads pod stdout, so it can't serve request logs or the
   // store-only filters — offer live only when none is active (instance is fine,
@@ -131,9 +172,17 @@ export function LogViewer({
 
   // Stable identity so LogLineList's memoized rows actually skip re-rendering
   // when a live line appends (an inline arrow would defeat the memo).
+  const patchFilters = useCallback(
+    (patch: Partial<LogFilters>) =>
+      setState((previous) => ({
+        ...previous,
+        filters: { ...previous.filters, ...patch },
+      })),
+    [setState],
+  );
   const onInstanceFilter = useCallback(
-    (instance: string) => setFilters((previous) => ({ ...previous, instance })),
-    [],
+    (instance: string) => patchFilters({ instance }),
+    [patchFilters],
   );
 
   const historyWindow = useLiveRange(range);
@@ -150,7 +199,7 @@ export function LogViewer({
     resource,
     enabled: live && liveSupported,
     type: queryFilters.type,
-    text: debouncedText,
+    text: committedText,
     textMode: LOG_TEXT_MODE_DISPLAY,
     instance: queryFilters.instance,
     // The store-only filters disable the tail instead of narrowing it, so they
@@ -259,9 +308,11 @@ export function LogViewer({
       <LogFilterBar
         resource={resource}
         filters={filters}
-        onChange={(patch) => setFilters((prev) => ({ ...prev, ...patch }))}
+        onChange={patchFilters}
         live={live}
-        onLiveChange={setLive}
+        onLiveChange={(next) =>
+          setState((previous) => ({ ...previous, live: next }))
+        }
         liveSupported={liveSupported}
         range={range}
         onRangeChange={onRangeChange}
@@ -272,6 +323,46 @@ export function LogViewer({
       {body}
     </div>
   );
+}
+
+// How long a free-text draft waits before it reaches the queries and the URL,
+// so a keystroke doesn't refetch history and reopen the stream.
+const COMMIT_DELAY_MS = 300;
+// Own states remembered between URL echoes; far more than a router commit spans.
+const OWN_KEYS_KEPT = 16;
+
+// `filters` is what the controls show; its free-text fields are drafts.
+// `committed` is the text and path the queries and the URL carry.
+interface LogViewState {
+  filters: LogFilters;
+  live: boolean;
+  committed: { text: string; path: string };
+}
+
+function viewFromUrl(filters: LogFilters, live: boolean): LogViewState {
+  return {
+    filters,
+    live,
+    committed: { text: filters.text, path: filters.path },
+  };
+}
+
+/** One comparable value for a whole filter + live state. */
+function logStateKey(filters: LogFilters, live: boolean) {
+  return JSON.stringify([
+    filters.type,
+    filters.text,
+    ...STRUCTURED_FILTER_KEYS.map((key) => filters[key]),
+    live,
+  ]);
+}
+
+function commitDraft(
+  state: LogViewState,
+  field: "text" | "path",
+  value: string,
+): LogViewState {
+  return { ...state, committed: { ...state.committed, [field]: value } };
 }
 
 // The footer under the log list: a live pulse while streaming, a paused note

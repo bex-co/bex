@@ -1,16 +1,16 @@
 # w4 · m204 — Keep service Logs filters aligned with navigation
 
-**Worker:** worker4 **Goal:** a mounted service Logs view adopts the filter and Live state encoded by navigation, so its visible rows and copied URL describe the same reader. **Status:** todo
+**Worker:** worker4 **Goal:** a mounted service Logs view adopts the filter and Live state encoded by navigation, so its visible rows and copied URL describe the same reader. **Status:** blocked (release pipeline deploys the dashboard; then QA replays the DoD for t006). t001–t005 done.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Adopt external log-filter navigation without clobbering local input | 40m | — |
-| t002 | Verify route navigation, debounce races and reader continuity | 40m | t001 |
-| t003 | Render parity across log surfaces and aliases | 15m | t001, t002 |
-| t004 | Simplify the milestone changes | 10m | t003 |
-| t005 | Test URL adoption and existing good controls | 20m | t003, t004 |
+| t001 | Adopt external log-filter navigation without clobbering local input — **DONE** | 40m | — |
+| t002 | Verify route navigation, debounce races and reader continuity — **DONE** | 40m | t001 |
+| t003 | Render parity across log surfaces and aliases — **DONE** | 15m | t001, t002 |
+| t004 | Simplify the milestone changes — **DONE** | 10m | t003 |
+| t005 | Test URL adoption and existing good controls — **DONE** | 20m | t003, t004 |
 | t006 | Closeout after live acceptance and cleanup | 15m | t005 |
 
 Total: **6 tasks, 140m**. Filing only; product code is unchanged.
