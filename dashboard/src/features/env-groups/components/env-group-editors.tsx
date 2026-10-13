@@ -28,6 +28,8 @@ export function EnvGroupEditors({
 
   return (
     <EnvironmentEditor
+      // A draft belongs to one group: another group starts a fresh editor.
+      key={group.id}
       resourceId={group.id}
       envKeys={envVarKeys(group)}
       secretFileNames={secretFileNames(group)}
