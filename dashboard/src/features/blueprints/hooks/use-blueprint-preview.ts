@@ -73,9 +73,15 @@ export function useBlueprintPreview(
     [data],
   );
 
+  // Inputs that just became complete are pending from that very render: the
+  // query is still skipped for one debounce, and a caller that read "not
+  // loading" then would offer its action before anything was reviewed.
+  const awaitingDebounce =
+    !settled && (!skip || (repo !== "" && branch !== ""));
+
   return {
     preview: skip ? null : preview,
-    loading: !skip && (loading || !settled),
+    loading: awaitingDebounce || (!skip && loading),
     error,
     refetch,
   };

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -87,9 +87,36 @@ const previewState: {
   error: undefined,
   refetch: vi.fn(async () => undefined),
 };
-vi.mock("@/features/blueprints/hooks/use-blueprint-preview", () => ({
-  useBlueprintPreview: () => previewState,
-}));
+// Tests that need the hook's own timing (w4/282) switch the real one on; its
+// query is then answered by `previewQuery`.
+const realPreview = { on: false };
+const previewQuery = vi.fn();
+vi.mock(
+  "@/features/blueprints/hooks/use-blueprint-preview",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@/features/blueprints/hooks/use-blueprint-preview")
+      >();
+    return {
+      useBlueprintPreview: (
+        ...args: Parameters<typeof actual.useBlueprintPreview>
+      ) =>
+        realPreview.on ? actual.useBlueprintPreview(...args) : previewState,
+    };
+  },
+);
+vi.mock("@apollo/client/react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@apollo/client/react")>();
+  const { BlueprintPreviewDocument } = await import("@/graphql/definitions");
+  return {
+    ...actual,
+    useQuery: (...args: Parameters<typeof actual.useQuery>) =>
+      args[0] === BlueprintPreviewDocument
+        ? previewQuery(...args)
+        : actual.useQuery(...args),
+  };
+});
 
 // --- create mock ---
 const create = vi.fn(async () => ({
@@ -174,6 +201,14 @@ beforeEach(() => {
   previewState.loading = false;
   previewState.error = undefined;
   create.mockClear();
+  realPreview.on = false;
+  previewQuery.mockReset();
+  previewQuery.mockReturnValue({
+    data: undefined,
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(),
+  });
 });
 
 describe("NewBlueprintPage", () => {
@@ -322,8 +357,12 @@ describe("NewBlueprintPage", () => {
       await screen.findByText(/must be a \.yaml or \.yml file/),
     ).toBeInTheDocument();
     expect(path).toHaveAttribute("aria-invalid", "true");
-    expect(screen.queryByText("Blueprint file not found")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /retry/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Blueprint file not found"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /retry/i }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /deploy blueprint/i }),
     ).toBeDisabled();
@@ -558,5 +597,42 @@ describe("NewBlueprintPage", () => {
     expect(
       screen.getByRole("button", { name: /deploy blueprint/i }),
     ).toBeDisabled();
+  });
+});
+
+// w4/282, through the real preview hook: selecting a repository completes the
+// repository and branch in one click, and Deploy must not be offered while the
+// first preview is still waiting out its debounce.
+describe("NewBlueprintPage first preview (w4/282)", () => {
+  it("keeps Deploy disabled from the click that completes the source until a preview settles", async () => {
+    realPreview.on = true;
+    reposState.repos = [repo()];
+    const user = userEvent.setup();
+    renderPage();
+    const deploy = () =>
+      screen.getByRole("button", { name: /deploy blueprint/i });
+
+    await user.click(await screen.findByText("acme/hello-go"));
+    expect(screen.getByRole("combobox", { name: /branch/i })).toHaveValue(
+      "main",
+    );
+    // No preview has been requested yet: every query so far was skipped.
+    expect(previewQuery.mock.calls.every(([, options]) => options.skip)).toBe(
+      true,
+    );
+    expect(deploy()).toBeDisabled();
+
+    previewQuery.mockReturnValue({
+      data: undefined,
+      loading: true,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+    await waitFor(() =>
+      expect(previewQuery.mock.calls.at(-1)?.[1]).toMatchObject({
+        skip: false,
+      }),
+    );
+    expect(deploy()).toBeDisabled();
   });
 });
