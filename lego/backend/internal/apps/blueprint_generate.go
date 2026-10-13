@@ -367,11 +367,17 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 			entry["branch"] = a.Spec.Branch
 		}
 	}
-	if a.Spec.RootDir != "" {
-		entry["rootDir"] = a.Spec.RootDir
-	}
-	if filter := buildFilterView(a.Spec.BuildFilter); filter != nil {
-		entry["buildFilter"] = filter
+	// A switch from Git to a prebuilt image keeps the Git settings on the App
+	// for a switch back, but an image entry may not declare them
+	// (prebuiltImageSourceFields): the export's own check would refuse the
+	// manifest (w4/288).
+	if a.Spec.Image == "" {
+		if a.Spec.RootDir != "" {
+			entry["rootDir"] = a.Spec.RootDir
+		}
+		if filter := buildFilterView(a.Spec.BuildFilter); filter != nil {
+			entry["buildFilter"] = filter
+		}
 	}
 	// Only a Dockerfile build reads these, and create refuses them elsewhere
 	// (w5/090): a service created before that holds one exports without it,
