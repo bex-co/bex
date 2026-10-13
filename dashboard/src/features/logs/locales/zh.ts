@@ -124,10 +124,9 @@ const zhLogs: Record<string, TranslationEntry> = {
       "Button in the truncation notice that fetches the next older page — the keyboard/underfilled-pane path to what scrolling to the top does",
   },
   "logs.truncatedNotice": {
-    message:
-      "正在显示此范围内最新的 100 条匹配日志——向上滚动可查看更早的历史。",
+    message: "此时间范围仅加载了一部分。加载更早的日志以继续。",
     description:
-      "Banner when hasMore is true: the selected range holds more than the 100-line page, so the view is truncated until the user pages back",
+      "Banner when hasMore is true: more of the selected range remains unloaded, however many older pages are already shown, so it names no line count (w4/280)",
   },
   "logs.partialSearchNotice": {
     message: "目前只搜索了此范围内最新的一部分——加载更早的日志以继续搜索。",

@@ -156,7 +156,7 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
     historyState.hasMore = false;
     const { rerender } = render(<LogViewer resource="web" />);
     expect(
-      screen.queryByText(/Showing the newest 100 matching lines/),
+      screen.queryByText(/Only part of this time range is loaded/),
     ).not.toBeInTheDocument();
 
     // A full page with more behind it is a capped view (w4/m107)...
@@ -167,8 +167,22 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
     historyState.hasMore = true;
     rerender(<LogViewer resource="web" />);
     expect(
-      screen.getByText(/Showing the newest 100 matching lines/),
+      screen.getByText(/Only part of this time range is loaded/),
     ).toBeInTheDocument();
+
+    // Older pages accumulate under the same caption: it names no count, so
+    // 200 loaded rows are never described as the newest 100 (w4/280).
+    historyState.lines = Array.from({ length: 200 }, (_, i) => ({
+      ...historyState.lines[0],
+      key: `k${i}`,
+    }));
+    rerender(<LogViewer resource="web" />);
+    expect(
+      screen.getByText(
+        "Only part of this time range is loaded. Load older to continue.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/100/)).not.toBeInTheDocument();
 
     // ...while a short page with more behind it is a search the server
     // time-boxed: the rest of the range is unsearched, not capped (w4/m140).

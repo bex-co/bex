@@ -249,7 +249,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
-- [ ] **280** — [Log history still claims 100 lines after loading 200](280.md) (40m) ← functional QA a303; fresh desktop/mobile preserve 200 rows while the caption still says newest 100; complete 206-record paging and no-match controls pass; owned Free service deleted and session revoked.
+- [x] **280** — [Log history still claims 100 lines after loading 200](done/280.md) — **DONE 2026-10-12** (count-free capped-history caption, en/zh) (40m) ← functional QA a303; fresh desktop/mobile preserve 200 rows while the caption still says newest 100; complete 206-record paging and no-match controls pass; owned Free service deleted and session revoked.
 
 - [x] **279** — [Cancel leaves old custom-range errors beside restored valid dates](done/279.md) — **DONE 2026-10-12** (footer Cancel clears the warning like Close/Escape) (35m) ← functional QA a295; fresh desktop/mobile Logs and fresh Metrics keep dismissed order/30-day warnings after valid dates return; Close/Escape, exact windows and filtering pass; owned Free fixture deleted and session revoked.
 
