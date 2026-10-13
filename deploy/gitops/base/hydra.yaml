@@ -24,6 +24,10 @@ spec:
     - repoURL: git@github.com:bex-co/bex.git
       targetRevision: main
       ref: values
+    # The CLI dashboard-link redirect its public Ingress references (w8/089).
+    - repoURL: git@github.com:bex-co/bex.git
+      targetRevision: main
+      path: deploy/gitops/charts/cli-dashboard-links
   destination:
     server: https://kubernetes.default.svc
     namespace: auth
