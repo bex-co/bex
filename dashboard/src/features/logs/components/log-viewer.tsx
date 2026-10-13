@@ -9,6 +9,7 @@ import {
 import { AlertCircle, WifiOff } from "lucide-react";
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useUrlEcho } from "@/common/hooks/use-url-echo";
 import { EmptyState } from "@/common/components/empty-state";
 import { LogEmptyState } from "./log-empty-state";
 import { useLogHistory } from "../hooks/use-log-history";
@@ -75,35 +76,19 @@ export function LogViewer({
   const { t } = useTranslations();
   const urlKey = logStateKey(urlFilters, urlLive);
   const [state, setState] = useState(() => viewFromUrl(urlFilters, urlLive));
-  // What this viewer has itself shown since the URL it last adopted. A URL
-  // change naming one of these is its own write echoing back, even when a
-  // control has moved on since; any other URL is a navigation it did not make.
-  const [sync, setSync] = useState({ urlKey, ownKeys: [urlKey] });
+  const urlEcho = useUrlEcho(urlKey);
 
   // Adopt a foreign URL during render, and use the adopted state for the rest
   // of this pass: the history query reobserves while rendering, and the range
   // prop changes in the same pass, so one render with the source's filters
   // would query them against the destination's range.
   let shown = state;
-  let ownKeys = sync.ownKeys;
-  if (sync.urlKey !== urlKey) {
-    const echoed = ownKeys.lastIndexOf(urlKey);
-    if (echoed === -1) {
-      shown = viewFromUrl(urlFilters, urlLive);
-      setState(shown);
-      ownKeys = [urlKey];
-    } else {
-      ownKeys = ownKeys.slice(echoed);
-    }
+  if (urlEcho.foreign) {
+    shown = viewFromUrl(urlFilters, urlLive);
+    setState(shown);
   }
   const { filters, live, committed } = shown;
-  const shownKey = logStateKey({ ...filters, ...committed }, live);
-  if (ownKeys.at(-1) !== shownKey) {
-    ownKeys = [...ownKeys, shownKey].slice(-OWN_KEYS_KEPT);
-  }
-  if (sync.urlKey !== urlKey || sync.ownKeys !== ownKeys) {
-    setSync({ urlKey, ownKeys });
-  }
+  urlEcho.showing(logStateKey({ ...filters, ...committed }, live));
 
   // An adopted URL sets each draft and its committed value together, which
   // cancels a timer still pending for text typed before the navigation.
@@ -328,9 +313,6 @@ export function LogViewer({
 // How long a free-text draft waits before it reaches the queries and the URL,
 // so a keystroke doesn't refetch history and reopen the stream.
 const COMMIT_DELAY_MS = 300;
-// Own states remembered between URL echoes; far more than a router commit spans.
-const OWN_KEYS_KEPT = 16;
-
 // `filters` is what the controls show; its free-text fields are drafts.
 // `committed` is the text and path the queries and the URL carry.
 interface LogViewState {
