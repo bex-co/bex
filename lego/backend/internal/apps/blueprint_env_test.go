@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -114,6 +115,19 @@ func (f *fakeEnvGroups) ApplyEnvGroup(_ context.Context, name string, literals m
 func (f *fakeEnvGroups) LinkEnvGroup(_ context.Context, name, service string) error {
 	f.links = append(f.links, name+"->"+service)
 	return nil
+}
+
+// LinkedGroupNames replays the link log for a, keeping each group's first
+// link as the real idempotent append does.
+func (f *fakeEnvGroups) LinkedGroupNames(_ context.Context, a *appv1alpha1.App) ([]string, error) {
+	var names []string
+	for _, link := range f.links {
+		name, ref, _ := strings.Cut(link, "->")
+		if ref == stackServiceRef(a) && !slices.Contains(names, name) {
+			names = append(names, name)
+		}
+	}
+	return names, nil
 }
 
 func (f *fakeEnvGroups) SetGroupEnvironment(_ context.Context, name, environmentID string) error {
