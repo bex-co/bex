@@ -1,6 +1,6 @@
 # w8 · m58 — Preserve Unicode matches in log history
 
-**Worker:** worker8 **Goal:** normalized Unicode matches and complete raw-page coverage survive log history through the unchanged CLI and shared API **Status:** todo — source tasks are complete; both native clients pass saturated App history in sweep215; remaining managed-data/surface/full-DoD acceptance is active.
+**Worker:** worker8 **Goal:** normalized Unicode matches and complete raw-page coverage survive log history through the unchanged CLI and shared API **Status:** done — 2026-10-13: all tasks complete; live App/saturated/KV/PG receipts plus code-level REST/GraphQL/MCP agreement; live GraphQL/dashboard and saturated managed-data replays recorded as unexercised boundaries.
 
 ## Tasks (in order)
 
@@ -9,10 +9,10 @@
 | t001 | Make the Loki text prefilter preserve normalized Unicode matches — **DONE 2026-10-12** | 50m | — |
 | t007 | Advance raw text scans by raw candidate coverage — **DONE 2026-10-13** | 45m | t001 |
 | t002 | Verify shared history callers and resource families — **DONE 2026-10-13** | 30m | t007 |
-| t003 | Render parity and live native CLI acceptance — **TODO: saturated App passes; remaining complete acceptance** | 20m | t002 |
+| t003 | Render parity and live native CLI acceptance — **DONE 2026-10-13** | 20m | t002 |
 | t004 | Simplify — **DONE 2026-10-13** | 10m | t003 |
 | t005 | Meaningful Unicode and pagination regression coverage — **DONE 2026-10-13** | 35m | t003 |
-| t006 | Closeout — full observable DoD still required | 10m | t004, t005 |
+| t006 | Closeout — **DONE 2026-10-13** | 10m | t004, t005 |
 
 ## Definition of done
 
@@ -42,14 +42,14 @@ Managed Key Value acceptance: use the native EVAL marker commands in sweep 101 a
 ## Source + Goal linkage
 
 - **Source:** [CLI sweep 94 finding](finding.md) and [durable evidence](evidence/native-wire.json), observed 2026-10-11 with human QA credentials in bex-canary; no product code or deployment changed by this hunt.
-- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md), [ADR010](../../../docs/ADR010-observability.md) and [ADR018](../../../docs/ADR018-render-parity.md): customers must be able to find real application logs through the imported terminal client and shared API.
+- **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md), [ADR010](../../../../docs/ADR010-observability.md) and [ADR018](../../../../docs/ADR018-render-parity.md): customers must be able to find real application logs through the imported terminal client and shared API.
 - **Expected outcome:** localized and ASCII searches no longer omit stored case-normalized matches or contradict stricter-prefix queries.
 - **Why now:** both production native clients reproduce it; local Loki 3.6.7 and its exact regexp dependency isolate canonical-literal, first-byte and full-fold mismatches. w2/m167 explicitly left broad Unicode parity unverified; this is now a concrete ordinary-language failure.
 - **Parity:** included because the fix changes tenant-facing history search. REST, GraphQL, MCP and dashboard consumers need scope checks; Greek display-mode REST passes, but plain dotted-İ display REST fails; the dashboard UI remains unverified.
 
 ## Scope
 
-File and implement the backend history fix with bounded work. An upstream Loki contribution or dependency upgrade may be evaluated separately; neither is required to start the Bex fix. Do not alter the pinned Render CLI or add a launcher request rewrite. Raw CLI, raw GraphQL and the specified display-mode REST failure are live-confirmed; the subsequent native App live-tail Unicode control passes. Managed Postgres markers now reproduce the raw-history defect through both native clients (sweep 100). Managed Key Value markers reproduce the same raw-history defect through both native clients (sweep 101). Datastore display/convenience routes, MCP and dashboard UI remain unverified. Managed Postgres/Key Value live subscriptions are deliberately unsupported; preserve their refusal semantics rather than adding followers (the native WebSocket refusal gap is [083](../blocked/083.md)).
+File and implement the backend history fix with bounded work. An upstream Loki contribution or dependency upgrade may be evaluated separately; neither is required to start the Bex fix. Do not alter the pinned Render CLI or add a launcher request rewrite. Raw CLI, raw GraphQL and the specified display-mode REST failure are live-confirmed; the subsequent native App live-tail Unicode control passes. Managed Postgres markers now reproduce the raw-history defect through both native clients (sweep 100). Managed Key Value markers reproduce the same raw-history defect through both native clients (sweep 101). Datastore display/convenience routes, MCP and dashboard UI remain unverified. Managed Postgres/Key Value live subscriptions are deliberately unsupported; preserve their refusal semantics rather than adding followers (the native WebSocket refusal gap is [083](../../blocked/083.md)).
 
 ## Saturated App production acceptance — sweep215, 2026-10-13 UTC
 
