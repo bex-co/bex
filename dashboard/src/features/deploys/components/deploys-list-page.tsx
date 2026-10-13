@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useNow } from "@/common/hooks/use-now";
+import { useUrlEcho } from "@/common/hooks/use-url-echo";
 import { formatTimeAgo } from "@/common/lib/format";
 import { EmptyState } from "@/common/components/empty-state";
 import { InstantTooltip } from "@/common/components/instant-tooltip";
@@ -36,6 +37,11 @@ import { useDeployActions } from "@/features/capabilities/hooks/use-resource-act
 import { repoCommitUrl } from "@/features/services/lib/repo";
 import { useDeploys, type DeployRow } from "../hooks/use-deploys";
 import {
+  DEPLOY_STATUS_FILTERS,
+  NO_DEPLOY_LIST_FILTERS,
+  type DeployListFilters,
+} from "../lib/deploy-list-search";
+import {
   deployStatusVariant,
   deployStatusKey,
   deployTriggerLabel,
@@ -54,27 +60,23 @@ import { DeployFailureReason } from "./deploy-failure-reason";
 // Radix Select can't hold "" — the log-filter-bar's "all" sentinel idiom.
 const ALL = "all";
 
-// The status filter's vocabulary: the deploy-status enum the store writes
-// (store.Deploy*), labeled by the same keys the badges use.
-const STATUS_OPTIONS = [
-  "created",
-  "queued",
-  "build_in_progress",
-  "build_failed",
-  "pre_deploy_in_progress",
-  "pre_deploy_failed",
-  "update_in_progress",
-  "update_failed",
-  "live",
-  "deactivated",
-  "canceled",
-] as const;
-
 export interface DeploysListPageProps {
   serviceId: string;
+  /**
+   * The filters the URL names (w4/284). The page starts from them and adopts
+   * them again when a navigation it did not write changes them; without a
+   * host the filters are local.
+   */
+  urlFilters?: DeployListFilters;
+  /** Fired with the whole filter state on each change, for the URL write. */
+  onFiltersChange?: (filters: DeployListFilters) => void;
 }
 
 type Translate = ReturnType<typeof useTranslations>["t"];
+
+function filtersKey(filters: DeployListFilters) {
+  return JSON.stringify([filters.status, filters.search]);
+}
 
 // The Duration column value: the settled elapsed time once a deploy finishes,
 // a running-elapsed marker while an active deploy is still building/deploying,
@@ -97,7 +99,11 @@ function durationLabel(d: DeployRow, t: Translate): string {
  * per-deploy page (w9/m1) the Events rows do; status badges come from the
  * shared deploy-status mapping so the three surfaces can't drift.
  */
-export function DeploysListPage({ serviceId }: DeploysListPageProps) {
+export function DeploysListPage({
+  serviceId,
+  urlFilters = NO_DEPLOY_LIST_FILTERS,
+  onFiltersChange,
+}: DeploysListPageProps) {
   const { t, i18n } = useTranslations();
   // Row times are elapsed ("Deployed 2 hours ago", Render's deploy list)
   // rather than absolute: timezone-neutral, so they render on the SSR pass
@@ -110,8 +116,22 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
   // a secondary, non-polling read of the document the layout already owns.
   const { service } = useServer(serviceId, { poll: false });
   const repo = service?.repo ?? null;
-  const [status, setStatus] = useState("");
-  const [search, setSearch] = useState("");
+  // The inputs stay local so typing never waits on the router; the URL
+  // mirrors them, which is what brings them back after a deploy's detail.
+  const [localFilters, setLocalFilters] = useState(urlFilters);
+  const urlEcho = useUrlEcho(filtersKey(urlFilters));
+  let filters = localFilters;
+  if (urlEcho.foreign) {
+    filters = urlFilters;
+    setLocalFilters(filters);
+  }
+  urlEcho.showing(filtersKey(filters));
+  const { status, search } = filters;
+  const changeFilters = (patch: Partial<DeployListFilters>) => {
+    const next = { ...filters, ...patch };
+    setLocalFilters(next);
+    onFiltersChange?.(next);
+  };
   const { deploys, loading, loadingMore, error, hasMore, loadMore } =
     useDeploys(serviceId, status ? [status] : []);
   const visibleDeploys = useMemo(
@@ -347,7 +367,9 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) =>
+                changeFilters({ search: event.target.value })
+              }
               placeholder={t("deploys.listSearchPlaceholder")}
               aria-label={t("deploys.listSearchLabel")}
               className="pl-9"
@@ -355,7 +377,7 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
           </div>
           <Select
             value={status === "" ? ALL : status}
-            onValueChange={(v) => setStatus(v === ALL ? "" : v)}
+            onValueChange={(v) => changeFilters({ status: v === ALL ? "" : v })}
           >
             <SelectTrigger
               size="sm"
@@ -366,7 +388,7 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL}>{t("deploys.listStatusAll")}</SelectItem>
-              {STATUS_OPTIONS.map((s) => (
+              {DEPLOY_STATUS_FILTERS.map((s) => (
                 <SelectItem key={s} value={s}>
                   {t(deployStatusKey(s) as Parameters<typeof t>[0])}
                 </SelectItem>
