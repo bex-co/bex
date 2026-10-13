@@ -257,6 +257,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **285** — [Secret-file uploads drop a valid leading UTF-8 byte-order mark](285.md) (45m) ← functional QA a349; desktop and fresh mobile uploads omit the prefix before saving, while direct edits and empty/CRLF controls preserve contents; unlinked owned group deleted and session revoked.
+
 - [ ] **284** — [Browser Back from a deploy detail discards history filters](284.md) (55m) ← functional QA a347; desktop and fresh 390px filtered list → detail → Back clear search/status and broaden the list; ordinary filter controls pass, owned Free service deleted and session revoked.
 
 - [ ] **283** — [Mobile sidebar stays open after navigating to another page](283.md) (55m) ← functional QA a342; settled Project Settings/Overview destinations remain covered and hidden after pointer390 and fresh keyboard360 navigation; Escape and desktop controls pass; empty owned project deleted, inventories restored and session revoked.
