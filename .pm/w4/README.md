@@ -257,6 +257,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **288** — [A Git-to-image source switch leaves Blueprint export unable to generate](288.md) (55m) ← functional QA a359; retained Git rootDir enters an image manifest and fails its self-check across desktop/mobile/REST/MCP; image-created and staged-Git controls pass, both owned Free services deleted and session revoked.
+
 - [ ] **287** — [Cancel can fail with an internal error while a deployment is rolling](287.md) (55m) ← functional QA a357; two mobile Cancel requests lose the marker's optimistic update race and releases continue to Live; logs confirm the cause, queued-cancel and subsequent-deploy controls pass, both owned Free fixtures deleted and session revoked.
 
 - [ ] **286** — [Generated secret adds a duplicate variable key after padding an existing key](286.md) (40m) ← functional QA a356; desktop/fresh mobile generation uses raw names while validation trims, blocking Save; normal suffix and accepted-padding controls pass, unlinked owned group deleted and session revoked.
