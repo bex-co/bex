@@ -1,0 +1,261 @@
+diff --git a/cmd/ssh.go b/cmd/ssh.go
+index 30c8bed..b28243d 100644
+--- a/cmd/ssh.go
++++ b/cmd/ssh.go
+@@ -122,7 +122,9 @@ func getSSHTableOptions(ctx context.Context, breadcrumb string) []tui.CustomOpti
+ 				input.Project = project
+ 				input.EnvironmentIDs = project.EnvironmentIds
+ 			}
+-			return InteractiveSSHView(ctx, &input, breadcrumb)
++			// Return to service selection scoped to the chosen project (or
++			// unscoped when cleared); there is no service to connect to yet.
++			return interactiveSSHView(ctx, &input, breadcrumb)
+ 		}),
+ 	}
+ }
+diff --git a/cmd/ssh_test.go b/cmd/ssh_test.go
+new file mode 100644
+index 0000000..af0447f
+--- /dev/null
++++ b/cmd/ssh_test.go
+@@ -0,0 +1,240 @@
++package cmd
++
++import (
++	"context"
++	"strings"
++	"testing"
++	"time"
++
++	tea "github.com/charmbracelet/bubbletea"
++	"github.com/charmbracelet/x/exp/teatest"
++	renderapi "github.com/render-oss/cli/internal/fakes/renderapi"
++	"github.com/render-oss/cli/pkg/client"
++	"github.com/render-oss/cli/pkg/config"
++	"github.com/render-oss/cli/pkg/dependencies"
++	"github.com/render-oss/cli/pkg/tui"
++	"github.com/render-oss/cli/pkg/tui/testhelper"
++	"github.com/render-oss/cli/pkg/tui/views"
++	"github.com/stretchr/testify/assert"
++	"github.com/stretchr/testify/require"
++)
++
++// sshChooserHarness runs the interactive `render ssh` service chooser against
++// the fake Render API and records any attempt to open the SSH execution view.
++type sshChooserHarness struct {
++	t      *testing.T
++	server *renderapi.Server
++	ctx    context.Context
++	stack  *tui.StackModel
++	execs  []views.SSHInput
++}
++
++func newSSHChooserHarness(t *testing.T, server *renderapi.Server) *sshChooserHarness {
++	t.Helper()
++
++	server.Owners.Add(renderapi.NewOwner(client.Owner{Id: serviceTestWorkspaceID, Name: serviceTestWorkspaceName}))
++	t.Setenv("RENDER_CLI_CONFIG_PATH", newTestConfigPath(t))
++	t.Setenv("RENDER_HOST", server.URL())
++	t.Setenv("RENDER_API_KEY", "test-api-key")
++	t.Setenv("RENDER_WORKSPACE", "")
++	require.NoError(t, (&config.Config{
++		Workspace:     serviceTestWorkspaceID,
++		WorkspaceName: serviceTestWorkspaceName,
++	}).Persist())
++
++	h := &sshChooserHarness{t: t, server: server}
++
++	original := InteractiveSSHView
++	t.Cleanup(func() { InteractiveSSHView = original })
++	InteractiveSSHView = func(ctx context.Context, input *views.SSHInput, breadcrumb string) tea.Cmd {
++		h.execs = append(h.execs, *input)
++		return nil
++	}
++
++	return h
++}
++
++// open starts a fresh chooser process: `render ssh` with no service argument.
++func (h *sshChooserHarness) open() *teatest.TestModel {
++	h.t.Helper()
++	h.stack = tui.NewStack()
++	h.ctx = tui.SetStackInContext(h.depsCtx(), h.stack)
++	interactiveSSHView(h.ctx, &views.SSHInput{}, "SSH")
++	return teatest.NewTestModel(h.t, h.stack, teatest.WithInitialTermSize(200, 40))
++}
++
++func (h *sshChooserHarness) depsCtx() context.Context {
++	h.t.Helper()
++	c, err := client.NewClientWithResponses(h.server.URL())
++	require.NoError(h.t, err)
++	return dependencies.SetInContext(context.Background(), dependencies.New(c))
++}
++
++func (h *sshChooserHarness) view(tm *teatest.TestModel) string {
++	h.t.Helper()
++	require.NoError(h.t, tm.Quit())
++	return tm.FinalModel(h.t, teatest.WithFinalTimeout(3*time.Second)).View()
++}
++
++func (h *sshChooserHarness) requireNoConnectionPreparation() {
++	h.t.Helper()
++	assert.Empty(h.t, h.execs, "project filter must not open the SSH execution view")
++	for _, r := range h.server.Requests {
++		if strings.HasPrefix(r.URI, "/services?") {
++			assert.NotContains(h.t, r.URI, "name=", "project filter must not look up a service by name")
++		}
++	}
++}
++
++func lastServiceListURI(t *testing.T, server *renderapi.Server) string {
++	t.Helper()
++	r, ok := server.LastRequest("GET", "/services?")
++	require.True(t, ok, "expected a service list request")
++	return r.URI
++}
++
++func seedSSHService(server *renderapi.Server, name, envID string) *client.Service {
++	return server.Services.Add(renderapi.NewWebService(renderapi.WebServiceAttrs{
++		Service: renderapi.CommonServiceAttrs{
++			Name:          name,
++			OwnerID:       serviceTestWorkspaceID,
++			EnvironmentID: envID,
++		},
++	}))
++}
++
++func pressKey(tm *teatest.TestModel, key string) {
++	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(key)})
++}
++
++func TestSSHProjectFilter_SelectProjectWithEmptyEnvironmentShowsScopedChooser(t *testing.T) {
++	server := renderapi.NewServer(t)
++	seedSSHService(server, "baseline-web", "")
++	proj := server.CreateProject(
++		renderapi.ProjectAttrs{Name: "selected-project", OwnerId: serviceTestWorkspaceID},
++		renderapi.EnvAttrs{Name: "empty"},
++	)
++	h := newSSHChooserHarness(t, server)
++
++	tm := h.open()
++	testhelper.WaitForContains(t, tm.Output(), "baseline-web")
++	pressKey(tm, "f")
++	testhelper.WaitForContains(t, tm.Output(), "selected-project")
++	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
++	testhelper.WaitForContains(t, tm.Output(), "No Results")
++
++	view := h.view(tm)
++	assert.NotContains(t, view, "baseline-web")
++	assert.NotContains(t, view, "Preparing SSH connection")
++	assert.Contains(t, lastServiceListURI(t, server), "environmentId="+proj.Env("empty").Id)
++	h.requireNoConnectionPreparation()
++}
++
++func TestSSHProjectFilter_SelectPopulatedProjectShowsOnlyItsServices(t *testing.T) {
++	server := renderapi.NewServer(t)
++	seedSSHService(server, "baseline-web", "")
++	proj := server.CreateProject(
++		renderapi.ProjectAttrs{Name: "populated-project", OwnerId: serviceTestWorkspaceID},
++		renderapi.EnvAttrs{Name: "production"},
++	)
++	seedSSHService(server, "project-api", proj.Env("production").Id)
++	seedSSHService(server, "project-admin", proj.Env("production").Id)
++	h := newSSHChooserHarness(t, server)
++
++	tm := h.open()
++	testhelper.WaitForContains(t, tm.Output(), "baseline-web")
++	pressKey(tm, "f")
++	testhelper.WaitForContains(t, tm.Output(), "populated-project")
++	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
++	testhelper.WaitForContains(t, tm.Output(), "project-admin")
++
++	view := h.view(tm)
++	assert.Contains(t, view, "project-api")
++	assert.Contains(t, view, "project-admin")
++	assert.NotContains(t, view, "baseline-web")
++	h.requireNoConnectionPreparation()
++}
++
++func TestSSHProjectFilter_ClearFilterShowsUnfilteredChooser(t *testing.T) {
++	server := renderapi.NewServer(t)
++	seedSSHService(server, "baseline-web", "")
++	server.CreateProject(
++		renderapi.ProjectAttrs{Name: "selected-project", OwnerId: serviceTestWorkspaceID},
++		renderapi.EnvAttrs{Name: "empty"},
++	)
++	h := newSSHChooserHarness(t, server)
++
++	tm := h.open()
++	testhelper.WaitForContains(t, tm.Output(), "baseline-web")
++	pressKey(tm, "f")
++	testhelper.WaitForContains(t, tm.Output(), "selected-project")
++	pressKey(tm, "x")
++	testhelper.WaitForContains(t, tm.Output(), "baseline-web")
++
++	view := h.view(tm)
++	assert.Contains(t, view, "baseline-web")
++	assert.NotContains(t, lastServiceListURI(t, server), "environmentId=")
++	h.requireNoConnectionPreparation()
++}
++
++func TestSSHProjectFilter_SaveDefaultPersistsAndClears(t *testing.T) {
++	server := renderapi.NewServer(t)
++	seedSSHService(server, "baseline-web", "")
++	proj := server.CreateProject(
++		renderapi.ProjectAttrs{Name: "selected-project", OwnerId: serviceTestWorkspaceID},
++		renderapi.EnvAttrs{Name: "empty"},
++	)
++	h := newSSHChooserHarness(t, server)
++
++	// Save as default returns the scoped chooser.
++	tm := h.open()
++	testhelper.WaitForContains(t, tm.Output(), "baseline-web")
++	pressKey(tm, "f")
++	testhelper.WaitForContains(t, tm.Output(), "selected-project")
++	pressKey(tm, "s")
++	testhelper.WaitForContains(t, tm.Output(), "No Results")
++	assert.NotContains(t, h.view(tm), "baseline-web")
++
++	projectID, projectName, err := config.GetProjectFilter()
++	require.NoError(t, err)
++	assert.Equal(t, proj.Project.Id, projectID)
++	assert.Equal(t, proj.Project.Name, projectName)
++
++	// A fresh chooser honors the saved default, and clearing it from there
++	// returns the unfiltered chooser.
++	tm = h.open()
++	testhelper.WaitForContains(t, tm.Output(), "No Results")
++	pressKey(tm, "f")
++	testhelper.WaitForContains(t, tm.Output(), "selected-project")
++	pressKey(tm, "x")
++	testhelper.WaitForContains(t, tm.Output(), "baseline-web")
++	assert.Contains(t, h.view(tm), "baseline-web")
++
++	projectID, _, err = config.GetProjectFilter()
++	require.NoError(t, err)
++	assert.Empty(t, projectID)
++
++	// A fresh chooser after clearing stays unfiltered.
++	tm = h.open()
++	testhelper.WaitForContains(t, tm.Output(), "baseline-web")
++	assert.Contains(t, h.view(tm), "baseline-web")
++
++	h.requireNoConnectionPreparation()
++}
++
++func TestInteractiveSSHView_DirectArgumentsOpenExecutionView(t *testing.T) {
++	server := renderapi.NewServer(t)
++	h := newSSHChooserHarness(t, server)
++	ctx := tui.SetStackInContext(h.depsCtx(), tui.NewStack())
++
++	interactiveSSHView(ctx, &views.SSHInput{ServiceIDOrName: "srv-abcdefghij0123456789-hijk5"}, "SSH")
++	interactiveSSHView(ctx, &views.SSHInput{ServiceIDOrName: "srv-abcdefghij0123456789", Ephemeral: true}, "SSH")
++	interactiveSSHView(ctx, &views.SSHInput{ServiceIDOrName: "my-service"}, "SSH")
++
++	require.Len(t, h.execs, 3)
++	assert.Equal(t, "srv-abcdefghij0123456789", h.execs[0].ServiceIDOrName)
++	assert.Equal(t, "srv-abcdefghij0123456789-hijk5", h.execs[0].InstanceID)
++	assert.Equal(t, "srv-abcdefghij0123456789", h.execs[1].ServiceIDOrName)
++	assert.True(t, h.execs[1].Ephemeral)
++	assert.Equal(t, "my-service", h.execs[2].ServiceIDOrName)
++}
