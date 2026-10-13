@@ -67,9 +67,14 @@ import { classifySecretStoreError } from "@/features/services/lib/secret-store";
 import { useTriggerDeploy } from "@/features/services/hooks/use-trigger-deploy";
 import {
   MAX_SECRET_FILE_BYTES,
+  NO_ENVIRONMENT_EDIT,
+  admitUploadedFiles,
   createEnvironmentDraft,
+  editDraft,
+  endEdit,
   environmentDraftPatch,
   isDraftValid,
+  startEdit,
   type DraftValidation,
   isNewDraftRow,
   isValidSecretFileName,
@@ -122,6 +127,8 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
 
   return (
     <EnvironmentEditor
+      // A draft belongs to one service: another service starts a fresh editor.
+      key={serviceId}
       resourceId={serviceId}
       // The reserved-PORT refusal links to THIS service's port control.
       portSettingsServiceId={serviceId}
@@ -294,7 +301,11 @@ export function EnvironmentEditor({
   const writeReasonID = useId();
   const nextID = useRef(0);
   const fileInput = useRef<HTMLInputElement>(null);
-  const [draft, setDraft] = useState<EnvironmentDraft | null>(null);
+  const [editor, setEditor] = useState(NO_ENVIRONMENT_EDIT);
+  const draft = editor.draft;
+  const setDraft = (
+    update: (draft: EnvironmentDraft | null) => EnvironmentDraft | null,
+  ) => setEditor((state) => editDraft(state, update));
   // Preserve an in-progress draft across a session-expiry redirect (w3/m80
   // t005): if the session lapses mid-edit, the Apollo auth link hard-navigates
   // to login and this component unmounts — the draft is mirrored to
@@ -320,7 +331,6 @@ export function EnvironmentEditor({
   );
   const [importOpen, setImportOpen] = useState(false);
   const [contentRowID, setContentRowID] = useState<string | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState(false);
   const [pendingChoice, setPendingChoice] = useState<Exclude<
     SaveChoice,
@@ -363,7 +373,7 @@ export function EnvironmentEditor({
     // rows and one delete removed two (w4/139). Reading the ref here is safe:
     // this is an effect, not render.
     const fresh = reidentifyDraft(saved, () => nextID.current++);
-    setDraft((current) => current ?? fresh);
+    setEditor((state) => (state.draft ? state : startEdit(state, fresh)));
     setRestoredDraft(true);
   }, [consumeRestored]);
 
@@ -387,9 +397,10 @@ export function EnvironmentEditor({
     );
     // Captured with the names snapshot, in the same click: the draft's base is
     // the state the user saw when they chose Edit, never a later poll (w4/m161).
-    setDraft(revision ? { ...fresh, baseRevision: revision } : fresh);
+    setEditor((state) =>
+      startEdit(state, revision ? { ...fresh, baseRevision: revision } : fresh),
+    );
     setSaveError(false);
-    setUploadError(null);
     setRestoredDraft(false); // a fresh edit, not one recovered from a redirect
   }
 
@@ -506,20 +517,12 @@ export function EnvironmentEditor({
 
   async function uploadFiles(selected: FileList | null) {
     if (!selected || !draft || createDenied) return;
-    const names = new Set(
-      draft.secretFiles
-        .filter((row) => !row.deleted)
-        .map((row) => row.name.trim()),
-    );
-    const additions: SecretFileDraftRow[] = [];
+    const { session } = editor;
+    const decoded: SecretFileDraftRow[] = [];
     let rejected = false;
     for (const file of Array.from(selected)) {
       const name = file.name.split(/[\\/]/).at(-1) ?? "";
-      if (
-        !isValidSecretFileName(name) ||
-        names.has(name) ||
-        file.size > MAX_SECRET_FILE_BYTES
-      ) {
+      if (!isValidSecretFileName(name) || file.size > MAX_SECRET_FILE_BYTES) {
         rejected = true;
         continue;
       }
@@ -534,8 +537,7 @@ export function EnvironmentEditor({
           rejected = true;
           continue;
         }
-        names.add(name);
-        additions.push({
+        decoded.push({
           id: `upload-file:${nextID.current++}`,
           originalName: null,
           name,
@@ -547,14 +549,7 @@ export function EnvironmentEditor({
         rejected = true;
       }
     }
-    if (additions.length) {
-      setDraft((current) =>
-        current
-          ? { ...current, secretFiles: [...current.secretFiles, ...additions] }
-          : current,
-      );
-    }
-    setUploadError(rejected ? t("services.secretFileUploadError") : null);
+    setEditor((state) => admitUploadedFiles(state, session, decoded, rejected));
   }
 
   async function exportEnvironment(kind: "copy" | "download") {
@@ -608,7 +603,7 @@ export function EnvironmentEditor({
 
     // The save committed even if a follow-up read or deploy failed. Retrying
     // that follow-up must not reapply the accepted secret patch.
-    setDraft(null);
+    setEditor(endEdit);
     reveals.clear();
     if (result.refreshFailed) {
       toast.warning(t("services.environmentSavedRefreshFailed"));
@@ -701,7 +696,7 @@ export function EnvironmentEditor({
               size="sm"
               variant="outline"
               onClick={() => {
-                setDraft(null);
+                setEditor(endEdit);
                 setRestoredDraft(false);
               }}
             >
@@ -838,7 +833,9 @@ export function EnvironmentEditor({
           ) : undefined,
         }}
         loading={loading}
-        notice={uploadError}
+        notice={
+          editor.uploadRejected ? t("services.secretFileUploadError") : null
+        }
         action={
           draft ? (
             <>
@@ -939,7 +936,7 @@ export function EnvironmentEditor({
               <Button
                 variant="outline"
                 disabled={busy}
-                onClick={() => setDraft(null)}
+                onClick={() => setEditor(endEdit)}
               >
                 {t("services.envCancel")}
               </Button>
@@ -1032,7 +1029,7 @@ export function EnvironmentEditor({
         // leaving it blocked would strand the user on the page.
         onCancel={() => blocker.reset?.()}
         onConfirm={() => {
-          setDraft(null);
+          setEditor(endEdit);
           blocker.proceed?.();
         }}
       />

@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import userEvent from "@testing-library/user-event";
 import {
@@ -508,5 +514,66 @@ describe("EnvGroupEditors deploy feedback with Auto-Deploy-off links (w4/224)", 
     mutate.mockResolvedValueOnce(result(null, null, null));
     await saveAndDeploy();
     expect(toastSuccess).toHaveBeenCalledWith(NOT_DEPLOYED);
+  });
+});
+
+// w4/m205 through the group adapter (the surface the finding reproduced on).
+describe("EnvGroupEditors overlapping file uploads (w4/m205)", () => {
+  function heldFile(name: string, text: string) {
+    const file = new File([text], name, { type: "text/plain" });
+    let release: (bytes: ArrayBuffer) => void = () => undefined;
+    const read = new Promise<ArrayBuffer>((resolve) => {
+      release = resolve;
+    });
+    Object.defineProperty(file, "arrayBuffer", { value: () => read });
+    return {
+      file,
+      land: () =>
+        act(async () => {
+          release(new TextEncoder().encode(text).buffer as ArrayBuffer);
+          await read;
+        }),
+    };
+  }
+  function select(container: HTMLElement, ...files: File[]) {
+    const input = container.querySelector<HTMLInputElement>(
+      'input[type="file"][multiple]',
+    )!;
+    fireEvent.change(input, { target: { files } });
+  }
+
+  it("leaves a batch and an overlapping same-name selection unique and saveable", async () => {
+    const user = userEvent.setup();
+    const { container } = renderEditors();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    const batch = Array.from({ length: 8 }, (_, index) =>
+      heldFile(`qa-${index}.txt`, `batch-${index}`),
+    );
+    const repeat = heldFile("qa-0.txt", "second-selection");
+    select(container, ...batch.map((held) => held.file));
+    select(container, repeat.file);
+    await repeat.land();
+    for (const held of batch) await held.land();
+
+    await waitFor(() =>
+      expect(screen.getAllByDisplayValue(/^qa-\d\.txt$/)).toHaveLength(8),
+    );
+    expect(screen.getAllByDisplayValue("qa-0.txt")).toHaveLength(1);
+    expect(
+      screen.queryByText(/secret file name must be unique/i),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/upload it base64-encoded/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Save/ })).toBeEnabled();
+  });
+
+  it("drops a read that finishes after the page moved to another group", async () => {
+    const user = userEvent.setup();
+    const { container } = renderEditors();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    const late = heldFile("late.txt", "late");
+    select(container, late.file);
+    act(() => setGroup({ ...GROUP, id: "evg-other", name: "other" }));
+    await late.land();
+    expect(screen.queryByDisplayValue("late.txt")).not.toBeInTheDocument();
   });
 });

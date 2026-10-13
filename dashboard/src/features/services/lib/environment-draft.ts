@@ -408,6 +408,80 @@ export function environmentDraftPatch(
   };
 }
 
+/**
+ * The editor's draft together with the state that must change in the same
+ * step as it. `session` names one Edit: it moves whenever an edit starts or
+ * ends, so work begun in an earlier edit can tell it no longer applies.
+ */
+export interface EnvironmentEditState {
+  draft: EnvironmentDraft | null;
+  session: number;
+  /** The last upload left out at least one selected file. */
+  uploadRejected: boolean;
+}
+
+export const NO_ENVIRONMENT_EDIT: EnvironmentEditState = {
+  draft: null,
+  session: 0,
+  uploadRejected: false,
+};
+
+export function startEdit(
+  state: EnvironmentEditState,
+  draft: EnvironmentDraft,
+): EnvironmentEditState {
+  return { draft, session: state.session + 1, uploadRejected: false };
+}
+
+export function endEdit(state: EnvironmentEditState): EnvironmentEditState {
+  return { ...state, draft: null, session: state.session + 1 };
+}
+
+/** Changes the open draft; the edit it belongs to stays the same one. */
+export function editDraft(
+  state: EnvironmentEditState,
+  update: (draft: EnvironmentDraft | null) => EnvironmentDraft | null,
+): EnvironmentEditState {
+  const draft = update(state.draft);
+  return draft === state.draft ? state : { ...state, draft };
+}
+
+/**
+ * Adds decoded uploads to the draft of the edit that started them. Whether a
+ * name is taken is decided here, against the draft as it is now: file reads
+ * overlap, so a selection made while another was still decoding must not
+ * judge names by the draft it started from (w4/m205). A file already in the
+ * draft keeps its contents and the arriving one is skipped.
+ */
+export function admitUploadedFiles(
+  state: EnvironmentEditState,
+  session: number,
+  files: readonly SecretFileDraftRow[],
+  rejected: boolean,
+): EnvironmentEditState {
+  if (!state.draft || state.session !== session) return state;
+  const names = new Set(
+    state.draft.secretFiles
+      .filter((row) => !row.deleted)
+      .map((row) => row.name.trim()),
+  );
+  const admitted = files.filter((file) => {
+    if (names.has(file.name)) return false;
+    names.add(file.name);
+    return true;
+  });
+  return {
+    ...state,
+    draft: admitted.length
+      ? {
+          ...state.draft,
+          secretFiles: [...state.draft.secretFiles, ...admitted],
+        }
+      : state.draft,
+    uploadRejected: rejected || admitted.length < files.length,
+  };
+}
+
 export function isValidSecretFileName(name: string): boolean {
   return (
     VALID_SECRET_FILE_NAME.test(name) && name !== "." && !name.startsWith("..")
