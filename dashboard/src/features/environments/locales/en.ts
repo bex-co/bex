@@ -139,6 +139,12 @@ const enEnvironments: Record<string, TranslationEntry> = {
     message: 'Environment "{name}" deleted.',
     description: "Toast shown after an environment is deleted",
   },
+  "environments.deleteRefreshFailed": {
+    message:
+      'Environment "{name}" deleted, but the list couldn\'t refresh. Try again or reload to update it.',
+    description:
+      "Warning after the environment was deleted but re-reading the list failed; deletion must not be retried or reported as failed (w4/290)",
+  },
   "environments.deleteError": {
     message: 'Failed to delete environment "{name}".',
     description: "Toast shown when deleting an environment fails",

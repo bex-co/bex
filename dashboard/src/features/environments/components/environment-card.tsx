@@ -122,7 +122,7 @@ export function EnvironmentCard({
   const { t } = useTranslations();
 
   const { rename, busy: renaming } = useRenameEnvironment();
-  const { remove, deleting } = useDeleteEnvironment();
+  const { remove, deleting } = useDeleteEnvironment(environment.projectId);
   const deletingThis = deleting === environment.id;
 
   const [renameOpen, setRenameOpen] = useState(false);
