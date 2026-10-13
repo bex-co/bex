@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ServicePortRow } from "@/features/services/components/service-port-row";
 
@@ -53,6 +53,39 @@ describe("ServicePortRow", () => {
       screen.getByRole("button", { name: /save changes/i }),
     ).toBeDisabled();
     expect(setPort).not.toHaveBeenCalled();
+  });
+
+  // w4/278: "03000" parses to the current port, yet the text comparison enabled
+  // Save and each save rolled an identical deploy.
+  it("keeps Save disabled for a zero-padded spelling of the current port", async () => {
+    const user = userEvent.setup();
+    render(<ServicePortRow serviceId="web" port={3000} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Port" }));
+    const input = screen.getByRole("spinbutton", { name: "Port" });
+    const save = screen.getByRole("button", { name: /save changes/i });
+    // A browser keeps "03000" in a number input; user-event drops the leading
+    // zero, so set the draft the way the browser reports it.
+    for (const padded of ["03000", "003000"]) {
+      fireEvent.change(input, { target: { value: padded } });
+      expect(input).toHaveDisplayValue(padded);
+      expect(save, padded).toBeDisabled();
+    }
+
+    fireEvent.change(input, { target: { value: "03001" } });
+    await user.click(save);
+    expect(setPort).toHaveBeenCalledExactlyOnceWith("web", 3001);
+  });
+
+  it("saves a valid port when the current one is unknown", async () => {
+    const user = userEvent.setup();
+    render(<ServicePortRow serviceId="web" port={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Port" }));
+    await user.type(screen.getByRole("spinbutton", { name: "Port" }), "3000");
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    expect(setPort).toHaveBeenCalledWith("web", 3000);
   });
 
   it("renders an absent port as empty rather than as 0", () => {
