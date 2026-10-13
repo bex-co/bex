@@ -124,7 +124,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **093** — [CLI scope selectors cannot resolve accepted ID-shaped project and environment names](blocked/093.md) — **BLOCKED (2026-10-12: upstream patch prepared and tested — [`093-upstream.patch`](blocked/093-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
 
-- [ ] **092** — [Blueprint parser loses explicit empty env-value presence](092.md) (minor; 25m remaining acceptance) ← sweep207 full native matrix now passes after API pin advancement; exact native wire, aliases/containers/controls; hosted apply and remaining surfaces untested; no fixtures.
+- [x] **092** — [Blueprint parser loses explicit empty env-value presence](done/092.md) — **DONE 2026-10-13** (fix `a7f6c1531`; sweep207 44-check native matrix passes; empty seed seeded once and retained through DeployStack; hosted apply and non-REST surfaces recorded as boundaries)
 
 - [ ] **091** — [SSH project filters start connection preparation before choosing a service](blocked/091.md) — **BLOCKED (2026-10-12: upstream patch prepared and tested — [`091-upstream.patch`](blocked/091-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
 

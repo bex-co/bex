@@ -21,8 +21,10 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/secrets"
 )
 
 // w8/092: the parser tested value != "", so an explicitly declared empty
@@ -86,4 +88,33 @@ func bexServiceFromJSON(t *testing.T, doc string) bexService {
 		t.Fatal(err)
 	}
 	return s
+}
+
+// w8/092 acceptance: an explicitly empty sync:false value is seeded once as a
+// present empty variable, and an unchanged re-sync keeps it (seed-once), through
+// public DeployStack and the real secrets service.
+func TestBlueprintEmptySeedIsSeededOnceAndRetained(t *testing.T) {
+	base := &core.Base{Client: fakeClient(), Namespace: "default", Clock: func() time.Time { return time.Unix(1_000_000, 0).UTC() }}
+	sec := &secrets.Service{Base: base, Store: newMemKV()}
+	svc := &Service{Base: base, EnvSeeder: sec}
+	ctx := context.Background()
+	manifest := `{"services":[{"name":"web","type":"web","runtime":"image","image":{"url":"nginx:1"},"envVars":[{"key":"EMPTY_SEED","value":"","sync":false}]}]}`
+	for i := 0; i < 2; i++ {
+		if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: manifest}); err != nil {
+			t.Fatalf("apply %d: %v", i+1, err)
+		}
+		vars, err := sec.ListEnvVars(ctx, "web")
+		if err != nil {
+			t.Fatalf("list after apply %d: %v", i+1, err)
+		}
+		found := false
+		for _, v := range vars {
+			if v.Key == "EMPTY_SEED" {
+				found = v.Value == ""
+			}
+		}
+		if !found {
+			t.Fatalf("after apply %d, EMPTY_SEED = %+v, want a present empty variable", i+1, vars)
+		}
+	}
 }
