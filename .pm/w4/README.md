@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m206** — [Make environment-group creation and moves recoverable](m206/README.md) (8 tasks, 255m) ← functional QA a385; scoped create traps an undiscoverable name, and two-group moves time out after partial or complete placement. Five visible fixtures deleted; failed-name residue explicitly recorded; QA session revoked.
+
 - [ ] **289** — [Preserve numeric log-search links](289.md) (55m inbox) ← functional QA a364; fresh desktop/mobile links round an exact identifier while typed and quoted-link controls pass; owned Free fixture deleted and session revoked.
 
 - [ ] **m205** — [Keep overlapping file uploads unique](blocked/m205/README.md) (6 tasks) — **BLOCKED (release pipeline deploys the dashboard; QA replays the [finding.md](blocked/m205/finding.md) DoD on an owned unlinked group: the recorded 64-file batch immediately followed by the same-name selection leaves 64 unique names, the skipped-file notice and Save enabled, at desktop and fresh 390px; the settled-duplicate and single-file Save only controls still pass with no rollout; then cleans up (t006))**. t001–t005 done 2026-10-13: a decoded upload batch is admitted against the draft as it is when the batch lands, in one pure update that also sets the skipped-file notice, so overlapping selections cannot both accept a name. A batch only applies to the edit that started it (Cancel, a later Edit, a save, another resource all drop it); each editor is now keyed by its service or group. No API or decoder change. Dashboard `yarn lint` + `yarn test` green.

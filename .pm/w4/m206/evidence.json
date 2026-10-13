@@ -1,0 +1,1336 @@
+{
+  "pass": "a385",
+  "date": "2026-10-13",
+  "scope": "Functional dashboard QA; empty unlinked owned groups and owned project/environments only",
+  "residual": "Failed name qa-20261013-a385-first remains ENV_GROUP_NAME_EXISTS as of 22:07:02.632Z, no discoverable group ID; exact persistent stage not directly inspected",
+  "receipts": {
+    "Baseline": {
+      "at": "2026-10-13T21:08:15.668Z",
+      "request": {
+        "operationName": "QaA385Inventory",
+        "query": "query QaA385Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      }
+    },
+    "ProjectCreate": {
+      "at": "2026-10-13T21:08:37.113Z",
+      "status": 200,
+      "request": {
+        "operationName": "CreateProject",
+        "variables": {
+          "name": "qa-20261013-a385-project",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateProject($name: String!, $ownerId: String!) {\n  createProject(name: $name, ownerId: $ownerId) {\n    ...ProjectFields\n    __typename\n  }\n}\n\nfragment ProjectFields on Project {\n  id\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  __typename\n}"
+      },
+      "body": {
+        "data": {
+          "createProject": {
+            "__typename": "Project",
+            "createdAt": "2026-10-13T21:08:36Z",
+            "databaseIds": [],
+            "id": "prj-db79rl2kvq8s73cjhupg",
+            "keyValueIds": [],
+            "name": "qa-20261013-a385-project",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "serviceIds": []
+          }
+        }
+      }
+    },
+    "ProjectId": "prj-db79rl2kvq8s73cjhupg",
+    "LeftCreate": {
+      "at": "2026-10-13T21:08:38.674Z",
+      "status": 200,
+      "request": {
+        "operationName": "CreateEnvironment",
+        "variables": {
+          "name": "qa-20261013-a385-left",
+          "projectId": "prj-db79rl2kvq8s73cjhupg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateEnvironment($name: String!, $projectId: String!) {\n  createEnvironment(name: $name, projectId: $projectId) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+      },
+      "body": {
+        "data": {
+          "createEnvironment": {
+            "__typename": "Environment",
+            "createdAt": "2026-10-13T21:08:38Z",
+            "databaseIds": [],
+            "envGroupIds": [],
+            "id": "evm-db79rlikvq8s73cjhuqg",
+            "ipAllowList": ["0.0.0.0/0", "::/0"],
+            "ipAllowListEntries": [
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "0.0.0.0/0",
+                "description": "Allow all (default)"
+              },
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "::/0",
+                "description": "Allow all (default)"
+              }
+            ],
+            "ipAllowListProxiedDomains": [],
+            "keyValueIds": [],
+            "name": "qa-20261013-a385-left",
+            "networkIsolationEnabled": false,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "projectId": "prj-db79rl2kvq8s73cjhupg",
+            "protectedStatus": "unprotected",
+            "serviceIds": []
+          }
+        }
+      }
+    },
+    "RightCreate": {
+      "at": "2026-10-13T21:09:11.749Z",
+      "status": 200,
+      "request": {
+        "operationName": "CreateEnvironment",
+        "variables": {
+          "name": "qa-20261013-a385-right",
+          "projectId": "prj-db79rl2kvq8s73cjhupg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateEnvironment($name: String!, $projectId: String!) {\n  createEnvironment(name: $name, projectId: $projectId) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+      },
+      "body": {
+        "data": {
+          "createEnvironment": {
+            "__typename": "Environment",
+            "createdAt": "2026-10-13T21:09:11Z",
+            "databaseIds": [],
+            "envGroupIds": [],
+            "id": "evm-db79rttoe3vs73aemrb0",
+            "ipAllowList": ["0.0.0.0/0", "::/0"],
+            "ipAllowListEntries": [
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "0.0.0.0/0",
+                "description": "Allow all (default)"
+              },
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "::/0",
+                "description": "Allow all (default)"
+              }
+            ],
+            "ipAllowListProxiedDomains": [],
+            "keyValueIds": [],
+            "name": "qa-20261013-a385-right",
+            "networkIsolationEnabled": false,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "projectId": "prj-db79rl2kvq8s73cjhupg",
+            "protectedStatus": "unprotected",
+            "serviceIds": []
+          }
+        }
+      }
+    },
+    "Environments": [
+      {
+        "__typename": "Environment",
+        "createdAt": "2026-10-13T21:08:38Z",
+        "databaseIds": [],
+        "envGroupIds": [],
+        "id": "evm-db79rlikvq8s73cjhuqg",
+        "ipAllowList": ["0.0.0.0/0", "::/0"],
+        "ipAllowListEntries": [
+          {
+            "__typename": "IPAllowListEntry",
+            "cidrBlock": "0.0.0.0/0",
+            "description": "Allow all (default)"
+          },
+          {
+            "__typename": "IPAllowListEntry",
+            "cidrBlock": "::/0",
+            "description": "Allow all (default)"
+          }
+        ],
+        "ipAllowListProxiedDomains": [],
+        "keyValueIds": [],
+        "name": "qa-20261013-a385-left",
+        "networkIsolationEnabled": false,
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "projectId": "prj-db79rl2kvq8s73cjhupg",
+        "protectedStatus": "unprotected",
+        "serviceIds": []
+      },
+      {
+        "__typename": "Environment",
+        "createdAt": "2026-10-13T21:09:11Z",
+        "databaseIds": [],
+        "envGroupIds": [],
+        "id": "evm-db79rttoe3vs73aemrb0",
+        "ipAllowList": ["0.0.0.0/0", "::/0"],
+        "ipAllowListEntries": [
+          {
+            "__typename": "IPAllowListEntry",
+            "cidrBlock": "0.0.0.0/0",
+            "description": "Allow all (default)"
+          },
+          {
+            "__typename": "IPAllowListEntry",
+            "cidrBlock": "::/0",
+            "description": "Allow all (default)"
+          }
+        ],
+        "ipAllowListProxiedDomains": [],
+        "keyValueIds": [],
+        "name": "qa-20261013-a385-right",
+        "networkIsolationEnabled": false,
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "projectId": "prj-db79rl2kvq8s73cjhupg",
+        "protectedStatus": "unprotected",
+        "serviceIds": []
+      }
+    ],
+    "FirstGroupDraft": {
+      "at": "2026-10-13T21:09:25.707Z",
+      "options": "- listbox:\n  - option \"Workspace (no Environment)\" [selected]\n  - option \"qa-20261013-a385-project / qa-20261013-a385-left\"\n  - option \"qa-20261013-a385-project / qa-20261013-a385-right\""
+    },
+    "FirstGroupCreate": {
+      "at": "2026-10-13T21:10:25.702Z",
+      "status": 200,
+      "request": {
+        "operationName": "CreateEnvGroup",
+        "variables": {
+          "name": "qa-20261013-a385-first",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "envVars": [],
+          "secretFiles": [],
+          "serviceIds": [],
+          "environmentId": "evm-db79rlikvq8s73cjhuqg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateEnvGroup($name: String!, $ownerId: String, $envVars: [EnvGroupVarInput!], $secretFiles: [EnvGroupSecretFileInput!], $serviceIds: [String!], $environmentId: String) {\n  createEnvGroup(\n    name: $name\n    ownerId: $ownerId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    serviceIds: $serviceIds\n    environmentId: $environmentId\n  ) {\n    id\n    name\n    __typename\n  }\n}"
+      },
+      "body": {
+        "data": null,
+        "errors": [
+          {
+            "message": "query timed out; narrow the time range or the search and try again",
+            "locations": [],
+            "extensions": {
+              "code": "QUERY_TIMEOUT"
+            }
+          }
+        ]
+      }
+    },
+    "CreateCheck": {
+      "at": "2026-10-13T21:11:41.948Z",
+      "request": {
+        "operationName": "QaA385CreateCheck",
+        "query": "query QaA385CreateCheck($ownerId:String!){envGroups(ownerId:$ownerId){id name environmentId revision serviceLinks}}",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "envGroups": [
+            {
+              "environmentId": null,
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85",
+              "revision": "egr1_AAAAAAAAAAE",
+              "serviceLinks": []
+            }
+          ]
+        }
+      },
+      "url": "https://dashboard.bex.co/env-groups",
+      "dialogs": 1,
+      "notices": []
+    },
+    "FirstGroupRetry": {
+      "at": "2026-10-13T21:13:46.554Z",
+      "status": 200,
+      "request": {
+        "operationName": "CreateEnvGroup",
+        "variables": {
+          "name": "qa-20261013-a385-first",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "envVars": [],
+          "secretFiles": [],
+          "serviceIds": [],
+          "environmentId": "evm-db79rlikvq8s73cjhuqg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateEnvGroup($name: String!, $ownerId: String, $envVars: [EnvGroupVarInput!], $secretFiles: [EnvGroupSecretFileInput!], $serviceIds: [String!], $environmentId: String) {\n  createEnvGroup(\n    name: $name\n    ownerId: $ownerId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    serviceIds: $serviceIds\n    environmentId: $environmentId\n  ) {\n    id\n    name\n    __typename\n  }\n}"
+      },
+      "body": {
+        "data": null,
+        "errors": [
+          {
+            "message": "query timed out; narrow the time range or the search and try again",
+            "locations": [],
+            "extensions": {
+              "code": "QUERY_TIMEOUT"
+            }
+          }
+        ]
+      }
+    },
+    "RetryCheck": {
+      "at": "2026-10-13T21:15:27.775Z",
+      "request": {
+        "operationName": "QaA385RetryCheck",
+        "query": "query QaA385RetryCheck($ownerId:String!){envGroups(ownerId:$ownerId){id name environmentId revision serviceLinks}}",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "envGroups": [
+            {
+              "environmentId": null,
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85",
+              "revision": "egr1_AAAAAAAAAAE",
+              "serviceLinks": []
+            }
+          ]
+        }
+      }
+    },
+    "WorkspaceControl": {
+      "at": "2026-10-13T21:16:43.752Z",
+      "status": 200,
+      "request": {
+        "operationName": "CreateEnvGroup",
+        "variables": {
+          "name": "qa-20261013-a385-workspace",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "envVars": [],
+          "secretFiles": [],
+          "serviceIds": [],
+          "environmentId": null
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateEnvGroup($name: String!, $ownerId: String, $envVars: [EnvGroupVarInput!], $secretFiles: [EnvGroupSecretFileInput!], $serviceIds: [String!], $environmentId: String) {\n  createEnvGroup(\n    name: $name\n    ownerId: $ownerId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    serviceIds: $serviceIds\n    environmentId: $environmentId\n  ) {\n    id\n    name\n    __typename\n  }\n}"
+      },
+      "body": {
+        "data": {
+          "createEnvGroup": {
+            "__typename": "EnvGroup",
+            "id": "evg-db79vcqioh8c7395esbg",
+            "name": "qa-20261013-a385-workspace"
+          }
+        }
+      }
+    },
+    "MoveControl": {
+      "at": "2026-10-13T21:20:40.345Z",
+      "timing": {
+        "startTime": 1791926431149.09,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.146,
+        "responseStart": 9191.376,
+        "responseEnd": 9191.79
+      },
+      "status": 200,
+      "request": {
+        "operationName": "MoveEnvGroup",
+        "variables": {
+          "id": "evg-db79vcqioh8c7395esbg",
+          "environmentId": "evm-db79rlikvq8s73cjhuqg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation MoveEnvGroup($id: String!, $environmentId: String!) {\n  moveEnvGroup(id: $id, environmentId: $environmentId) {\n    id\n    environmentId\n    updatedAt\n    __typename\n  }\n}"
+      },
+      "body": {
+        "data": {
+          "moveEnvGroup": {
+            "__typename": "EnvGroup",
+            "environmentId": "evm-db79rlikvq8s73cjhuqg",
+            "id": "evg-db79vcqioh8c7395esbg",
+            "updatedAt": "2026-10-13T21:20:39.59813538Z"
+          }
+        }
+      }
+    },
+    "FirstGroupTimedRetry": {
+      "at": "2026-10-13T21:22:58.760Z",
+      "timing": {
+        "startTime": 1791926554626.7532,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.128,
+        "responseStart": 24127.669,
+        "responseEnd": 24128.099
+      },
+      "batchOperations": ["CreateEnvGroup"],
+      "status": 200,
+      "request": {
+        "operationName": "CreateEnvGroup",
+        "variables": {
+          "name": "qa-20261013-a385-first",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "envVars": [],
+          "secretFiles": [],
+          "serviceIds": [],
+          "environmentId": "evm-db79rlikvq8s73cjhuqg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateEnvGroup($name: String!, $ownerId: String, $envVars: [EnvGroupVarInput!], $secretFiles: [EnvGroupSecretFileInput!], $serviceIds: [String!], $environmentId: String) {\n  createEnvGroup(\n    name: $name\n    ownerId: $ownerId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    serviceIds: $serviceIds\n    environmentId: $environmentId\n  ) {\n    id\n    name\n    __typename\n  }\n}"
+      },
+      "body": {
+        "data": {
+          "createEnvGroup": null
+        },
+        "errors": [
+          {
+            "message": "Environment group name already exists.",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ],
+            "path": ["createEnvGroup"],
+            "extensions": {
+              "code": "ENV_GROUP_NAME_EXISTS",
+              "name": "qa-20261013-a385-first",
+              "workspaceId": "tea-d98210cbbpdc73dcrkvg"
+            }
+          }
+        ]
+      }
+    },
+    "NameCheck": {
+      "at": "2026-10-13T21:24:45.595Z",
+      "request": {
+        "operationName": "QaA385NameCheck",
+        "query": "query QaA385NameCheck($ownerId:String!){envGroups(ownerId:$ownerId){id name environmentId revision serviceLinks}}",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "envGroups": [
+            {
+              "environmentId": null,
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85",
+              "revision": "egr1_AAAAAAAAAAE",
+              "serviceLinks": []
+            },
+            {
+              "environmentId": "evm-db79rlikvq8s73cjhuqg",
+              "id": "evg-db79vcqioh8c7395esbg",
+              "name": "qa-20261013-a385-workspace",
+              "revision": "egr1_AAAAAAAAAAE",
+              "serviceLinks": []
+            }
+          ]
+        }
+      }
+    },
+    "PlacementCheck": {
+      "at": "2026-10-13T21:28:02.941Z",
+      "request": {
+        "operationName": "QaA385Placement",
+        "query": "query QaA385Placement($projectId:String!,$ownerId:String!){environments(projectId:$projectId){id name envGroupIds} envGroups(ownerId:$ownerId){id name environmentId revision serviceLinks}}",
+        "variables": {
+          "projectId": "prj-db79rl2kvq8s73cjhupg",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "envGroups": [
+            {
+              "environmentId": null,
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85",
+              "revision": "egr1_AAAAAAAAAAE",
+              "serviceLinks": []
+            },
+            {
+              "environmentId": "evm-db79rlikvq8s73cjhuqg",
+              "id": "evg-db79vcqioh8c7395esbg",
+              "name": "qa-20261013-a385-workspace",
+              "revision": "egr1_AAAAAAAAAAE",
+              "serviceLinks": []
+            }
+          ],
+          "environments": [
+            {
+              "envGroupIds": ["evg-db79vcqioh8c7395esbg"],
+              "id": "evm-db79rlikvq8s73cjhuqg",
+              "name": "qa-20261013-a385-left"
+            },
+            {
+              "envGroupIds": [],
+              "id": "evm-db79rttoe3vs73aemrb0",
+              "name": "qa-20261013-a385-right"
+            }
+          ]
+        }
+      }
+    },
+    "SecondWorkspaceCreate": {
+      "at": "2026-10-13T21:31:02.443Z",
+      "timing": {
+        "startTime": 1791927044859.1501,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.12,
+        "responseStart": 17581.137,
+        "responseEnd": 17581.524
+      },
+      "status": 200,
+      "request": {
+        "operationName": "CreateEnvGroup",
+        "variables": {
+          "name": "qa-20261013-a385-second",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "envVars": [],
+          "secretFiles": [],
+          "serviceIds": [],
+          "environmentId": null
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateEnvGroup($name: String!, $ownerId: String, $envVars: [EnvGroupVarInput!], $secretFiles: [EnvGroupSecretFileInput!], $serviceIds: [String!], $environmentId: String) {\n  createEnvGroup(\n    name: $name\n    ownerId: $ownerId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    serviceIds: $serviceIds\n    environmentId: $environmentId\n  ) {\n    id\n    name\n    __typename\n  }\n}"
+      },
+      "body": {
+        "data": {
+          "createEnvGroup": {
+            "__typename": "EnvGroup",
+            "id": "evg-db7a63doe3vs73aemrkg",
+            "name": "qa-20261013-a385-second"
+          }
+        }
+      }
+    },
+    "SecondMoveLeft": {
+      "at": "2026-10-13T21:34:19.580Z",
+      "timing": {
+        "startTime": 1791927250845.201,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.139,
+        "responseStart": 8729.689,
+        "responseEnd": 8730.122
+      },
+      "status": 200,
+      "request": {
+        "operationName": "MoveEnvGroup",
+        "variables": {
+          "id": "evg-db7a63doe3vs73aemrkg",
+          "environmentId": "evm-db79rlikvq8s73cjhuqg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation MoveEnvGroup($id: String!, $environmentId: String!) {\n  moveEnvGroup(id: $id, environmentId: $environmentId) {\n    id\n    environmentId\n    updatedAt\n    __typename\n  }\n}"
+      },
+      "body": {
+        "data": {
+          "moveEnvGroup": {
+            "__typename": "EnvGroup",
+            "environmentId": "evm-db79rlikvq8s73cjhuqg",
+            "id": "evg-db7a63doe3vs73aemrkg",
+            "updatedAt": "2026-10-13T21:34:18.99007699Z"
+          }
+        }
+      }
+    },
+    "Groups": [
+      {
+        "environmentId": "evm-db79rlikvq8s73cjhuqg",
+        "id": "evg-db79vcqioh8c7395esbg",
+        "name": "qa-20261013-a385-workspace",
+        "revision": "egr1_AAAAAAAAAAE",
+        "serviceLinks": []
+      },
+      {
+        "__typename": "EnvGroup",
+        "id": "evg-db7a63doe3vs73aemrkg",
+        "name": "qa-20261013-a385-second"
+      }
+    ],
+    "Selection": {
+      "filtered": {
+        "at": "2026-10-13T21:38:19.585Z",
+        "url": "https://dashboard.bex.co/project/prj-db79rl2kvq8s73cjhupg?env=evm-db79rlikvq8s73cjhuqg&q=second",
+        "checkboxes": [
+          {
+            "label": "Select all visible resources",
+            "checked": "false"
+          },
+          {
+            "label": "Select qa-20261013-a385-second",
+            "checked": "false"
+          }
+        ]
+      },
+      "at": "2026-10-13T21:38:19.656Z",
+      "url": "https://dashboard.bex.co/project/prj-db79rl2kvq8s73cjhupg?env=evm-db79rlikvq8s73cjhuqg",
+      "selection": {
+        "first": true,
+        "second": true,
+        "all": true
+      },
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261013-a385-project\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"qa-20261013-a385-project\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": qa-20261013-a385-left\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-db79rl2kvq8s73cjhupg&environmentId=evm-db79rlikvq8s73cjhuqg\n  - button \"New Environment\"\n  - text: qa-20261013-a385-left 2 resources\n  - button \"Manage resources\"\n  - button \"More actions\"\n  - button \"All (2)\"\n  - button \"Services (0)\"\n  - button \"Databases (0)\"\n  - button \"Key Values (0)\"\n  - button \"Env Groups (2)\"\n  - searchbox \"Search resources in qa-20261013-a385-left\"\n  - text: \"Selected: 2\"\n  - combobox \"Move selected resources to environment\": Choose environment\n  - button \"Move\" [disabled]\n  - table:\n    - rowgroup:\n      - row \"Select all visible resources Name Status Runtime Region Updated Actions\":\n        - columnheader \"Select all visible resources\":\n          - checkbox \"Select all visible resources\" [checked]\n        - columnheader \"Name\"\n        - columnheader \"Status\"\n        - columnheader \"Runtime\"\n        - columnheader \"Region\"\n        - columnheader \"Updated\"\n        - columnheader \"Actions\"\n    - rowgroup:\n      - row \"Select qa-20261013-a385-workspace qa-20261013-a385-workspace Env Group Not available Not available Not available 17m\":\n        - cell \"Select qa-20261013-a385-workspace\":\n          - checkbox \"Select qa-20261013-a385-workspace\" [checked]\n        - cell \"qa-20261013-a385-workspace Env Group\":\n          - link \"qa-20261013-a385-workspace\":\n            - /url: /env-groups/evg-db79vcqioh8c7395esbg\n          - text: Env Group\n        - cell \"Not available\": —\n        - cell \"Not available\": —\n        - cell \"Not available\": —\n        - cell \"17m\":\n          - time: 17m\n        - cell\n      - row \"Select qa-20261013-a385-second qa-20261013-a385-second Env Group Not available Not available Not available 4m\":\n        - cell \"Select qa-20261013-a385-second\":\n          - checkbox \"Select qa-20261013-a385-second\" [checked]\n        - cell \"qa-20261013-a385-second Env Group\":\n          - link \"qa-20261013-a385-second\":\n            - /url: /env-groups/evg-db7a63doe3vs73aemrkg\n          - text: Env Group\n        - cell \"Not available\": —\n        - cell \"Not available\": —\n        - cell \"Not available\": —\n        - cell \"4m\":\n          - time: 4m\n        - cell"
+    },
+    "BulkMove": {
+      "at": "2026-10-13T21:40:04.361Z",
+      "before": {
+        "request": {
+          "operationName": "QaA385Placement",
+          "query": "query QaA385Placement($projectId:String!,$ownerId:String!){environments(projectId:$projectId){id name envGroupIds} envGroups(ownerId:$ownerId){id name environmentId revision serviceLinks}}",
+          "variables": {
+            "projectId": "prj-db79rl2kvq8s73cjhupg",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "envGroups": [
+              {
+                "environmentId": null,
+                "id": "evg-db0s94c48ccs739jikr0",
+                "name": "qa-20261003-keys-r85",
+                "revision": "egr1_AAAAAAAAAAE",
+                "serviceLinks": []
+              },
+              {
+                "environmentId": "evm-db79rlikvq8s73cjhuqg",
+                "id": "evg-db79vcqioh8c7395esbg",
+                "name": "qa-20261013-a385-workspace",
+                "revision": "egr1_AAAAAAAAAAE",
+                "serviceLinks": []
+              },
+              {
+                "environmentId": "evm-db79rlikvq8s73cjhuqg",
+                "id": "evg-db7a63doe3vs73aemrkg",
+                "name": "qa-20261013-a385-second",
+                "revision": "egr1_AAAAAAAAAAE",
+                "serviceLinks": []
+              }
+            ],
+            "environments": [
+              {
+                "envGroupIds": [
+                  "evg-db79vcqioh8c7395esbg",
+                  "evg-db7a63doe3vs73aemrkg"
+                ],
+                "id": "evm-db79rlikvq8s73cjhuqg",
+                "name": "qa-20261013-a385-left"
+              },
+              {
+                "envGroupIds": [],
+                "id": "evm-db79rttoe3vs73aemrb0",
+                "name": "qa-20261013-a385-right"
+              }
+            ]
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1791927579086.992,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.141,
+        "responseStart": 25268.465,
+        "responseEnd": 25268.932
+      },
+      "status": 200,
+      "request": {
+        "operationName": "SetEnvironmentEnvGroups",
+        "variables": {
+          "id": "evm-db79rttoe3vs73aemrb0",
+          "envGroupIds": [
+            "evg-db79vcqioh8c7395esbg",
+            "evg-db7a63doe3vs73aemrkg"
+          ]
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation SetEnvironmentEnvGroups($id: String!, $envGroupIds: [String!]!) {\n  setEnvironmentEnvGroups(id: $id, envGroupIds: $envGroupIds) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+      },
+      "body": {
+        "data": null,
+        "errors": [
+          {
+            "message": "query timed out; narrow the time range or the search and try again",
+            "locations": [],
+            "extensions": {
+              "code": "QUERY_TIMEOUT"
+            }
+          }
+        ]
+      }
+    },
+    "AfterBulkMove": {
+      "at": "2026-10-13T21:44:06.862Z",
+      "request": {
+        "operationName": "QaA385Placement",
+        "query": "query QaA385Placement($projectId:String!,$ownerId:String!){environments(projectId:$projectId){id name envGroupIds} envGroups(ownerId:$ownerId){id name environmentId revision serviceLinks}}",
+        "variables": {
+          "projectId": "prj-db79rl2kvq8s73cjhupg",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "envGroups": [
+            {
+              "environmentId": null,
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85",
+              "revision": "egr1_AAAAAAAAAAE",
+              "serviceLinks": []
+            },
+            {
+              "environmentId": "evm-db79rttoe3vs73aemrb0",
+              "id": "evg-db79vcqioh8c7395esbg",
+              "name": "qa-20261013-a385-workspace",
+              "revision": "egr1_AAAAAAAAAAE",
+              "serviceLinks": []
+            },
+            {
+              "environmentId": "evm-db79rlikvq8s73cjhuqg",
+              "id": "evg-db7a63doe3vs73aemrkg",
+              "name": "qa-20261013-a385-second",
+              "revision": "egr1_AAAAAAAAAAE",
+              "serviceLinks": []
+            }
+          ],
+          "environments": [
+            {
+              "envGroupIds": ["evg-db7a63doe3vs73aemrkg"],
+              "id": "evm-db79rlikvq8s73cjhuqg",
+              "name": "qa-20261013-a385-left"
+            },
+            {
+              "envGroupIds": ["evg-db79vcqioh8c7395esbg"],
+              "id": "evm-db79rttoe3vs73aemrb0",
+              "name": "qa-20261013-a385-right"
+            }
+          ]
+        }
+      },
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261013-a385-project\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"qa-20261013-a385-project\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": qa-20261013-a385-left\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-db79rl2kvq8s73cjhupg&environmentId=evm-db79rlikvq8s73cjhuqg\n  - button \"New Environment\"\n  - text: qa-20261013-a385-left 1 resource\n  - button \"Manage resources\"\n  - button \"More actions\"\n  - button \"All (1)\"\n  - button \"Services (0)\"\n  - button \"Databases (0)\"\n  - button \"Key Values (0)\"\n  - button \"Env Groups (1)\"\n  - searchbox \"Search resources in qa-20261013-a385-left\"\n  - text: \"Selected: 2\"\n  - combobox \"Move selected resources to environment\": qa-20261013-a385-right\n  - button \"Move\"\n  - table:\n    - rowgroup:\n      - row \"Select all visible resources Name Status Runtime Region Updated Actions\":\n        - columnheader \"Select all visible resources\":\n          - checkbox \"Select all visible resources\" [checked]\n        - columnheader \"Name\"\n        - columnheader \"Status\"\n        - columnheader \"Runtime\"\n        - columnheader \"Region\"\n        - columnheader \"Updated\"\n        - columnheader \"Actions\"\n    - rowgroup:\n      - row \"Select qa-20261013-a385-second qa-20261013-a385-second Env Group Not available Not available Not available 9m\":\n        - cell \"Select qa-20261013-a385-second\":\n          - checkbox \"Select qa-20261013-a385-second\" [checked]\n        - cell \"qa-20261013-a385-second Env Group\":\n          - link \"qa-20261013-a385-second\":\n            - /url: /env-groups/evg-db7a63doe3vs73aemrkg\n          - text: Env Group\n        - cell \"Not available\": —\n        - cell \"Not available\": —\n        - cell \"Not available\": —\n        - cell \"9m\":\n          - time: 9m\n        - cell"
+    },
+    "ReuniteLeft": {
+      "at": "2026-10-13T21:54:00.156Z",
+      "timing": {
+        "startTime": 1791928430567.061,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.143,
+        "responseStart": 9583.817,
+        "responseEnd": 9584.323
+      },
+      "status": 200,
+      "request": {
+        "operationName": "MoveEnvGroup",
+        "variables": {
+          "id": "evg-db79vcqioh8c7395esbg",
+          "environmentId": "evm-db79rlikvq8s73cjhuqg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation MoveEnvGroup($id: String!, $environmentId: String!) {\n  moveEnvGroup(id: $id, environmentId: $environmentId) {\n    id\n    environmentId\n    updatedAt\n    __typename\n  }\n}"
+      },
+      "body": {
+        "data": {
+          "moveEnvGroup": {
+            "__typename": "EnvGroup",
+            "environmentId": "evm-db79rlikvq8s73cjhuqg",
+            "id": "evg-db79vcqioh8c7395esbg",
+            "updatedAt": "2026-10-13T21:53:59.50265387Z"
+          }
+        }
+      }
+    },
+    "MobileBeforeMove": {
+      "at": "2026-10-13T21:54:19.472Z",
+      "url": "https://dashboard.bex.co/project/prj-db79rl2kvq8s73cjhupg?env=evm-db79rlikvq8s73cjhuqg",
+      "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261013-a385-project\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"qa-20261013-a385-project\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": qa-20261013-a385-left\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-db79rl2kvq8s73cjhupg&environmentId=evm-db79rlikvq8s73cjhuqg\n  - button \"New Environment\"\n  - text: qa-20261013-a385-left 2 resources\n  - button \"Manage resources\"\n  - button \"More actions\"\n  - button \"All (2)\"\n  - button \"Services (0)\"\n  - button \"Databases (0)\"\n  - button \"Key Values (0)\"\n  - button \"Env Groups (2)\"\n  - searchbox \"Search resources in qa-20261013-a385-left\"\n  - text: \"Selected: 2\"\n  - combobox \"Move selected resources to environment\": Choose environment\n  - button \"Move\" [disabled]\n  - table:\n    - rowgroup:\n      - row \"Select all visible resources Name Status Actions\":\n        - columnheader \"Select all visible resources\":\n          - checkbox \"Select all visible resources\" [checked]\n        - columnheader \"Name\"\n        - columnheader \"Status\"\n        - columnheader \"Actions\"\n    - rowgroup:\n      - row \"Select qa-20261013-a385-workspace qa-20261013-a385-workspace Env Group Not available\":\n        - cell \"Select qa-20261013-a385-workspace\":\n          - checkbox \"Select qa-20261013-a385-workspace\" [checked]\n        - cell \"qa-20261013-a385-workspace Env Group\":\n          - link \"qa-20261013-a385-workspace\":\n            - /url: /env-groups/evg-db79vcqioh8c7395esbg\n          - text: Env Group\n        - cell \"Not available\": —\n        - cell\n      - row \"Select qa-20261013-a385-second qa-20261013-a385-second Env Group Not available\":\n        - cell \"Select qa-20261013-a385-second\":\n          - checkbox \"Select qa-20261013-a385-second\" [checked]\n        - cell \"qa-20261013-a385-second Env Group\":\n          - link \"qa-20261013-a385-second\":\n            - /url: /env-groups/evg-db7a63doe3vs73aemrkg\n          - text: Env Group\n        - cell \"Not available\": —\n        - cell"
+    },
+    "BulkMobile": {
+      "at": "2026-10-13T21:57:35.075Z",
+      "before": {
+        "request": {
+          "operationName": "QaA385Placement",
+          "query": "query QaA385Placement($projectId:String!,$ownerId:String!){environments(projectId:$projectId){id name envGroupIds} envGroups(ownerId:$ownerId){id name environmentId revision serviceLinks}}",
+          "variables": {
+            "projectId": "prj-db79rl2kvq8s73cjhupg",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "envGroups": [
+              {
+                "environmentId": null,
+                "id": "evg-db0s94c48ccs739jikr0",
+                "name": "qa-20261003-keys-r85",
+                "revision": "egr1_AAAAAAAAAAE",
+                "serviceLinks": []
+              },
+              {
+                "environmentId": "evm-db79rlikvq8s73cjhuqg",
+                "id": "evg-db79vcqioh8c7395esbg",
+                "name": "qa-20261013-a385-workspace",
+                "revision": "egr1_AAAAAAAAAAE",
+                "serviceLinks": []
+              },
+              {
+                "environmentId": "evm-db79rlikvq8s73cjhuqg",
+                "id": "evg-db7a63doe3vs73aemrkg",
+                "name": "qa-20261013-a385-second",
+                "revision": "egr1_AAAAAAAAAAE",
+                "serviceLinks": []
+              }
+            ],
+            "environments": [
+              {
+                "envGroupIds": [
+                  "evg-db79vcqioh8c7395esbg",
+                  "evg-db7a63doe3vs73aemrkg"
+                ],
+                "id": "evm-db79rlikvq8s73cjhuqg",
+                "name": "qa-20261013-a385-left"
+              },
+              {
+                "envGroupIds": [],
+                "id": "evm-db79rttoe3vs73aemrb0",
+                "name": "qa-20261013-a385-right"
+              }
+            ]
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1791928629842.63,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.13,
+        "responseStart": 25227.374,
+        "responseEnd": 25227.802
+      },
+      "status": 200,
+      "request": {
+        "operationName": "SetEnvironmentEnvGroups",
+        "variables": {
+          "id": "evm-db79rttoe3vs73aemrb0",
+          "envGroupIds": [
+            "evg-db79vcqioh8c7395esbg",
+            "evg-db7a63doe3vs73aemrkg"
+          ]
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation SetEnvironmentEnvGroups($id: String!, $envGroupIds: [String!]!) {\n  setEnvironmentEnvGroups(id: $id, envGroupIds: $envGroupIds) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+      },
+      "body": {
+        "data": null,
+        "errors": [
+          {
+            "message": "query timed out; narrow the time range or the search and try again",
+            "locations": [],
+            "extensions": {
+              "code": "QUERY_TIMEOUT"
+            }
+          }
+        ]
+      }
+    },
+    "MobileAfterMove": {
+      "at": "2026-10-13T22:00:48.860Z",
+      "request": {
+        "operationName": "QaA385Placement",
+        "query": "query QaA385Placement($projectId:String!,$ownerId:String!){environments(projectId:$projectId){id name envGroupIds} envGroups(ownerId:$ownerId){id name environmentId revision serviceLinks}}",
+        "variables": {
+          "projectId": "prj-db79rl2kvq8s73cjhupg",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "envGroups": [
+            {
+              "environmentId": null,
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85",
+              "revision": "egr1_AAAAAAAAAAE",
+              "serviceLinks": []
+            },
+            {
+              "environmentId": "evm-db79rttoe3vs73aemrb0",
+              "id": "evg-db79vcqioh8c7395esbg",
+              "name": "qa-20261013-a385-workspace",
+              "revision": "egr1_AAAAAAAAAAE",
+              "serviceLinks": []
+            },
+            {
+              "environmentId": "evm-db79rttoe3vs73aemrb0",
+              "id": "evg-db7a63doe3vs73aemrkg",
+              "name": "qa-20261013-a385-second",
+              "revision": "egr1_AAAAAAAAAAE",
+              "serviceLinks": []
+            }
+          ],
+          "environments": [
+            {
+              "envGroupIds": [],
+              "id": "evm-db79rlikvq8s73cjhuqg",
+              "name": "qa-20261013-a385-left"
+            },
+            {
+              "envGroupIds": [
+                "evg-db79vcqioh8c7395esbg",
+                "evg-db7a63doe3vs73aemrkg"
+              ],
+              "id": "evm-db79rttoe3vs73aemrb0",
+              "name": "qa-20261013-a385-right"
+            }
+          ]
+        }
+      },
+      "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261013-a385-project\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"qa-20261013-a385-project\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": qa-20261013-a385-left\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-db79rl2kvq8s73cjhupg&environmentId=evm-db79rlikvq8s73cjhuqg\n  - button \"New Environment\"\n  - text: qa-20261013-a385-left 0 resources\n  - button \"Manage resources\"\n  - button \"More actions\"\n  - button \"All (0)\"\n  - button \"Services (0)\"\n  - button \"Databases (0)\"\n  - button \"Key Values (0)\"\n  - button \"Env Groups (0)\"\n  - searchbox \"Search resources in qa-20261013-a385-left\"\n  - paragraph: No resources in this environment yet.",
+      "screenshot": "qa-group-timeout-a385-mobile.png"
+    },
+    "DeleteGroupA": {
+      "at": "2026-10-13T22:06:22.696Z",
+      "status": 200,
+      "request": {
+        "operationName": "DeleteEnvGroup",
+        "variables": {
+          "id": "evg-db79vcqioh8c7395esbg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteEnvGroup($id: String!) {\n  deleteEnvGroup(id: $id)\n}"
+      },
+      "body": {
+        "data": {
+          "deleteEnvGroup": true
+        }
+      }
+    },
+    "DeleteGroupB": {
+      "at": "2026-10-13T22:06:37.208Z",
+      "status": 200,
+      "request": {
+        "operationName": "DeleteEnvGroup",
+        "variables": {
+          "id": "evg-db7a63doe3vs73aemrkg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteEnvGroup($id: String!) {\n  deleteEnvGroup(id: $id)\n}"
+      },
+      "body": {
+        "data": {
+          "deleteEnvGroup": true
+        }
+      }
+    },
+    "CleanupName": {
+      "at": "2026-10-13T22:07:02.632Z",
+      "durationMs": 16147,
+      "request": {
+        "operationName": "QaA385CleanupName",
+        "query": "mutation QaA385CleanupName($name:String!,$ownerId:String!){createEnvGroup(name:$name,ownerId:$ownerId,envVars:[],secretFiles:[],serviceIds:[]){id name}}",
+        "variables": {
+          "name": "qa-20261013-a385-first",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createEnvGroup": null
+        },
+        "errors": [
+          {
+            "message": "Environment group name already exists.",
+            "locations": [
+              {
+                "line": 1,
+                "column": 60
+              }
+            ],
+            "path": ["createEnvGroup"],
+            "extensions": {
+              "code": "ENV_GROUP_NAME_EXISTS",
+              "name": "qa-20261013-a385-first",
+              "workspaceId": "tea-d98210cbbpdc73dcrkvg"
+            }
+          }
+        ]
+      }
+    },
+    "DeleteProject": {
+      "at": "2026-10-13T22:08:40.283Z",
+      "status": 200,
+      "request": {
+        "operationName": "DeleteProject",
+        "variables": {
+          "id": "prj-db79rl2kvq8s73cjhupg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteProject($id: String!) {\n  deleteProject(id: $id)\n}"
+      },
+      "body": {
+        "data": {
+          "deleteProject": "prj-db79rl2kvq8s73cjhupg"
+        }
+      }
+    },
+    "Cleanup": {
+      "at": "2026-10-13T22:09:00.155Z",
+      "gone": [
+        {
+          "url": "https://api.bex.co/v1/env-groups/evg-db79vcqioh8c7395esbg",
+          "status": 404,
+          "body": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+        },
+        {
+          "url": "https://api.bex.co/v1/env-groups/evg-db7a63doe3vs73aemrkg",
+          "status": 404,
+          "body": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+        },
+        {
+          "url": "https://api.bex.co/v1/projects/prj-db79rl2kvq8s73cjhupg",
+          "status": 404,
+          "body": "{\"code\":\"NOT_FOUND\",\"error\":\"project not found\",\"id\":\"not_found\",\"message\":\"project not found\",\"params\":null}\n"
+        },
+        {
+          "url": "https://api.bex.co/v1/environments/evm-db79rlikvq8s73cjhuqg",
+          "status": 404,
+          "body": "{\"code\":\"NOT_FOUND\",\"error\":\"environment not found\",\"id\":\"not_found\",\"message\":\"environment not found\",\"params\":null}\n"
+        },
+        {
+          "url": "https://api.bex.co/v1/environments/evm-db79rttoe3vs73aemrb0",
+          "status": 404,
+          "body": "{\"code\":\"NOT_FOUND\",\"error\":\"environment not found\",\"id\":\"not_found\",\"message\":\"environment not found\",\"params\":null}\n"
+        }
+      ],
+      "inventory": {
+        "request": {
+          "operationName": "QaA385Inventory",
+          "query": "query QaA385Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+          "variables": {
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "blueprints": [
+              {
+                "id": "blp-d9nqg95cavls73fp8m10",
+                "name": "discourse_docker"
+              }
+            ],
+            "databases": [
+              {
+                "id": "dpg-d9nqg95cavls73fp8m20",
+                "name": "beancount-forum-db"
+              },
+              {
+                "id": "dpg-d9rrkoc4h4mc73edurp0",
+                "name": "tianpan-forum-db"
+              },
+              {
+                "id": "dpg-d9rs3ee0ccis738kc7c0",
+                "name": "blockeden-forum-db"
+              },
+              {
+                "id": "dpg-db34l9bor55s73cqpq9g",
+                "name": "qa-20261007-r16-owner-f208ab"
+              }
+            ],
+            "envGroups": [
+              {
+                "id": "evg-db0s94c48ccs739jikr0",
+                "name": "qa-20261003-keys-r85"
+              }
+            ],
+            "keyValues": [
+              {
+                "id": "red-d9p49kdrtmes73c34ovg",
+                "name": "beancount-forum-redis"
+              },
+              {
+                "id": "red-da4086iii7bs73drbqh0",
+                "name": "blockeden-forum-redis"
+              }
+            ],
+            "projects": [
+              {
+                "id": "prj-d9dgeo0bd9nc73a0vh1g",
+                "name": "bex.co"
+              },
+              {
+                "id": "prj-d9e5qct5qe4s73b1mjn0",
+                "name": "beancount.io"
+              },
+              {
+                "id": "prj-d9sgfnbjghus73cg6hg0",
+                "name": "forums"
+              }
+            ],
+            "services": [
+              {
+                "id": "srv-d9bkcspg9s7c73d0n8ug",
+                "name": "agentmarketcap-1",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9bj8s3eg85c7390eb9g",
+                "name": "beancount-cms-v2",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9nqg9dcavls73fp8m2g",
+                "name": "beancount-forum",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9ndt8hmcglc739fkp50",
+                "name": "eden-dash-v3",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9e40ei9086p3l1jri30",
+                "name": "eden-cms-v2",
+                "type": "web_service"
+              }
+            ],
+            "webhookEndpoints": []
+          }
+        }
+      }
+    },
+    "Logout": {
+      "at": "2026-10-13T22:09:18.694Z",
+      "owners": {
+        "url": "https://api.bex.co/v1/owners",
+        "status": 401,
+        "body": "{\"error\":\"unauthorized\",\"id\":\"unauthorized\",\"message\":\"unauthorized\"}\n"
+      },
+      "url": "about:blank",
+      "cookieCount": 0,
+      "pageCount": 1,
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    }
+  },
+  "researchHead": "13d45c32e",
+  "limits": [
+    "No backing-store inspection: name reservation is inferred from public conflicts and source; exact original leaving stage is unverified.",
+    "Desktop timeout left one group in each environment at 21:44:06.862Z; mobile timeout eventually moved both at 22:00:48.860Z. Do not merge these outcomes.",
+    "No hosted services, linked groups, values, or files were created in this pass.",
+    "No authenticated Render mutation or REST/MCP mutation timeout reproduction; adapters are source-traced only.",
+    "Visible fixture cleanup and seven baseline ID sets pass; blocked failed name remains a recorded residual.",
+    "Control durations come from separate requests; they are not a stage profile of failed creation."
+  ]
+}
