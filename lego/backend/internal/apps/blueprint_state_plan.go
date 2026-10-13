@@ -170,6 +170,9 @@ func (r *blueprintActionResolver) PlanBlueprintResource(_ context.Context, resou
 		if err != nil {
 			return BlueprintPlanAction{}, err
 		}
+		// The sync's own hook reconciliation, so a completed legacy hook does
+		// not plan a change the apply never makes (w8/m63).
+		initialDeployHookState(svc.req, r.services[resource.Name], &want)
 		probe := r.services[resource.Name].Spec
 		changed, err := ApplyBlueprintServiceSpec(&probe, want, svc.fields)
 		if err != nil {
