@@ -1563,7 +1563,9 @@ func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[s
 		if err := core.CheckEnvKey(key); err != nil {
 			return err
 		}
-		if env[key] != literals[key] {
+		// An absent key reads as "", so presence decides too: a declared
+		// empty variable must be written, not mistaken for current (w8/095).
+		if current, ok := env[key]; !ok || current != literals[key] {
 			writes = append(writes, EnvVarPatch{Key: key, Value: literals[key], ValueSet: true})
 		}
 	}
