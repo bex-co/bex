@@ -1922,7 +1922,7 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 			svc:     parsedService{req: req, fields: blueprintServiceFields(fieldsByResource[BlueprintResourceService][req.Name]), groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, promptKeys: se.promptKeys, registryCredentialName: credName, grouping: a.grouping, ungrouped: a.ungrouped},
 			refVars: se.refVars,
 		})
-		idx.serviceKnownEnv[req.Name] = se.known
+		idx.serviceKnownEnv[req.Name] = knownServiceEnv(se, st.envGroups)
 		idx.serviceTypes[req.Name] = req.Type
 		if req.Type == appv1alpha1.TypeWebService || req.Type == appv1alpha1.TypePrivateService {
 			port := req.Port
@@ -2023,8 +2023,9 @@ type stackIndex struct {
 	// fromService reference to them has no DNS name to resolve). Effective port is
 	// the declared one, or the 3000 default when omitted.
 	servicePorts map[string]int32
-	// serviceKnownEnv: name -> the statically-known env of that service (plain
-	// literals + sync:false seed values), the resolvable target set for a
+	// serviceKnownEnv: name -> the statically-known env of that service (its
+	// linked in-file groups' literals under its own literals and sync:false
+	// seeds, knownServiceEnv), the resolvable target set for a
 	// fromService.envVarKey copy (a from*/generateValue var has no parse-time value).
 	serviceKnownEnv map[string]map[string]string
 	// serviceTypes: name -> the App type each declared service resolved to, so
@@ -2208,6 +2209,48 @@ func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
 		}
 	}
 	return pg, nil
+}
+
+// knownServiceEnv is a service's parse-time-known env as its process sees it,
+// the set a sibling's fromService.envVarKey copy resolves against (w8/099):
+// its linked in-file groups' literals in link order (a later group wins, as
+// the operator's envFrom does), then its own values on top. A group's
+// generateValue key, and a local reference, generated value or unanswered
+// prompt, has no parse-time value, so it masks any lower literal rather than
+// letting a shadowed one be copied. A link to a group not declared in the file
+// contributes unknown keys, so then no group value is indexed at all.
+func knownServiceEnv(se serviceEnv, groups []parsedEnvGroup) map[string]string {
+	byName := make(map[string]parsedEnvGroup, len(groups))
+	for _, g := range groups {
+		byName[g.name] = g
+	}
+	known := map[string]string{}
+	for _, link := range se.groupLinks {
+		g, declared := byName[strings.TrimSpace(link)]
+		if !declared {
+			known = map[string]string{}
+			break
+		}
+		for k, v := range g.literals {
+			known[k] = v
+		}
+		for _, k := range g.generates {
+			delete(known, k)
+		}
+	}
+	for _, r := range se.refVars {
+		delete(known, r.Key)
+	}
+	for _, k := range se.seedGenerates {
+		delete(known, k)
+	}
+	for _, k := range se.promptKeys {
+		delete(known, k)
+	}
+	for k, v := range se.known {
+		known[k] = v
+	}
+	return known
 }
 
 // serviceEnv is the classified env of one service entry: plain literals ride
