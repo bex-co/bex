@@ -163,7 +163,40 @@ func lokiRequestPipeline(req RequestMetricsRequest, latency bool) string {
 	if req.Path != "" {
 		p += fmt.Sprintf(" | request_path=%q", req.Path)
 	}
-	return p
+	// Last, so the timestamp templates run only on lines the filters kept.
+	return p + lokiEntryWindow(req.Start, req.End)
+}
+
+// lokiTSSec and lokiTSNano are lokiEntryWindow's temporary entry-timestamp
+// labels; the bex_ prefix keeps them clear of shipped stream labels.
+const (
+	lokiTSSec  = "bex_ts_s"
+	lokiTSNano = "bex_ts_ns"
+)
+
+// lokiEntryWindow renders the stage that keeps only entries whose own Loki
+// timestamp lies in [start, end] (w4/m175). lokiStepBounds widens the evaluation
+// to whole step buckets, so without it the first and last buckets also counted
+// requests just before start or just after end. The comparison is on the entry
+// timestamp, split into integer seconds and the nanosecond remainder: LogQL's
+// numeric label filter parses float64, which cannot hold a Unix-nanosecond
+// value exactly, while each half is exact. Both temporary labels are dropped
+// before any aggregation, so they never become series dimensions. A zero bound leaves that side open.
+func lokiEntryWindow(start, end time.Time) string {
+	var conds []string
+	if !start.IsZero() {
+		s, ns := start.Unix(), start.Nanosecond()
+		conds = append(conds, fmt.Sprintf("(%[1]s > %[3]d or (%[1]s == %[3]d and %[2]s >= %[4]d))", lokiTSSec, lokiTSNano, s, ns))
+	}
+	if !end.IsZero() {
+		s, ns := end.Unix(), end.Nanosecond()
+		conds = append(conds, fmt.Sprintf("(%[1]s < %[3]d or (%[1]s == %[3]d and %[2]s <= %[4]d))", lokiTSSec, lokiTSNano, s, ns))
+	}
+	if len(conds) == 0 {
+		return ""
+	}
+	return fmt.Sprintf(` | label_format %[1]s="{{ unixEpoch (__timestamp__) }}", %[2]s="{{ (__timestamp__).Nanosecond }}" | %[3]s | drop %[1]s, %[2]s`,
+		lokiTSSec, lokiTSNano, strings.Join(conds, " and "))
 }
 
 // lokiGroupLabel maps a Render groupBy onto the request-log stream label. Both
