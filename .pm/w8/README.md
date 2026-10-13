@@ -103,7 +103,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **098** — [Blueprint validation accepts Key Value envVarKey refs that resolve to an empty key](098.md) (minor; 55m) ← functional CLI sweep175: four false-valid checks across both clients, 16 passing/refusal controls and actual resolver proof; validation only, no resource created.
+- [ ] **098** — [Blueprint validation accepts Key Value envVarKey refs that resolve to an empty key](blocked/098.md) — **BLOCKED (2026-10-12: fix shipped — a Key Value `fromService` needs a supported property and cannot resolve to an empty Secret key; needs the fix deployed to production plus fresh native Bex/Render validation receipts)**
 
 - [ ] **097** — [Literal alert/emergency severities become unknown and disappear from CLI level filters](097.md) (minor; 55m) ← functional CLI sweep174: both clients omit six stored records from level views; ten passing controls and rendered collector proof; producer gap left by done/031; hosted/local fixtures cleaned.
 

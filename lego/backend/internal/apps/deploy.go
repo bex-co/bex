@@ -2679,16 +2679,21 @@ func validateKeyedEnv(e bexEnvVar) error {
 	if e.FromService != nil {
 		ref := e.FromService
 		switch {
-		case ref.EnvVarKey != "":
-			if ref.Property != "" {
-				return fmt.Errorf("fromService sets both envVarKey and property — pick one")
-			}
+		// Key Value first: it resolves a connection property, never a copied
+		// variable, so an envVarKey there became an empty Secret key (w8/098).
 		case isKeyValueType(ref.Type):
+			if ref.EnvVarKey != "" {
+				return fmt.Errorf("fromService keyvalue takes a property (connectionString, host, port, or password), not envVarKey")
+			}
 			if ref.Property == "" {
 				return fmt.Errorf("fromService keyvalue needs a property (connectionString, host, port, or password)")
 			}
 			if _, ok := kvPropertyKey[ref.Property]; !ok {
 				return fmt.Errorf("fromService keyvalue property %q is not supported (want connectionString, host, port, or password)", ref.Property)
+			}
+		case ref.EnvVarKey != "":
+			if ref.Property != "" {
+				return fmt.Errorf("fromService sets both envVarKey and property — pick one")
 			}
 		case ref.Property == "":
 			return fmt.Errorf("fromService needs a property (host, port, hostport) or an envVarKey")
@@ -2744,7 +2749,10 @@ func resolveKeyValueRef(e bexEnvVar, kvCRNames map[string]string) (appv1alpha1.E
 	if crName == "" {
 		return appv1alpha1.EnvVar{}, fmt.Errorf("fromService references unresolved key value %q", ref.Name)
 	}
-	key := kvPropertyKey[ref.Property]
+	key, ok := kvPropertyKey[ref.Property]
+	if !ok || key == "" {
+		return appv1alpha1.EnvVar{}, fmt.Errorf("fromService keyvalue %q needs a supported property, not %q", ref.Name, ref.Property)
+	}
 	return appv1alpha1.EnvVar{
 		Name: e.Key,
 		ValueFrom: &appv1alpha1.EnvVarSource{
