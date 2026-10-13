@@ -1461,6 +1461,30 @@ func (s *Service) GroupNames(ctx context.Context) ([]string, error) {
 	return out, nil
 }
 
+// LinkedGroupNames is the names of the groups a already links, in its link
+// order — the order its env Secret refs project into the workload (w8/m64).
+// Group identity only: no value is read. A ref no visible group owns is
+// returned as itself, so it never matches a declared group name.
+func (s *Service) LinkedGroupNames(ctx context.Context, a *appv1alpha1.App) ([]string, error) {
+	ids, err := s.GroupIDsByName(ctx) // authorizes before anything is read
+	if err != nil || a == nil {
+		return nil, err
+	}
+	bySecret := make(map[string]string, len(ids))
+	for name, gid := range ids {
+		bySecret[envSecretName(gid)] = name
+	}
+	names := make([]string, 0, len(a.Spec.EnvFromSecrets))
+	for _, ref := range a.Spec.EnvFromSecrets {
+		name, ok := bySecret[ref]
+		if !ok {
+			name = ref // not a visible group: callers treat it as undeclared
+		}
+		names = append(names, name)
+	}
+	return names, nil
+}
+
 // GroupIDsByName returns the acting workspace's non-secret env-group ids keyed
 // by name. It is the narrow read seam Blueprint resource inventories and
 // current-state plans need; secret values stay behind the reveal verbs.

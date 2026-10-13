@@ -161,6 +161,9 @@ type EnvGroupApplier interface {
 	// ApplyEnvGroup upserts a group by name (create if absent, reconcile its vars);
 	// literals re-sync to their value, generates mint once. Idempotent.
 	ApplyEnvGroup(ctx context.Context, name string, literals map[string]string, generates []string) error
+	// LinkedGroupNames is the names of the groups an existing App already links,
+	// in its link order (w8/m64). Group identity only; no values are read.
+	LinkedGroupNames(ctx context.Context, a *appv1alpha1.App) ([]string, error)
 	// LinkEnvGroup links the named group to a service. Idempotent (an already-linked
 	// service is not re-patched, so a re-apply doesn't roll the pod).
 	LinkEnvGroup(ctx context.Context, name, service string) error
@@ -556,6 +559,11 @@ type parsedService struct {
 	seedLiterals  map[string]string // sync:false literals, seeded once
 	seedGenerates []string          // generateValue keys, minted + seeded once
 	promptKeys    []string          // sync:false keys without a manifest value
+	// env is the classified declaration the copy index was built from, and
+	// stateCopies the envVarKey copies whose value depends on that service's
+	// current links or seeds (w8/m64).
+	env         serviceEnv
+	stateCopies []stateCopy
 	// registryCredentialName is the declared fromRegistryCreds name (service
 	// registryCredential or image.creds), resolved to a credential id by
 	// resolveBlueprintRegistryCredentials before validate/apply (w8/m19 t005).
@@ -1329,7 +1337,10 @@ func (s *Service) validateBlueprintServices(ctx context.Context, st parsedStack,
 	if err != nil {
 		return err
 	}
-	var problems blueprintResourceErrors
+	problems, err := s.currentStateCopyProblems(ctx, st, appsByName)
+	if err != nil {
+		return err
+	}
 	for _, svc := range st.services {
 		err := s.validateBlueprintService(ctx, svc, appsByName)
 		if err == nil {
@@ -1346,6 +1357,92 @@ func (s *Service) validateBlueprintServices(ctx context.Context, st parsedStack,
 		return nil
 	}
 	return problems
+}
+
+// currentStateCopyProblems re-derives each seed- or group-derived envVarKey
+// copy whose source service already exists (w8/m64). The parse-time index
+// assumes a first create; an existing source keeps its current links and
+// appends newly declared ones (LinkEnvGroup), and keeps an edited seed
+// (seed-once). A copy whose effective value is then knowable takes it, in
+// place; one that is not (an edited-or-not seed, a link to a group this file
+// does not declare) is a located refusal at the consumer's entry, before any
+// write. Its limit: a same-key variable added to the source's own env store
+// outside the Blueprint is not readable here.
+func (s *Service) currentStateCopyProblems(ctx context.Context, st parsedStack, appsByName map[string]*appv1alpha1.App) (blueprintResourceErrors, error) {
+	sources := make(map[string]parsedService, len(st.services))
+	for _, svc := range st.services {
+		sources[svc.req.Name] = svc
+	}
+	declared := make(map[string]bool, len(st.envGroups))
+	for _, g := range st.envGroups {
+		declared[g.name] = true
+	}
+	known := map[string]map[string]knownValue{} // per existing source
+	var problems blueprintResourceErrors
+	for i := range st.services {
+		consumer := &st.services[i]
+		for _, c := range consumer.stateCopies {
+			existing, source := appsByName[c.source], sources[c.source]
+			if existing == nil || source.req.Name == "" {
+				continue // a first create (or a source already refused): the parse-time value stands
+			}
+			if _, seeded := source.env.seedLiterals[c.sourceKey]; seeded {
+				problems = append(problems, copyRefusal(consumer, c, "which is a sync:false value seeded once, so its current value is not knowable from the Blueprint"))
+				continue
+			}
+			env, ok := known[c.source]
+			if !ok {
+				linked, refusal, err := s.existingGroupLinks(ctx, source, existing, declared)
+				if err != nil {
+					return nil, err
+				}
+				if refusal != "" {
+					problems = append(problems, copyRefusal(consumer, c, refusal))
+					continue
+				}
+				srcEnv := source.env
+				srcEnv.groupLinks = linked
+				env = knownServiceEnv(srcEnv, st.envGroups)
+				known[c.source] = env
+			}
+			v, ok := env[c.sourceKey]
+			if !ok {
+				problems = append(problems, copyRefusal(consumer, c, "which has no such plainly-defined variable in its current links"))
+				continue
+			}
+			for j := range consumer.req.Env {
+				if consumer.req.Env[j].Name == c.key && consumer.req.Env[j].ValueFrom == nil {
+					consumer.req.Env[j].Value = v.value
+				}
+			}
+		}
+	}
+	return problems, nil
+}
+
+// existingGroupLinks is the link order an apply leaves on an existing source:
+// its current links, then newly declared ones appended (LinkEnvGroup). A link
+// to a group the file does not declare makes its values unknowable.
+func (s *Service) existingGroupLinks(ctx context.Context, source parsedService, existing *appv1alpha1.App, declared map[string]bool) ([]string, string, error) {
+	var linked []string
+	if s.EnvGroups != nil {
+		var err error
+		if linked, err = s.EnvGroups.LinkedGroupNames(ctx, existing); err != nil {
+			return nil, "", err
+		}
+	}
+	links := append(slices.Clone(linked), source.env.groupLinks...)
+	for _, link := range links {
+		if !declared[link] {
+			return nil, fmt.Sprintf("which links group %q that this file does not declare, so its value is not knowable", link), nil
+		}
+	}
+	return links, "", nil
+}
+
+func copyRefusal(consumer *parsedService, c stateCopy, why string) blueprintResourceError {
+	return blueprintResourceError{kind: BlueprintResourceService, name: consumer.req.Name,
+		err: envRefError(consumer.req.Name, c.key, fmt.Errorf("fromService.envVarKey references env %q on existing service %q, %s", c.sourceKey, c.source, why))}
 }
 
 func (s *Service) validateBlueprintService(ctx context.Context, svc parsedService, appsByName map[string]*appv1alpha1.App) error {
@@ -1930,7 +2027,7 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 			continue
 		}
 		pendings = append(pendings, pending{
-			svc:     parsedService{req: req, fields: blueprintServiceFields(fieldsByResource[BlueprintResourceService][req.Name]), groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, promptKeys: se.promptKeys, registryCredentialName: credName, grouping: a.grouping, ungrouped: a.ungrouped},
+			svc:     parsedService{req: req, fields: blueprintServiceFields(fieldsByResource[BlueprintResourceService][req.Name]), groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, promptKeys: se.promptKeys, env: se, registryCredentialName: credName, grouping: a.grouping, ungrouped: a.ungrouped},
 			refVars: se.refVars,
 		})
 		idx.serviceKnownEnv[req.Name] = knownServiceEnv(se, st.envGroups)
@@ -2038,7 +2135,7 @@ type stackIndex struct {
 	// linked in-file groups' literals under its own literals and sync:false
 	// seeds, knownServiceEnv), the resolvable target set for a
 	// fromService.envVarKey copy (a from*/generateValue var has no parse-time value).
-	serviceKnownEnv map[string]map[string]string
+	serviceKnownEnv map[string]map[string]knownValue
 	// serviceTypes: name -> the App type each declared service resolved to, so
 	// a fromService reference's own type can be checked against it (w8/096).
 	serviceTypes map[string]string
@@ -2061,7 +2158,7 @@ func newStackIndex(serviceCount, databaseCount int) *stackIndex {
 		databaseNames:   make(map[string]bool, databaseCount),
 		databasePoolers: make(map[string]bool, databaseCount),
 		servicePorts:    make(map[string]int32, serviceCount),
-		serviceKnownEnv: make(map[string]map[string]string, serviceCount),
+		serviceKnownEnv: make(map[string]map[string]knownValue, serviceCount),
 		serviceTypes:    make(map[string]string, serviceCount),
 	}
 }
@@ -2121,6 +2218,11 @@ func (idx *stackIndex) classifyRefs(svc parsedService, refVars []bexEnvVar) (par
 		ev, err := resolveRef(r, idx.servicePorts, idx.serviceKnownEnv)
 		if err != nil {
 			return parsedService{}, envRefError(svc.req.Name, r.Key, err)
+		}
+		if ref := r.FromService; ref != nil && ref.EnvVarKey != "" {
+			if v := idx.serviceKnownEnv[ref.Name][ref.EnvVarKey]; v.seed || v.group != "" {
+				svc.stateCopies = append(svc.stateCopies, stateCopy{key: r.Key, source: ref.Name, sourceKey: ref.EnvVarKey})
+			}
 		}
 		svc.req.Env = append(svc.req.Env, ev)
 	}
@@ -2229,20 +2331,25 @@ func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
 // then its references. A value with no parse-time content (a generated value,
 // an unanswered prompt, a reference) masks what it overrides, and a link to a
 // group not declared in the file makes group keys unknowable.
-func knownServiceEnv(se serviceEnv, groups []parsedEnvGroup) map[string]string {
+func knownServiceEnv(se serviceEnv, groups []parsedEnvGroup) map[string]knownValue {
 	byName := make(map[string]parsedEnvGroup, len(groups))
 	for _, g := range groups {
 		byName[g.name] = g
 	}
-	known := map[string]string{}
+	known := map[string]knownValue{}
+	seen := map[string]bool{}
 	for _, link := range se.groupLinks {
+		if seen[link] {
+			continue // a repeat link is the first one, as the initial composer keeps it
+		}
+		seen[link] = true
 		g, declared := byName[link] // raw, as preflight and LinkEnvGroup read it
 		if !declared {
-			known = map[string]string{}
+			known = map[string]knownValue{}
 			break
 		}
 		for k, v := range g.literals {
-			known[k] = v
+			known[k] = knownValue{value: v, group: g.name}
 		}
 		for _, k := range g.generates {
 			delete(known, k)
@@ -2255,7 +2362,8 @@ func knownServiceEnv(se serviceEnv, groups []parsedEnvGroup) map[string]string {
 		delete(known, k)
 	}
 	for k, v := range se.known {
-		known[k] = v
+		_, seeded := se.seedLiterals[k]
+		known[k] = knownValue{value: v, seed: seeded}
 	}
 	// A reference resolves after every literal and is appended after them in
 	// spec.Env, so it wins at runtime: a same-key literal, in either entry
@@ -2264,6 +2372,23 @@ func knownServiceEnv(se serviceEnv, groups []parsedEnvGroup) map[string]string {
 		delete(known, r.Key)
 	}
 	return known
+}
+
+// knownValue is one plainly-known source value and where it comes from: the
+// service's own literal, a sync:false seed (seeded once, so an existing
+// service may have edited it) or a linked group's literal.
+type knownValue struct {
+	value string
+	seed  bool
+	group string
+}
+
+// stateCopy is an envVarKey copy whose value came from a seed or a linked
+// group: for a source that already exists, its current link order or edited
+// seed decides the effective value, which the stateful checks re-derive
+// (currentStateCopyProblems, w8/m64).
+type stateCopy struct {
+	key, source, sourceKey string
 }
 
 // serviceEnv is the classified env of one service entry: plain literals ride
@@ -2828,7 +2953,7 @@ func resolveKeyValueRef(e bexEnvVar, kvCRNames map[string]string) (appv1alpha1.E
 // resolveRef turns one fromService env entry into a concrete EnvVar now that
 // every service port and parse-time-known env is available. Target existence
 // is already checked once by the caller's shared guard.
-func resolveRef(e bexEnvVar, ports map[string]int32, knownEnv map[string]map[string]string) (appv1alpha1.EnvVar, error) {
+func resolveRef(e bexEnvVar, ports map[string]int32, knownEnv map[string]map[string]knownValue) (appv1alpha1.EnvVar, error) {
 	switch {
 	case e.FromService != nil:
 		ref := e.FromService
@@ -2845,7 +2970,7 @@ func resolveRef(e bexEnvVar, ports map[string]int32, knownEnv map[string]map[str
 			if !ok {
 				return appv1alpha1.EnvVar{}, fmt.Errorf("fromService.envVarKey references env %q on service %q, which has no such plainly-defined variable", ref.EnvVarKey, ref.Name)
 			}
-			return appv1alpha1.EnvVar{Name: e.Key, Value: val}, nil
+			return appv1alpha1.EnvVar{Name: e.Key, Value: val.value}, nil
 		}
 		// host/hostport are classified into parsedService.hostRefs at parse and
 		// resolved at apply (the hostname is the sibling's slug, minted at create
