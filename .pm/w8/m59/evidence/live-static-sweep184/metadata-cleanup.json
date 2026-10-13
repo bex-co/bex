@@ -1,0 +1,30 @@
+{
+  "sweep": 184,
+  "at": "2026-10-13T01:37:41.845376+00:00",
+  "source_head": "3592fa39f1a2fbbec45e2a9570488204a2d9beab",
+  "filing_head": "3592fa39f1a2fbbec45e2a9570488204a2d9beab",
+  "desired_platform_pin": "624669b0349173ab035e58dd468d4dcdd56afb61 via579e5a978",
+  "deployed_revision": "unknown; desired GitOps pin is not a rollout proof",
+  "fixture_source_commit": "6ead1ae86285af5f3ea3b20ad32b96765da141fc",
+  "bex": "v0.3.2 / a6350da0d6e451e063143432e06c548ba7b5851b",
+  "render_pin": "v2.27.0 / a764810a768202704e7206eb7b87a47211fcd98e",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "human_oauth": true,
+  "api_origin": "https://api.bex.co/v1/",
+  "native_initial_built_acceptance": 2,
+  "native_clear_saves_passed": 2,
+  "native_HTTP_captures": 10,
+  "clear_Live_source_index_asset404": 2,
+  "GraphQL_diagnostic_only_reads": 2,
+  "native_empty_project_discovery_controls": 2,
+  "owned_ids_deleted": [
+    "srv-db6ofs1g8k9s73eehlcg",
+    "srv-db6og4gvrh0s73bstb90"
+  ],
+  "children_enumerated": 4,
+  "Render_copied_config_remaining": false,
+  "proxy_config_directories_remaining": 0,
+  "local_container_created": false,
+  "product_implementation_by_QA": false,
+  "ship_by_QA": false
+}

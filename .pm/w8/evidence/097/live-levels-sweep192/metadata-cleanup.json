@@ -1,0 +1,40 @@
+{
+  "at": "2026-10-13T03:25:40.725064+00:00",
+  "source_head": "c5a0eb9dd15f6b417bf586fdf26510706497b032",
+  "source_fix": "00bafcf5c",
+  "deployed_API_operator_collector_heads": "unknown; no desired pin substituted for live identity",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "client_versions": "Published Bex0.3.2 and unmodified Render2.27/a764810a7682 against Bex production",
+  "native_baselines": 2,
+  "native_level_filters": 20,
+  "all_passed": true,
+  "messages": 16,
+  "error_bucket_rows": 9,
+  "six_alert_emergency_inputs_label_error": true,
+  "warning_bucket_rows": 3,
+  "plain_unknown_rows": 1,
+  "native_wire": "not intercepted",
+  "API_only_diagnostics": [
+    "level=unknown",
+    "level=warn"
+  ],
+  "remaining_unexercised": [
+    "live platform streams",
+    "GraphQL/MCP/dashboard level queries",
+    "actual retained legacy warn-labelled history"
+  ],
+  "targeted_query_test": "3 existing subtests plus parent passed; not full backend suite",
+  "local_rendered_collector_tests": "not rerun by this QA sweep; source fix outcome retains its prior owner-run receipts",
+  "resource": "srv-db6q4ipg8k9s73eehmrg",
+  "cleanup": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+  "own_deploy_children": [
+    "dep-db6q4ipg8k9s73eehms0"
+  ],
+  "native_delete_exit": 0,
+  "native_delete_elapsed": 1.828,
+  "copied_Render_config_removed": true,
+  "baseline_services": 6,
+  "terminating": 0,
+  "product_implementation_changed": false,
+  "ship_performed": false
+}

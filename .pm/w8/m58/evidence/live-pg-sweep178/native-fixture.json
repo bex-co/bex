@@ -1,0 +1,1199 @@
+{
+  "sweep": 178,
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "type": "postgres",
+  "name": "qa-20261012-970ce4-pglogs",
+  "nonce": "970ce4",
+  "role": "native psql connection and PostgreSQL Unicode history acceptance",
+  "time": "2026-10-12T23:30:55.224235+00:00",
+  "dependency_ids": [],
+  "state": "deleted: CLIack/detail404/listempty/baseline present/former SQL connection refused/quota0 termination0",
+  "source_head": "dc1043a16d9c94f1450b6ab07aa7c1b1b0769aa1",
+  "command": [
+    "bex",
+    "postgres",
+    "create",
+    "--name",
+    "qa-20261012-970ce4-pglogs",
+    "--plan",
+    "free",
+    "--region",
+    "frankfurt",
+    "--version",
+    "18",
+    "--connection-pool",
+    "none",
+    "--database-user",
+    "qa178_970ce4",
+    "--database-name",
+    "qa178_970ce4",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "capacity_proof": {
+    "at": "2026-10-12T23:30:55.217161+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.685,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a499e525e997fc28-AMS"
+    },
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+  },
+  "expected_user": "qa178_970ce4",
+  "create_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "postgres",
+      "create",
+      "--name",
+      "qa-20261012-970ce4-pglogs",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--version",
+      "18",
+      "--connection-pool",
+      "none",
+      "--database-user",
+      "qa178_970ce4",
+      "--database-name",
+      "qa178_970ce4",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.794,
+    "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-12T23:30:56Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db6mrc15i38c73fd5o00\",\n    \"databaseName\": \"qa178_970ce4\",\n    \"databaseUser\": \"qa178_970ce4\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db6mrc15i38c73fd5o00\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-20261012-970ce4-pglogs\",\n    \"owner\": {\n      \"email\": \"[QA OWNER EMAIL REDACTED]\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"creating\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-12T23:30:56.03690428Z\",\n    \"version\": \"18\",\n    \"projectId\": null\n  }\n}",
+    "stderr": ""
+  },
+  "id": "dpg-db6mrc15i38c73fd5o00",
+  "create_response": {
+    "connectionPool": "none",
+    "createdAt": "2026-10-12T23:30:56Z",
+    "dashboardUrl": "https://dashboard.bex.co/d/dpg-db6mrc15i38c73fd5o00",
+    "databaseName": "qa178_970ce4",
+    "databaseUser": "qa178_970ce4",
+    "diskAutoscalingEnabled": false,
+    "diskSizeGB": 1,
+    "highAvailabilityEnabled": false,
+    "id": "dpg-db6mrc15i38c73fd5o00",
+    "ipAllowList": [
+      {
+        "cidrBlock": "0.0.0.0/0",
+        "description": ""
+      },
+      {
+        "cidrBlock": "::/0",
+        "description": ""
+      }
+    ],
+    "name": "qa-20261012-970ce4-pglogs",
+    "owner": {
+      "email": "[QA OWNER EMAIL REDACTED]",
+      "id": "tea-daif693dqjvc73e7as3g",
+      "name": "bex-canary",
+      "type": "team"
+    },
+    "plan": "free",
+    "readReplicas": [],
+    "region": "fsn1",
+    "role": "",
+    "status": "creating",
+    "suspended": "not_suspended",
+    "suspenders": null,
+    "updatedAt": "2026-10-12T23:30:56.03690428Z",
+    "version": "18",
+    "projectId": null
+  },
+  "expected_database": "qa178_970ce4",
+  "read_observations": [
+    {
+      "at": "2026-10-12T23:31:47.715384+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db6mrc15i38c73fd5o00",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.062,
+        "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-12T23:30:56Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db6mrc15i38c73fd5o00\",\n    \"databaseName\": \"qa178_970ce4\",\n    \"databaseUser\": \"qa178_970ce4\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db6mrc15i38c73fd5o00\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-20261012-970ce4-pglogs\",\n    \"owner\": {\n      \"email\": \"[QA OWNER EMAIL REDACTED]\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"creating\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-12T23:30:56.03690428Z\",\n    \"version\": \"18\",\n    \"projectId\": null\n  }\n}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-12T23:31:58.730538+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db6mrc15i38c73fd5o00",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.759,
+        "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-12T23:30:56Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db6mrc15i38c73fd5o00\",\n    \"databaseName\": \"qa178_970ce4\",\n    \"databaseUser\": \"qa178_970ce4\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db6mrc15i38c73fd5o00\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-20261012-970ce4-pglogs\",\n    \"owner\": {\n      \"email\": \"[QA OWNER EMAIL REDACTED]\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"creating\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-12T23:30:56.03690428Z\",\n    \"version\": \"18\",\n    \"projectId\": null\n  }\n}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-12T23:32:09.726655+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db6mrc15i38c73fd5o00",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.738,
+        "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-12T23:30:56Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db6mrc15i38c73fd5o00\",\n    \"databaseName\": \"qa178_970ce4\",\n    \"databaseUser\": \"qa178_970ce4\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db6mrc15i38c73fd5o00\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-20261012-970ce4-pglogs\",\n    \"owner\": {\n      \"email\": \"[QA OWNER EMAIL REDACTED]\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"creating\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-12T23:30:56.03690428Z\",\n    \"version\": \"18\",\n    \"projectId\": null\n  }\n}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-12T23:32:20.834387+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db6mrc15i38c73fd5o00",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.841,
+        "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-12T23:30:56Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db6mrc15i38c73fd5o00\",\n    \"databaseName\": \"qa178_970ce4\",\n    \"databaseUser\": \"qa178_970ce4\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db6mrc15i38c73fd5o00\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-20261012-970ce4-pglogs\",\n    \"owner\": {\n      \"email\": \"[QA OWNER EMAIL REDACTED]\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"creating\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-12T23:30:56.03690428Z\",\n    \"version\": \"18\",\n    \"projectId\": null\n  }\n}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-12T23:34:21.089690+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db6mrc15i38c73fd5o00",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.25,
+        "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-12T23:30:56Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db6mrc15i38c73fd5o00\",\n    \"databaseName\": \"qa178_970ce4\",\n    \"databaseUser\": \"qa178_970ce4\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db6mrc15i38c73fd5o00\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-20261012-970ce4-pglogs\",\n    \"owner\": {\n      \"email\": \"[QA OWNER EMAIL REDACTED]\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"available\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-12T23:32:29Z\",\n    \"version\": \"18\",\n    \"projectId\": null\n  }\n}",
+        "stderr": ""
+      }
+    }
+  ],
+  "last_readback": {
+    "connectionPool": "none",
+    "createdAt": "2026-10-12T23:30:56Z",
+    "dashboardUrl": "https://dashboard.bex.co/d/dpg-db6mrc15i38c73fd5o00",
+    "databaseName": "qa178_970ce4",
+    "databaseUser": "qa178_970ce4",
+    "diskAutoscalingEnabled": false,
+    "diskSizeGB": 1,
+    "highAvailabilityEnabled": false,
+    "id": "dpg-db6mrc15i38c73fd5o00",
+    "ipAllowList": [
+      {
+        "cidrBlock": "0.0.0.0/0",
+        "description": ""
+      },
+      {
+        "cidrBlock": "::/0",
+        "description": ""
+      }
+    ],
+    "name": "qa-20261012-970ce4-pglogs",
+    "owner": {
+      "email": "[QA OWNER EMAIL REDACTED]",
+      "id": "tea-daif693dqjvc73e7as3g",
+      "name": "bex-canary",
+      "type": "team"
+    },
+    "plan": "free",
+    "readReplicas": [],
+    "region": "fsn1",
+    "role": "",
+    "status": "available",
+    "suspended": "not_suspended",
+    "suspenders": null,
+    "updatedAt": "2026-10-12T23:32:29Z",
+    "version": "18",
+    "projectId": null
+  },
+  "provision_pass": true,
+  "connection_setup": {
+    "at": "2026-10-12T23:35:47.967829+00:00",
+    "command": [
+      "bex",
+      "postgres",
+      "update",
+      "dpg-db6mrc15i38c73fd5o00",
+      "--ip-allow-list",
+      "cidr=162.224.81.143/32,description=own-cli-qa",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "postgres",
+        "update",
+        "dpg-db6mrc15i38c73fd5o00",
+        "--ip-allow-list",
+        "cidr=162.224.81.143/32,description=own-cli-qa",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.287,
+      "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-12T23:30:56Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db6mrc15i38c73fd5o00\",\n    \"databaseName\": \"qa178_970ce4\",\n    \"databaseUser\": \"qa178_970ce4\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db6mrc15i38c73fd5o00\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"162.224.81.143/32\",\n        \"description\": \"own-cli-qa\"\n      }\n    ],\n    \"name\": \"qa-20261012-970ce4-pglogs\",\n    \"owner\": {\n      \"email\": \"[QA OWNER EMAIL REDACTED]\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"config_restart\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-12T23:35:49.330776062Z\",\n    \"version\": \"18\",\n    \"projectId\": null\n  },\n  \"diff\": {\n    \"ipAllowList\": {\n      \"before\": [\n        {\n          \"cidrBlock\": \"0.0.0.0/0\",\n          \"description\": \"\"\n        },\n        {\n          \"cidrBlock\": \"::/0\",\n          \"description\": \"\"\n        }\n      ],\n      \"after\": [\n        {\n          \"cidrBlock\": \"162.224.81.143/32\",\n          \"description\": \"own-cli-qa\"\n        }\n      ]\n    }\n  }\n}",
+      "stderr": ""
+    }
+  },
+  "connection_preparation": {
+    "at": "2026-10-12T23:36:18.784761+00:00",
+    "own_ca_file": "<QA_TMP>/sweep178-ca.pem",
+    "state": "own CA/IPv4 files removed after cached SQL and connection teardown controls",
+    "database_name_matches": true,
+    "database_user_matches": true,
+    "qualification": "Explicit PGHOSTADDR IPv4 control; known default IPv6 issue not retested"
+  },
+  "sql_controls": {
+    "bex": {
+      "at": "2026-10-12T23:36:51.065454+00:00",
+      "intent": [
+        "bex",
+        "psql",
+        "dpg-db6mrc15i38c73fd5o00",
+        "-c",
+        "SELECT current_database(), current_user, 'QA178_970ce4_雪';",
+        "-o",
+        "json",
+        "--",
+        "--csv",
+        "-q",
+        "-X",
+        "--set=ON_ERROR_STOP=on"
+      ],
+      "qualification": "Own database/user and UTF8 scalar read-only control; original native psql output semantics; initial QA parser treated JSON as CSV. Corrected by decoding the actual output field first; same receipt proves exact row, no native replay.",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db6mrc15i38c73fd5o00",
+          "-c",
+          "SELECT current_database(), current_user, 'QA178_970ce4_雪';",
+          "-o",
+          "json",
+          "--",
+          "--csv",
+          "-q",
+          "-X",
+          "--set=ON_ERROR_STOP=on"
+        ],
+        "exit": 0,
+        "elapsed": 2.712,
+        "stdout": "{\n  \"output\": \"current_database,current_user,?column?\\nqa178_970ce4,qa178_970ce4,QA178_970ce4_雪\\n\"\n}",
+        "stderr": ""
+      },
+      "passed": true,
+      "expected_row": [
+        "qa178_970ce4",
+        "qa178_970ce4",
+        "QA178_970ce4_雪"
+      ],
+      "initial_parser_passed": false,
+      "decoded_output": "current_database,current_user,?column?\nqa178_970ce4,qa178_970ce4,QA178_970ce4_雪\n"
+    },
+    "render": {
+      "at": "2026-10-12T23:38:21.751511+00:00",
+      "intent": [
+        "render",
+        "psql",
+        "dpg-db6mrc15i38c73fd5o00",
+        "-c",
+        "SELECT current_database(), current_user, 'QA178_970ce4_雪';",
+        "-o",
+        "json",
+        "--",
+        "--csv",
+        "-q",
+        "-X",
+        "--set=ON_ERROR_STOP=on"
+      ],
+      "qualification": "Own database/user and UTF8 scalar read-only control; decode native JSON output field before parsing psql CSV",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db6mrc15i38c73fd5o00",
+          "-c",
+          "SELECT current_database(), current_user, 'QA178_970ce4_雪';",
+          "-o",
+          "json",
+          "--",
+          "--csv",
+          "-q",
+          "-X",
+          "--set=ON_ERROR_STOP=on"
+        ],
+        "exit": 0,
+        "elapsed": 2.114,
+        "stdout": "{\n  \"output\": \"current_database,current_user,?column?\\nqa178_970ce4,qa178_970ce4,QA178_970ce4_雪\\n\"\n}",
+        "stderr": ""
+      },
+      "passed": true,
+      "expected_row": [
+        "qa178_970ce4",
+        "qa178_970ce4",
+        "QA178_970ce4_雪"
+      ],
+      "decoded_output": "current_database,current_user,?column?\nqa178_970ce4,qa178_970ce4,QA178_970ce4_雪\n"
+    }
+  },
+  "sql_negative_controls": {
+    "bex": {
+      "at": "2026-10-12T23:38:18.570511+00:00",
+      "intent": [
+        "bex",
+        "psql",
+        "dpg-db6mrc15i38c73fd5o00",
+        "-c",
+        "SELECT * FROM qa_178_absent_970ce4;",
+        "-o",
+        "json",
+        "--",
+        "--csv",
+        "-q",
+        "-X",
+        "--set=ON_ERROR_STOP=on"
+      ],
+      "qualification": "Expected failure for a nonexistent own-fixture relation; no DB mutation",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db6mrc15i38c73fd5o00",
+          "-c",
+          "SELECT * FROM qa_178_absent_970ce4;",
+          "-o",
+          "json",
+          "--",
+          "--csv",
+          "-q",
+          "-X",
+          "--set=ON_ERROR_STOP=on"
+        ],
+        "exit": 1,
+        "elapsed": 2.945,
+        "stdout": "",
+        "stderr": "Error: exit status 1: ERROR:  relation \"qa_178_absent_970ce4\" does not exist\nLINE 1: SELECT * FROM qa_178_absent_970ce4;\n                      ^\n"
+      },
+      "passed": true
+    },
+    "render": {
+      "at": "2026-10-12T23:38:24.090029+00:00",
+      "intent": [
+        "render",
+        "psql",
+        "dpg-db6mrc15i38c73fd5o00",
+        "-c",
+        "SELECT * FROM qa_178_absent_970ce4;",
+        "-o",
+        "json",
+        "--",
+        "--csv",
+        "-q",
+        "-X",
+        "--set=ON_ERROR_STOP=on"
+      ],
+      "qualification": "Expected failure for a nonexistent own-fixture relation; no DB mutation",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db6mrc15i38c73fd5o00",
+          "-c",
+          "SELECT * FROM qa_178_absent_970ce4;",
+          "-o",
+          "json",
+          "--",
+          "--csv",
+          "-q",
+          "-X",
+          "--set=ON_ERROR_STOP=on"
+        ],
+        "exit": 1,
+        "elapsed": 2.299,
+        "stdout": "",
+        "stderr": "Error: exit status 1: ERROR:  relation \"qa_178_absent_970ce4\" does not exist\nLINE 1: SELECT * FROM qa_178_absent_970ce4;\n                      ^\n"
+      },
+      "passed": true
+    }
+  },
+  "unicode_log_prefix": "QA178_970ce4",
+  "unicode_log_start": "2026-10-12T23:38:46.626008+00:00",
+  "unicode_log_generators": [
+    {
+      "marker": "QA178_970ce4 Ι",
+      "sql": "DO $qa178$ BEGIN RAISE LOG '%', 'QA178_970ce4 Ι'; END $qa178$;",
+      "command": [
+        "bex",
+        "psql",
+        "dpg-db6mrc15i38c73fd5o00",
+        "--command",
+        "DO $qa178$ BEGIN RAISE LOG '%', 'QA178_970ce4 Ι'; END $qa178$;",
+        "--confirm",
+        "-o",
+        "json",
+        "--",
+        "-X",
+        "-At",
+        "--set",
+        "ON_ERROR_STOP=1"
+      ],
+      "at": "2026-10-12T23:38:46.705906+00:00",
+      "state": "native result captured; ingestion unverified",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db6mrc15i38c73fd5o00",
+          "--command",
+          "DO $qa178$ BEGIN RAISE LOG '%', 'QA178_970ce4 Ι'; END $qa178$;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-At",
+          "--set",
+          "ON_ERROR_STOP=1"
+        ],
+        "exit": 0,
+        "elapsed": 2.802,
+        "stdout": "{\n  \"output\": \"DO\\n\"\n}",
+        "stderr": ""
+      }
+    },
+    {
+      "marker": "QA178_970ce4 ι",
+      "sql": "DO $qa178$ BEGIN RAISE LOG '%', 'QA178_970ce4 ι'; END $qa178$;",
+      "command": [
+        "bex",
+        "psql",
+        "dpg-db6mrc15i38c73fd5o00",
+        "--command",
+        "DO $qa178$ BEGIN RAISE LOG '%', 'QA178_970ce4 ι'; END $qa178$;",
+        "--confirm",
+        "-o",
+        "json",
+        "--",
+        "-X",
+        "-At",
+        "--set",
+        "ON_ERROR_STOP=1"
+      ],
+      "at": "2026-10-12T23:38:49.737400+00:00",
+      "state": "native result captured; ingestion unverified",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db6mrc15i38c73fd5o00",
+          "--command",
+          "DO $qa178$ BEGIN RAISE LOG '%', 'QA178_970ce4 ι'; END $qa178$;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-At",
+          "--set",
+          "ON_ERROR_STOP=1"
+        ],
+        "exit": 0,
+        "elapsed": 2.942,
+        "stdout": "{\n  \"output\": \"DO\\n\"\n}",
+        "stderr": ""
+      }
+    },
+    {
+      "marker": "QA178_970ce4 λ",
+      "sql": "DO $qa178$ BEGIN RAISE LOG '%', 'QA178_970ce4 λ'; END $qa178$;",
+      "command": [
+        "bex",
+        "psql",
+        "dpg-db6mrc15i38c73fd5o00",
+        "--command",
+        "DO $qa178$ BEGIN RAISE LOG '%', 'QA178_970ce4 λ'; END $qa178$;",
+        "--confirm",
+        "-o",
+        "json",
+        "--",
+        "-X",
+        "-At",
+        "--set",
+        "ON_ERROR_STOP=1"
+      ],
+      "at": "2026-10-12T23:38:52.904590+00:00",
+      "state": "native result captured; ingestion unverified",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db6mrc15i38c73fd5o00",
+          "--command",
+          "DO $qa178$ BEGIN RAISE LOG '%', 'QA178_970ce4 λ'; END $qa178$;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-At",
+          "--set",
+          "ON_ERROR_STOP=1"
+        ],
+        "exit": 0,
+        "elapsed": 2.406,
+        "stdout": "{\n  \"output\": \"DO\\n\"\n}",
+        "stderr": ""
+      }
+    }
+  ],
+  "unicode_log_end": "2026-10-12T23:38:55.557040+00:00",
+  "captured_searches": [
+    {
+      "at": "2026-10-12T23:40:38.717221+00:00",
+      "client": "bex",
+      "term": "QA178_970ce4",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "dpg-db6mrc15i38c73fd5o00",
+        "--text",
+        "\"QA178_970ce4\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 6.941,
+        "stdout": "{\n  \"id\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:49.593607467Z-6bbb56b9\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-12 23:38:49.593 UTC [381] LOG:  QA178_970ce4 Ι\",\n  \"timestamp\": \"2026-10-12T23:38:49.593607467Z\"\n}{\n  \"id\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:52.755848151Z-1bccc7dd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-12 23:38:52.754 UTC [382] LOG:  QA178_970ce4 ι\",\n  \"timestamp\": \"2026-10-12T23:38:52.755848151Z\"\n}{\n  \"id\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:55.418792144Z-cd24baf5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-12 23:38:55.418 UTC [384] LOG:  QA178_970ce4 λ\",\n  \"timestamp\": \"2026-10-12T23:38:55.418792144Z\"\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-12T23:40:45.713268+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=dpg-db6mrc15i38c73fd5o00&text=QA178_970ce4&limit=100",
+            "query": {
+              "ownerId": [
+                "tea-daif693dqjvc73e7as3g"
+              ],
+              "direction": [
+                "backward"
+              ],
+              "resource": [
+                "dpg-db6mrc15i38c73fd5o00"
+              ],
+              "text": [
+                "QA178_970ce4"
+              ],
+              "limit": [
+                "100"
+              ]
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a499f368bfe7b56a-ATL"
+          },
+          "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T22:40:45.668328327Z\",\"nextEndTime\":\"2026-10-12T23:38:49.593607466Z\",\"logs\":[{\"id\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:49.593607467Z-6bbb56b9\",\"message\":\"2026-10-12 23:38:49.593 UTC [381] LOG:  QA178_970ce4 Ι\",\"timestamp\":\"2026-10-12T23:38:49.593607467Z\",\"labels\":[{\"name\":\"type\",\"value\":\"postgres\"},{\"name\":\"resource\",\"value\":\"dpg-db6mrc15i38c73fd5o00\"},{\"name\":\"instance\",\"value\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"},{\"name\":\"container\",\"value\":\"postgres\"},{\"name\":\"level\",\"value\":\"info\"}]},{\"id\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:52.755848151Z-1bccc7dd\",\"message\":\"2026-10-12 23:38:52.754 UTC [382] LOG:  QA178_970ce4 ι\",\"timestamp\":\"2026-10-12T23:38:52.755848151Z\",\"labels\":[{\"name\":\"type\",\"value\":\"postgres\"},{\"name\":\"resource\",\"value\":\"dpg-db6mrc15i38c73fd5o00\"},{\"name\":\"instance\",\"value\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"},{\"name\":\"container\",\"value\":\"postgres\"},{\"name\":\"level\",\"value\":\"info\"}]},{\"id\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:55.418792144Z-cd24baf5\",\"message\":\"2026-10-12 23:38:55.418 UTC [384] LOG:  QA178_970ce4 λ\",\"timestamp\":\"2026-10-12T23:38:55.418792144Z\",\"labels\":[{\"name\":\"type\",\"value\":\"postgres\"},{\"name\":\"resource\",\"value\":\"dpg-db6mrc15i38c73fd5o00\"},{\"name\":\"instance\",\"value\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"},{\"name\":\"container\",\"value\":\"postgres\"},{\"name\":\"level\",\"value\":\"info\"}]}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+      "expected_count": 3,
+      "count_passed": true,
+      "original_ids_and_bytes_preserved": true
+    },
+    {
+      "at": "2026-10-12T23:41:36.657527+00:00",
+      "client": "bex",
+      "term": "QA178_970ce4 ι",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "dpg-db6mrc15i38c73fd5o00",
+        "--text",
+        "\"QA178_970ce4 ι\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 4.013,
+        "stdout": "{\n  \"id\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:49.593607467Z-6bbb56b9\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-12 23:38:49.593 UTC [381] LOG:  QA178_970ce4 Ι\",\n  \"timestamp\": \"2026-10-12T23:38:49.593607467Z\"\n}{\n  \"id\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:52.755848151Z-1bccc7dd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-12 23:38:52.754 UTC [382] LOG:  QA178_970ce4 ι\",\n  \"timestamp\": \"2026-10-12T23:38:52.755848151Z\"\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-12T23:41:40.717535+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=dpg-db6mrc15i38c73fd5o00&text=QA178_970ce4+%CE%B9&limit=100",
+            "query": {
+              "ownerId": [
+                "tea-daif693dqjvc73e7as3g"
+              ],
+              "direction": [
+                "backward"
+              ],
+              "resource": [
+                "dpg-db6mrc15i38c73fd5o00"
+              ],
+              "text": [
+                "QA178_970ce4 ι"
+              ],
+              "limit": [
+                "100"
+              ]
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a499f4d2b9f064e6-ATL"
+          },
+          "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T22:41:40.670965152Z\",\"nextEndTime\":\"2026-10-12T23:38:49.593607466Z\",\"logs\":[{\"id\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:49.593607467Z-6bbb56b9\",\"message\":\"2026-10-12 23:38:49.593 UTC [381] LOG:  QA178_970ce4 Ι\",\"timestamp\":\"2026-10-12T23:38:49.593607467Z\",\"labels\":[{\"name\":\"type\",\"value\":\"postgres\"},{\"name\":\"resource\",\"value\":\"dpg-db6mrc15i38c73fd5o00\"},{\"name\":\"instance\",\"value\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"},{\"name\":\"container\",\"value\":\"postgres\"},{\"name\":\"level\",\"value\":\"info\"}]},{\"id\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:52.755848151Z-1bccc7dd\",\"message\":\"2026-10-12 23:38:52.754 UTC [382] LOG:  QA178_970ce4 ι\",\"timestamp\":\"2026-10-12T23:38:52.755848151Z\",\"labels\":[{\"name\":\"type\",\"value\":\"postgres\"},{\"name\":\"resource\",\"value\":\"dpg-db6mrc15i38c73fd5o00\"},{\"name\":\"instance\",\"value\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"},{\"name\":\"container\",\"value\":\"postgres\"},{\"name\":\"level\",\"value\":\"info\"}]}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+      "expected_count": 2,
+      "count_passed": true,
+      "original_ids_and_bytes_preserved": true
+    },
+    {
+      "at": "2026-10-12T23:41:41.050869+00:00",
+      "client": "bex",
+      "term": "QA178_970ce4 λ",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "dpg-db6mrc15i38c73fd5o00",
+        "--text",
+        "\"QA178_970ce4 λ\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 4.033,
+        "stdout": "{\n  \"id\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:55.418792144Z-cd24baf5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-12 23:38:55.418 UTC [384] LOG:  QA178_970ce4 λ\",\n  \"timestamp\": \"2026-10-12T23:38:55.418792144Z\"\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-12T23:41:45.134213+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=dpg-db6mrc15i38c73fd5o00&text=QA178_970ce4+%CE%BB&limit=100",
+            "query": {
+              "ownerId": [
+                "tea-daif693dqjvc73e7as3g"
+              ],
+              "direction": [
+                "backward"
+              ],
+              "resource": [
+                "dpg-db6mrc15i38c73fd5o00"
+              ],
+              "text": [
+                "QA178_970ce4 λ"
+              ],
+              "limit": [
+                "100"
+              ]
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a499f4edac64b02a-ATL"
+          },
+          "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T22:41:45.080275329Z\",\"nextEndTime\":\"2026-10-12T23:38:55.418792143Z\",\"logs\":[{\"id\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:55.418792144Z-cd24baf5\",\"message\":\"2026-10-12 23:38:55.418 UTC [384] LOG:  QA178_970ce4 λ\",\"timestamp\":\"2026-10-12T23:38:55.418792144Z\",\"labels\":[{\"name\":\"type\",\"value\":\"postgres\"},{\"name\":\"resource\",\"value\":\"dpg-db6mrc15i38c73fd5o00\"},{\"name\":\"instance\",\"value\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"},{\"name\":\"container\",\"value\":\"postgres\"},{\"name\":\"level\",\"value\":\"info\"}]}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+      "expected_count": 1,
+      "count_passed": true,
+      "original_ids_and_bytes_preserved": true
+    },
+    {
+      "at": "2026-10-12T23:41:45.357338+00:00",
+      "client": "render",
+      "term": "QA178_970ce4",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "dpg-db6mrc15i38c73fd5o00",
+        "--text",
+        "\"QA178_970ce4\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 4.523,
+        "stdout": "{\n  \"id\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:49.593607467Z-6bbb56b9\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-12 23:38:49.593 UTC [381] LOG:  QA178_970ce4 Ι\",\n  \"timestamp\": \"2026-10-12T23:38:49.593607467Z\"\n}{\n  \"id\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:52.755848151Z-1bccc7dd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-12 23:38:52.754 UTC [382] LOG:  QA178_970ce4 ι\",\n  \"timestamp\": \"2026-10-12T23:38:52.755848151Z\"\n}{\n  \"id\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:55.418792144Z-cd24baf5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-12 23:38:55.418 UTC [384] LOG:  QA178_970ce4 λ\",\n  \"timestamp\": \"2026-10-12T23:38:55.418792144Z\"\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-12T23:41:49.930574+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=dpg-db6mrc15i38c73fd5o00&text=QA178_970ce4&limit=100",
+            "query": {
+              "ownerId": [
+                "tea-daif693dqjvc73e7as3g"
+              ],
+              "direction": [
+                "backward"
+              ],
+              "resource": [
+                "dpg-db6mrc15i38c73fd5o00"
+              ],
+              "text": [
+                "QA178_970ce4"
+              ],
+              "limit": [
+                "100"
+              ]
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a499f5090d1b4f7f-BOS"
+          },
+          "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T22:41:49.881149696Z\",\"nextEndTime\":\"2026-10-12T23:38:49.593607466Z\",\"logs\":[{\"id\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:49.593607467Z-6bbb56b9\",\"message\":\"2026-10-12 23:38:49.593 UTC [381] LOG:  QA178_970ce4 Ι\",\"timestamp\":\"2026-10-12T23:38:49.593607467Z\",\"labels\":[{\"name\":\"type\",\"value\":\"postgres\"},{\"name\":\"resource\",\"value\":\"dpg-db6mrc15i38c73fd5o00\"},{\"name\":\"instance\",\"value\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"},{\"name\":\"container\",\"value\":\"postgres\"},{\"name\":\"level\",\"value\":\"info\"}]},{\"id\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:52.755848151Z-1bccc7dd\",\"message\":\"2026-10-12 23:38:52.754 UTC [382] LOG:  QA178_970ce4 ι\",\"timestamp\":\"2026-10-12T23:38:52.755848151Z\",\"labels\":[{\"name\":\"type\",\"value\":\"postgres\"},{\"name\":\"resource\",\"value\":\"dpg-db6mrc15i38c73fd5o00\"},{\"name\":\"instance\",\"value\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"},{\"name\":\"container\",\"value\":\"postgres\"},{\"name\":\"level\",\"value\":\"info\"}]},{\"id\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:55.418792144Z-cd24baf5\",\"message\":\"2026-10-12 23:38:55.418 UTC [384] LOG:  QA178_970ce4 λ\",\"timestamp\":\"2026-10-12T23:38:55.418792144Z\",\"labels\":[{\"name\":\"type\",\"value\":\"postgres\"},{\"name\":\"resource\",\"value\":\"dpg-db6mrc15i38c73fd5o00\"},{\"name\":\"instance\",\"value\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"},{\"name\":\"container\",\"value\":\"postgres\"},{\"name\":\"level\",\"value\":\"info\"}]}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+      "expected_count": 3,
+      "count_passed": true,
+      "original_ids_and_bytes_preserved": true
+    },
+    {
+      "at": "2026-10-12T23:41:50.213943+00:00",
+      "client": "render",
+      "term": "QA178_970ce4 ι",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "dpg-db6mrc15i38c73fd5o00",
+        "--text",
+        "\"QA178_970ce4 ι\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 4.219,
+        "stdout": "{\n  \"id\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:49.593607467Z-6bbb56b9\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-12 23:38:49.593 UTC [381] LOG:  QA178_970ce4 Ι\",\n  \"timestamp\": \"2026-10-12T23:38:49.593607467Z\"\n}{\n  \"id\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:52.755848151Z-1bccc7dd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-12 23:38:52.754 UTC [382] LOG:  QA178_970ce4 ι\",\n  \"timestamp\": \"2026-10-12T23:38:52.755848151Z\"\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-12T23:41:54.481998+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=dpg-db6mrc15i38c73fd5o00&text=QA178_970ce4+%CE%B9&limit=100",
+            "query": {
+              "ownerId": [
+                "tea-daif693dqjvc73e7as3g"
+              ],
+              "direction": [
+                "backward"
+              ],
+              "resource": [
+                "dpg-db6mrc15i38c73fd5o00"
+              ],
+              "text": [
+                "QA178_970ce4 ι"
+              ],
+              "limit": [
+                "100"
+              ]
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a499f526ecc41592-ATL"
+          },
+          "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T22:41:54.439585028Z\",\"nextEndTime\":\"2026-10-12T23:38:49.593607466Z\",\"logs\":[{\"id\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:49.593607467Z-6bbb56b9\",\"message\":\"2026-10-12 23:38:49.593 UTC [381] LOG:  QA178_970ce4 Ι\",\"timestamp\":\"2026-10-12T23:38:49.593607467Z\",\"labels\":[{\"name\":\"type\",\"value\":\"postgres\"},{\"name\":\"resource\",\"value\":\"dpg-db6mrc15i38c73fd5o00\"},{\"name\":\"instance\",\"value\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"},{\"name\":\"container\",\"value\":\"postgres\"},{\"name\":\"level\",\"value\":\"info\"}]},{\"id\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:52.755848151Z-1bccc7dd\",\"message\":\"2026-10-12 23:38:52.754 UTC [382] LOG:  QA178_970ce4 ι\",\"timestamp\":\"2026-10-12T23:38:52.755848151Z\",\"labels\":[{\"name\":\"type\",\"value\":\"postgres\"},{\"name\":\"resource\",\"value\":\"dpg-db6mrc15i38c73fd5o00\"},{\"name\":\"instance\",\"value\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"},{\"name\":\"container\",\"value\":\"postgres\"},{\"name\":\"level\",\"value\":\"info\"}]}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+      "expected_count": 2,
+      "count_passed": true,
+      "original_ids_and_bytes_preserved": true
+    },
+    {
+      "at": "2026-10-12T23:41:55.012036+00:00",
+      "client": "render",
+      "term": "QA178_970ce4 λ",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "dpg-db6mrc15i38c73fd5o00",
+        "--text",
+        "\"QA178_970ce4 λ\"",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 3.957,
+        "stdout": "{\n  \"id\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:55.418792144Z-cd24baf5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-12 23:38:55.418 UTC [384] LOG:  QA178_970ce4 λ\",\n  \"timestamp\": \"2026-10-12T23:38:55.418792144Z\"\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-12T23:41:59.021359+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=dpg-db6mrc15i38c73fd5o00&text=QA178_970ce4+%CE%BB&limit=100",
+            "query": {
+              "ownerId": [
+                "tea-daif693dqjvc73e7as3g"
+              ],
+              "direction": [
+                "backward"
+              ],
+              "resource": [
+                "dpg-db6mrc15i38c73fd5o00"
+              ],
+              "text": [
+                "QA178_970ce4 λ"
+              ],
+              "limit": [
+                "100"
+              ]
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a499f544fdbabf6d-ATL"
+          },
+          "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T22:41:58.977217969Z\",\"nextEndTime\":\"2026-10-12T23:38:55.418792143Z\",\"logs\":[{\"id\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:55.418792144Z-cd24baf5\",\"message\":\"2026-10-12 23:38:55.418 UTC [384] LOG:  QA178_970ce4 λ\",\"timestamp\":\"2026-10-12T23:38:55.418792144Z\",\"labels\":[{\"name\":\"type\",\"value\":\"postgres\"},{\"name\":\"resource\",\"value\":\"dpg-db6mrc15i38c73fd5o00\"},{\"name\":\"instance\",\"value\":\"dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7\"},{\"name\":\"container\",\"value\":\"postgres\"},{\"name\":\"level\",\"value\":\"info\"}]}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+      "expected_count": 1,
+      "count_passed": true,
+      "original_ids_and_bytes_preserved": true
+    }
+  ],
+  "baseline_native_log_rows": [
+    {
+      "id": "dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:49.593607467Z-6bbb56b9",
+      "message": "2026-10-12 23:38:49.593 UTC [381] LOG:  QA178_970ce4 Ι",
+      "timestamp": "2026-10-12T23:38:49.593607467Z",
+      "labels": [
+        {
+          "name": "type",
+          "value": "postgres"
+        },
+        {
+          "name": "resource",
+          "value": "dpg-db6mrc15i38c73fd5o00"
+        },
+        {
+          "name": "instance",
+          "value": "dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7"
+        },
+        {
+          "name": "container",
+          "value": "postgres"
+        },
+        {
+          "name": "level",
+          "value": "info"
+        }
+      ]
+    },
+    {
+      "id": "dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:52.755848151Z-1bccc7dd",
+      "message": "2026-10-12 23:38:52.754 UTC [382] LOG:  QA178_970ce4 ι",
+      "timestamp": "2026-10-12T23:38:52.755848151Z",
+      "labels": [
+        {
+          "name": "type",
+          "value": "postgres"
+        },
+        {
+          "name": "resource",
+          "value": "dpg-db6mrc15i38c73fd5o00"
+        },
+        {
+          "name": "instance",
+          "value": "dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7"
+        },
+        {
+          "name": "container",
+          "value": "postgres"
+        },
+        {
+          "name": "level",
+          "value": "info"
+        }
+      ]
+    },
+    {
+      "id": "dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7-2026-10-12T23:38:55.418792144Z-cd24baf5",
+      "message": "2026-10-12 23:38:55.418 UTC [384] LOG:  QA178_970ce4 λ",
+      "timestamp": "2026-10-12T23:38:55.418792144Z",
+      "labels": [
+        {
+          "name": "type",
+          "value": "postgres"
+        },
+        {
+          "name": "resource",
+          "value": "dpg-db6mrc15i38c73fd5o00"
+        },
+        {
+          "name": "instance",
+          "value": "dpg-db6mrc15i38c73fd5o00-fv67uqe11tbb1tovdoi7"
+        },
+        {
+          "name": "container",
+          "value": "postgres"
+        },
+        {
+          "name": "level",
+          "value": "info"
+        }
+      ]
+    }
+  ],
+  "cached_connection_before_delete": {
+    "exit": 0,
+    "returns_1": true,
+    "stderr_present": false,
+    "at": "2026-10-12T23:43:18.540416+00:00"
+  },
+  "predelete_positive_control_passed": true,
+  "dependent_inventory_before_delete": {
+    "at": "2026-10-12T23:43:19.675772+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/postgres/dpg-db6mrc15i38c73fd5o00",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.911,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a499f7512e590e28-AMS"
+    },
+    "response": "{\"id\":\"dpg-db6mrc15i38c73fd5o00\",\"name\":\"qa-20261012-970ce4-pglogs\",\"plan\":\"free\",\"version\":\"18\",\"status\":\"available\",\"databaseName\":\"qa178_970ce4\",\"databaseUser\":\"qa178_970ce4\",\"diskSizeGB\":1,\"diskAutoscalingEnabled\":false,\"highAvailabilityEnabled\":false,\"readReplicas\":[],\"suspended\":\"not_suspended\",\"createdAt\":\"2026-10-12T23:30:56Z\",\"updatedAt\":\"2026-10-12T23:35:49.330776062Z\",\"region\":\"fsn1\",\"dashboardUrl\":\"https://dashboard.bex.co/d/dpg-db6mrc15i38c73fd5o00\",\"externalHost\":\"dpg-db6mrc15i38c73fd5o00.db.bex.co\",\"public\":true,\"ipAllowList\":[{\"cidrBlock\":\"162.224.81.143/32\",\"description\":\"own-cli-qa\"}],\"poolerEnabled\":false,\"connectionPool\":\"none\",\"backupsEnabled\":false,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA OWNER EMAIL REDACTED]\",\"type\":\"team\"}}\n"
+  },
+  "delete_intent": {
+    "at": "2026-10-12T23:43:19.790230+00:00",
+    "id": "dpg-db6mrc15i38c73fd5o00",
+    "workspace": "tea-daif693dqjvc73e7as3g"
+  },
+  "delete_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "postgres",
+      "delete",
+      "dpg-db6mrc15i38c73fd5o00",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.108,
+    "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-12T23:30:56Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db6mrc15i38c73fd5o00\",\n    \"databaseName\": \"qa178_970ce4\",\n    \"databaseUser\": \"qa178_970ce4\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db6mrc15i38c73fd5o00\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"162.224.81.143/32\",\n        \"description\": \"own-cli-qa\"\n      }\n    ],\n    \"name\": \"qa-20261012-970ce4-pglogs\",\n    \"owner\": {\n      \"email\": \"[QA OWNER EMAIL REDACTED]\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"available\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-12T23:35:49.330776062Z\",\n    \"version\": \"18\",\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+    "stderr": ""
+  },
+  "detail_after_delete": {
+    "at": "2026-10-12T23:43:21.571912+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/postgres/dpg-db6mrc15i38c73fd5o00",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "404",
+    "elapsed": 0.369,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a499f75eeda1c8d6-ATL"
+    },
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+  },
+  "list_after_delete": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "postgres",
+      "list",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.775,
+    "stdout": "{\n  \"data\": []\n}",
+    "stderr": ""
+  },
+  "baseline_service_ids_after_pg_delete": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3v694dm7c7390q930",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0"
+  ],
+  "cached_connection_after_delete": [
+    {
+      "exit": 2,
+      "returns_1": false,
+      "stderr_present": true,
+      "at": "2026-10-12T23:43:23.933386+00:00"
+    }
+  ],
+  "quota_after_delete": {
+    "at": "2026-10-12T23:43:24.542127+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.449,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a499f7714af0de01-BOS"
+    },
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+  },
+  "cleanup_print_qualification": "The inherited final cleanup print said no Render config was created. The two native Render SQL controls did create and remove isolated config copies, and six capture configs were created/removed; all are absent. That print is not used as evidence of absence of creation."
+}

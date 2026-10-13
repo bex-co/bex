@@ -1,0 +1,1433 @@
+[
+  {
+    "sweep": 183,
+    "source_head": "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "web_service",
+    "name": "qa-20261013-3caf6a-buildbytes",
+    "client": "bex",
+    "nonce": "3caf6a",
+    "marker": "QA183_3caf6a",
+    "time": "2026-10-13T01:04:37.605200+00:00",
+    "role": "custom PATH excludes platform codec tools, absolute Python build command and harmless marker inputs",
+    "dependency_ids": [],
+    "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261013-3caf6a-buildbytes",
+      "--type",
+      "web_service",
+      "--runtime",
+      "python",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/hello-go",
+      "--build-command",
+      "/usr/local/bin/python3 -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport json,time\npathlib.Path(\"qa-built.json\").write_text(json.dumps({\"marker\":'\"'\"'QA183_3caf6a'\"'\"',\"snapshot\":snapshot(),\"build_path\":os.getenv(\"PATH\"),\"built_at\":time.time_ns()}))\n'",
+      "--start-command",
+      "/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport http.server,json,socket\nbuilt=json.loads(pathlib.Path(\"qa-built.json\").read_text())\nclass Handler(http.server.BaseHTTPRequestHandler):\n    def do_GET(self):\n        body=json.dumps({\"marker\":built[\"marker\"],\"built\":built,\"runtime\":snapshot(),\"runtime_path\":os.getenv(\"PATH\"),\"instance\":socket.gethostname()}).encode()\n        self.send_response(200)\n        self.send_header(\"Content-Type\",\"application/json\")\n        self.send_header(\"Content-Length\",str(len(body)))\n        self.end_headers()\n        self.wfile.write(body)\n    def log_message(self,*args): pass\nhttp.server.ThreadingHTTPServer((\"0.0.0.0\",int(os.getenv(\"PORT\",\"3000\"))),Handler).serve_forever()\n'",
+      "--health-check-path",
+      "/",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--env-var",
+      "QA_COMPLEX=QA183_3caf6a\n☃=second\n内側",
+      "--env-var",
+      "PATH=/usr/local/bin",
+      "--secret-file",
+      "qa-note.txt:<QA_TMP>/sweep183-3caf6a-note.txt",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "capacity_proof": {
+      "at": "2026-10-13T01:04:37.597707+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.702,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49a6e694b708879-LHR"
+      },
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "expected_bytes": {
+      "env_length": 30,
+      "env_sha256": "005df177249929060ffa476a6a1c74824391096682ce7e4440034ec885db5dd6",
+      "file_present": true,
+      "file_length": 24,
+      "file_sha256": "412fc14a33491d2cfde0be22671ba75675157bd51816ebcf63dc17e94d751ba1"
+    },
+    "program": "import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport http.server,json,socket\nbuilt=json.loads(pathlib.Path(\"qa-built.json\").read_text())\nclass Handler(http.server.BaseHTTPRequestHandler):\n    def do_GET(self):\n        body=json.dumps({\"marker\":built[\"marker\"],\"built\":built,\"runtime\":snapshot(),\"runtime_path\":os.getenv(\"PATH\"),\"instance\":socket.gethostname()}).encode()\n        self.send_response(200)\n        self.send_header(\"Content-Type\",\"application/json\")\n        self.send_header(\"Content-Length\",str(len(body)))\n        self.end_headers()\n        self.wfile.write(body)\n    def log_message(self,*args): pass\nhttp.server.ThreadingHTTPServer((\"0.0.0.0\",int(os.getenv(\"PORT\",\"3000\"))),Handler).serve_forever()\n",
+    "build_program": "import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport json,time\npathlib.Path(\"qa-built.json\").write_text(json.dumps({\"marker\":'QA183_3caf6a',\"snapshot\":snapshot(),\"build_path\":os.getenv(\"PATH\"),\"built_at\":time.time_ns()}))\n",
+    "create_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "qa-20261013-3caf6a-buildbytes",
+        "--type",
+        "web_service",
+        "--runtime",
+        "python",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--branch",
+        "main",
+        "--root-directory",
+        "examples/hello-go",
+        "--build-command",
+        "/usr/local/bin/python3 -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport json,time\npathlib.Path(\"qa-built.json\").write_text(json.dumps({\"marker\":'\"'\"'QA183_3caf6a'\"'\"',\"snapshot\":snapshot(),\"build_path\":os.getenv(\"PATH\"),\"built_at\":time.time_ns()}))\n'",
+        "--start-command",
+        "/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport http.server,json,socket\nbuilt=json.loads(pathlib.Path(\"qa-built.json\").read_text())\nclass Handler(http.server.BaseHTTPRequestHandler):\n    def do_GET(self):\n        body=json.dumps({\"marker\":built[\"marker\"],\"built\":built,\"runtime\":snapshot(),\"runtime_path\":os.getenv(\"PATH\"),\"instance\":socket.gethostname()}).encode()\n        self.send_response(200)\n        self.send_header(\"Content-Type\",\"application/json\")\n        self.send_header(\"Content-Length\",str(len(body)))\n        self.end_headers()\n        self.wfile.write(body)\n    def log_message(self,*args): pass\nhttp.server.ThreadingHTTPServer((\"0.0.0.0\",int(os.getenv(\"PORT\",\"3000\"))),Handler).serve_forever()\n'",
+        "--health-check-path",
+        "/",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--auto-deploy=false",
+        "--env-var",
+        "QA_COMPLEX=QA183_3caf6a\n☃=second\n内側",
+        "--env-var",
+        "PATH=/usr/local/bin",
+        "--secret-file",
+        "qa-note.txt:<QA_TMP>/sweep183-3caf6a-note.txt",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.177,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-13T01:04:39Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db6o79p5i38c73fd5p9g\",\n  \"id\": \"srv-db6o79p5i38c73fd5p9g\",\n  \"name\": \"qa-20261013-3caf6a-buildbytes\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-go\",\n  \"serviceDetails\": {\n    \"env\": \"python\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"/usr/local/bin/python3 -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport json,time\\npathlib.Path(\\\"qa-built.json\\\").write_text(json.dumps({\\\"marker\\\":'\\\"'\\\"'QA183_3caf6a'\\\"'\\\"',\\\"snapshot\\\":snapshot(),\\\"build_path\\\":os.getenv(\\\"PATH\\\"),\\\"built_at\\\":time.time_ns()}))\\n'\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport http.server,json,socket\\nbuilt=json.loads(pathlib.Path(\\\"qa-built.json\\\").read_text())\\nclass Handler(http.server.BaseHTTPRequestHandler):\\n    def do_GET(self):\\n        body=json.dumps({\\\"marker\\\":built[\\\"marker\\\"],\\\"built\\\":built,\\\"runtime\\\":snapshot(),\\\"runtime_path\\\":os.getenv(\\\"PATH\\\"),\\\"instance\\\":socket.gethostname()}).encode()\\n        self.send_response(200)\\n        self.send_header(\\\"Content-Type\\\",\\\"application/json\\\")\\n        self.send_header(\\\"Content-Length\\\",str(len(body)))\\n        self.end_headers()\\n        self.wfile.write(body)\\n    def log_message(self,*args): pass\\nhttp.server.ThreadingHTTPServer((\\\"0.0.0.0\\\",int(os.getenv(\\\"PORT\\\",\\\"3000\\\"))),Handler).serve_forever()\\n'\"\n    },\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261013-3caf6a-buildbytes:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"python\",\n    \"url\": \"https://qa-20261013-3caf6a-buildbytes.onbex.co\"\n  },\n  \"slug\": \"qa-20261013-3caf6a-buildbytes\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-13T01:04:39.267987367Z\"\n}",
+      "stderr": ""
+    },
+    "id": "srv-db6o79p5i38c73fd5p9g",
+    "create_response": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "main",
+      "createdAt": "2026-10-13T01:04:39Z",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db6o79p5i38c73fd5p9g",
+      "id": "srv-db6o79p5i38c73fd5p9g",
+      "name": "qa-20261013-3caf6a-buildbytes",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/bex-co/bex",
+      "rootDir": "examples/hello-go",
+      "serviceDetails": {
+        "env": "python",
+        "envSpecificDetails": {
+          "buildCommand": "/usr/local/bin/python3 -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport json,time\npathlib.Path(\"qa-built.json\").write_text(json.dumps({\"marker\":'\"'\"'QA183_3caf6a'\"'\"',\"snapshot\":snapshot(),\"build_path\":os.getenv(\"PATH\"),\"built_at\":time.time_ns()}))\n'",
+          "preDeployCommand": "",
+          "startCommand": "/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport http.server,json,socket\nbuilt=json.loads(pathlib.Path(\"qa-built.json\").read_text())\nclass Handler(http.server.BaseHTTPRequestHandler):\n    def do_GET(self):\n        body=json.dumps({\"marker\":built[\"marker\"],\"built\":built,\"runtime\":snapshot(),\"runtime_path\":os.getenv(\"PATH\"),\"instance\":socket.gethostname()}).encode()\n        self.send_response(200)\n        self.send_header(\"Content-Type\",\"application/json\")\n        self.send_header(\"Content-Length\",str(len(body)))\n        self.end_headers()\n        self.wfile.write(body)\n    def log_message(self,*args): pass\nhttp.server.ThreadingHTTPServer((\"0.0.0.0\",int(os.getenv(\"PORT\",\"3000\"))),Handler).serve_forever()\n'"
+        },
+        "healthCheckPath": "/",
+        "internalAddress": "qa-20261013-3caf6a-buildbytes:3000",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "free",
+        "port": 3000,
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "python",
+        "url": "https://qa-20261013-3caf6a-buildbytes.onbex.co"
+      },
+      "slug": "qa-20261013-3caf6a-buildbytes",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "web_service",
+      "updatedAt": "2026-10-13T01:04:39.267987367Z"
+    },
+    "initial_observations": [
+      {
+        "at": "2026-10-13T01:05:40.620234+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db6o79p5i38c73fd5p9g",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.71,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6b5c23b6c5faef6bee076bc0a36582e9441008ca\",\n      \"message\": \"docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\\n\\nEach upstream render-oss/cli defect now has a prepared, tested patch against\\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\\naffected at upstream main 668af8a8, no existing upstream fix found):\\n\\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\\n- 084: Postgres restart decodes the response so refusals fail\\n- 085: interactive datastore errors show the wrapped detail\\n- 086: an empty project filter lists nothing, not the whole workspace\\n- 087: clearing a datastore project filter resets its scope\\n- 091: SSH project filter returns to the service chooser\\n- 093: ID-shaped project/environment names fall back to name lookup on 404\\n\\nAll are blocked on the user authorizing external submission, then upstream\\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround.\"\n    },\n    \"createdAt\": \"2026-10-13T01:04:39.217876Z\",\n    \"id\": \"dep-db6o79p5i38c73fd5pa0\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T01:04:52.04404Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+            "message": "docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\n\nEach upstream render-oss/cli defect now has a prepared, tested patch against\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\naffected at upstream main 668af8a8, no existing upstream fix found):\n\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\n- 084: Postgres restart decodes the response so refusals fail\n- 085: interactive datastore errors show the wrapped detail\n- 086: an empty project filter lists nothing, not the whole workspace\n- 087: clearing a datastore project filter resets its scope\n- 091: SSH project filter returns to the service chooser\n- 093: ID-shaped project/environment names fall back to name lookup on 404\n\nAll are blocked on the user authorizing external submission, then upstream\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround."
+          },
+          "createdAt": "2026-10-13T01:04:39.217876Z",
+          "id": "dep-db6o79p5i38c73fd5pa0",
+          "status": "queued",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T01:04:52.04404Z"
+        },
+        "runtime": {
+          "at": "2026-10-13T01:05:40.619985+00:00",
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T01:05:47.854556+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db6o79p5i38c73fd5p9g",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.471,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6b5c23b6c5faef6bee076bc0a36582e9441008ca\",\n      \"message\": \"docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\\n\\nEach upstream render-oss/cli defect now has a prepared, tested patch against\\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\\naffected at upstream main 668af8a8, no existing upstream fix found):\\n\\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\\n- 084: Postgres restart decodes the response so refusals fail\\n- 085: interactive datastore errors show the wrapped detail\\n- 086: an empty project filter lists nothing, not the whole workspace\\n- 087: clearing a datastore project filter resets its scope\\n- 091: SSH project filter returns to the service chooser\\n- 093: ID-shaped project/environment names fall back to name lookup on 404\\n\\nAll are blocked on the user authorizing external submission, then upstream\\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround.\"\n    },\n    \"createdAt\": \"2026-10-13T01:04:39.217876Z\",\n    \"id\": \"dep-db6o79p5i38c73fd5pa0\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T01:04:52.04404Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+            "message": "docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\n\nEach upstream render-oss/cli defect now has a prepared, tested patch against\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\naffected at upstream main 668af8a8, no existing upstream fix found):\n\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\n- 084: Postgres restart decodes the response so refusals fail\n- 085: interactive datastore errors show the wrapped detail\n- 086: an empty project filter lists nothing, not the whole workspace\n- 087: clearing a datastore project filter resets its scope\n- 091: SSH project filter returns to the service chooser\n- 093: ID-shaped project/environment names fall back to name lookup on 404\n\nAll are blocked on the user authorizing external submission, then upstream\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround."
+          },
+          "createdAt": "2026-10-13T01:04:39.217876Z",
+          "id": "dep-db6o79p5i38c73fd5pa0",
+          "status": "queued",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T01:04:52.04404Z"
+        },
+        "runtime": {
+          "at": "2026-10-13T01:05:47.854344+00:00",
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T01:05:55.335593+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db6o79p5i38c73fd5p9g",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.619,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6b5c23b6c5faef6bee076bc0a36582e9441008ca\",\n      \"message\": \"docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\\n\\nEach upstream render-oss/cli defect now has a prepared, tested patch against\\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\\naffected at upstream main 668af8a8, no existing upstream fix found):\\n\\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\\n- 084: Postgres restart decodes the response so refusals fail\\n- 085: interactive datastore errors show the wrapped detail\\n- 086: an empty project filter lists nothing, not the whole workspace\\n- 087: clearing a datastore project filter resets its scope\\n- 091: SSH project filter returns to the service chooser\\n- 093: ID-shaped project/environment names fall back to name lookup on 404\\n\\nAll are blocked on the user authorizing external submission, then upstream\\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround.\"\n    },\n    \"createdAt\": \"2026-10-13T01:04:39.217876Z\",\n    \"id\": \"dep-db6o79p5i38c73fd5pa0\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T01:04:52.04404Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+            "message": "docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\n\nEach upstream render-oss/cli defect now has a prepared, tested patch against\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\naffected at upstream main 668af8a8, no existing upstream fix found):\n\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\n- 084: Postgres restart decodes the response so refusals fail\n- 085: interactive datastore errors show the wrapped detail\n- 086: an empty project filter lists nothing, not the whole workspace\n- 087: clearing a datastore project filter resets its scope\n- 091: SSH project filter returns to the service chooser\n- 093: ID-shaped project/environment names fall back to name lookup on 404\n\nAll are blocked on the user authorizing external submission, then upstream\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround."
+          },
+          "createdAt": "2026-10-13T01:04:39.217876Z",
+          "id": "dep-db6o79p5i38c73fd5pa0",
+          "status": "queued",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T01:04:52.04404Z"
+        },
+        "runtime": {
+          "at": "2026-10-13T01:05:55.335563+00:00",
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-13T01:08:39.959015+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db6o79p5i38c73fd5p9g",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.698,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6b5c23b6c5faef6bee076bc0a36582e9441008ca\",\n      \"message\": \"docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\\n\\nEach upstream render-oss/cli defect now has a prepared, tested patch against\\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\\naffected at upstream main 668af8a8, no existing upstream fix found):\\n\\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\\n- 084: Postgres restart decodes the response so refusals fail\\n- 085: interactive datastore errors show the wrapped detail\\n- 086: an empty project filter lists nothing, not the whole workspace\\n- 087: clearing a datastore project filter resets its scope\\n- 091: SSH project filter returns to the service chooser\\n- 093: ID-shaped project/environment names fall back to name lookup on 404\\n\\nAll are blocked on the user authorizing external submission, then upstream\\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround.\"\n    },\n    \"createdAt\": \"2026-10-13T01:04:39.217876Z\",\n    \"finishedAt\": \"2026-10-13T01:06:52.227161Z\",\n    \"id\": \"dep-db6o79p5i38c73fd5pa0\",\n    \"startedAt\": \"2026-10-13T01:06:04.5265Z\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T01:06:52.227162Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+            "message": "docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\n\nEach upstream render-oss/cli defect now has a prepared, tested patch against\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\naffected at upstream main 668af8a8, no existing upstream fix found):\n\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\n- 084: Postgres restart decodes the response so refusals fail\n- 085: interactive datastore errors show the wrapped detail\n- 086: an empty project filter lists nothing, not the whole workspace\n- 087: clearing a datastore project filter resets its scope\n- 091: SSH project filter returns to the service chooser\n- 093: ID-shaped project/environment names fall back to name lookup on 404\n\nAll are blocked on the user authorizing external submission, then upstream\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround."
+          },
+          "createdAt": "2026-10-13T01:04:39.217876Z",
+          "finishedAt": "2026-10-13T01:06:52.227161Z",
+          "id": "dep-db6o79p5i38c73fd5pa0",
+          "startedAt": "2026-10-13T01:06:04.5265Z",
+          "status": "build_failed",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T01:06:52.227162Z"
+        },
+        "runtime": {
+          "at": "2026-10-13T01:08:39.958764+00:00",
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      }
+    ],
+    "native_build_log_diagnostics": [
+      {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db6o79p5i38c73fd5p9g",
+          "--type",
+          "build",
+          "--limit",
+          "8",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.718,
+        "stdout": "{\n  \"id\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft-2026-10-13T01:06:52.227161Z-9141219b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Build failed: build failed in the docker build step:\",\n  \"timestamp\": \"2026-10-13T01:06:52.227161Z\"\n}{\n  \"id\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft-2026-10-13T01:06:52.227161Z-dde7ffcf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e ------\",\n  \"timestamp\": \"2026-10-13T01:06:52.227161Z\"\n}{\n  \"id\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft-2026-10-13T01:06:52.227161Z-24592293\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e error: build command '/usr/local/bin/python3 -c 'import hashlib,os,pathlib\",\n  \"timestamp\": \"2026-10-13T01:06:52.227161Z\"\n}{\n  \"id\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft-2026-10-13T01:06:52.227161Z-33671807\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e def snapshot():\",\n  \"timestamp\": \"2026-10-13T01:06:52.227161Z\"\n}{\n  \"id\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft-2026-10-13T01:06:52.227161Z-3e7673fc\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\",\n  \"timestamp\": \"2026-10-13T01:06:52.227161Z\"\n}{\n  \"id\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft-2026-10-13T01:06:52.227161Z-b3f1adfe\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\",\n  \"timestamp\": \"2026-10-13T01:06:52.227161Z\"\n}{\n  \"id\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft-2026-10-13T01:06:52.227161Z-6acd568a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e data=path.read_bytes() if path.exists() else b\\\"\\\"\",\n  \"timestamp\": \"2026-10-13T01:06:52.227161Z\"\n}{\n  \"id\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft-2026-10-13T01:06:52.227161Z-2d8b92a7\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\",\n  \"timestamp\": \"2026-10-13T01:06:52.227161Z\"\n}{\n  \"id\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft-2026-10-13T01:06:52.227161Z-24e7a0bb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e import json,time\",\n  \"timestamp\": \"2026-10-13T01:06:52.227161Z\"\n}{\n  \"id\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft-2026-10-13T01:06:52.227161Z-c453f3fe\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e pathlib.Path(\\\"qa-built.json\\\").write_text(json.dumps({\\\"marker\\\":'\\\"'\\\"'QA183_3caf6a'\\\"'\\\"',\\\"snapshot\\\":snapshot(),\\\"build_path\\\":os.getenv(\\\"PATH\\\"),\\\"built_at\\\":time.time_ns()}))\",\n  \"timestamp\": \"2026-10-13T01:06:52.227161Z\"\n}{\n  \"id\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft-2026-10-13T01:06:52.227161Z-9450f146\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o79p5i38c73fd5p9g-q73v6n7fm0o51boh4hft\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e '' exited with code 1\",\n  \"timestamp\": \"2026-10-13T01:06:52.227161Z\"\n}",
+        "stderr": ""
+      }
+    ],
+    "initial_settled": true,
+    "initial_pass": false,
+    "initial_runtime": {
+      "at": "2026-10-13T01:08:39.958764+00:00",
+      "exit": 0,
+      "http": "404",
+      "body": null,
+      "raw": "404 page not found\n",
+      "stderr": ""
+    },
+    "initial_deploy": {
+      "commit": {
+        "id": "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+        "message": "docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\n\nEach upstream render-oss/cli defect now has a prepared, tested patch against\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\naffected at upstream main 668af8a8, no existing upstream fix found):\n\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\n- 084: Postgres restart decodes the response so refusals fail\n- 085: interactive datastore errors show the wrapped detail\n- 086: an empty project filter lists nothing, not the whole workspace\n- 087: clearing a datastore project filter resets its scope\n- 091: SSH project filter returns to the service chooser\n- 093: ID-shaped project/environment names fall back to name lookup on 404\n\nAll are blocked on the user authorizing external submission, then upstream\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround."
+      },
+      "createdAt": "2026-10-13T01:04:39.217876Z",
+      "finishedAt": "2026-10-13T01:06:52.227161Z",
+      "id": "dep-db6o79p5i38c73fd5pa0",
+      "startedAt": "2026-10-13T01:06:04.5265Z",
+      "status": "build_failed",
+      "trigger": "other",
+      "updatedAt": "2026-10-13T01:06:52.227162Z"
+    },
+    "repair_intent": {
+      "at": "2026-10-13T01:10:08.673988+00:00",
+      "api_only": true,
+      "method": "PATCH",
+      "path": "/v1/services/srv-db6o79p5i38c73fd5p9g/environment",
+      "body": {
+        "envVars": [
+          {
+            "key": "PATH",
+            "value": "/usr/local/bin:/usr/bin:/bin"
+          }
+        ],
+        "saveMode": "save_only"
+      },
+      "qualification": "Exact-owned PATH-only control, then native deploy of same initial source commit; all other values/files/commands unchanged",
+      "actual_API_User_Agent": "render-cli/2.27.0",
+      "UA_qualification": "API-only setup used minimal version UA and succeeded200; current saved driver now uses full exact pinned OS/version UA. Native deploy requests were not intercepted."
+    },
+    "repair_setup": {
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 1.706,
+      "response": "{\"envVarKeys\":[\"PATH\",\"QA_COMPLEX\"],\"secretFileNames\":[\"qa-note.txt\"],\"rolledOut\":false,\"revision\":null}\n",
+      "stderr": ""
+    },
+    "repair_native_intent": {
+      "at": "2026-10-13T01:10:10.566521+00:00",
+      "command": [
+        "bex",
+        "deploys",
+        "create",
+        "srv-db6o79p5i38c73fd5p9g",
+        "--commit",
+        "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "same_commit": true,
+      "state": "native deploy intent persisted"
+    },
+    "repair_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "create",
+        "srv-db6o79p5i38c73fd5p9g",
+        "--commit",
+        "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.326,
+      "stdout": "{\n  \"commit\": {\n    \"createdAt\": \"2026-10-13T00:33:49Z\",\n    \"id\": \"6b5c23b6c5faef6bee076bc0a36582e9441008ca\",\n    \"message\": \"docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\\n\\nEach upstream render-oss/cli defect now has a prepared, tested patch against\\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\\naffected at upstream main 668af8a8, no existing upstream fix found):\\n\\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\\n- 084: Postgres restart decodes the response so refusals fail\\n- 085: interactive datastore errors show the wrapped detail\\n- 086: an empty project filter lists nothing, not the whole workspace\\n- 087: clearing a datastore project filter resets its scope\\n- 091: SSH project filter returns to the service chooser\\n- 093: ID-shaped project/environment names fall back to name lookup on 404\\n\\nAll are blocked on the user authorizing external submission, then upstream\\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround.\"\n  },\n  \"createdAt\": \"2026-10-13T01:10:11.892669Z\",\n  \"id\": \"dep-db6o9sp5i38c73fd5pb0\",\n  \"status\": \"created\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-13T01:10:11.892669Z\"\n}",
+      "stderr": ""
+    },
+    "repair_deploy_id": "dep-db6o9sp5i38c73fd5pb0",
+    "initial_failed_deploy_detail": {
+      "at": "2026-10-13T01:11:35.844977+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/services/srv-db6o79p5i38c73fd5p9g/deploys/dep-db6o79p5i38c73fd5pa0",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.662,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49a789e99ac4cf2-BOS"
+      },
+      "response": "{\"id\":\"dep-db6o79p5i38c73fd5pa0\",\"serviceId\":\"srv-db6o79p5i38c73fd5p9g\",\"status\":\"build_failed\",\"trigger\":\"other\",\"bexTrigger\":\"create\",\"commit\":{\"id\":\"6b5c23b6c5faef6bee076bc0a36582e9441008ca\",\"message\":\"docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\\n\\nEach upstream render-oss/cli defect now has a prepared, tested patch against\\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\\naffected at upstream main 668af8a8, no existing upstream fix found):\\n\\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\\n- 084: Postgres restart decodes the response so refusals fail\\n- 085: interactive datastore errors show the wrapped detail\\n- 086: an empty project filter lists nothing, not the whole workspace\\n- 087: clearing a datastore project filter resets its scope\\n- 091: SSH project filter returns to the service chooser\\n- 093: ID-shaped project/environment names fall back to name lookup on 404\\n\\nAll are blocked on the user authorizing external submission, then upstream\\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround.\"},\"createdAt\":\"2026-10-13T01:04:39.217876Z\",\"updatedAt\":\"2026-10-13T01:06:52.227162Z\",\"startedAt\":\"2026-10-13T01:06:04.5265Z\",\"finishedAt\":\"2026-10-13T01:06:52.227161Z\",\"failureReason\":\"build failed in the docker build step:\\n------\\nerror: build command '/usr/local/bin/python3 -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport json,time\\npathlib.Path(\\\"qa-built.json\\\").write_text(json.dumps({\\\"marker\\\":'\\\"'\\\"'QA183_3caf6a'\\\"'\\\"',\\\"snapshot\\\":snapshot(),\\\"build_path\\\":os.getenv(\\\"PATH\\\"),\\\"built_at\\\":time.time_ns()}))\\n'' exited with code 1\"}\n"
+    },
+    "repair_observations": [
+      {
+        "at": "2026-10-13T01:12:11.080759+00:00",
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db6o79p5i38c73fd5p9g",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 4.143,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-13T00:33:49Z\",\n      \"id\": \"6b5c23b6c5faef6bee076bc0a36582e9441008ca\",\n      \"message\": \"docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\\n\\nEach upstream render-oss/cli defect now has a prepared, tested patch against\\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\\naffected at upstream main 668af8a8, no existing upstream fix found):\\n\\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\\n- 084: Postgres restart decodes the response so refusals fail\\n- 085: interactive datastore errors show the wrapped detail\\n- 086: an empty project filter lists nothing, not the whole workspace\\n- 087: clearing a datastore project filter resets its scope\\n- 091: SSH project filter returns to the service chooser\\n- 093: ID-shaped project/environment names fall back to name lookup on 404\\n\\nAll are blocked on the user authorizing external submission, then upstream\\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround.\"\n    },\n    \"createdAt\": \"2026-10-13T01:10:11.892669Z\",\n    \"finishedAt\": \"2026-10-13T01:11:37.912199Z\",\n    \"id\": \"dep-db6o9sp5i38c73fd5pb0\",\n    \"startedAt\": \"2026-10-13T01:10:21.828519Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-13T01:11:37.9122Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"6b5c23b6c5faef6bee076bc0a36582e9441008ca\",\n      \"message\": \"docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\\n\\nEach upstream render-oss/cli defect now has a prepared, tested patch against\\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\\naffected at upstream main 668af8a8, no existing upstream fix found):\\n\\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\\n- 084: Postgres restart decodes the response so refusals fail\\n- 085: interactive datastore errors show the wrapped detail\\n- 086: an empty project filter lists nothing, not the whole workspace\\n- 087: clearing a datastore project filter resets its scope\\n- 091: SSH project filter returns to the service chooser\\n- 093: ID-shaped project/environment names fall back to name lookup on 404\\n\\nAll are blocked on the user authorizing external submission, then upstream\\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround.\"\n    },\n    \"createdAt\": \"2026-10-13T01:04:39.217876Z\",\n    \"finishedAt\": \"2026-10-13T01:06:52.227161Z\",\n    \"id\": \"dep-db6o79p5i38c73fd5pa0\",\n    \"startedAt\": \"2026-10-13T01:06:04.5265Z\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T01:06:52.227162Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "createdAt": "2026-10-13T00:33:49Z",
+            "id": "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+            "message": "docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\n\nEach upstream render-oss/cli defect now has a prepared, tested patch against\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\naffected at upstream main 668af8a8, no existing upstream fix found):\n\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\n- 084: Postgres restart decodes the response so refusals fail\n- 085: interactive datastore errors show the wrapped detail\n- 086: an empty project filter lists nothing, not the whole workspace\n- 087: clearing a datastore project filter resets its scope\n- 091: SSH project filter returns to the service chooser\n- 093: ID-shaped project/environment names fall back to name lookup on 404\n\nAll are blocked on the user authorizing external submission, then upstream\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround."
+          },
+          "createdAt": "2026-10-13T01:10:11.892669Z",
+          "finishedAt": "2026-10-13T01:11:37.912199Z",
+          "id": "dep-db6o9sp5i38c73fd5pb0",
+          "startedAt": "2026-10-13T01:10:21.828519Z",
+          "status": "live",
+          "trigger": "api",
+          "updatedAt": "2026-10-13T01:11:37.9122Z"
+        },
+        "runtime": {
+          "at": "2026-10-13T01:12:11.080579+00:00",
+          "exit": 0,
+          "http": "200",
+          "body": {
+            "marker": "QA183_3caf6a",
+            "built": {
+              "marker": "QA183_3caf6a",
+              "snapshot": {
+                "env_length": 30,
+                "env_sha256": "005df177249929060ffa476a6a1c74824391096682ce7e4440034ec885db5dd6",
+                "file_present": true,
+                "file_length": 24,
+                "file_sha256": "412fc14a33491d2cfde0be22671ba75675157bd51816ebcf63dc17e94d751ba1"
+              },
+              "build_path": "/usr/local/bin:/usr/bin:/bin",
+              "built_at": 1791853849679044550
+            },
+            "runtime": {
+              "env_length": 30,
+              "env_sha256": "005df177249929060ffa476a6a1c74824391096682ce7e4440034ec885db5dd6",
+              "file_present": true,
+              "file_length": 24,
+              "file_sha256": "412fc14a33491d2cfde0be22671ba75675157bd51816ebcf63dc17e94d751ba1"
+            },
+            "runtime_path": "/usr/local/bin:/usr/bin:/bin",
+            "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-3caf6a-buildbytes-785qqxfz"
+          },
+          "raw": "{\"marker\": \"QA183_3caf6a\", \"built\": {\"marker\": \"QA183_3caf6a\", \"snapshot\": {\"env_length\": 30, \"env_sha256\": \"005df177249929060ffa476a6a1c74824391096682ce7e4440034ec885db5dd6\", \"file_present\": true, \"file_length\": 24, \"file_sha256\": \"412fc14a33491d2cfde0be22671ba75675157bd51816ebcf63dc17e94d751ba1\"}, \"build_path\": \"/usr/local/bin:/usr/bin:/bin\", \"built_at\": 1791853849679044550}, \"runtime\": {\"env_length\": 30, \"env_sha256\": \"005df177249929060ffa476a6a1c74824391096682ce7e4440034ec885db5dd6\", \"file_present\": true, \"file_length\": 24, \"file_sha256\": \"412fc14a33491d2cfde0be22671ba75675157bd51816ebcf63dc17e94d751ba1\"}, \"runtime_path\": \"/usr/local/bin:/usr/bin:/bin\", \"instance\": \"tea-daif693dqjvc73e7as3g-qa-20261013-3caf6a-buildbytes-785qqxfz\"}",
+          "stderr": ""
+        }
+      }
+    ],
+    "repair_settled": true,
+    "repair_pass": true,
+    "repair_runtime": {
+      "at": "2026-10-13T01:12:11.080579+00:00",
+      "exit": 0,
+      "http": "200",
+      "body": {
+        "marker": "QA183_3caf6a",
+        "built": {
+          "marker": "QA183_3caf6a",
+          "snapshot": {
+            "env_length": 30,
+            "env_sha256": "005df177249929060ffa476a6a1c74824391096682ce7e4440034ec885db5dd6",
+            "file_present": true,
+            "file_length": 24,
+            "file_sha256": "412fc14a33491d2cfde0be22671ba75675157bd51816ebcf63dc17e94d751ba1"
+          },
+          "build_path": "/usr/local/bin:/usr/bin:/bin",
+          "built_at": 1791853849679044550
+        },
+        "runtime": {
+          "env_length": 30,
+          "env_sha256": "005df177249929060ffa476a6a1c74824391096682ce7e4440034ec885db5dd6",
+          "file_present": true,
+          "file_length": 24,
+          "file_sha256": "412fc14a33491d2cfde0be22671ba75675157bd51816ebcf63dc17e94d751ba1"
+        },
+        "runtime_path": "/usr/local/bin:/usr/bin:/bin",
+        "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-3caf6a-buildbytes-785qqxfz"
+      },
+      "raw": "{\"marker\": \"QA183_3caf6a\", \"built\": {\"marker\": \"QA183_3caf6a\", \"snapshot\": {\"env_length\": 30, \"env_sha256\": \"005df177249929060ffa476a6a1c74824391096682ce7e4440034ec885db5dd6\", \"file_present\": true, \"file_length\": 24, \"file_sha256\": \"412fc14a33491d2cfde0be22671ba75675157bd51816ebcf63dc17e94d751ba1\"}, \"build_path\": \"/usr/local/bin:/usr/bin:/bin\", \"built_at\": 1791853849679044550}, \"runtime\": {\"env_length\": 30, \"env_sha256\": \"005df177249929060ffa476a6a1c74824391096682ce7e4440034ec885db5dd6\", \"file_present\": true, \"file_length\": 24, \"file_sha256\": \"412fc14a33491d2cfde0be22671ba75675157bd51816ebcf63dc17e94d751ba1\"}, \"runtime_path\": \"/usr/local/bin:/usr/bin:/bin\", \"instance\": \"tea-daif693dqjvc73e7as3g-qa-20261013-3caf6a-buildbytes-785qqxfz\"}",
+      "stderr": ""
+    },
+    "repair_deploy": {
+      "commit": {
+        "createdAt": "2026-10-13T00:33:49Z",
+        "id": "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+        "message": "docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\n\nEach upstream render-oss/cli defect now has a prepared, tested patch against\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\naffected at upstream main 668af8a8, no existing upstream fix found):\n\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\n- 084: Postgres restart decodes the response so refusals fail\n- 085: interactive datastore errors show the wrapped detail\n- 086: an empty project filter lists nothing, not the whole workspace\n- 087: clearing a datastore project filter resets its scope\n- 091: SSH project filter returns to the service chooser\n- 093: ID-shaped project/environment names fall back to name lookup on 404\n\nAll are blocked on the user authorizing external submission, then upstream\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround."
+      },
+      "createdAt": "2026-10-13T01:10:11.892669Z",
+      "finishedAt": "2026-10-13T01:11:37.912199Z",
+      "id": "dep-db6o9sp5i38c73fd5pb0",
+      "startedAt": "2026-10-13T01:10:21.828519Z",
+      "status": "live",
+      "trigger": "api",
+      "updatedAt": "2026-10-13T01:11:37.9122Z"
+    },
+    "deploy_children": [
+      {
+        "commit": {
+          "createdAt": "2026-10-13T00:33:49Z",
+          "id": "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+          "message": "docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\n\nEach upstream render-oss/cli defect now has a prepared, tested patch against\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\naffected at upstream main 668af8a8, no existing upstream fix found):\n\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\n- 084: Postgres restart decodes the response so refusals fail\n- 085: interactive datastore errors show the wrapped detail\n- 086: an empty project filter lists nothing, not the whole workspace\n- 087: clearing a datastore project filter resets its scope\n- 091: SSH project filter returns to the service chooser\n- 093: ID-shaped project/environment names fall back to name lookup on 404\n\nAll are blocked on the user authorizing external submission, then upstream\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround."
+        },
+        "createdAt": "2026-10-13T01:10:11.892669Z",
+        "finishedAt": "2026-10-13T01:11:37.912199Z",
+        "id": "dep-db6o9sp5i38c73fd5pb0",
+        "startedAt": "2026-10-13T01:10:21.828519Z",
+        "status": "live",
+        "trigger": "api",
+        "updatedAt": "2026-10-13T01:11:37.9122Z"
+      },
+      {
+        "commit": {
+          "id": "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+          "message": "docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\n\nEach upstream render-oss/cli defect now has a prepared, tested patch against\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\naffected at upstream main 668af8a8, no existing upstream fix found):\n\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\n- 084: Postgres restart decodes the response so refusals fail\n- 085: interactive datastore errors show the wrapped detail\n- 086: an empty project filter lists nothing, not the whole workspace\n- 087: clearing a datastore project filter resets its scope\n- 091: SSH project filter returns to the service chooser\n- 093: ID-shaped project/environment names fall back to name lookup on 404\n\nAll are blocked on the user authorizing external submission, then upstream\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround."
+        },
+        "createdAt": "2026-10-13T01:04:39.217876Z",
+        "finishedAt": "2026-10-13T01:06:52.227161Z",
+        "id": "dep-db6o79p5i38c73fd5pa0",
+        "startedAt": "2026-10-13T01:06:04.5265Z",
+        "status": "build_failed",
+        "trigger": "other",
+        "updatedAt": "2026-10-13T01:06:52.227162Z"
+      }
+    ],
+    "children_enumeration_evidence": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "list",
+        "srv-db6o79p5i38c73fd5p9g",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.57,
+      "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-13T00:33:49Z\",\n      \"id\": \"6b5c23b6c5faef6bee076bc0a36582e9441008ca\",\n      \"message\": \"docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\\n\\nEach upstream render-oss/cli defect now has a prepared, tested patch against\\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\\naffected at upstream main 668af8a8, no existing upstream fix found):\\n\\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\\n- 084: Postgres restart decodes the response so refusals fail\\n- 085: interactive datastore errors show the wrapped detail\\n- 086: an empty project filter lists nothing, not the whole workspace\\n- 087: clearing a datastore project filter resets its scope\\n- 091: SSH project filter returns to the service chooser\\n- 093: ID-shaped project/environment names fall back to name lookup on 404\\n\\nAll are blocked on the user authorizing external submission, then upstream\\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround.\"\n    },\n    \"createdAt\": \"2026-10-13T01:10:11.892669Z\",\n    \"finishedAt\": \"2026-10-13T01:11:37.912199Z\",\n    \"id\": \"dep-db6o9sp5i38c73fd5pb0\",\n    \"startedAt\": \"2026-10-13T01:10:21.828519Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-13T01:11:37.9122Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"6b5c23b6c5faef6bee076bc0a36582e9441008ca\",\n      \"message\": \"docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\\n\\nEach upstream render-oss/cli defect now has a prepared, tested patch against\\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\\naffected at upstream main 668af8a8, no existing upstream fix found):\\n\\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\\n- 084: Postgres restart decodes the response so refusals fail\\n- 085: interactive datastore errors show the wrapped detail\\n- 086: an empty project filter lists nothing, not the whole workspace\\n- 087: clearing a datastore project filter resets its scope\\n- 091: SSH project filter returns to the service chooser\\n- 093: ID-shaped project/environment names fall back to name lookup on 404\\n\\nAll are blocked on the user authorizing external submission, then upstream\\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround.\"\n    },\n    \"createdAt\": \"2026-10-13T01:04:39.217876Z\",\n    \"finishedAt\": \"2026-10-13T01:06:52.227161Z\",\n    \"id\": \"dep-db6o79p5i38c73fd5pa0\",\n    \"startedAt\": \"2026-10-13T01:06:04.5265Z\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T01:06:52.227162Z\"\n  }\n]",
+      "stderr": ""
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db6o79p5i38c73fd5p9g",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 17.853,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-13T01:04:39Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db6o79p5i38c73fd5p9g\",\n    \"id\": \"srv-db6o79p5i38c73fd5p9g\",\n    \"name\": \"qa-20261013-3caf6a-buildbytes\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-go\",\n    \"serviceDetails\": {\n      \"env\": \"python\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"/usr/local/bin/python3 -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport json,time\\npathlib.Path(\\\"qa-built.json\\\").write_text(json.dumps({\\\"marker\\\":'\\\"'\\\"'QA183_3caf6a'\\\"'\\\"',\\\"snapshot\\\":snapshot(),\\\"build_path\\\":os.getenv(\\\"PATH\\\"),\\\"built_at\\\":time.time_ns()}))\\n'\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport http.server,json,socket\\nbuilt=json.loads(pathlib.Path(\\\"qa-built.json\\\").read_text())\\nclass Handler(http.server.BaseHTTPRequestHandler):\\n    def do_GET(self):\\n        body=json.dumps({\\\"marker\\\":built[\\\"marker\\\"],\\\"built\\\":built,\\\"runtime\\\":snapshot(),\\\"runtime_path\\\":os.getenv(\\\"PATH\\\"),\\\"instance\\\":socket.gethostname()}).encode()\\n        self.send_response(200)\\n        self.send_header(\\\"Content-Type\\\",\\\"application/json\\\")\\n        self.send_header(\\\"Content-Length\\\",str(len(body)))\\n        self.end_headers()\\n        self.wfile.write(body)\\n    def log_message(self,*args): pass\\nhttp.server.ThreadingHTTPServer((\\\"0.0.0.0\\\",int(os.getenv(\\\"PORT\\\",\\\"3000\\\"))),Handler).serve_forever()\\n'\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261013-3caf6a-buildbytes:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"python\",\n      \"url\": \"https://qa-20261013-3caf6a-buildbytes.onbex.co\"\n    },\n    \"slug\": \"qa-20261013-3caf6a-buildbytes\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-13T01:11:34Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "at": "2026-10-13T01:14:30.329340+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/services/srv-db6o79p5i38c73fd5p9g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "404",
+      "elapsed": 0.659,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49a7ce258b05e45-LHR"
+      },
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+    },
+    "workspace_after_delete_ids": [
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3v694dm7c7390q930",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db09vbgehcmc739j12i0",
+      "srv-db6o7gh2s0sc73a8hlm0"
+    ],
+    "runtime_after_delete_checks": [
+      {
+        "exit": 0,
+        "stdout": "404 page not found\n\n404",
+        "stderr": ""
+      }
+    ],
+    "quota_after_delete": {
+      "at": "2026-10-13T01:14:34.600437+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 2.546,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49a7cf6e940bfb0-ATL"
+      },
+      "response": "{\"services\":{\"used\":7,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "final_cleanup_reconciliation": [
+      {
+        "id": "srv-db6o79p5i38c73fd5p9g",
+        "detail": {
+          "at": "2026-10-13T01:15:23.487689+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db6o79p5i38c73fd5p9g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "404",
+          "elapsed": 0.625,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a49a7e2e6cba2565-LHR"
+          },
+          "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+        }
+      },
+      {
+        "id": "srv-db6o7gh2s0sc73a8hlm0",
+        "detail": {
+          "at": "2026-10-13T01:15:24.105836+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db6o7gh2s0sc73a8hlm0",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "404",
+          "elapsed": 0.553,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a49a7e31cb88900b-BOS"
+          },
+          "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+        }
+      },
+      {
+        "quota_attempt": 0,
+        "result": {
+          "at": "2026-10-13T01:15:24.880609+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "200",
+          "elapsed": 0.713,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a49a7e358d035d37-MIA"
+          },
+          "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+        }
+      },
+      {
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "services",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 1.191,
+          "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-13T01:15:05Z\",\n        \"nextRunAt\": \"2026-10-13T01:16:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-13T01:15:05Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-13T01:15:04Z\",\n        \"nextRunAt\": \"2026-10-13T01:16:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-13T01:15:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-13T01:15:04Z\",\n        \"nextRunAt\": \"2026-10-13T01:16:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-13T01:15:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-13T01:00:29Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-12T22:03:40Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-12T18:11:02Z\"\n    }\n  }\n]",
+          "stderr": ""
+        },
+        "baseline_present": [
+          "srv-daif6dsmg29s73d1umvg",
+          "srv-dap3r714dm7c7390q91g",
+          "srv-dap3umrbdpcs73f5eeug",
+          "srv-dap3v694dm7c7390q930",
+          "srv-db09u90ehcmc739j12cg",
+          "srv-db09vbgehcmc739j12i0"
+        ],
+        "current_ids": [
+          "srv-daif6dsmg29s73d1umvg",
+          "srv-dap3r714dm7c7390q91g",
+          "srv-dap3umrbdpcs73f5eeug",
+          "srv-dap3v694dm7c7390q930",
+          "srv-db09u90ehcmc739j12cg",
+          "srv-db09vbgehcmc739j12i0"
+        ]
+      }
+    ],
+    "owned_local_fixture_file_removed": true
+  },
+  {
+    "sweep": 183,
+    "source_head": "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "web_service",
+    "name": "qa-20261013-7e4b0f-buildbytes",
+    "client": "render",
+    "nonce": "7e4b0f",
+    "marker": "QA183_7e4b0f",
+    "time": "2026-10-13T01:05:05.115994+00:00",
+    "role": "custom PATH excludes platform codec tools, absolute Python build command and harmless marker inputs",
+    "dependency_ids": [],
+    "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+    "command": [
+      "render",
+      "services",
+      "create",
+      "--name",
+      "qa-20261013-7e4b0f-buildbytes",
+      "--type",
+      "web_service",
+      "--runtime",
+      "python",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/hello-go",
+      "--build-command",
+      "/usr/local/bin/python3 -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport json,time\npathlib.Path(\"qa-built.json\").write_text(json.dumps({\"marker\":'\"'\"'QA183_7e4b0f'\"'\"',\"snapshot\":snapshot(),\"build_path\":os.getenv(\"PATH\"),\"built_at\":time.time_ns()}))\n'",
+      "--start-command",
+      "/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport http.server,json,socket\nbuilt=json.loads(pathlib.Path(\"qa-built.json\").read_text())\nclass Handler(http.server.BaseHTTPRequestHandler):\n    def do_GET(self):\n        body=json.dumps({\"marker\":built[\"marker\"],\"built\":built,\"runtime\":snapshot(),\"runtime_path\":os.getenv(\"PATH\"),\"instance\":socket.gethostname()}).encode()\n        self.send_response(200)\n        self.send_header(\"Content-Type\",\"application/json\")\n        self.send_header(\"Content-Length\",str(len(body)))\n        self.end_headers()\n        self.wfile.write(body)\n    def log_message(self,*args): pass\nhttp.server.ThreadingHTTPServer((\"0.0.0.0\",int(os.getenv(\"PORT\",\"3000\"))),Handler).serve_forever()\n'",
+      "--health-check-path",
+      "/",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--env-var",
+      "QA_COMPLEX=QA183_7e4b0f\n☃=second\n内側",
+      "--env-var",
+      "PATH=/usr/local/bin",
+      "--secret-file",
+      "qa-note.txt:<QA_TMP>/sweep183-7e4b0f-note.txt",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "capacity_proof": {
+      "at": "2026-10-13T01:05:05.109426+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.721,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49a6f134e5c20eb-PDX"
+      },
+      "response": "{\"services\":{\"used\":7,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "expected_bytes": {
+      "env_length": 30,
+      "env_sha256": "244c0625b8caafe1247eaa768c133c339b280368a95b5fc3055e34a3f8ff7b67",
+      "file_present": true,
+      "file_length": 24,
+      "file_sha256": "d34217fa7393b54b2af4faf6ad7dc105dabc66282347462f89ba2c91c4ff6647"
+    },
+    "program": "import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport http.server,json,socket\nbuilt=json.loads(pathlib.Path(\"qa-built.json\").read_text())\nclass Handler(http.server.BaseHTTPRequestHandler):\n    def do_GET(self):\n        body=json.dumps({\"marker\":built[\"marker\"],\"built\":built,\"runtime\":snapshot(),\"runtime_path\":os.getenv(\"PATH\"),\"instance\":socket.gethostname()}).encode()\n        self.send_response(200)\n        self.send_header(\"Content-Type\",\"application/json\")\n        self.send_header(\"Content-Length\",str(len(body)))\n        self.end_headers()\n        self.wfile.write(body)\n    def log_message(self,*args): pass\nhttp.server.ThreadingHTTPServer((\"0.0.0.0\",int(os.getenv(\"PORT\",\"3000\"))),Handler).serve_forever()\n",
+    "build_program": "import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport json,time\npathlib.Path(\"qa-built.json\").write_text(json.dumps({\"marker\":'QA183_7e4b0f',\"snapshot\":snapshot(),\"build_path\":os.getenv(\"PATH\"),\"built_at\":time.time_ns()}))\n",
+    "create_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "create",
+        "--name",
+        "qa-20261013-7e4b0f-buildbytes",
+        "--type",
+        "web_service",
+        "--runtime",
+        "python",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--branch",
+        "main",
+        "--root-directory",
+        "examples/hello-go",
+        "--build-command",
+        "/usr/local/bin/python3 -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport json,time\npathlib.Path(\"qa-built.json\").write_text(json.dumps({\"marker\":'\"'\"'QA183_7e4b0f'\"'\"',\"snapshot\":snapshot(),\"build_path\":os.getenv(\"PATH\"),\"built_at\":time.time_ns()}))\n'",
+        "--start-command",
+        "/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport http.server,json,socket\nbuilt=json.loads(pathlib.Path(\"qa-built.json\").read_text())\nclass Handler(http.server.BaseHTTPRequestHandler):\n    def do_GET(self):\n        body=json.dumps({\"marker\":built[\"marker\"],\"built\":built,\"runtime\":snapshot(),\"runtime_path\":os.getenv(\"PATH\"),\"instance\":socket.gethostname()}).encode()\n        self.send_response(200)\n        self.send_header(\"Content-Type\",\"application/json\")\n        self.send_header(\"Content-Length\",str(len(body)))\n        self.end_headers()\n        self.wfile.write(body)\n    def log_message(self,*args): pass\nhttp.server.ThreadingHTTPServer((\"0.0.0.0\",int(os.getenv(\"PORT\",\"3000\"))),Handler).serve_forever()\n'",
+        "--health-check-path",
+        "/",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--auto-deploy=false",
+        "--env-var",
+        "QA_COMPLEX=QA183_7e4b0f\n☃=second\n内側",
+        "--env-var",
+        "PATH=/usr/local/bin",
+        "--secret-file",
+        "qa-note.txt:<QA_TMP>/sweep183-7e4b0f-note.txt",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.494,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-13T01:05:07Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db6o7gh2s0sc73a8hlm0\",\n  \"id\": \"srv-db6o7gh2s0sc73a8hlm0\",\n  \"name\": \"qa-20261013-7e4b0f-buildbytes\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-go\",\n  \"serviceDetails\": {\n    \"env\": \"python\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"/usr/local/bin/python3 -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport json,time\\npathlib.Path(\\\"qa-built.json\\\").write_text(json.dumps({\\\"marker\\\":'\\\"'\\\"'QA183_7e4b0f'\\\"'\\\"',\\\"snapshot\\\":snapshot(),\\\"build_path\\\":os.getenv(\\\"PATH\\\"),\\\"built_at\\\":time.time_ns()}))\\n'\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport http.server,json,socket\\nbuilt=json.loads(pathlib.Path(\\\"qa-built.json\\\").read_text())\\nclass Handler(http.server.BaseHTTPRequestHandler):\\n    def do_GET(self):\\n        body=json.dumps({\\\"marker\\\":built[\\\"marker\\\"],\\\"built\\\":built,\\\"runtime\\\":snapshot(),\\\"runtime_path\\\":os.getenv(\\\"PATH\\\"),\\\"instance\\\":socket.gethostname()}).encode()\\n        self.send_response(200)\\n        self.send_header(\\\"Content-Type\\\",\\\"application/json\\\")\\n        self.send_header(\\\"Content-Length\\\",str(len(body)))\\n        self.end_headers()\\n        self.wfile.write(body)\\n    def log_message(self,*args): pass\\nhttp.server.ThreadingHTTPServer((\\\"0.0.0.0\\\",int(os.getenv(\\\"PORT\\\",\\\"3000\\\"))),Handler).serve_forever()\\n'\"\n    },\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261013-7e4b0f-buildbytes:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"python\",\n    \"url\": \"https://qa-20261013-7e4b0f-buildbytes.onbex.co\"\n  },\n  \"slug\": \"qa-20261013-7e4b0f-buildbytes\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-13T01:05:07Z\"\n}",
+      "stderr": ""
+    },
+    "id": "srv-db6o7gh2s0sc73a8hlm0",
+    "create_response": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "main",
+      "createdAt": "2026-10-13T01:05:07Z",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db6o7gh2s0sc73a8hlm0",
+      "id": "srv-db6o7gh2s0sc73a8hlm0",
+      "name": "qa-20261013-7e4b0f-buildbytes",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/bex-co/bex",
+      "rootDir": "examples/hello-go",
+      "serviceDetails": {
+        "env": "python",
+        "envSpecificDetails": {
+          "buildCommand": "/usr/local/bin/python3 -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport json,time\npathlib.Path(\"qa-built.json\").write_text(json.dumps({\"marker\":'\"'\"'QA183_7e4b0f'\"'\"',\"snapshot\":snapshot(),\"build_path\":os.getenv(\"PATH\"),\"built_at\":time.time_ns()}))\n'",
+          "preDeployCommand": "",
+          "startCommand": "/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\ndef snapshot():\n    env=os.getenv(\"QA_COMPLEX\",\"<absent>\").encode(\"utf-8\")\n    path=pathlib.Path(\"/etc/secrets/qa-note.txt\")\n    data=path.read_bytes() if path.exists() else b\"\"\n    return {\"env_length\":len(env),\"env_sha256\":hashlib.sha256(env).hexdigest(),\"file_present\":path.exists(),\"file_length\":len(data),\"file_sha256\":hashlib.sha256(data).hexdigest()}\nimport http.server,json,socket\nbuilt=json.loads(pathlib.Path(\"qa-built.json\").read_text())\nclass Handler(http.server.BaseHTTPRequestHandler):\n    def do_GET(self):\n        body=json.dumps({\"marker\":built[\"marker\"],\"built\":built,\"runtime\":snapshot(),\"runtime_path\":os.getenv(\"PATH\"),\"instance\":socket.gethostname()}).encode()\n        self.send_response(200)\n        self.send_header(\"Content-Type\",\"application/json\")\n        self.send_header(\"Content-Length\",str(len(body)))\n        self.end_headers()\n        self.wfile.write(body)\n    def log_message(self,*args): pass\nhttp.server.ThreadingHTTPServer((\"0.0.0.0\",int(os.getenv(\"PORT\",\"3000\"))),Handler).serve_forever()\n'"
+        },
+        "healthCheckPath": "/",
+        "internalAddress": "qa-20261013-7e4b0f-buildbytes:3000",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "free",
+        "port": 3000,
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "python",
+        "url": "https://qa-20261013-7e4b0f-buildbytes.onbex.co"
+      },
+      "slug": "qa-20261013-7e4b0f-buildbytes",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "web_service",
+      "updatedAt": "2026-10-13T01:05:07Z"
+    },
+    "initial_observations": [
+      {
+        "at": "2026-10-13T01:07:02.345027+00:00",
+        "native_list": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db6o7gh2s0sc73a8hlm0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.584,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6b5c23b6c5faef6bee076bc0a36582e9441008ca\",\n      \"message\": \"docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\\n\\nEach upstream render-oss/cli defect now has a prepared, tested patch against\\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\\naffected at upstream main 668af8a8, no existing upstream fix found):\\n\\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\\n- 084: Postgres restart decodes the response so refusals fail\\n- 085: interactive datastore errors show the wrapped detail\\n- 086: an empty project filter lists nothing, not the whole workspace\\n- 087: clearing a datastore project filter resets its scope\\n- 091: SSH project filter returns to the service chooser\\n- 093: ID-shaped project/environment names fall back to name lookup on 404\\n\\nAll are blocked on the user authorizing external submission, then upstream\\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround.\"\n    },\n    \"createdAt\": \"2026-10-13T01:05:06.705647Z\",\n    \"finishedAt\": \"2026-10-13T01:06:52.304599Z\",\n    \"id\": \"dep-db6o7gh2s0sc73a8hlmg\",\n    \"startedAt\": \"2026-10-13T01:06:21.966758Z\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T01:06:52.304601Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+            "message": "docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\n\nEach upstream render-oss/cli defect now has a prepared, tested patch against\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\naffected at upstream main 668af8a8, no existing upstream fix found):\n\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\n- 084: Postgres restart decodes the response so refusals fail\n- 085: interactive datastore errors show the wrapped detail\n- 086: an empty project filter lists nothing, not the whole workspace\n- 087: clearing a datastore project filter resets its scope\n- 091: SSH project filter returns to the service chooser\n- 093: ID-shaped project/environment names fall back to name lookup on 404\n\nAll are blocked on the user authorizing external submission, then upstream\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround."
+          },
+          "createdAt": "2026-10-13T01:05:06.705647Z",
+          "finishedAt": "2026-10-13T01:06:52.304599Z",
+          "id": "dep-db6o7gh2s0sc73a8hlmg",
+          "startedAt": "2026-10-13T01:06:21.966758Z",
+          "status": "build_failed",
+          "trigger": "other",
+          "updatedAt": "2026-10-13T01:06:52.304601Z"
+        },
+        "runtime": {
+          "at": "2026-10-13T01:07:02.344824+00:00",
+          "exit": 0,
+          "http": "404",
+          "body": null,
+          "raw": "404 page not found\n",
+          "stderr": ""
+        }
+      }
+    ],
+    "initial_settled": true,
+    "initial_pass": false,
+    "initial_runtime": {
+      "at": "2026-10-13T01:07:02.344824+00:00",
+      "exit": 0,
+      "http": "404",
+      "body": null,
+      "raw": "404 page not found\n",
+      "stderr": ""
+    },
+    "initial_deploy": {
+      "commit": {
+        "id": "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+        "message": "docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\n\nEach upstream render-oss/cli defect now has a prepared, tested patch against\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\naffected at upstream main 668af8a8, no existing upstream fix found):\n\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\n- 084: Postgres restart decodes the response so refusals fail\n- 085: interactive datastore errors show the wrapped detail\n- 086: an empty project filter lists nothing, not the whole workspace\n- 087: clearing a datastore project filter resets its scope\n- 091: SSH project filter returns to the service chooser\n- 093: ID-shaped project/environment names fall back to name lookup on 404\n\nAll are blocked on the user authorizing external submission, then upstream\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround."
+      },
+      "createdAt": "2026-10-13T01:05:06.705647Z",
+      "finishedAt": "2026-10-13T01:06:52.304599Z",
+      "id": "dep-db6o7gh2s0sc73a8hlmg",
+      "startedAt": "2026-10-13T01:06:21.966758Z",
+      "status": "build_failed",
+      "trigger": "other",
+      "updatedAt": "2026-10-13T01:06:52.304601Z"
+    },
+    "native_build_log_diagnostics": [
+      {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db6o7gh2s0sc73a8hlm0",
+          "--type",
+          "build",
+          "--limit",
+          "8",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.914,
+        "stdout": "{\n  \"id\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi-2026-10-13T01:06:52.304599Z-9141219b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Build failed: build failed in the docker build step:\",\n  \"timestamp\": \"2026-10-13T01:06:52.304599Z\"\n}{\n  \"id\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi-2026-10-13T01:06:52.304599Z-dde7ffcf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e ------\",\n  \"timestamp\": \"2026-10-13T01:06:52.304599Z\"\n}{\n  \"id\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi-2026-10-13T01:06:52.304599Z-24592293\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e error: build command '/usr/local/bin/python3 -c 'import hashlib,os,pathlib\",\n  \"timestamp\": \"2026-10-13T01:06:52.304599Z\"\n}{\n  \"id\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi-2026-10-13T01:06:52.304599Z-33671807\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e def snapshot():\",\n  \"timestamp\": \"2026-10-13T01:06:52.304599Z\"\n}{\n  \"id\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi-2026-10-13T01:06:52.304599Z-3e7673fc\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\",\n  \"timestamp\": \"2026-10-13T01:06:52.304599Z\"\n}{\n  \"id\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi-2026-10-13T01:06:52.304599Z-b3f1adfe\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\",\n  \"timestamp\": \"2026-10-13T01:06:52.304599Z\"\n}{\n  \"id\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi-2026-10-13T01:06:52.304599Z-6acd568a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e data=path.read_bytes() if path.exists() else b\\\"\\\"\",\n  \"timestamp\": \"2026-10-13T01:06:52.304599Z\"\n}{\n  \"id\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi-2026-10-13T01:06:52.304599Z-2d8b92a7\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\",\n  \"timestamp\": \"2026-10-13T01:06:52.304599Z\"\n}{\n  \"id\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi-2026-10-13T01:06:52.304599Z-24e7a0bb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e import json,time\",\n  \"timestamp\": \"2026-10-13T01:06:52.304599Z\"\n}{\n  \"id\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi-2026-10-13T01:06:52.304599Z-28063c96\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e pathlib.Path(\\\"qa-built.json\\\").write_text(json.dumps({\\\"marker\\\":'\\\"'\\\"'QA183_7e4b0f'\\\"'\\\"',\\\"snapshot\\\":snapshot(),\\\"build_path\\\":os.getenv(\\\"PATH\\\"),\\\"built_at\\\":time.time_ns()}))\",\n  \"timestamp\": \"2026-10-13T01:06:52.304599Z\"\n}{\n  \"id\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi-2026-10-13T01:06:52.304599Z-9450f146\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6o7gh2s0sc73a8hlm0-p9f1nbu8kma2i6atsupi\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e '' exited with code 1\",\n  \"timestamp\": \"2026-10-13T01:06:52.304599Z\"\n}",
+        "stderr": ""
+      }
+    ],
+    "repair_intent": {
+      "at": "2026-10-13T01:10:38.744351+00:00",
+      "api_only": true,
+      "method": "PATCH",
+      "path": "/v1/services/srv-db6o7gh2s0sc73a8hlm0/environment",
+      "body": {
+        "envVars": [
+          {
+            "key": "PATH",
+            "value": "/usr/local/bin:/usr/bin:/bin"
+          }
+        ],
+        "saveMode": "save_only"
+      },
+      "qualification": "Exact-owned PATH-only control, then native deploy of same initial source commit; all other values/files/commands unchanged",
+      "actual_API_User_Agent": "render-cli/2.27.0",
+      "UA_qualification": "API-only setup used minimal version UA and succeeded200; current saved driver now uses full exact pinned OS/version UA. Native deploy requests were not intercepted."
+    },
+    "repair_setup": {
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 2.927,
+      "response": "{\"envVarKeys\":[\"PATH\",\"QA_COMPLEX\"],\"secretFileNames\":[\"qa-note.txt\"],\"rolledOut\":false,\"revision\":null}\n",
+      "stderr": ""
+    },
+    "repair_native_intent": {
+      "at": "2026-10-13T01:10:41.881077+00:00",
+      "command": [
+        "render",
+        "deploys",
+        "create",
+        "srv-db6o7gh2s0sc73a8hlm0",
+        "--commit",
+        "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "same_commit": true,
+      "state": "native deploy intent persisted"
+    },
+    "repair_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "deploys",
+        "create",
+        "srv-db6o7gh2s0sc73a8hlm0",
+        "--commit",
+        "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.178,
+      "stdout": "{\n  \"commit\": {\n    \"createdAt\": \"2026-10-13T00:33:49Z\",\n    \"id\": \"6b5c23b6c5faef6bee076bc0a36582e9441008ca\",\n    \"message\": \"docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\\n\\nEach upstream render-oss/cli defect now has a prepared, tested patch against\\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\\naffected at upstream main 668af8a8, no existing upstream fix found):\\n\\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\\n- 084: Postgres restart decodes the response so refusals fail\\n- 085: interactive datastore errors show the wrapped detail\\n- 086: an empty project filter lists nothing, not the whole workspace\\n- 087: clearing a datastore project filter resets its scope\\n- 091: SSH project filter returns to the service chooser\\n- 093: ID-shaped project/environment names fall back to name lookup on 404\\n\\nAll are blocked on the user authorizing external submission, then upstream\\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround.\"\n  },\n  \"createdAt\": \"2026-10-13T01:10:42.941867Z\",\n  \"id\": \"dep-db6oa4h5i38c73fd5pcg\",\n  \"status\": \"created\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-13T01:10:42.941867Z\"\n}",
+      "stderr": ""
+    },
+    "repair_deploy_id": "dep-db6oa4h5i38c73fd5pcg",
+    "initial_failed_deploy_detail": {
+      "at": "2026-10-13T01:11:36.680191+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/services/srv-db6o7gh2s0sc73a8hlm0/deploys/dep-db6o7gh2s0sc73a8hlmg",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.668,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49a78a49ca2f668-LHR"
+      },
+      "response": "{\"id\":\"dep-db6o7gh2s0sc73a8hlmg\",\"serviceId\":\"srv-db6o7gh2s0sc73a8hlm0\",\"status\":\"build_failed\",\"trigger\":\"other\",\"bexTrigger\":\"create\",\"commit\":{\"id\":\"6b5c23b6c5faef6bee076bc0a36582e9441008ca\",\"message\":\"docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\\n\\nEach upstream render-oss/cli defect now has a prepared, tested patch against\\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\\naffected at upstream main 668af8a8, no existing upstream fix found):\\n\\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\\n- 084: Postgres restart decodes the response so refusals fail\\n- 085: interactive datastore errors show the wrapped detail\\n- 086: an empty project filter lists nothing, not the whole workspace\\n- 087: clearing a datastore project filter resets its scope\\n- 091: SSH project filter returns to the service chooser\\n- 093: ID-shaped project/environment names fall back to name lookup on 404\\n\\nAll are blocked on the user authorizing external submission, then upstream\\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround.\"},\"createdAt\":\"2026-10-13T01:05:06.705647Z\",\"updatedAt\":\"2026-10-13T01:06:52.304601Z\",\"startedAt\":\"2026-10-13T01:06:21.966758Z\",\"finishedAt\":\"2026-10-13T01:06:52.304599Z\",\"failureReason\":\"build failed in the docker build step:\\n------\\nerror: build command '/usr/local/bin/python3 -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport json,time\\npathlib.Path(\\\"qa-built.json\\\").write_text(json.dumps({\\\"marker\\\":'\\\"'\\\"'QA183_7e4b0f'\\\"'\\\"',\\\"snapshot\\\":snapshot(),\\\"build_path\\\":os.getenv(\\\"PATH\\\"),\\\"built_at\\\":time.time_ns()}))\\n'' exited with code 1\"}\n"
+    },
+    "repair_observations": [
+      {
+        "at": "2026-10-13T01:13:45.825118+00:00",
+        "native_list": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db6o7gh2s0sc73a8hlm0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 1.054,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-13T00:33:49Z\",\n      \"id\": \"6b5c23b6c5faef6bee076bc0a36582e9441008ca\",\n      \"message\": \"docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\\n\\nEach upstream render-oss/cli defect now has a prepared, tested patch against\\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\\naffected at upstream main 668af8a8, no existing upstream fix found):\\n\\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\\n- 084: Postgres restart decodes the response so refusals fail\\n- 085: interactive datastore errors show the wrapped detail\\n- 086: an empty project filter lists nothing, not the whole workspace\\n- 087: clearing a datastore project filter resets its scope\\n- 091: SSH project filter returns to the service chooser\\n- 093: ID-shaped project/environment names fall back to name lookup on 404\\n\\nAll are blocked on the user authorizing external submission, then upstream\\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround.\"\n    },\n    \"createdAt\": \"2026-10-13T01:10:42.941867Z\",\n    \"finishedAt\": \"2026-10-13T01:12:07.944511Z\",\n    \"id\": \"dep-db6oa4h5i38c73fd5pcg\",\n    \"startedAt\": \"2026-10-13T01:10:51.530327Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-13T01:12:07.944512Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"6b5c23b6c5faef6bee076bc0a36582e9441008ca\",\n      \"message\": \"docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\\n\\nEach upstream render-oss/cli defect now has a prepared, tested patch against\\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\\naffected at upstream main 668af8a8, no existing upstream fix found):\\n\\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\\n- 084: Postgres restart decodes the response so refusals fail\\n- 085: interactive datastore errors show the wrapped detail\\n- 086: an empty project filter lists nothing, not the whole workspace\\n- 087: clearing a datastore project filter resets its scope\\n- 091: SSH project filter returns to the service chooser\\n- 093: ID-shaped project/environment names fall back to name lookup on 404\\n\\nAll are blocked on the user authorizing external submission, then upstream\\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround.\"\n    },\n    \"createdAt\": \"2026-10-13T01:05:06.705647Z\",\n    \"finishedAt\": \"2026-10-13T01:06:52.304599Z\",\n    \"id\": \"dep-db6o7gh2s0sc73a8hlmg\",\n    \"startedAt\": \"2026-10-13T01:06:21.966758Z\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T01:06:52.304601Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "createdAt": "2026-10-13T00:33:49Z",
+            "id": "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+            "message": "docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\n\nEach upstream render-oss/cli defect now has a prepared, tested patch against\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\naffected at upstream main 668af8a8, no existing upstream fix found):\n\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\n- 084: Postgres restart decodes the response so refusals fail\n- 085: interactive datastore errors show the wrapped detail\n- 086: an empty project filter lists nothing, not the whole workspace\n- 087: clearing a datastore project filter resets its scope\n- 091: SSH project filter returns to the service chooser\n- 093: ID-shaped project/environment names fall back to name lookup on 404\n\nAll are blocked on the user authorizing external submission, then upstream\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround."
+          },
+          "createdAt": "2026-10-13T01:10:42.941867Z",
+          "finishedAt": "2026-10-13T01:12:07.944511Z",
+          "id": "dep-db6oa4h5i38c73fd5pcg",
+          "startedAt": "2026-10-13T01:10:51.530327Z",
+          "status": "live",
+          "trigger": "api",
+          "updatedAt": "2026-10-13T01:12:07.944512Z"
+        },
+        "runtime": {
+          "at": "2026-10-13T01:13:45.824936+00:00",
+          "exit": 0,
+          "http": "200",
+          "body": {
+            "marker": "QA183_7e4b0f",
+            "built": {
+              "marker": "QA183_7e4b0f",
+              "snapshot": {
+                "env_length": 30,
+                "env_sha256": "244c0625b8caafe1247eaa768c133c339b280368a95b5fc3055e34a3f8ff7b67",
+                "file_present": true,
+                "file_length": 24,
+                "file_sha256": "d34217fa7393b54b2af4faf6ad7dc105dabc66282347462f89ba2c91c4ff6647"
+              },
+              "build_path": "/usr/local/bin:/usr/bin:/bin",
+              "built_at": 1791853880715655362
+            },
+            "runtime": {
+              "env_length": 30,
+              "env_sha256": "244c0625b8caafe1247eaa768c133c339b280368a95b5fc3055e34a3f8ff7b67",
+              "file_present": true,
+              "file_length": 24,
+              "file_sha256": "d34217fa7393b54b2af4faf6ad7dc105dabc66282347462f89ba2c91c4ff6647"
+            },
+            "runtime_path": "/usr/local/bin:/usr/bin:/bin",
+            "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-7e4b0f-buildbytes-7c9s8trx"
+          },
+          "raw": "{\"marker\": \"QA183_7e4b0f\", \"built\": {\"marker\": \"QA183_7e4b0f\", \"snapshot\": {\"env_length\": 30, \"env_sha256\": \"244c0625b8caafe1247eaa768c133c339b280368a95b5fc3055e34a3f8ff7b67\", \"file_present\": true, \"file_length\": 24, \"file_sha256\": \"d34217fa7393b54b2af4faf6ad7dc105dabc66282347462f89ba2c91c4ff6647\"}, \"build_path\": \"/usr/local/bin:/usr/bin:/bin\", \"built_at\": 1791853880715655362}, \"runtime\": {\"env_length\": 30, \"env_sha256\": \"244c0625b8caafe1247eaa768c133c339b280368a95b5fc3055e34a3f8ff7b67\", \"file_present\": true, \"file_length\": 24, \"file_sha256\": \"d34217fa7393b54b2af4faf6ad7dc105dabc66282347462f89ba2c91c4ff6647\"}, \"runtime_path\": \"/usr/local/bin:/usr/bin:/bin\", \"instance\": \"tea-daif693dqjvc73e7as3g-qa-20261013-7e4b0f-buildbytes-7c9s8trx\"}",
+          "stderr": ""
+        }
+      }
+    ],
+    "repair_settled": true,
+    "repair_pass": true,
+    "repair_runtime": {
+      "at": "2026-10-13T01:13:45.824936+00:00",
+      "exit": 0,
+      "http": "200",
+      "body": {
+        "marker": "QA183_7e4b0f",
+        "built": {
+          "marker": "QA183_7e4b0f",
+          "snapshot": {
+            "env_length": 30,
+            "env_sha256": "244c0625b8caafe1247eaa768c133c339b280368a95b5fc3055e34a3f8ff7b67",
+            "file_present": true,
+            "file_length": 24,
+            "file_sha256": "d34217fa7393b54b2af4faf6ad7dc105dabc66282347462f89ba2c91c4ff6647"
+          },
+          "build_path": "/usr/local/bin:/usr/bin:/bin",
+          "built_at": 1791853880715655362
+        },
+        "runtime": {
+          "env_length": 30,
+          "env_sha256": "244c0625b8caafe1247eaa768c133c339b280368a95b5fc3055e34a3f8ff7b67",
+          "file_present": true,
+          "file_length": 24,
+          "file_sha256": "d34217fa7393b54b2af4faf6ad7dc105dabc66282347462f89ba2c91c4ff6647"
+        },
+        "runtime_path": "/usr/local/bin:/usr/bin:/bin",
+        "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-7e4b0f-buildbytes-7c9s8trx"
+      },
+      "raw": "{\"marker\": \"QA183_7e4b0f\", \"built\": {\"marker\": \"QA183_7e4b0f\", \"snapshot\": {\"env_length\": 30, \"env_sha256\": \"244c0625b8caafe1247eaa768c133c339b280368a95b5fc3055e34a3f8ff7b67\", \"file_present\": true, \"file_length\": 24, \"file_sha256\": \"d34217fa7393b54b2af4faf6ad7dc105dabc66282347462f89ba2c91c4ff6647\"}, \"build_path\": \"/usr/local/bin:/usr/bin:/bin\", \"built_at\": 1791853880715655362}, \"runtime\": {\"env_length\": 30, \"env_sha256\": \"244c0625b8caafe1247eaa768c133c339b280368a95b5fc3055e34a3f8ff7b67\", \"file_present\": true, \"file_length\": 24, \"file_sha256\": \"d34217fa7393b54b2af4faf6ad7dc105dabc66282347462f89ba2c91c4ff6647\"}, \"runtime_path\": \"/usr/local/bin:/usr/bin:/bin\", \"instance\": \"tea-daif693dqjvc73e7as3g-qa-20261013-7e4b0f-buildbytes-7c9s8trx\"}",
+      "stderr": ""
+    },
+    "repair_deploy": {
+      "commit": {
+        "createdAt": "2026-10-13T00:33:49Z",
+        "id": "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+        "message": "docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\n\nEach upstream render-oss/cli defect now has a prepared, tested patch against\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\naffected at upstream main 668af8a8, no existing upstream fix found):\n\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\n- 084: Postgres restart decodes the response so refusals fail\n- 085: interactive datastore errors show the wrapped detail\n- 086: an empty project filter lists nothing, not the whole workspace\n- 087: clearing a datastore project filter resets its scope\n- 091: SSH project filter returns to the service chooser\n- 093: ID-shaped project/environment names fall back to name lookup on 404\n\nAll are blocked on the user authorizing external submission, then upstream\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround."
+      },
+      "createdAt": "2026-10-13T01:10:42.941867Z",
+      "finishedAt": "2026-10-13T01:12:07.944511Z",
+      "id": "dep-db6oa4h5i38c73fd5pcg",
+      "startedAt": "2026-10-13T01:10:51.530327Z",
+      "status": "live",
+      "trigger": "api",
+      "updatedAt": "2026-10-13T01:12:07.944512Z"
+    },
+    "deploy_children": [
+      {
+        "commit": {
+          "createdAt": "2026-10-13T00:33:49Z",
+          "id": "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+          "message": "docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\n\nEach upstream render-oss/cli defect now has a prepared, tested patch against\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\naffected at upstream main 668af8a8, no existing upstream fix found):\n\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\n- 084: Postgres restart decodes the response so refusals fail\n- 085: interactive datastore errors show the wrapped detail\n- 086: an empty project filter lists nothing, not the whole workspace\n- 087: clearing a datastore project filter resets its scope\n- 091: SSH project filter returns to the service chooser\n- 093: ID-shaped project/environment names fall back to name lookup on 404\n\nAll are blocked on the user authorizing external submission, then upstream\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround."
+        },
+        "createdAt": "2026-10-13T01:10:42.941867Z",
+        "finishedAt": "2026-10-13T01:12:07.944511Z",
+        "id": "dep-db6oa4h5i38c73fd5pcg",
+        "startedAt": "2026-10-13T01:10:51.530327Z",
+        "status": "live",
+        "trigger": "api",
+        "updatedAt": "2026-10-13T01:12:07.944512Z"
+      },
+      {
+        "commit": {
+          "id": "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+          "message": "docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\n\nEach upstream render-oss/cli defect now has a prepared, tested patch against\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\naffected at upstream main 668af8a8, no existing upstream fix found):\n\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\n- 084: Postgres restart decodes the response so refusals fail\n- 085: interactive datastore errors show the wrapped detail\n- 086: an empty project filter lists nothing, not the whole workspace\n- 087: clearing a datastore project filter resets its scope\n- 091: SSH project filter returns to the service chooser\n- 093: ID-shaped project/environment names fall back to name lookup on 404\n\nAll are blocked on the user authorizing external submission, then upstream\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround."
+        },
+        "createdAt": "2026-10-13T01:05:06.705647Z",
+        "finishedAt": "2026-10-13T01:06:52.304599Z",
+        "id": "dep-db6o7gh2s0sc73a8hlmg",
+        "startedAt": "2026-10-13T01:06:21.966758Z",
+        "status": "build_failed",
+        "trigger": "other",
+        "updatedAt": "2026-10-13T01:06:52.304601Z"
+      }
+    ],
+    "children_enumeration_evidence": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "list",
+        "srv-db6o7gh2s0sc73a8hlm0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.644,
+      "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-13T00:33:49Z\",\n      \"id\": \"6b5c23b6c5faef6bee076bc0a36582e9441008ca\",\n      \"message\": \"docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\\n\\nEach upstream render-oss/cli defect now has a prepared, tested patch against\\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\\naffected at upstream main 668af8a8, no existing upstream fix found):\\n\\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\\n- 084: Postgres restart decodes the response so refusals fail\\n- 085: interactive datastore errors show the wrapped detail\\n- 086: an empty project filter lists nothing, not the whole workspace\\n- 087: clearing a datastore project filter resets its scope\\n- 091: SSH project filter returns to the service chooser\\n- 093: ID-shaped project/environment names fall back to name lookup on 404\\n\\nAll are blocked on the user authorizing external submission, then upstream\\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround.\"\n    },\n    \"createdAt\": \"2026-10-13T01:10:42.941867Z\",\n    \"finishedAt\": \"2026-10-13T01:12:07.944511Z\",\n    \"id\": \"dep-db6oa4h5i38c73fd5pcg\",\n    \"startedAt\": \"2026-10-13T01:10:51.530327Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-13T01:12:07.944512Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"6b5c23b6c5faef6bee076bc0a36582e9441008ca\",\n      \"message\": \"docs(pm): park w8 m60, 082, 084-087, 091, 093 on upstream CLI submission\\n\\nEach upstream render-oss/cli defect now has a prepared, tested patch against\\nthe Bex pin a764810a7682 (fails before, passes after; unchanged and still\\naffected at upstream main 668af8a8, no existing upstream fix found):\\n\\n- m60: Copy builds argv from flag types, shell-quotes, keeps time precision\\n- 082: TimeOrRelative.String keeps fractional seconds (RFC3339Nano)\\n- 084: Postgres restart decodes the response so refusals fail\\n- 085: interactive datastore errors show the wrapped detail\\n- 086: an empty project filter lists nothing, not the whole workspace\\n- 087: clearing a datastore project filter resets its scope\\n- 091: SSH project filter returns to the service chooser\\n- 093: ID-shaped project/environment names fall back to name lookup on 404\\n\\nAll are blocked on the user authorizing external submission, then upstream\\nacceptance, a Bex pin refresh and CLI release. No fork or backend workaround.\"\n    },\n    \"createdAt\": \"2026-10-13T01:05:06.705647Z\",\n    \"finishedAt\": \"2026-10-13T01:06:52.304599Z\",\n    \"id\": \"dep-db6o7gh2s0sc73a8hlmg\",\n    \"startedAt\": \"2026-10-13T01:06:21.966758Z\",\n    \"status\": \"build_failed\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T01:06:52.304601Z\"\n  }\n]",
+      "stderr": ""
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db6o7gh2s0sc73a8hlm0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 4.853,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-13T01:05:07Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db6o7gh2s0sc73a8hlm0\",\n    \"id\": \"srv-db6o7gh2s0sc73a8hlm0\",\n    \"name\": \"qa-20261013-7e4b0f-buildbytes\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-go\",\n    \"serviceDetails\": {\n      \"env\": \"python\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"/usr/local/bin/python3 -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport json,time\\npathlib.Path(\\\"qa-built.json\\\").write_text(json.dumps({\\\"marker\\\":'\\\"'\\\"'QA183_7e4b0f'\\\"'\\\"',\\\"snapshot\\\":snapshot(),\\\"build_path\\\":os.getenv(\\\"PATH\\\"),\\\"built_at\\\":time.time_ns()}))\\n'\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"/usr/local/bin/python3 -u -c 'import hashlib,os,pathlib\\ndef snapshot():\\n    env=os.getenv(\\\"QA_COMPLEX\\\",\\\"\\u003cabsent\\u003e\\\").encode(\\\"utf-8\\\")\\n    path=pathlib.Path(\\\"/etc/secrets/qa-note.txt\\\")\\n    data=path.read_bytes() if path.exists() else b\\\"\\\"\\n    return {\\\"env_length\\\":len(env),\\\"env_sha256\\\":hashlib.sha256(env).hexdigest(),\\\"file_present\\\":path.exists(),\\\"file_length\\\":len(data),\\\"file_sha256\\\":hashlib.sha256(data).hexdigest()}\\nimport http.server,json,socket\\nbuilt=json.loads(pathlib.Path(\\\"qa-built.json\\\").read_text())\\nclass Handler(http.server.BaseHTTPRequestHandler):\\n    def do_GET(self):\\n        body=json.dumps({\\\"marker\\\":built[\\\"marker\\\"],\\\"built\\\":built,\\\"runtime\\\":snapshot(),\\\"runtime_path\\\":os.getenv(\\\"PATH\\\"),\\\"instance\\\":socket.gethostname()}).encode()\\n        self.send_response(200)\\n        self.send_header(\\\"Content-Type\\\",\\\"application/json\\\")\\n        self.send_header(\\\"Content-Length\\\",str(len(body)))\\n        self.end_headers()\\n        self.wfile.write(body)\\n    def log_message(self,*args): pass\\nhttp.server.ThreadingHTTPServer((\\\"0.0.0.0\\\",int(os.getenv(\\\"PORT\\\",\\\"3000\\\"))),Handler).serve_forever()\\n'\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261013-7e4b0f-buildbytes:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"python\",\n      \"url\": \"https://qa-20261013-7e4b0f-buildbytes.onbex.co\"\n    },\n    \"slug\": \"qa-20261013-7e4b0f-buildbytes\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-13T01:11:57Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "at": "2026-10-13T01:14:43.954292+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/services/srv-db6o7gh2s0sc73a8hlm0",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "404",
+      "elapsed": 3.218,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49a7d2c295f9937-ATL"
+      },
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+    },
+    "workspace_after_delete_ids": [
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3v694dm7c7390q930",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db09vbgehcmc739j12i0"
+    ],
+    "runtime_after_delete_checks": [
+      {
+        "exit": 0,
+        "stdout": "404 page not found\n\n404",
+        "stderr": ""
+      }
+    ],
+    "quota_after_delete": {
+      "at": "2026-10-13T01:14:46.255339+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.552,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a49a7d459d390c7d-BOS"
+      },
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "final_cleanup_reconciliation": [
+      {
+        "id": "srv-db6o79p5i38c73fd5p9g",
+        "detail": {
+          "at": "2026-10-13T01:15:23.487689+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db6o79p5i38c73fd5p9g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "404",
+          "elapsed": 0.625,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a49a7e2e6cba2565-LHR"
+          },
+          "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+        }
+      },
+      {
+        "id": "srv-db6o7gh2s0sc73a8hlm0",
+        "detail": {
+          "at": "2026-10-13T01:15:24.105836+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db6o7gh2s0sc73a8hlm0",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "404",
+          "elapsed": 0.553,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a49a7e31cb88900b-BOS"
+          },
+          "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+        }
+      },
+      {
+        "quota_attempt": 0,
+        "result": {
+          "at": "2026-10-13T01:15:24.880609+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "200",
+          "elapsed": 0.713,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a49a7e358d035d37-MIA"
+          },
+          "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+        }
+      },
+      {
+        "native_list": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "services",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 1.191,
+          "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-13T01:15:05Z\",\n        \"nextRunAt\": \"2026-10-13T01:16:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-13T01:15:05Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-13T01:15:04Z\",\n        \"nextRunAt\": \"2026-10-13T01:16:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-13T01:15:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-13T01:15:04Z\",\n        \"nextRunAt\": \"2026-10-13T01:16:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-13T01:15:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-13T01:00:29Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-12T22:03:40Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-12T18:11:02Z\"\n    }\n  }\n]",
+          "stderr": ""
+        },
+        "baseline_present": [
+          "srv-daif6dsmg29s73d1umvg",
+          "srv-dap3r714dm7c7390q91g",
+          "srv-dap3umrbdpcs73f5eeug",
+          "srv-dap3v694dm7c7390q930",
+          "srv-db09u90ehcmc739j12cg",
+          "srv-db09vbgehcmc739j12i0"
+        ],
+        "current_ids": [
+          "srv-daif6dsmg29s73d1umvg",
+          "srv-dap3r714dm7c7390q91g",
+          "srv-dap3umrbdpcs73f5eeug",
+          "srv-dap3v694dm7c7390q930",
+          "srv-db09u90ehcmc739j12cg",
+          "srv-db09vbgehcmc739j12i0"
+        ]
+      }
+    ],
+    "owned_local_fixture_file_removed": true
+  }
+]

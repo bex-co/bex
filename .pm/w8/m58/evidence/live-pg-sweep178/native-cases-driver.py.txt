@@ -1,0 +1,6 @@
+import pathlib,json,subprocess,shutil,datetime
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());sid=(p/'sweep178-id.txt').read_text().strip();x=next(z for z in c['resources'] if z.get('id')==sid);prefix=x['unicode_log_prefix'];prior={(z['client'],z['term']) for z in x.get('captured_searches',[])}
+for client in ('bex','render'):
+ for term in (prefix,prefix+' ι',prefix+' λ'):
+  if (client,term) in prior:continue
+  subprocess.run(['python3',str(p/'sweep178-pg-capture.py'),client,term],check=True)

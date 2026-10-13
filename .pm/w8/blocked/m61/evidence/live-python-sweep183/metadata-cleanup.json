@@ -1,0 +1,30 @@
+{
+  "sweep": 183,
+  "at": "2026-10-13T01:16:32.963473+00:00",
+  "source_head": "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+  "source_fix": "137820b94a470d1519c138c008df2c720ae1a88a",
+  "filing_head": "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+  "deployed_revision": "unknown",
+  "api_origin": "https://api.bex.co/v1/",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "human_oauth": true,
+  "bex": "v0.3.2 / a6350da0d6e451e063143432e06c548ba7b5851b",
+  "render_pin": "v2.27.0 / a764810a768202704e7206eb7b87a47211fcd98e",
+  "native_creates_pass": 2,
+  "custom_PATH_initial_build_failures": 2,
+  "same_commit_native_control_deploys_pass": 2,
+  "control_Live_HTTP200_build_runtime_hashes_PATH_pass": 2,
+  "API_only_PATH_setup": 2,
+  "API_setup_User_Agent": "render-cli/2.27.0 minimal; native wire not captured",
+  "targeted_local_PATH_test_named_passes": 7,
+  "resources_deleted": [
+    "srv-db6o79p5i38c73fd5p9g",
+    "srv-db6o7gh2s0sc73a8hlm0"
+  ],
+  "children_enumerated": 4,
+  "own_fixture_note_files_removed": true,
+  "local_container_created": false,
+  "product_fix_by_QA": false,
+  "ship_by_QA": false,
+  "copied_Render_config_remaining": false
+}

@@ -1,0 +1,17 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-overlay=<QA_TMP>/sweep202-location-overlay.json",
+    "-run",
+    "^TestQAStaticLocation202$",
+    "-count=1",
+    "-json",
+    "./internal/apps"
+  ],
+  "exit": 1,
+  "elapsed": 7.762,
+  "records": [],
+  "stderr": "",
+  "assertions": "Expect current bug, not future fixed regression"
+}

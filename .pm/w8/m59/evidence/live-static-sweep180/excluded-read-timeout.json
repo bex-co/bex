@@ -1,0 +1,16 @@
+{
+  "binary": "released v0.3.2",
+  "command": [
+    "bex",
+    "deploys",
+    "list",
+    "srv-db6nnd92s0sc73a8hl3g",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "exit": 1,
+  "elapsed": 10.276,
+  "stdout": "",
+  "stderr": "Error: failed to list deploys: Get \"https://api.bex.co/v1/services/srv-db6nnd92s0sc73a8hl3g/deploys?limit=20\": net/http: TLS handshake timeout\n"
+}

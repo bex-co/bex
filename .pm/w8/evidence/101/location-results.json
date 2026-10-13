@@ -1,0 +1,154 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-overlay=<QA_TMP>/sweep202-location-overlay.json",
+    "-run",
+    "^(TestQAStaticLocation202|TestValidateBlueprintAggregatesPerServiceErrorsWithLocations|TestValidateBlueprintReportsParseAndServiceErrorsTogether|TestValidateBlueprintLocatesDanglingWorkspaceReference|TestBlueprintValidateRefusesUnclaimableDomains)$",
+    "-count=1",
+    "-json",
+    "./internal/apps"
+  ],
+  "exit": 0,
+  "elapsed": 5.417,
+  "records": [
+    {
+      "actual": {
+        "error": "service \"qa202-b7aca1-static\": routes[1].source must be a path starting with /",
+        "line": 3,
+        "column": 5,
+        "path": "services[0]"
+      },
+      "expected_authored_pointer_exists": true,
+      "expected_location": {
+        "Line": 20,
+        "Column": 21
+      },
+      "expected_pointer": "#/services/0/routes/1/source",
+      "label": "root-second-route-source"
+    },
+    {
+      "actual": {
+        "error": "service \"qa202-b7aca1-static\": routes[1].destination must be a path starting with /",
+        "line": 3,
+        "column": 5,
+        "path": "services[0]"
+      },
+      "expected_authored_pointer_exists": true,
+      "expected_location": {
+        "Line": 21,
+        "Column": 26
+      },
+      "expected_pointer": "#/services/0/routes/1/destination",
+      "label": "root-second-route-destination"
+    },
+    {
+      "actual": {
+        "error": "service \"qa202-b7aca1-static\": headers[1].path must be a path starting with /",
+        "line": 3,
+        "column": 5,
+        "path": "services[0]"
+      },
+      "expected_authored_pointer_exists": true,
+      "expected_location": {
+        "Line": 19,
+        "Column": 19
+      },
+      "expected_pointer": "#/services/0/headers/1/path",
+      "label": "root-second-header-path"
+    },
+    {
+      "actual": {
+        "error": "service \"qa202-b7aca1-static\": headers[1].name is required",
+        "line": 4,
+        "column": 15,
+        "path": "services[0].name"
+      },
+      "expected_authored_pointer_exists": true,
+      "expected_location": {
+        "Line": 20,
+        "Column": 19
+      },
+      "expected_pointer": "#/services/0/headers/1/name",
+      "label": "root-second-header-name"
+    },
+    {
+      "actual": {
+        "error": "service \"qa202-b7aca1-static\": routes[1].source must be a path starting with /",
+        "line": 9,
+        "column": 13,
+        "path": "projects[0].environments[0].services[0]"
+      },
+      "expected_authored_pointer_exists": true,
+      "expected_location": {
+        "Line": 26,
+        "Column": 29
+      },
+      "expected_pointer": "#/projects/0/environments/0/services/0/routes/1/source",
+      "label": "project-second-route-source"
+    },
+    {
+      "actual": {
+        "error": "service \"qa202-b7aca1-static\": routes[1].destination must be a path starting with /",
+        "line": 9,
+        "column": 13,
+        "path": "projects[0].environments[0].services[0]"
+      },
+      "expected_authored_pointer_exists": true,
+      "expected_location": {
+        "Line": 27,
+        "Column": 34
+      },
+      "expected_pointer": "#/projects/0/environments/0/services/0/routes/1/destination",
+      "label": "project-second-route-destination"
+    },
+    {
+      "actual": {
+        "error": "service \"qa202-b7aca1-static\": headers[1].path must be a path starting with /",
+        "line": 9,
+        "column": 13,
+        "path": "projects[0].environments[0].services[0]"
+      },
+      "expected_authored_pointer_exists": true,
+      "expected_location": {
+        "Line": 25,
+        "Column": 27
+      },
+      "expected_pointer": "#/projects/0/environments/0/services/0/headers/1/path",
+      "label": "project-second-header-path"
+    },
+    {
+      "actual": {
+        "error": "service \"qa202-b7aca1-static\": headers[1].name is required",
+        "line": 10,
+        "column": 23,
+        "path": "projects[0].environments[0].services[0].name"
+      },
+      "expected_authored_pointer_exists": true,
+      "expected_location": {
+        "Line": 26,
+        "Column": 27
+      },
+      "expected_pointer": "#/projects/0/environments/0/services/0/headers/1/name",
+      "label": "project-second-header-name"
+    }
+  ],
+  "passes": [
+    "TestBlueprintValidateRefusesUnclaimableDomains",
+    "TestValidateBlueprintAggregatesPerServiceErrorsWithLocations",
+    "TestValidateBlueprintReportsParseAndServiceErrorsTogether",
+    "TestValidateBlueprintLocatesDanglingWorkspaceReference",
+    "TestQAStaticLocation202/root-second-route-source",
+    "TestQAStaticLocation202/root-second-route-destination",
+    "TestQAStaticLocation202/root-second-header-path",
+    "TestQAStaticLocation202/root-second-header-name",
+    "TestQAStaticLocation202/project-second-route-source",
+    "TestQAStaticLocation202/project-second-route-destination",
+    "TestQAStaticLocation202/project-second-header-path",
+    "TestQAStaticLocation202/project-second-header-name",
+    "TestQAStaticLocation202"
+  ],
+  "stderr": "",
+  "assertions": "Expect current bug, not future fixed regression",
+  "excluded_initial_attempt": "QA diagnostic fixture omitted # pointer prefix; not a product failure"
+}

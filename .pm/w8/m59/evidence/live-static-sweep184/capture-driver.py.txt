@@ -1,0 +1,42 @@
+import pathlib,json,subprocess,datetime,os,re,time,sys,threading,http.server,http.client,urllib.parse,gzip,shutil
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('<REPO>/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());client,history=sys.argv[1:];assert client in ('bex','render') and history in ('built','direct');role=client+'-'+history;sid=(p/('sweep184-'+role+'-id.txt')).read_text();x=next(z for z in c['resources'] if z.get('id')==sid);base={z if isinstance(z,str) else z.get('service',z)['id'] for z in c['baseline']['services']};assert sid not in base and x['create_result']['exit']==0 and x['workspace']=='tea-daif693dqjvc73e7as3g' and not x['state'].startswith('deleted:');assert x['create_response']['serviceDetails']['plan']=='free' and x['latest_acceptance'];assert 'clear_update' not in x;captures=[]
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+mask=[]
+for line in (p/'config/cli.yaml').read_text().splitlines():
+ k,sep,v=line.strip().partition(':');v=v.strip().strip("\"'")
+ if sep and re.search(r'(?i)(token|password|secret|key)',k) and len(v)>8:mask.append(v)
+for line in pathlib.Path('<REPO>/muse.env').read_text().splitlines():
+ k,sep,v=line.partition('=');v=v.strip().strip("\"'")
+ if sep and k.strip() in ('QA_EMAIL','QA_PASSWORD') and v:mask.append(v)
+def scrub(s):
+ for v in mask:s=s.replace(v,'[QA VALUE REDACTED]')
+ return s
+class Handler(http.server.BaseHTTPRequestHandler):
+ def log_message(self,*a):pass
+ def do_GET(self):self.forward('GET')
+ def do_PATCH(self):self.forward('PATCH')
+ def forward(self,method):
+  route=urllib.parse.urlsplit(self.path)
+  q=urllib.parse.parse_qs(route.query)
+  allowed=(route.path=='/v1/services/'+sid and not route.query) or (method=='GET' and route.path=='/v1/projects' and q.get('ownerId')==[x['workspace']] and set(q).issubset({'ownerId','limit','cursor'}))
+  if not allowed:captures.append({'harness_rejected_method':method,'harness_rejected_path':self.path});self.send_error(400,'outside owned service and workspace project read');return
+  body=self.rfile.read(int(self.headers.get('Content-Length','0'))) if method=='PATCH' else None
+  if method=='PATCH' and json.loads(body)!={'serviceDetails':{'buildCommand':'','publishPath':'.'}}:self.send_error(400,'outside exact owned clear command');return
+  headers={k:v for k,v in self.headers.items() if k.lower() not in ('host','connection','content-length')};headers['Host']='api.bex.co';con=http.client.HTTPSConnection('api.bex.co',timeout=25)
+  try:
+   con.request(method,self.path,body=body,headers=headers);r=con.getresponse();raw=r.read();hs=r.getheaders();payload=gzip.decompress(raw) if r.getheader('Content-Encoding')=='gzip' else raw
+   captures.append({'at':now(),'request':{'method':method,'path':self.path,'body':json.loads(body) if body else None,'headers':{k:v for k,v in headers.items() if k.lower() in ('user-agent','x-bex-workspace','x-bex-cli-version')}},'status':r.status,'response_headers':{k:v for k,v in hs if k.lower() in ('content-type','cf-ray','x-request-id')},'response':scrub(payload.decode())})
+   self.send_response(r.status)
+   for k,v in hs:
+    if k.lower() not in ('transfer-encoding','connection','content-length','keep-alive'):self.send_header(k,v)
+   self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw)
+  except Exception as e:captures.append({'transport_error':type(e).__name__});self.send_error(502)
+  finally:con.close()
+server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler);server.daemon_threads=True;origin='http://127.0.0.1:'+str(server.server_port)+'/v1/';thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start();cfgdir=p/('sweep184-capture-'+client+'-'+str(server.server_port));cfgdir.mkdir(mode=0o700);cfg=cfgdir/'cli.yaml';cfgtext,n=re.subn(r'(?m)^(\s+)host:.*$',lambda m:m[1]+'host: '+origin,(p/'config/cli.yaml').read_text());assert n==1;cfg.write_text(cfgtext);cfg.chmod(0o600);prefix='BEX' if client=='bex' else 'RENDER';env={k:v for k,v in os.environ.items() if not k.startswith(('RENDER_','BEX_','QA_'))};env.update({prefix+'_HOST':origin,prefix+'_CLI_CONFIG_DIR':str(cfgdir),prefix+'_CLI_CONFIG_PATH':str(cfg),prefix+'_WORKSPACE':x['workspace'],prefix+'_CLI_DISABLE_ANALYTICS':'1','BEX_NO_UPDATE_NOTIFIER':'1','BROWSER':'/usr/bin/true'});binary=p/'release/bex' if client=='bex' else p/'render-pin';assert binary.exists();args=['services','update',sid,'--build-command','','--publish-directory','.','--confirm','-o','json'];o={'at':now(),'client':client,'command':[client,*args],'state':'owned mutation intent persisted','authority_forwarding':'GET and exact clear-command PATCH to fixed owned ID at api.bex.co; unchanged path/body; isolated configuration; auth never journaled'};x['clear_update']=o;save();started=time.monotonic()
+try:
+ r=subprocess.run([str(binary),*args],env=env,text=True,capture_output=True,timeout=45);o['result']={'exit':r.returncode,'elapsed':round(time.monotonic()-started,3),'stdout':scrub(r.stdout),'stderr':scrub(r.stderr)}
+except subprocess.TimeoutExpired as e:o['result']={'exit':'harness timeout','elapsed':45,'stdout':(e.stdout or b'').decode() if isinstance(e.stdout,bytes) else e.stdout or '', 'stderr':(e.stderr or b'').decode() if isinstance(e.stderr,bytes) else e.stderr or ''}
+finally:
+ server.shutdown();server.server_close();thread.join(timeout=2);shutil.rmtree(cfgdir);o['captures']=captures;o['state']='result received; reconciliation pending';o['capture_cleanup']='child reaped, server closed, temporary copied config removed';save()
+print(client,role,'exit',o['result']['exit'],'seconds',o['result']['elapsed'],'stderr',o['result']['stderr'],'requests',[(z.get('request',{}).get('method'),z.get('status')) for z in captures])

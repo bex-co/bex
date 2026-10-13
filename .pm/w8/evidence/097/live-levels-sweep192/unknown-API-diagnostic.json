@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-13T03:20:10.577734+00:00",
+  "request": {
+    "method": "GET",
+    "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&resource=srv-db6q4ipg8k9s73eehmrg&type=app&text=QA192_b634b8&level=unknown&limit=100",
+    "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "authorization": "[REDACTED]"
+  },
+  "status": "200",
+  "elapsed": 8.754,
+  "curl_exit": 0,
+  "stderr": "",
+  "headers": {
+    "content-type": "application/json",
+    "cf-ray": "a49b34c509438b3d-BOS"
+  },
+  "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-13T02:20:10.531220653Z\",\"nextEndTime\":\"2026-10-13T03:17:22.92976871Z\",\"logs\":[{\"id\":\"srv-db6q4ipg8k9s73eehmrg-22893oqqel6jt6j37q68-2026-10-13T03:17:22.929768711Z-55c4797e\",\"message\":\"QA192_b634b8 CONTROL plain\",\"timestamp\":\"2026-10-13T03:17:22.929768711Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6q4ipg8k9s73eehmrg\"},{\"name\":\"instance\",\"value\":\"srv-db6q4ipg8k9s73eehmrg-22893oqqel6jt6j37q68\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+}

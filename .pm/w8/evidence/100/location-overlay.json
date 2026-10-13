@@ -1,0 +1,5 @@
+{
+  "Replace": {
+    "<REPO>/lego/backend/internal/apps/qa_cli_sweep194_location_test.go": "<QA_TMP>/sweep194-location-probe_test.go"
+  }
+}

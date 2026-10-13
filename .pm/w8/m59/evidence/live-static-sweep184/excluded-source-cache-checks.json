@@ -1,0 +1,6 @@
+[
+  {
+    "qualification": "Two first post-clear comparisons stopped because source commit6ead1ae86285af5f3ea3b20ad32b96765da141fc was absent locally. Read-only fetch fixed the cache; no mutation replay or product failure classification.",
+    "source_git_fetch": "git fetch origin 6ead1ae86285af5f3ea3b20ad32b96765da141fc"
+  }
+]

@@ -1,0 +1,306 @@
+lego/backend/internal/apps/service.go
+3020: 	// A static_site needs a publish directory, and its edge rules must be valid.
+3021: 	if svcType == appv1alpha1.TypeStaticSite {
+3022: 		if req.Image != "" {
+3023: 			return fmt.Errorf("%w: a static_site builds from a Git repo; a prebuilt image is not supported", core.ErrBadRequest)
+3024: 		}
+3025: 		if strings.TrimSpace(req.PublishPath) == "" {
+3026: 			return fmt.Errorf("%w: publishPath is required for a static_site", core.ErrBadRequest)
+3027: 		}
+3028: 		if err := validateRoutes(req.Routes); err != nil {
+3029: 			return err
+3030: 		}
+3031: 		return validateHeaders(req.Headers)
+3032: 	}
+3033: 	if strings.TrimSpace(req.PublishPath) != "" || len(req.Routes) > 0 || len(req.Headers) > 0 {
+3034: 		return fmt.Errorf("%w: publishPath/routes/headers only apply to a static_site", core.ErrBadRequest)
+
+lego/backend/internal/apps/service.go
+4960: // validateRoutes rejects a malformed redirect/rewrite list: each rule needs a
+4961: // known type and a rooted source + destination path (Render's contract), and
+4962: // the whole list stays inside the edge-rule budgets above.
+4963: func validateRoutes(routes []StaticRouteView) error {
+4964: 	if len(routes) > maxStaticRoutes {
+4965: 		return fmt.Errorf("%w: routes must not exceed %d items", core.ErrBadRequest, maxStaticRoutes)
+4966: 	}
+4967: 	for i, r := range routes {
+4968: 		t := strings.TrimSpace(r.Type)
+4969: 		if t != "redirect" && t != "rewrite" {
+4970: 			return fmt.Errorf("%w: routes[%d].type must be redirect or rewrite", core.ErrBadRequest, i)
+4971: 		}
+4972: 		if source := strings.TrimSpace(r.Source); !strings.HasPrefix(source, "/") {
+4973: 			return fmt.Errorf("%w: routes[%d].source must be a path starting with /", core.ErrBadRequest, i)
+4974: 		} else if len(source) > maxStaticPathLen {
+4975: 			return fmt.Errorf("%w: routes[%d].source must not exceed %d characters", core.ErrBadRequest, i, maxStaticPathLen)
+4976: 		}
+4977: 		dest := strings.TrimSpace(r.Destination)
+4978: 		if !strings.HasPrefix(dest, "/") {
+4979: 			return fmt.Errorf("%w: routes[%d].destination must be a path starting with /", core.ErrBadRequest, i)
+4980: 		}
+4981: 		if len(dest) > maxStaticPathLen {
+4982: 			return fmt.Errorf("%w: routes[%d].destination must not exceed %d characters", core.ErrBadRequest, i, maxStaticPathLen)
+4983: 		}
+4984: 		// round-5 finding 11: a leading "/" is not enough. "//host" (protocol-
+4985: 		// relative) and "/\host" (browsers normalize backslash to slash) are
+4986: 		// network-path references the static server's http.Redirect turns into an
+4987: 		// off-site open redirect. Require a genuine local path.
+
+lego/backend/internal/apps/service.go
+5023: func validateHeaders(headers []StaticHeaderView) error {
+5024: 	if len(headers) > maxStaticHeaders {
+5025: 		return fmt.Errorf("%w: headers must not exceed %d items", core.ErrBadRequest, maxStaticHeaders)
+5026: 	}
+5027: 	for i, h := range headers {
+5028: 		if !strings.HasPrefix(strings.TrimSpace(h.Path), "/") {
+5029: 			return fmt.Errorf("%w: headers[%d].path must be a path starting with /", core.ErrBadRequest, i)
+5030: 		}
+5031: 		if len(strings.TrimSpace(h.Path)) > maxStaticPathLen {
+5032: 			return fmt.Errorf("%w: headers[%d].path must not exceed %d characters", core.ErrBadRequest, i, maxStaticPathLen)
+5033: 		}
+5034: 		if name := strings.TrimSpace(h.Name); name == "" {
+5035: 			return fmt.Errorf("%w: headers[%d].name is required", core.ErrBadRequest, i)
+5036: 		} else if len(name) > maxStaticHeaderNameLen {
+5037: 			return fmt.Errorf("%w: headers[%d].name must not exceed %d characters", core.ErrBadRequest, i, maxStaticHeaderNameLen)
+5038: 		}
+5039: 		if !httpguts.ValidHeaderFieldName(h.Name) {
+5040: 			return fmt.Errorf("%w: headers[%d].name %q is not a valid HTTP header name", core.ErrBadRequest, i, h.Name)
+5041: 		}
+5042: 		if appv1alpha1.ReservedStaticHeader(h.Name) {
+5043: 			return fmt.Errorf("%w: headers[%d].name %q is set by the server and cannot be overridden (it frames the response body or the connection)", core.ErrBadRequest, i, h.Name)
+5044: 		}
+5045: 		if len(h.Value) > maxStaticHeaderValueLen {
+5046: 			return fmt.Errorf("%w: headers[%d].value must not exceed %d characters", core.ErrBadRequest, i, maxStaticHeaderValueLen)
+5047: 		}
+5048: 		if !httpguts.ValidHeaderFieldValue(h.Value) {
+
+lego/backend/internal/apps/deploy.go
+1313: // validateBlueprintServices runs the ordinary create boundary over every
+1314: // parsed service before deployStack writes groupings or resources. URL
+1315: // ownership needs the configured base domain, so it lives here rather than in
+1316: // the context-free YAML parser and is shared by ValidateBlueprint.
+1317: func (s *Service) validateBlueprintServices(ctx context.Context, st parsedStack, snap *workspaceSnapshot) error {
+1318: 	if len(st.services) == 0 {
+1319: 		return nil
+1320: 	}
+1321: 	// A duplicate name in the workspace is the workspace's problem, not any one
+1322: 	// declared service's.
+1323: 	appsByName, err := snap.services(ctx)
+1324: 	if err != nil {
+1325: 		return err
+1326: 	}
+1327: 	var problems blueprintResourceErrors
+1328: 	for _, svc := range st.services {
+1329: 		err := s.validateBlueprintService(ctx, svc, appsByName)
+1330: 		if err == nil {
+1331: 			continue
+1332: 		}
+1333: 		// A host another site already serves is a manifest problem too (w8/055);
+1334: 		// the aggregate unwraps to its first error, so apply keeps the 409.
+1335: 		if !blueprintManifestProblem(err) {
+1336: 			return err // not a manifest problem; nothing to aggregate
+1337: 		}
+1338: 		problems = append(problems, blueprintResourceError{kind: BlueprintResourceService, name: svc.req.Name, err: err})
+1339: 	}
+1340: 	if len(problems) == 0 {
+1341: 		return nil
+1342: 	}
+1343: 	return problems
+1344: }
+1345:
+1346: func (s *Service) validateBlueprintService(ctx context.Context, svc parsedService, appsByName map[string]*appv1alpha1.App) error {
+1347: 	desired, err := specFromCreate(svc.req)
+1348: 	if err != nil {
+1349: 		return fmt.Errorf("service %q: %w", svc.req.Name, err)
+1350: 	}
+1351: 	if err := s.validateNewSpecMaintenanceMode(ctx, svc.req.Name, desired); err != nil {
+1352: 		return fmt.Errorf("service %q: %w", svc.req.Name, err)
+1353: 	}
+
+lego/backend/internal/apps/blueprint.go
+757: func blueprintResourceValidationErrors(source *BlueprintSource, ir BlueprintIR, refused blueprintResourceErrors) []BlueprintValidationError {
+758: 	out := make([]BlueprintValidationError, 0, len(refused))
+759: 	for _, problem := range refused {
+760: 		msg := blueprintManifestCreateMessage(blueprintValidationMessage(problem.err))
+761: 		var entry BlueprintValidationError
+762: 		if resource, ok := blueprintIRResource(ir, problem.kind, problem.name); ok {
+763: 			pointer := resource.SourcePath + strings.ReplaceAll(blueprintErrorField(msg), ".", "/")
+764: 			if i, ok := blueprintEnvVarIndex(resource, msg); ok {
+765: 				pointer = fmt.Sprintf("%s/envVars/%d", resource.SourcePath, i)
+766: 			} else if i, ok := blueprintDomainIndex(resource, msg); ok {
+767: 				pointer = fmt.Sprintf("%s/domains/%d", resource.SourcePath, i)
+768: 			} else if field, ok := blueprintCodedField(problem.err, resource); ok {
+769: 				pointer = resource.SourcePath + "/" + field
+770: 			}
+771: 			entry = blueprintLocatedError(source, msg, pointer)
+772: 		} else {
+773: 			entry = blueprintValidationError(ir, msg)
+774: 		}
+775: 		entry.Code = blueprintRefusalCode(problem.err)
+776: 		out = append(out, entry)
+777: 	}
+778: 	// Parsing visits resource kinds separately; present refusals in source order.
+779: 	sort.SliceStable(out, func(i, j int) bool {
+780: 		if out[i].Line == nil {
+781: 			return false
+782: 		}
+783: 		if out[j].Line == nil {
+
+lego/backend/internal/apps/blueprint.go
+820: func blueprintEnvVarIndex(resource BlueprintResourceIR, msg string) (int, bool) {
+821: 	match := blueprintEnvKeyRE.FindStringSubmatch(msg)
+822: 	if match == nil {
+823: 		return 0, false
+824: 	}
+825: 	envVars, _ := resource.Fields["envVars"].Value.([]any)
+826: 	for i, raw := range envVars {
+827: 		if env, _ := raw.(map[string]any); env["key"] == match[1] {
+828: 			return i, true
+829: 		}
+830: 	}
+831: 	return 0, false
+832: }
+833:
+834: var blueprintQuotedRE = regexp.MustCompile(`"([^"]+)"`)
+835:
+836: // blueprintDomainIndex resolves a hostname refusal to the domains entry it
+837: // quotes (w8/055) — compared case- and trailing-dot-insensitively, as hosts
+838: // are canonicalized before the check that quotes them.
+839: func blueprintDomainIndex(resource BlueprintResourceIR, msg string) (int, bool) {
+840: 	domains, _ := resource.Fields["domains"].Value.([]any)
+841: 	for _, match := range blueprintQuotedRE.FindAllStringSubmatch(msg, -1) {
+842: 		quoted := strings.TrimSuffix(strings.ToLower(match[1]), ".")
+843: 		for i, raw := range domains {
+844: 			if host, _ := raw.(string); strings.TrimSuffix(strings.ToLower(strings.TrimSpace(host)), ".") == quoted {
+845: 				return i, true
+846: 			}
+847: 		}
+848: 	}
+849: 	return 0, false
+850: }
+851:
+852: func blueprintIRResource(ir BlueprintIR, kind BlueprintResourceKind, name string) (BlueprintResourceIR, bool) {
+853: 	name = strings.TrimSpace(name)
+854: 	for _, resource := range ir.Resources {
+
+lego/backend/internal/apps/blueprint.go
+864: func blueprintLocatedError(source *BlueprintSource, msg, pointer string) BlueprintValidationError {
+865: 	entry := BlueprintValidationError{Error: msg}
+866: 	if path := blueprintDisplayPath(pointer); path != "" {
+867: 		entry.Path = &path
+868: 	}
+869: 	if source == nil {
+870: 		return entry
+871: 	}
+872: 	location := lookupBlueprintLocation(pointer, source.Locations)
+873: 	if location.Line > 0 {
+874: 		line := location.Line
+875: 		entry.Line = &line
+876: 	}
+877: 	if location.Column > 0 {
+878: 		column := location.Column
+879: 		entry.Column = &column
+880: 	}
+881: 	return entry
+
+lego/backend/internal/apps/blueprint.go
+1947: func blueprintErrorField(message string) string {
+1948: 	if strings.Contains(message, "health check path") {
+1949: 		return ".healthCheckPath"
+1950: 	}
+1951: 	// Hostname refusals contain "name"; they belong to domains (w8/055).
+1952: 	for _, marker := range []string{"hostname", "wildcard", "this domain", "custom domains"} {
+1953: 		if strings.Contains(strings.ToLower(message), marker) {
+1954: 			return ".domains"
+1955: 		}
+1956: 	}
+1957: 	for _, field := range []string{"maintenanceMode", "highAvailability", "readReplicas", "diskSizeGB", "storageAutoscalingEnabled", "connectionPool", "plan", "domains", "schedule", "runtime", "type", "image", "databaseName", "name", "ipAllowList", "renderSubdomainPolicy", "scaling", "staticPublishPath", "publishPath"} {
+1958: 		if strings.Contains(strings.ToLower(message), strings.ToLower(field)) {
+1959: 			return "." + field
+1960: 		}
+1961: 	}
+1962: 	if strings.Contains(message, " env ") || strings.Contains(message, "env var") || strings.Contains(message, "envVars[") {
+1963: 		return ".envVars"
+1964: 	}
+1965: 	return ""
+1966: }
+1967:
+
+lego/backend/internal/apps/blueprint_compiler.go
+1534: func lookupBlueprintLocation(path string, locations map[string]BlueprintSourceLocation) BlueprintSourceLocation {
+1535: 	for path != "" {
+1536: 		if location, ok := locations[path]; ok {
+1537: 			return location
+1538: 		}
+1539: 		if path == "#" {
+1540: 			break
+1541: 		}
+1542: 		path = path[:strings.LastIndex(path, "/")]
+1543: 	}
+1544: 	return BlueprintSourceLocation{}
+1545: }
+1546:
+
+Pinned Render cmd/blueprintvalidate.go
+125: 	if err != nil {
+126: 		return fmt.Errorf("failed to validate Blueprint: %w", err)
+127: 	}
+128: 
+129: 	if resp.StatusCode() != 200 {
+130: 		return fmt.Errorf("validation request failed with status %d: %s", resp.StatusCode(), string(resp.Body))
+131: 	}
+132: 
+133: 	result := resp.JSON200
+134: 	if result == nil {
+135: 		return fmt.Errorf("unexpected response from server: %s", string(resp.Body))
+136: 	}
+137: 
+138: 	if output.Interactive() {
+139: 		return printValidationResultInteractive(absPath, result)
+140: 	}
+141: 
+142: 	// The API returns 200 for both validation outcomes. Preserve its validation
+143: 	// details on stdout before returning an error for an invalid Blueprint.
+144: 	_, err = command.PrintData(cmd, result, func(r *bptypes.ValidateBlueprintResponse) string {
+145: 		jsonBytes, err := json.MarshalIndent(r, "", "  ")
+146: 		if err != nil {
+147: 			return fmt.Sprintf("{\"error\": \"failed to format result: %v\"}\n", err)
+148: 		}
+149: 		return string(jsonBytes) + "\n"
+150: 	})
+151: 	if err != nil {
+152: 		return err
+153: 	}
+154: 	if result.Valid {
+155: 		return nil
+156: 	}
+157: 
+158: 	// The validation response already describes the failure. Return a non-zero
+159: 	// exit without duplicating it through Cobra's stderr output.
+160: 	cmd.Root().SilenceErrors = true
+161: 	return command.NewExitError(1, nil)
+162: }
+163: 
+164: func formatValidationError(e bptypes.ValidationError) string {
+165: 	var location string
+166: 	if e.Line != nil && *e.Line > 0 {
+167: 		location = fmt.Sprintf("line %d", *e.Line)
+168: 		if e.Column != nil && *e.Column > 0 {
+169: 			location += fmt.Sprintf(", column %d", *e.Column)
+170: 		}
+171: 	}
+172: 
+173: 	path := ""
+174: 	if e.Path != nil {
+175: 		path = *e.Path
+176: 	}
+177: 
+178: 	switch {
+179: 	case location != "" && path != "":
+180: 		return fmt.Sprintf("  %s (%s): %s", path, location, e.Error)
+181: 	case path != "":
+182: 		return fmt.Sprintf("  %s: %s", path, e.Error)
+183: 	case location != "":
+184: 		return fmt.Sprintf("  %s: %s", location, e.Error)
+185: 	default:
+186: 		return fmt.Sprintf("  %s", e.Error)
+187: 	}

@@ -1,0 +1,220 @@
+[
+  {
+    "at": "2026-10-13T00:56:33.578090+00:00",
+    "client": "bex",
+    "case": "linked-literal",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "<QA_TMP>/sweep182-linked-literal.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 1.08,
+      "stdout": "",
+      "stderr": "Error: validation request failed with status 502: <!DOCTYPE HTML>\n<html lang=\"en\">\n    <head>\n        <meta charset=\"utf-8\">\n        <style type=\"text/css\">\n            :root {\n                color-scheme: light dark;\n            }\n        </style>\n        <title>Error response</title>\n    </head>\n    <body>\n        <h1>Error response</h1>\n        <p>Error code: 502</p>\n        <p>Message: Bad Gateway.</p>\n        <p>Error code explanation: 502 - Invalid responses from another server/proxy.</p>\n    </body>\n</html>\n\n"
+    },
+    "captures": [
+      {
+        "transport_error": "UnicodeDecodeError"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "excluded": "QA recorder reused response bytes as request body, raising UnicodeDecodeError after a compressed response; no classification from this capture. Original 16 normal-native receipts remain valid."
+  },
+  {
+    "at": "2026-10-13T00:57:23.607377+00:00",
+    "client": "bex",
+    "case": "linked-literal",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "<QA_TMP>/sweep182-linked-literal.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.893,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa182-f8e73e-copy\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa182-f8e73e-source\\\", which has no such plainly-defined variable\",\n      \"line\": 25,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T00:57:24.557263+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=cdb32ca25bc1b05f9e228682e433b8aec11792553b4f831bc8e0dcb8e222",
+          "body": "--cdb32ca25bc1b05f9e228682e433b8aec11792553b4f831bc8e0dcb8e222\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--cdb32ca25bc1b05f9e228682e433b8aec11792553b4f831bc8e0dcb8e222\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep182-linked-literal.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa182-f8e73e-source\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa182-f8e73e-group\"\n        }\n      ]\n    },\n    {\n      \"name\": \"qa182-f8e73e-copy\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"key\": \"COPIED\",\n          \"fromService\": {\n            \"type\": \"web\",\n            \"name\": \"qa182-f8e73e-source\",\n            \"envVarKey\": \"VALUE\"\n          }\n        }\n      ]\n    }\n  ],\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa182-f8e73e-group\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"source-182\"\n        }\n      ]\n    }\n  ]\n}\n\r\n--cdb32ca25bc1b05f9e228682e433b8aec11792553b4f831bc8e0dcb8e222--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"services\": [\n    {\n      \"name\": \"qa182-f8e73e-source\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa182-f8e73e-group\"\n        }\n      ]\n    },\n    {\n      \"name\": \"qa182-f8e73e-copy\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"key\": \"COPIED\",\n          \"fromService\": {\n            \"type\": \"web\",\n            \"name\": \"qa182-f8e73e-source\",\n            \"envVarKey\": \"VALUE\"\n          }\n        }\n      ]\n    }\n  ],\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa182-f8e73e-group\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"source-182\"\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49a63d779b157a5-LHR"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa182-f8e73e-copy\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa182-f8e73e-source\\\", which has no such plainly-defined variable\",\"line\":25,\"column\":18,\"path\":\"services[1].envVars\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "decoded_body_equal_on_validity_and_errors": true
+  },
+  {
+    "at": "2026-10-13T00:57:25.264376+00:00",
+    "client": "render",
+    "case": "linked-literal",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "<QA_TMP>/sweep182-linked-literal.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.877,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa182-f8e73e-copy\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa182-f8e73e-source\\\", which has no such plainly-defined variable\",\n      \"line\": 25,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T00:57:26.198334+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=8d3c7130c673e593d575f71a87c821169232d684a4162ae0fa796b07ceaf",
+          "body": "--8d3c7130c673e593d575f71a87c821169232d684a4162ae0fa796b07ceaf\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--8d3c7130c673e593d575f71a87c821169232d684a4162ae0fa796b07ceaf\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep182-linked-literal.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa182-f8e73e-source\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa182-f8e73e-group\"\n        }\n      ]\n    },\n    {\n      \"name\": \"qa182-f8e73e-copy\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"key\": \"COPIED\",\n          \"fromService\": {\n            \"type\": \"web\",\n            \"name\": \"qa182-f8e73e-source\",\n            \"envVarKey\": \"VALUE\"\n          }\n        }\n      ]\n    }\n  ],\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa182-f8e73e-group\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"source-182\"\n        }\n      ]\n    }\n  ]\n}\n\r\n--8d3c7130c673e593d575f71a87c821169232d684a4162ae0fa796b07ceaf--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"services\": [\n    {\n      \"name\": \"qa182-f8e73e-source\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa182-f8e73e-group\"\n        }\n      ]\n    },\n    {\n      \"name\": \"qa182-f8e73e-copy\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"key\": \"COPIED\",\n          \"fromService\": {\n            \"type\": \"web\",\n            \"name\": \"qa182-f8e73e-source\",\n            \"envVarKey\": \"VALUE\"\n          }\n        }\n      ]\n    }\n  ],\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa182-f8e73e-group\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"source-182\"\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49a63df99bc14c5-ATL"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa182-f8e73e-copy\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa182-f8e73e-source\\\", which has no such plainly-defined variable\",\"line\":25,\"column\":18,\"path\":\"services[1].envVars\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "decoded_body_equal_on_validity_and_errors": true
+  },
+  {
+    "at": "2026-10-13T00:57:26.731955+00:00",
+    "client": "bex",
+    "case": "local-override",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "<QA_TMP>/sweep182-local-override.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 1.585,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa182-f8e73e-group\"\n    ],\n    \"services\": [\n      \"qa182-f8e73e-source\",\n      \"qa182-f8e73e-copy\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T00:57:28.372483+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=e101319f21aba2c436da2c95ea9b346559382155f449a135362682fee26f",
+          "body": "--e101319f21aba2c436da2c95ea9b346559382155f449a135362682fee26f\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--e101319f21aba2c436da2c95ea9b346559382155f449a135362682fee26f\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep182-local-override.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa182-f8e73e-source\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa182-f8e73e-group\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"local-override\"\n        }\n      ]\n    },\n    {\n      \"name\": \"qa182-f8e73e-copy\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"key\": \"COPIED\",\n          \"fromService\": {\n            \"type\": \"web\",\n            \"name\": \"qa182-f8e73e-source\",\n            \"envVarKey\": \"VALUE\"\n          }\n        }\n      ]\n    }\n  ],\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa182-f8e73e-group\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"source-182\"\n        }\n      ]\n    }\n  ]\n}\n\r\n--e101319f21aba2c436da2c95ea9b346559382155f449a135362682fee26f--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"services\": [\n    {\n      \"name\": \"qa182-f8e73e-source\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa182-f8e73e-group\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"local-override\"\n        }\n      ]\n    },\n    {\n      \"name\": \"qa182-f8e73e-copy\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"key\": \"COPIED\",\n          \"fromService\": {\n            \"type\": \"web\",\n            \"name\": \"qa182-f8e73e-source\",\n            \"envVarKey\": \"VALUE\"\n          }\n        }\n      ]\n    }\n  ],\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa182-f8e73e-group\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"source-182\"\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49a63e86e9474c4-MIA"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa182-f8e73e-source\",\"qa182-f8e73e-copy\"],\"envGroups\":[\"qa182-f8e73e-group\"],\"totalActions\":3,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa182-f8e73e-group\",\"sourcePath\":\"#/envVarGroups/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa182-f8e73e-copy\",\"sourcePath\":\"#/services/1\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa182-f8e73e-source\",\"sourcePath\":\"#/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "decoded_body_equal_on_validity_and_errors": true
+  },
+  {
+    "at": "2026-10-13T00:57:29.076241+00:00",
+    "client": "render",
+    "case": "local-override",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "<QA_TMP>/sweep182-local-override.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 3.765,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa182-f8e73e-group\"\n    ],\n    \"services\": [\n      \"qa182-f8e73e-source\",\n      \"qa182-f8e73e-copy\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T00:57:32.893498+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=46cb65b67ce0f360468920782b3342822f0378a867cc85e67ed126ca6c3b",
+          "body": "--46cb65b67ce0f360468920782b3342822f0378a867cc85e67ed126ca6c3b\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--46cb65b67ce0f360468920782b3342822f0378a867cc85e67ed126ca6c3b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep182-local-override.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa182-f8e73e-source\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa182-f8e73e-group\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"local-override\"\n        }\n      ]\n    },\n    {\n      \"name\": \"qa182-f8e73e-copy\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"key\": \"COPIED\",\n          \"fromService\": {\n            \"type\": \"web\",\n            \"name\": \"qa182-f8e73e-source\",\n            \"envVarKey\": \"VALUE\"\n          }\n        }\n      ]\n    }\n  ],\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa182-f8e73e-group\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"source-182\"\n        }\n      ]\n    }\n  ]\n}\n\r\n--46cb65b67ce0f360468920782b3342822f0378a867cc85e67ed126ca6c3b--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"services\": [\n    {\n      \"name\": \"qa182-f8e73e-source\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa182-f8e73e-group\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"local-override\"\n        }\n      ]\n    },\n    {\n      \"name\": \"qa182-f8e73e-copy\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"key\": \"COPIED\",\n          \"fromService\": {\n            \"type\": \"web\",\n            \"name\": \"qa182-f8e73e-source\",\n            \"envVarKey\": \"VALUE\"\n          }\n        }\n      ]\n    }\n  ],\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa182-f8e73e-group\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"source-182\"\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49a63ff385f4e3e-ATL"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa182-f8e73e-source\",\"qa182-f8e73e-copy\"],\"envGroups\":[\"qa182-f8e73e-group\"],\"totalActions\":3,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa182-f8e73e-group\",\"sourcePath\":\"#/envVarGroups/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa182-f8e73e-copy\",\"sourcePath\":\"#/services/1\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa182-f8e73e-source\",\"sourcePath\":\"#/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "decoded_body_equal_on_validity_and_errors": true
+  }
+]

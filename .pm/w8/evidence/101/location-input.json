@@ -1,0 +1,52 @@
+{
+  "cases": [
+    {
+      "label": "root-second-route-source",
+      "manifest": "{\n  \"services\": [\n    {\n      \"name\": \"qa202-b7aca1-static\",\n      \"type\": \"web\",\n      \"runtime\": \"static\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"branch\": \"main\",\n      \"rootDir\": \"examples/static-site\",\n      \"buildCommand\": \"\",\n      \"staticPublishPath\": \".\",\n      \"routes\": [\n        {\n          \"type\": \"rewrite\",\n          \"source\": \"/app/*\",\n          \"destination\": \"/index.html\"\n        },\n        {\n          \"type\": \"rewrite\",\n          \"source\": \"missing-slash\",\n          \"destination\": \"/index.html\"\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedPointer": "#/services/0/routes/1/source",
+      "actualPath": "services[0]"
+    },
+    {
+      "label": "root-second-route-destination",
+      "manifest": "{\n  \"services\": [\n    {\n      \"name\": \"qa202-b7aca1-static\",\n      \"type\": \"web\",\n      \"runtime\": \"static\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"branch\": \"main\",\n      \"rootDir\": \"examples/static-site\",\n      \"buildCommand\": \"\",\n      \"staticPublishPath\": \".\",\n      \"routes\": [\n        {\n          \"type\": \"rewrite\",\n          \"source\": \"/app/*\",\n          \"destination\": \"/index.html\"\n        },\n        {\n          \"type\": \"rewrite\",\n          \"source\": \"/app/*\",\n          \"destination\": \"missing-slash\"\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedPointer": "#/services/0/routes/1/destination",
+      "actualPath": "services[0]"
+    },
+    {
+      "label": "root-second-header-path",
+      "manifest": "{\n  \"services\": [\n    {\n      \"name\": \"qa202-b7aca1-static\",\n      \"type\": \"web\",\n      \"runtime\": \"static\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"branch\": \"main\",\n      \"rootDir\": \"examples/static-site\",\n      \"buildCommand\": \"\",\n      \"staticPublishPath\": \".\",\n      \"headers\": [\n        {\n          \"path\": \"/*\",\n          \"name\": \"X-QA-Marker\",\n          \"value\": \"ordinary marker\"\n        },\n        {\n          \"path\": \"missing-slash\",\n          \"name\": \"X-QA-Marker\",\n          \"value\": \"ordinary marker\"\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedPointer": "#/services/0/headers/1/path",
+      "actualPath": "services[0]"
+    },
+    {
+      "label": "root-second-header-name",
+      "manifest": "{\n  \"services\": [\n    {\n      \"name\": \"qa202-b7aca1-static\",\n      \"type\": \"web\",\n      \"runtime\": \"static\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"branch\": \"main\",\n      \"rootDir\": \"examples/static-site\",\n      \"buildCommand\": \"\",\n      \"staticPublishPath\": \".\",\n      \"headers\": [\n        {\n          \"path\": \"/*\",\n          \"name\": \"X-QA-Marker\",\n          \"value\": \"ordinary marker\"\n        },\n        {\n          \"path\": \"/*\",\n          \"name\": \"\",\n          \"value\": \"ordinary marker\"\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedPointer": "#/services/0/headers/1/name",
+      "actualPath": "services[0].name"
+    },
+    {
+      "label": "project-second-route-source",
+      "manifest": "{\n  \"projects\": [\n    {\n      \"name\": \"qa202-b7aca1-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"services\": [\n            {\n              \"name\": \"qa202-b7aca1-static\",\n              \"type\": \"web\",\n              \"runtime\": \"static\",\n              \"repo\": \"https://github.com/bex-co/bex\",\n              \"branch\": \"main\",\n              \"rootDir\": \"examples/static-site\",\n              \"buildCommand\": \"\",\n              \"staticPublishPath\": \".\",\n              \"routes\": [\n                {\n                  \"type\": \"rewrite\",\n                  \"source\": \"/app/*\",\n                  \"destination\": \"/index.html\"\n                },\n                {\n                  \"type\": \"rewrite\",\n                  \"source\": \"missing-slash\",\n                  \"destination\": \"/index.html\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedPointer": "#/projects/0/environments/0/services/0/routes/1/source",
+      "actualPath": "projects[0].environments[0].services[0]"
+    },
+    {
+      "label": "project-second-route-destination",
+      "manifest": "{\n  \"projects\": [\n    {\n      \"name\": \"qa202-b7aca1-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"services\": [\n            {\n              \"name\": \"qa202-b7aca1-static\",\n              \"type\": \"web\",\n              \"runtime\": \"static\",\n              \"repo\": \"https://github.com/bex-co/bex\",\n              \"branch\": \"main\",\n              \"rootDir\": \"examples/static-site\",\n              \"buildCommand\": \"\",\n              \"staticPublishPath\": \".\",\n              \"routes\": [\n                {\n                  \"type\": \"rewrite\",\n                  \"source\": \"/app/*\",\n                  \"destination\": \"/index.html\"\n                },\n                {\n                  \"type\": \"rewrite\",\n                  \"source\": \"/app/*\",\n                  \"destination\": \"missing-slash\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedPointer": "#/projects/0/environments/0/services/0/routes/1/destination",
+      "actualPath": "projects[0].environments[0].services[0]"
+    },
+    {
+      "label": "project-second-header-path",
+      "manifest": "{\n  \"projects\": [\n    {\n      \"name\": \"qa202-b7aca1-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"services\": [\n            {\n              \"name\": \"qa202-b7aca1-static\",\n              \"type\": \"web\",\n              \"runtime\": \"static\",\n              \"repo\": \"https://github.com/bex-co/bex\",\n              \"branch\": \"main\",\n              \"rootDir\": \"examples/static-site\",\n              \"buildCommand\": \"\",\n              \"staticPublishPath\": \".\",\n              \"headers\": [\n                {\n                  \"path\": \"/*\",\n                  \"name\": \"X-QA-Marker\",\n                  \"value\": \"ordinary marker\"\n                },\n                {\n                  \"path\": \"missing-slash\",\n                  \"name\": \"X-QA-Marker\",\n                  \"value\": \"ordinary marker\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedPointer": "#/projects/0/environments/0/services/0/headers/1/path",
+      "actualPath": "projects[0].environments[0].services[0]"
+    },
+    {
+      "label": "project-second-header-name",
+      "manifest": "{\n  \"projects\": [\n    {\n      \"name\": \"qa202-b7aca1-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"services\": [\n            {\n              \"name\": \"qa202-b7aca1-static\",\n              \"type\": \"web\",\n              \"runtime\": \"static\",\n              \"repo\": \"https://github.com/bex-co/bex\",\n              \"branch\": \"main\",\n              \"rootDir\": \"examples/static-site\",\n              \"buildCommand\": \"\",\n              \"staticPublishPath\": \".\",\n              \"headers\": [\n                {\n                  \"path\": \"/*\",\n                  \"name\": \"X-QA-Marker\",\n                  \"value\": \"ordinary marker\"\n                },\n                {\n                  \"path\": \"/*\",\n                  \"name\": \"\",\n                  \"value\": \"ordinary marker\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedPointer": "#/projects/0/environments/0/services/0/headers/1/name",
+      "actualPath": "projects[0].environments[0].services[0].name"
+    }
+  ]
+}

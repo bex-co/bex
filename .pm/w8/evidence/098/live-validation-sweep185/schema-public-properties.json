@@ -1,0 +1,26 @@
+{
+  "fromService": {
+    "type": "string",
+    "enum": [
+      "host",
+      "port",
+      "hostport",
+      "slug",
+      "connectionString"
+    ],
+    "description": "The property of the service to reference."
+  },
+  "fromDatabase": {
+    "type": "string",
+    "enum": [
+      "connectionString",
+      "connectionPoolString",
+      "host",
+      "port",
+      "user",
+      "password",
+      "database"
+    ],
+    "description": "The property of the database to reference."
+  }
+}

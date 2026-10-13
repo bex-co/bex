@@ -1,0 +1,36 @@
+{
+  "at": "2026-10-13T06:03:08.585589+00:00",
+  "source_head": "c5a0eb9dd15f6b417bf586fdf26510706497b032",
+  "deployed_head": "unknown",
+  "native_matrix": 32,
+  "correct_validity_decisions": 32,
+  "wrong_diagnostics": 16,
+  "controls": 16,
+  "native_captures": 4,
+  "current_source_actual_validation_diagnostics": 8,
+  "existing_neighbor_tests": 4,
+  "resources_created": 0,
+  "configs_servers_threads_removed": true,
+  "quota": {
+    "at": "2026-10-13T06:03:08.564533+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.29,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49c23b0f8eb3708-SJC"
+    },
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+  },
+  "implementation_changed": false,
+  "ship_performed": false,
+  "excluded_attempt": "Virtual QA input initially omitted # source-pointer prefix; corrected and rerun. No product failure attributed."
+}

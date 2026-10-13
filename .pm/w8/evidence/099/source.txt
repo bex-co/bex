@@ -1,0 +1,284 @@
+Source HEAD 6b5c23b6c5faef6bee076bc0a36582e9441008ca
+
+lego/backend/internal/apps/deploy.go
+1837: 	// Env groups first (validated + name-deduped); a service's fromGroup links one.
+1838: 	groupNames := make(map[string]bool, len(envGroups))
+1839: 	for _, egDecl := range envGroups {
+1840: 		pg, err := parseEnvGroup(egDecl.value)
+1841: 		if err != nil {
+1842: 			problems = append(problems, blueprintResourceError{kind: BlueprintResourceEnvVarGroup, name: egDecl.value.Name, err: err})
+1843: 			continue
+1844: 		}
+1845: 		if err := registerUniqueName(pg.name, groupNames); err != nil {
+1846: 			return parsedStack{}, fmt.Errorf("%w: duplicate env group name %q", core.ErrBadRequest, pg.name)
+1847: 		}
+1848: 		pg.grouping = egDecl.grouping
+1849: 		st.envGroups = append(st.envGroups, pg)
+1850: 	}
+1851:
+1852: 	// Databases next into the stack (and into the name index services reference).
+1853: 	idx := newStackIndex(len(services), len(databases))
+1854: 	for _, d := range databases {
+1855: 		ds, err := parseDatabase(d.value)
+1856: 		if err != nil {
+1857: 			problems = append(problems, blueprintResourceError{kind: BlueprintResourcePostgres, name: d.value.Name, err: err})
+
+lego/backend/internal/apps/deploy.go
+1907: 		pendings = append(pendings, pending{
+1908: 			svc:     parsedService{req: req, fields: blueprintServiceFields(fieldsByResource[BlueprintResourceService][req.Name]), groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, promptKeys: se.promptKeys, registryCredentialName: credName, grouping: a.grouping, ungrouped: a.ungrouped},
+1909: 			refVars: se.refVars,
+1910: 		})
+1911: 		idx.serviceKnownEnv[req.Name] = se.known
+1912: 		if req.Type == appv1alpha1.TypeWebService || req.Type == appv1alpha1.TypePrivateService {
+1913: 			port := req.Port
+1914: 			if port <= 0 {
+1915: 				port = appv1alpha1.DefaultPort
+1916: 			}
+1917: 			idx.servicePorts[req.Name] = port
+1918: 		}
+1919: 	}
+1920:
+1921: 	if len(problems) > 0 {
+1922: 		// Pass 2 resolves references across declarations, so with one already
+1923: 		// refused it could only add cascades ("unknown service"). Return the
+1924: 		// services that did parse, unresolved, so validation can still run
+1925: 		// their own per-service checks; apply stops on the error.
+1926: 		for _, p := range pendings {
+1927: 			st.services = append(st.services, p.svc)
+1928: 		}
+1929: 		return st, problems
+1930: 	}
+1931:
+1932: 	// Pass 2: classify each pending service's deferred references now that
+1933: 	// every name, port, and known-env is available.
+1934: 	for _, p := range pendings {
+1935: 		svc, err := idx.classifyRefs(p.svc, p.refVars)
+1936: 		if err != nil {
+1937: 			// Attributed to its service so validation can locate the env entry.
+1938: 			return parsedStack{}, blueprintResourceErrors{{kind: BlueprintResourceService, name: p.svc.req.Name, err: err}}
+1939: 		}
+
+lego/backend/internal/apps/deploy.go
+2009: 	// the declared one, or the 3000 default when omitted.
+2010: 	servicePorts map[string]int32
+2011: 	// serviceKnownEnv: name -> the statically-known env of that service (plain
+2012: 	// literals + sync:false seed values), the resolvable target set for a
+2013: 	// fromService.envVarKey copy (a from*/generateValue var has no parse-time value).
+2014: 	serviceKnownEnv map[string]map[string]string
+2015: }
+2016:
+
+lego/backend/internal/apps/deploy.go
+2130:
+2131: // parseEnvGroup validates one envVarGroups[] entry and classifies its vars into
+2132: // literals + generateValue keys. Per Render, a group var may be only a literal or
+2133: // a generateValue — a group cannot reference services/groups (fromService/
+2134: // fromDatabase/fromGroup) and cannot carry sync:false; each is rejected with a
+2135: // clear per-entry error rather than silently dropped.
+2136: func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
+2137: 	name := strings.TrimSpace(g.Name)
+2138: 	if name == "" {
+2139: 		return parsedEnvGroup{}, fmt.Errorf("%w: an envVarGroups entry is missing its name", core.ErrBadRequest)
+2140: 	}
+2141: 	pg := parsedEnvGroup{name: name, literals: map[string]string{}}
+2142: 	for _, e := range g.EnvVars {
+2143: 		if e.Key == "" {
+2144: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q has an env var without a key", core.ErrBadRequest, name)
+2145: 		}
+2146: 		if !core.ValidEnvKey(e.Key) {
+2147: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: invalid environment variable name (%s)",
+2148: 				core.ErrBadRequest, name, e.Key, core.EnvKeyRule)
+2149: 		}
+2150: 		if core.IsReservedEnvKey(e.Key) {
+2151: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: %s",
+2152: 				core.ErrBadRequest, name, e.Key, core.ReservedEnvKeySentence(e.Key))
+2153: 		}
+2154: 		switch {
+2155: 		case e.FromGroup != "", e.FromDatabase != nil, e.FromService != nil:
+2156: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q var %q: a group cannot reference services or other groups", core.ErrBadRequest, name, e.Key)
+2157: 		case e.Sync != nil && !*e.Sync:
+2158: 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q var %q: sync:false is not allowed inside an env group", core.ErrBadRequest, name, e.Key)
+2159: 		case e.GenerateValue:
+2160: 			if e.Value != "" {
+2161: 				return parsedEnvGroup{}, fmt.Errorf("%w: env group %q var %q sets both value and generateValue", core.ErrBadRequest, name, e.Key)
+2162: 			}
+2163: 			pg.generates = append(pg.generates, e.Key)
+2164: 		default:
+2165: 			pg.literals[e.Key] = e.Value
+2166: 		}
+2167: 	}
+2168: 	return pg, nil
+2169: }
+
+lego/backend/internal/apps/deploy.go
+2370: // (all-or-nothing: a bad form rejects the whole apply). A keyless {fromGroup}
+2371: // links a whole group. Plain literals (sync unset/true) ride spec.Env and
+2372: // re-sync each apply. sync:false + generateValue seed the mutable env store
+2373: // once — never spec.Env — so a dashboard edit wins and a later sync neither
+2374: // overwrites nor re-mints. fromDatabase/fromService are resolved in pass 2 once
+2375: // every name is known.
+2376: func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv1alpha1.EnvVar, serviceEnv, error) {
+2377: 	se := serviceEnv{seedLiterals: map[string]string{}, known: map[string]string{}}
+2378: 	literal := make([]appv1alpha1.EnvVar, 0, len(a.EnvVars))
+2379: 	for _, e := range a.EnvVars {
+2380: 		if e.FromGroup != "" {
+2381: 			if err := validateGroupLink(e); err != nil {
+2382: 				return nil, serviceEnv{}, fmt.Errorf("%w: %s: %v", core.ErrBadRequest, a.Name, err)
+2383: 			}
+2384: 			se.groupLinks = append(se.groupLinks, e.FromGroup)
+2385: 			continue
+2386: 		}
+2387: 		if err := validateKeyedEnv(e); err != nil {
+2388: 			return nil, serviceEnv{}, fmt.Errorf("%w: %s env %q: %v", core.ErrBadRequest, a.Name, e.Key, err)
+2389: 		}
+2390: 		// A reserved key is refused here, before any seed or CR write. The
+2391: 		// message carries the location the way every neighbouring Blueprint
+2392: 		// parse error does — the validation surface renders the error string,
+2393: 		// not a code (w2/m95 t003).
+2394: 		if !core.ValidEnvKey(e.Key) {
+2395: 			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: invalid environment variable name (%s)",
+2396: 				core.ErrBadRequest, a.Name, e.Key, core.EnvKeyRule)
+2397: 		}
+2398: 		if core.IsReservedEnvKey(e.Key) {
+2399: 			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: %s",
+2400: 				core.ErrBadRequest, a.Name, e.Key, core.ReservedEnvKeySentence(e.Key))
+2401: 		}
+2402: 		switch {
+2403: 		case e.FromDatabase != nil, e.FromService != nil:
+2404: 			se.refVars = append(se.refVars, e)
+2405: 		case e.GenerateValue:
+2406: 			se.seedGenerates = append(se.seedGenerates, e.Key)
+2407: 		case e.Sync != nil && !*e.Sync:
+2408: 			// A literal seeds immediately; an omitted value is a create-time prompt
+2409: 			// that DeployRequest.EnvVarValues may seed exactly once.
+2410: 			if e.Value != "" {
+2411: 				se.seedLiterals[e.Key] = e.Value
+2412: 				se.known[e.Key] = e.Value
+2413: 			} else {
+2414: 				se.promptKeys = append(se.promptKeys, e.Key)
+2415: 				if value, ok := overrides.envVarValues[e.Key]; ok {
+2416: 					se.seedLiterals[e.Key] = value
+2417: 					se.known[e.Key] = value
+2418: 				}
+2419: 			}
+2420: 		default:
+2421: 			literal = append(literal, appv1alpha1.EnvVar{Name: e.Key, Value: e.Value})
+2422: 			se.known[e.Key] = e.Value
+2423: 		}
+2424: 	}
+2425: 	if len(literal) == 0 {
+2426: 		literal = nil
+2427: 	}
+2428: 	if len(se.seedLiterals) == 0 {
+2429: 		se.seedLiterals = nil
+2430: 	}
+
+lego/backend/internal/apps/deploy.go
+2715: func resolveRef(e bexEnvVar, ports map[string]int32, knownEnv map[string]map[string]string) (appv1alpha1.EnvVar, error) {
+2716: 	switch {
+2717: 	case e.FromService != nil:
+2718: 		ref := e.FromService
+2719: 		// envVarKey copies a sibling service's declared var by value (Render's
+2720: 		// copy-by-value; re-copied on each sync, not live). Same-file resolution:
+2721: 		// the target must be a service (not a database) with a parse-time-known
+2722: 		// value (a plain literal or sync:false var — not itself a reference/generate).
+2723: 		if ref.EnvVarKey != "" {
+2724: 			env, ok := knownEnv[ref.Name]
+2725: 			if !ok {
+2726: 				return appv1alpha1.EnvVar{}, fmt.Errorf("fromService.envVarKey references %q, which is not a service", ref.Name)
+2727: 			}
+2728: 			val, ok := env[ref.EnvVarKey]
+2729: 			if !ok {
+2730: 				return appv1alpha1.EnvVar{}, fmt.Errorf("fromService.envVarKey references env %q on service %q, which has no such plainly-defined variable", ref.EnvVarKey, ref.Name)
+2731: 			}
+2732: 			return appv1alpha1.EnvVar{Name: e.Key, Value: val}, nil
+2733: 		}
+2734: 		// host/hostport are classified into parsedService.hostRefs at parse and
+2735: 		// resolved at apply (the hostname is the sibling's slug, minted at create
+2736: 		// — docs/ADR041-service-addresses.md D3); only port resolves here.
+2737: 		if ref.Property == "port" {
+
+lego/backend/internal/apps/deploy.go
+930: 			return nil, err
+931: 		}
+932: 		laterRefs, err := resolveServiceRefs(&svc, databaseIDs, kvCRNames, lookupSlug)
+933: 		if err != nil {
+934: 			return nil, err
+935: 		}
+936: 		if assignment := assignments[svc.grouping]; assignment.ID != "" {
+937: 			svc.req.EnvironmentID = assignment.ID
+938: 			svc.req.EnvironmentSpecified = true
+939: 		} else if svc.ungrouped {
+940: 			svc.req.EnvironmentSpecified = true
+941: 		}
+942: 		svc.req.initialEnvGroups = svc.groupLinks
+943: 		created := appsByName[svc.req.Name] == nil
+944: 		v, app, err := s.applyStackService(ctx, svc.req, svc.fields, appsByName)
+945: 		if err != nil {
+946: 			return nil, err
+947: 		}
+948: 		verbCtx, ref := stackServiceTarget(ctx, app)
+949: 		serviceSlugs[svc.req.Name] = v.Slug
+950: 		if len(laterRefs) > 0 {
+951: 			deferred = append(deferred, deferredService{req: svc.req, fields: svc.fields, refs: laterRefs, app: app})
+952: 		}
+953: 		// A service the apply created linked its fromGroup groups as it was
+954: 		// written (initialEnvGroups); one that existed links them here, which is
+955: 		// idempotent (w5/143).
+956: 		if !created {
+957: 			for _, g := range svc.groupLinks {
+958: 				if err := requireDeployAuthority(ctx, s); err != nil {
+959: 					return nil, err
+960: 				}
+961: 				if err := s.EnvGroups.LinkEnvGroup(verbCtx, g, ref); err != nil {
+962: 					return nil, fmt.Errorf("linking env group %q to %q: %w", g, svc.req.Name, err)
+
+lego/operator/internal/controller/app_controller.go
+4772: func envFromSources(app *appv1alpha1.App) []corev1.EnvFromSource {
+4773: 	var out []corev1.EnvFromSource
+4774: 	optional := true
+4775: 	// snapshotOrSource substitutes this release's immutable copy when one is active
+4776: 	// (w1/m152). The ORDER is untouched: groups first, the service's own last, so
+4777: 	// the documented precedence stays a property of list position and the existing
+4778: 	// precedence tests keep covering it.
+4779: 	for _, name := range app.Spec.EnvFromSecrets {
+4780: 		if name == "" {
+4781: 			continue
+4782: 		}
+4783: 		out = append(out, corev1.EnvFromSource{
+4784: 			SecretRef: &corev1.SecretEnvSource{
+4785: 				LocalObjectReference: corev1.LocalObjectReference{Name: snapshotOrSource(app, name)},
+4786: 				Optional:             &optional,
+4787: 			},
+4788: 		})
+4789: 	}
+4790: 	if name := runtimeEnvSecret(app); name != "" {
+4791: 		out = append(out, corev1.EnvFromSource{
+4792: 			SecretRef: &corev1.SecretEnvSource{
+4793: 				LocalObjectReference: corev1.LocalObjectReference{Name: snapshotOrSource(app, name)},
+4794: 			},
+4795: 		})
+4796: 	}
+4797: 	return out
+4798: }
+4799:
+
+rg -n parseCompiledStack\(|classifyRefs\(|classifyServiceEnv\(|resolveRef\( lego/backend/internal/apps --glob !**/*_test.go
+lego/backend/internal/apps/deploy.go:1687:	st, err := parseCompiledStack(blueprintParseOverrides{repo: req.Repo, branch: req.Branch, envVarValues: req.EnvVarValues}, source, ir)
+lego/backend/internal/apps/deploy.go:1814:func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSource, ir BlueprintIR) (parsedStack, error) {
+lego/backend/internal/apps/deploy.go:1935:		svc, err := idx.classifyRefs(p.svc, p.refVars)
+lego/backend/internal/apps/deploy.go:2031:func (idx *stackIndex) classifyRefs(svc parsedService, refVars []bexEnvVar) (parsedService, error) {
+lego/backend/internal/apps/deploy.go:2071:		ev, err := resolveRef(r, idx.servicePorts, idx.serviceKnownEnv)
+lego/backend/internal/apps/deploy.go:2232:	literal, se, err := classifyServiceEnv(overrides, a)
+lego/backend/internal/apps/deploy.go:2376:func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv1alpha1.EnvVar, serviceEnv, error) {
+lego/backend/internal/apps/deploy.go:2715:func resolveRef(e bexEnvVar, ports map[string]int32, knownEnv map[string]map[string]string) (appv1alpha1.EnvVar, error) {
+lego/backend/internal/apps/blueprint_generate.go:240:	if _, err := parseCompiledStack(blueprintParseOverrides{}, source, ir); err != nil {
+lego/backend/internal/apps/blueprint.go:661:	st, err := parseCompiledStack(blueprintParseOverrides{repo: repo, branch: branch}, source, ir)
+lego/backend/internal/apps/blueprint.go:1607:	st, err := parseCompiledStack(blueprintParseOverrides{}, source, ir)
+
+git log -3 -S serviceKnownEnv --format=%h %s -- lego/backend/internal/apps/deploy.go
+04380d92e refactor: simplify the top gocyclo hotspots across backend and operator
+8b4e4f18e feat(w1/m35): blueprint env-vars completeness — envVarGroups/fromGroup, sync:false, generateValue, fromService.envVarKey
+
+git log -3 -S pg.literals --format=%h %s -- lego/backend/internal/apps/deploy.go
+8b4e4f18e feat(w1/m35): blueprint env-vars completeness — envVarGroups/fromGroup, sync:false, generateValue, fromService.envVarKey

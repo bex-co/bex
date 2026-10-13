@@ -1,0 +1,28 @@
+{
+  "locations": [
+    "native-fixtures.json[0].capacity_proof.request.authorization",
+    "native-fixtures.json[0].initial_failed_deploy_detail.request.authorization",
+    "native-fixtures.json[0].detail_after_delete.request.authorization",
+    "native-fixtures.json[0].quota_after_delete.request.authorization",
+    "native-fixtures.json[0].final_cleanup_reconciliation[0].detail.request.authorization",
+    "native-fixtures.json[0].final_cleanup_reconciliation[1].detail.request.authorization",
+    "native-fixtures.json[0].final_cleanup_reconciliation[2].result.request.authorization",
+    "native-fixtures.json[1].capacity_proof.request.authorization",
+    "native-fixtures.json[1].initial_failed_deploy_detail.request.authorization",
+    "native-fixtures.json[1].detail_after_delete.request.authorization",
+    "native-fixtures.json[1].quota_after_delete.request.authorization",
+    "native-fixtures.json[1].final_cleanup_reconciliation[0].detail.request.authorization",
+    "native-fixtures.json[1].final_cleanup_reconciliation[1].detail.request.authorization",
+    "native-fixtures.json[1].final_cleanup_reconciliation[2].result.request.authorization",
+    "final-cleanup.json[0].detail.request.authorization",
+    "final-cleanup.json[1].detail.request.authorization",
+    "final-cleanup.json[2].result.request.authorization"
+  ],
+  "actual_QA_OAuth_values_absent": true,
+  "owner_email_marked_in_native_metadata": true,
+  "environment_files_archived": false,
+  "path_placeholders": [
+    "<QA_TMP>",
+    "<REPO>"
+  ]
+}

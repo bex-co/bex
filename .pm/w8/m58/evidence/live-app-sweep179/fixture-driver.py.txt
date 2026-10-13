@@ -1,0 +1,53 @@
+import csv,datetime,io,json,os,pathlib,secrets,shlex,shutil,subprocess,sys,time
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('<REPO>/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());ws='tea-daif693dqjvc73e7as3g';mode=sys.argv[1]
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+def cli(a,render=False):
+ cfg=p/'render-config/cli.yaml'
+ try:
+  if render:shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  return json.loads(subprocess.check_output(['python3',str(p/('run-render.py' if render else 'run.py')),*a] if render else ['python3',str(p/'run.py'),'--release',*a],text=True))
+ finally:
+  if render:cfg.unlink(missing_ok=True)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True))
+def objects(raw):
+ result=[];dec=json.JSONDecoder();at=0
+ while at<len(raw):
+  while at<len(raw) and raw[at].isspace():at+=1
+  if at>=len(raw):break
+  v,at=dec.raw_decode(raw,at);result.append(v)
+ return result
+if mode=='create':
+ assert c['sync179_result']==0;assert not (p/'sweep179-id.txt').exists();q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';limits=json.loads(q['response']);assert limits['services']['used']+limits['services']['terminating']<limits['services']['limit']
+ nonce=secrets.token_hex(3);tag='QA179_'+nonce;name='qa-20261012-'+nonce+'-unicode'
+ table_values=['РУССКИЙ','русский','ΡΟΔΟ','ροδο','KELVIN','KELVIN','kelvin','İSTANBUL','ISTANBUL','istanbul','Ι','ι']
+ lines={'table-'+str(i):tag+'_TABLE '+value for i,value in enumerate(table_values)}
+ lines.update({'cafe-upper':tag+'_CAFE CAFÉ Ελληνικά','cafe-lower':tag+'_CAFE café ελληνικά','literal-punct':tag+'_LIT literal * . | \\ tail','literal-quote':tag+'_LIT say "quoted"','literal-space':tag+'_LIT space core ','literal-no-space':tag+'_LIT space core','literal-tab':tag+'_LIT \ttab\tend\t','literal-comma':tag+'_LIT comma,left,right','hidden':tag+'_HIDDEN BEHIND_RAW_PAGE'})
+ assert len(name)<=30
+ program='const table='+json.dumps([lines['table-'+str(i)] for i in range(12)])+';const ready='+json.dumps([v for k,v in lines.items() if not k.startswith('table-')])+';for(const line of table)console.log(line);setTimeout(()=>{for(const line of ready)console.log(line);for(let i=0;i<1005;i++)console.log('+json.dumps('QP179_'+nonce+' padding ')+ '+i);},300);require("http").createServer((req,res)=>{if(req.url==="/emit"){console.log('+json.dumps(tag+'_LIVE CAFÉ Ελληνικά')+');console.log('+json.dumps(tag+'_LIVE café ελληνικά')+');}const b=JSON.stringify({marker:'+json.dumps(tag)+',instance:require("os").hostname()});res.writeHead(200,{"Content-Type":"application/json","Content-Length":Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),"0.0.0.0");'
+ args=['services','create','--name',name,'--type','web_service','--runtime','node','--repo','https://github.com/bex-co/bex','--branch','main','--root-directory','examples/hello-go','--build-command','/usr/local/bin/node --version','--start-command','/usr/local/bin/node -e '+shlex.quote(program),'--health-check-path','/','--plan','free','--region','frankfurt','--auto-deploy=false','--confirm','-o','json']
+ x={'sweep':179,'workspace':ws,'type':'web_service','name':name,'nonce':nonce,'marker':tag,'time':now(),'source_head':c['head'],'dependency_ids':[],'state':'create intent persisted','capacity_proof':q,'command':['bex',*args],'programme':program,'expected_message_bytes':list(lines.values()),'lines':lines,'role':'Full App Unicode/GraphQL/native-wire acceptance with instance, live tail and match behind a 1000-line raw page'};c['resources'].append(x);save();r=cli(args);x['create_result']=r;x['state']='create result received; reconcile before another create';save()
+ if r['exit']==0:
+  v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v);x.update(id=v['id'],create_response=v,state='created: literal-log fixture; runtime pending');(p/'sweep179-id.txt').write_text(v['id']);save()
+ print(json.dumps({'id':x.get('id'),'name':name,'exit':r['exit'],'elapsed':r['elapsed'],'stderr':r['stderr']}),flush=True);raise SystemExit(0 if r['exit']==0 else 1)
+sid=(p/'sweep179-id.txt').read_text().strip();x=next(z for z in c['resources'] if z.get('id')==sid);base={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']};assert x['workspace']==ws and x['create_result']['exit']==0 and x['create_response']['id']==sid and sid not in base and not x['state'].startswith('deleted:')
+def public():
+ f=p/'sweep179-runtime.json';r=subprocess.run(['curl','-sS','--max-time','8','-o',str(f),'-w','%{http_code}',x['create_response']['serviceDetails']['url']+'/'],text=True,capture_output=True);raw=f.read_text() if f.exists() else ''
+ try:b=json.loads(raw)
+ except ValueError:b=None
+ return {'at':now(),'exit':r.returncode,'http':r.stdout,'body':b,'stderr':r.stderr}
+def terms(values):
+ out=io.StringIO();csv.writer(out,lineterminator='',quoting=csv.QUOTE_ALL).writerow(values);return out.getvalue()
+if mode=='ready':
+ for attempt in range(4):
+  r=cli(['deploys','list',sid,'--confirm','-o','json']);assert r['exit']==0;ds=json.loads(r['stdout']);o=public();x.setdefault('runtime_observations',[]).append({'native_history':r,'runtime':o});save();ok=ds[0]['status']=='live' and o['http']=='200' and isinstance(o['body'],dict) and o['body'].get('marker')==x['marker'];print(json.dumps({'attempt':attempt,'status':ds[0]['status'],'http':o['http'],'exact_marker':ok}),flush=True)
+  if ok:x['runtime_pass']=True;save();break
+  if ds[0]['status'] in ('build_failed','update_failed','canceled'):break
+  if attempt<3:time.sleep(6)
+elif mode=='records':
+ assert x['runtime_pass'];args=['logs','--resources',sid,'--type','app','--text',x['marker'],'--limit','100','--confirm','-o','json']
+ for attempt in range(4):
+  r=cli(args);assert r['exit']==0;rows=objects(r['stdout']);exact={z['message'] for z in rows}==set(x['expected_message_bytes']);x.setdefault('marker_history_observations',[]).append({'at':now(),'result':r,'rows':rows,'exact_message_set':exact});save();print(json.dumps({'attempt':attempt,'native_rows':len(rows),'exact_message_set':exact}),flush=True)
+  if exact:x['baseline_log_rows']=rows;x['baseline_log_ids']=[z['id'] for z in rows];save();break
+  if attempt<3:time.sleep(6)
+else:raise ValueError(mode)

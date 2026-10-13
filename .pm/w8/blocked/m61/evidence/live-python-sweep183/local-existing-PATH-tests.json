@@ -1,0 +1,16 @@
+{
+  "command": [
+    "go",
+    "test",
+    "./internal/build",
+    "-run",
+    "^TestNativeEnvironmentKeepsApplicationPATH$",
+    "-count=1",
+    "-v"
+  ],
+  "exit": 0,
+  "stdout": "=== RUN   TestNativeEnvironmentKeepsApplicationPATH\n=== RUN   TestNativeEnvironmentKeepsApplicationPATH/narrow/literal=false\n=== RUN   TestNativeEnvironmentKeepsApplicationPATH/narrow/literal=true\n=== RUN   TestNativeEnvironmentKeepsApplicationPATH/empty/literal=false\n=== RUN   TestNativeEnvironmentKeepsApplicationPATH/empty/literal=true\n=== RUN   TestNativeEnvironmentKeepsApplicationPATH/omitted/literal=false\n=== RUN   TestNativeEnvironmentKeepsApplicationPATH/omitted/literal=true\n--- PASS: TestNativeEnvironmentKeepsApplicationPATH (0.24s)\n    --- PASS: TestNativeEnvironmentKeepsApplicationPATH/narrow/literal=false (0.05s)\n    --- PASS: TestNativeEnvironmentKeepsApplicationPATH/narrow/literal=true (0.04s)\n    --- PASS: TestNativeEnvironmentKeepsApplicationPATH/empty/literal=false (0.05s)\n    --- PASS: TestNativeEnvironmentKeepsApplicationPATH/empty/literal=true (0.05s)\n    --- PASS: TestNativeEnvironmentKeepsApplicationPATH/omitted/literal=false (0.03s)\n    --- PASS: TestNativeEnvironmentKeepsApplicationPATH/omitted/literal=true (0.02s)\nPASS\nok  \tgithub.com/bex-co/bex/lego/operator/internal/build\t0.706s\n",
+  "stderr": "",
+  "source_head": "6b5c23b6c5faef6bee076bc0a36582e9441008ca",
+  "scope": "Targeted existing unchanged-source test; not full operator suite or live deployment"
+}

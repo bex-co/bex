@@ -1,0 +1,53 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-json",
+    "./internal/bridge",
+    "-run",
+    "^TestEnsureDashboardURL$",
+    "-count=1"
+  ],
+  "exit": 0,
+  "elapsed": 1.509,
+  "events": [
+    {
+      "action": "pass",
+      "test": "TestEnsureDashboardURL/missing_file"
+    },
+    {
+      "action": "pass",
+      "test": "TestEnsureDashboardURL/version-only_file"
+    },
+    {
+      "action": "pass",
+      "test": "TestEnsureDashboardURL/unrelated_fields_kept"
+    },
+    {
+      "action": "pass",
+      "test": "TestEnsureDashboardURL/saved_origin_kept"
+    },
+    {
+      "action": "pass",
+      "test": "TestEnsureDashboardURL/custom_API_host"
+    },
+    {
+      "action": "pass",
+      "test": "TestEnsureDashboardURL/custom_stored_host"
+    },
+    {
+      "action": "pass",
+      "test": "TestEnsureDashboardURL/malformed_config"
+    },
+    {
+      "action": "pass",
+      "test": "TestEnsureDashboardURL/command_without_a_Dashboard_action"
+    },
+    {
+      "action": "pass",
+      "test": "TestEnsureDashboardURL"
+    }
+  ],
+  "stderr": "",
+  "qualification": "Existing helper tests; omit equivalent missing-trailing-slash hosts; no full CLI suite claimed"
+}

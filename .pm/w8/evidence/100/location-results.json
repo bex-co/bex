@@ -1,0 +1,117 @@
+{
+  "exit": 0,
+  "elapsed": 7.793,
+  "command": [
+    "go",
+    "test",
+    "-json",
+    "-overlay",
+    "<QA_TMP>/sweep194-location-overlay.json",
+    "./internal/apps",
+    "-run",
+    "^TestQAPoolReferenceLocation194$",
+    "-count=1"
+  ],
+  "events": [
+    {
+      "action": "pass",
+      "test": "TestQAPoolReferenceLocation194/root-env0"
+    },
+    {
+      "action": "pass",
+      "test": "TestQAPoolReferenceLocation194/root-env1"
+    },
+    {
+      "action": "pass",
+      "test": "TestQAPoolReferenceLocation194/project-env0"
+    },
+    {
+      "action": "pass",
+      "test": "TestQAPoolReferenceLocation194/project-env1"
+    },
+    {
+      "action": "pass",
+      "test": "TestQAPoolReferenceLocation194"
+    }
+  ],
+  "records": [
+    {
+      "actual": {
+        "error": "service \"qa194-c4c136-consumer\": fromDatabase connectionPoolString requires database \"qa194-c4c136-pool-reference-db\" connectionPool: pgbouncer",
+        "line": 10,
+        "column": 5,
+        "path": "services[0].connectionPool"
+      },
+      "expected_env_location": {
+        "Line": 19,
+        "Column": 9
+      },
+      "expected_env_pointer": "#/services/0/envVars/0",
+      "label": "root-env0",
+      "reported_pointer_exists": false,
+      "service_location": {
+        "Line": 10,
+        "Column": 5
+      }
+    },
+    {
+      "actual": {
+        "error": "service \"qa194-c4c136-consumer\": fromDatabase connectionPoolString requires database \"qa194-c4c136-pool-reference-db\" connectionPool: pgbouncer",
+        "line": 10,
+        "column": 5,
+        "path": "services[0].connectionPool"
+      },
+      "expected_env_location": {
+        "Line": 23,
+        "Column": 9
+      },
+      "expected_env_pointer": "#/services/0/envVars/1",
+      "label": "root-env1",
+      "reported_pointer_exists": false,
+      "service_location": {
+        "Line": 10,
+        "Column": 5
+      }
+    },
+    {
+      "actual": {
+        "error": "service \"qa194-c4c136-consumer\": fromDatabase connectionPoolString requires database \"qa194-c4c136-pool-reference-db\" connectionPool: pgbouncer",
+        "line": 16,
+        "column": 13,
+        "path": "projects[0].environments[0].services[0].connectionPool"
+      },
+      "expected_env_location": {
+        "Line": 25,
+        "Column": 17
+      },
+      "expected_env_pointer": "#/projects/0/environments/0/services/0/envVars/0",
+      "label": "project-env0",
+      "reported_pointer_exists": false,
+      "service_location": {
+        "Line": 16,
+        "Column": 13
+      }
+    },
+    {
+      "actual": {
+        "error": "service \"qa194-c4c136-consumer\": fromDatabase connectionPoolString requires database \"qa194-c4c136-pool-reference-db\" connectionPool: pgbouncer",
+        "line": 16,
+        "column": 13,
+        "path": "projects[0].environments[0].services[0].connectionPool"
+      },
+      "expected_env_location": {
+        "Line": 29,
+        "Column": 17
+      },
+      "expected_env_pointer": "#/projects/0/environments/0/services/0/envVars/1",
+      "label": "project-env1",
+      "reported_pointer_exists": false,
+      "service_location": {
+        "Line": 16,
+        "Column": 13
+      }
+    }
+  ],
+  "stderr": "",
+  "qualification": "Four actual current ValidateBlueprint calls via virtual test overlay reproduce current bug; assertions expect current wrong location, not a fixed regression; product source unchanged"
+}

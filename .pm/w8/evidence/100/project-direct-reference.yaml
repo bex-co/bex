@@ -1,0 +1,39 @@
+{
+  "projects": [
+    {
+      "name": "qa194-c4c136-project",
+      "environments": [
+        {
+          "name": "normal",
+          "databases": [
+            {
+              "name": "qa194-c4c136-direct-db",
+              "plan": "free",
+              "postgresMajorVersion": "18"
+            }
+          ],
+          "services": [
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa194-c4c136-consumer",
+              "envVars": [
+                {
+                  "key": "DB_REFERENCE",
+                  "fromDatabase": {
+                    "name": "qa194-c4c136-direct-db",
+                    "property": "connectionString"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

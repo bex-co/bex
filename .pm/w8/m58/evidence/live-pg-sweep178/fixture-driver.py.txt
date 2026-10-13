@@ -1,0 +1,74 @@
+import csv,datetime,ipaddress,json,os,pathlib,secrets,shutil,socket,subprocess,sys,time,urllib.parse
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('<REPO>/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());ws='tea-daif693dqjvc73e7as3g';mode=sys.argv[1]
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+def cli(args,render=False,extra=None):
+ env={k:v for k,v in os.environ.items() if not k.startswith(('RENDER_','BEX_','QA_','PG'))};env.update(extra or {})
+ cfg=p/'render-config/cli.yaml'
+ try:
+  if render:shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  f='run-render.py' if render else 'run.py';a=args if render else ['--release',*args]
+  return json.loads(subprocess.check_output(['python3',str(p/f),*a],env=env,text=True))
+ finally:
+  if render:cfg.unlink(missing_ok=True)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True))
+def data(r):
+ v=json.loads(r['stdout']);v=v.get('data',v);return v.get('postgres',v)
+def baseline_pg_ids():
+ b=c['baseline'].get('postgres',[]);b=b.get('data',b) if isinstance(b,dict) else b
+ return {v if isinstance(v,str) else v.get('postgres',v)['id'] for v in b}
+def pg_list():
+ r=cli(['postgres','list','--confirm','-o','json']);assert r['exit']==0;v=json.loads(r['stdout']);v=v.get('data',v) if isinstance(v,dict) else v
+ return r,{z.get('postgres',z)['id'] for z in v or []}
+if mode=='refuse':
+ render=sys.argv[2]=='render';field=sys.argv[3];label=('render' if render else 'bex')+'-'+field
+ assert not any(z.get('sweep')==178 and z.get('negative_label')==label for z in c['resources'])
+ nonce=secrets.token_hex(3);name='qa-20261012-'+nonce+'-pgcase';flag='--database-name' if field=='database' else '--database-user';value='QaCase_'+nonce
+ args=['postgres','create','--name',name,'--plan','free','--region','frankfurt','--version','18',flag,value,'--confirm','-o','json']
+ before,ids=pg_list();assert ids==baseline_pg_ids()
+ x={'sweep':178,'negative_label':label,'workspace':ws,'type':'postgres','name':name,'nonce':nonce,'time':now(),'dependency_ids':[],'state':'expected invalid identifier create intent persisted','command':['render' if render else 'bex',*args],'inventory_before':before};c['resources'].append(x);save();r=cli(args,render);x['create_result']=r;save()
+ if r['exit']==0:
+  v=data(r);x.update(id=v['id'],create_response=v,state='unexpected uppercase admission; owned cleanup pending');save();print(json.dumps({'label':label,'unexpected_admission':True,'id':v['id']}),flush=True);raise SystemExit(2)
+ after,got=pg_list();x.update(inventory_after=after,state='refused: no minted ID; native family inventory unchanged',refusal_pass=r['exit']!=0 and got==ids and '400' in r['stderr'] and ('databaseName' if field=='database' else 'databaseUser') in r['stderr']);save()
+ print(json.dumps({'label':label,'exit':r['exit'],'elapsed':r['elapsed'],'stderr':r['stderr'],'inventory_unchanged':got==ids,'pass':x['refusal_pass']}),flush=True);raise SystemExit()
+if mode=='create':
+ assert not (p/'sweep178-id.txt').exists();q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';v=json.loads(q['response']);assert v['postgres']['used']+v['postgres']['terminating']<v['postgres']['limit']
+ nonce=secrets.token_hex(3);name='qa-20261012-'+nonce+'-pglogs';user='qa178_'+nonce
+ args=['postgres','create','--name',name,'--plan','free','--region','frankfurt','--version','18','--connection-pool','none','--database-user',user,'--database-name',user,'--confirm','-o','json']
+ x={'sweep':178,'workspace':ws,'type':'postgres','name':name,'nonce':nonce,'role':'native psql connection and PostgreSQL Unicode history acceptance','time':now(),'dependency_ids':[],'state':'create intent persisted','source_head':c['head'],'command':['bex',*args],'capacity_proof':q,'expected_user':user};c['resources'].append(x);save();r=cli(args);x['create_result']=r;x['state']='create result received; reconcile before another create';save()
+ if r['exit']==0:
+  v=data(r);x.update(id=v['id'],create_response=v,expected_database=v.get('databaseName'),state='created: native PostgreSQL log fixture; provision pending');(p/'sweep178-id.txt').write_text(v['id']);save()
+ print(json.dumps({'id':x.get('id'),'name':name,'exit':r['exit'],'elapsed':r['elapsed'],'stderr':r['stderr'],'owner_bytes':len(user)}),flush=True);raise SystemExit(0 if r['exit']==0 else 1)
+sid=(p/'sweep178-id.txt').read_text().strip();x=next(z for z in c['resources'] if z.get('id')==sid);assert x['workspace']==ws and x['create_result']['exit']==0 and x['create_response']['id']==sid and sid not in baseline_pg_ids() and not x['state'].startswith('deleted:')
+if mode=='observe':
+ for attempt in range(4):
+  r=cli(['postgres','get',sid,'--confirm','-o','json']);x.setdefault('read_observations',[]).append({'at':now(),'result':r});save();assert r['exit']==0;v=data(r);x['last_readback']=v
+  ok=v.get('databaseUser')==x['expected_user'] and v.get('databaseName')==x['expected_database'];save();print(json.dumps({'attempt':attempt,'status':v.get('status'),'database_owner_match':ok}),flush=True)
+  if v.get('status')=='available':x['provision_pass']=ok;save();break
+  if attempt<3:time.sleep(10)
+elif mode=='enable':
+ assert x['provision_pass'] and not x.get('connection_setup');ip=subprocess.check_output(['curl','-4','--fail','--silent','--show-error','--max-time','10','https://api.ipify.org'],text=True).strip();assert ipaddress.ip_address(ip).version==4
+ args=['postgres','update',sid,'--ip-allow-list','cidr='+ip+'/32,description=own-cli-qa','--confirm','-o','json'];x['connection_setup']={'at':now(),'command':['bex',*args]};save();r=cli(args);x['connection_setup']['result']=r;save();assert r['exit']==0
+ print(json.dumps({'own_source_setup':r['exit'],'elapsed':r['elapsed']}),flush=True)
+elif mode=='prepare':
+ assert x['provision_pass'];r=wire('/v1/postgres/'+sid+'/connection-info');assert r['status']=='200';import yaml
+ cfg=yaml.safe_load((p/'config/cli.yaml').read_text());api=cfg['api'];token=api.get('token') or api.get('key') or api.get('access_token');assert token
+ ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n';body=p/'sweep178-private-connection-info.json';oldmask=os.umask(0o077)
+ try:reply=subprocess.run(['curl','-sS','--max-time','20','--config','-','-o',str(body),'-w','%{http_code}','https://api.bex.co/v1/postgres/'+sid+'/connection-info'],input=auth,text=True,capture_output=True,timeout=25)
+ finally:os.umask(oldmask)
+ assert reply.returncode==0 and reply.stdout=='200';body.chmod(0o600);v=json.loads(body.read_text());v=v.get('data',v);u=urllib.parse.urlparse(v['externalConnectionString']);assert urllib.parse.unquote(u.username)==x['expected_user'] and urllib.parse.unquote(u.path.lstrip('/'))==x['expected_database']
+ ca=p/'sweep178-ca.pem';ca.write_text(v['serverCaCertificate']);ca.chmod(0o600);ips=sorted({a[4][0] for a in socket.getaddrinfo(u.hostname,u.port or 5432,socket.AF_INET,socket.SOCK_STREAM)});assert ips;ip=ips[0];f=p/'sweep178-ipv4.txt';f.write_text(ip);f.chmod(0o600)
+ x['connection_preparation']={'at':now(),'own_ca_file':str(ca),'state':'own CA and endpointIPv4 retained privately; connection credentials omitted from checkpoint','database_name_matches':True,'database_user_matches':True,'qualification':'Explicit PGHOSTADDR IPv4 control; known default IPv6 issue not retested'};save();print('Own CA/IPv4 prepared; physical names match; credential values kept private')
+elif mode=='query':
+ render=sys.argv[2]=='render';byname=sys.argv[3]=='name';label=('render' if render else 'bex')+'-'+('name' if byname else 'id');assert label not in x.setdefault('queries',{})
+ sql="SELECT current_database() AS database, current_user AS owner, octet_length(current_user::text) AS owner_bytes, current_setting('server_version_num')::integer / 10000 AS major;"
+ args=['psql',x['name'] if byname else sid,'-c',sql,'-o','json','--','--csv','-q','-X','--set=ON_ERROR_STOP=on'];extra={'PGHOSTADDR':(p/'sweep178-ipv4.txt').read_text(),'PGCONNECT_TIMEOUT':'5'}
+ if render:extra['PGSSLROOTCERT']=str(p/'sweep178-ca.pem')
+ x['queries'][label]={'at':now(),'intent':['render' if render else 'bex',*args],'qualification':'Native external psql; IPv4 endpoint set for known existing issue; Render uses only exact own CA'};save();r=cli(args,render,extra);x['queries'][label]['result']=r;save()
+ body=json.loads(r['stdout']) if r['exit']==0 else {};rows=list(csv.DictReader(body.get('output','').splitlines()));ok=r['exit']==0 and len(rows)==1 and rows[0]=={'database':x['expected_database'],'owner':x['expected_user'],'owner_bytes':'63','major':'18'};x['queries'][label].update(rows=rows,passed=ok);save();print(json.dumps({'label':label,'exit':r['exit'],'elapsed':r['elapsed'],'stderr':r['stderr'],'exact_physical_names_63B_owner_PG18':ok,'rows':rows}),flush=True)
+elif mode=='query-fail':
+ render=sys.argv[2]=='render';label='render' if render else 'bex';assert label not in x.setdefault('query_failures',{})
+ sql='SELECT * FROM qa_178_missing_'+x['nonce']+';';args=['psql',sid,'-c',sql,'-o','json','--','--csv','-q','-X','--set=ON_ERROR_STOP=on'];extra={'PGHOSTADDR':(p/'sweep178-ipv4.txt').read_text(),'PGCONNECT_TIMEOUT':'5'}
+ if render:extra['PGSSLROOTCERT']=str(p/'sweep178-ca.pem')
+ z={'at':now(),'intent':['render' if render else 'bex',*args],'qualification':'SELECT against absent own-fixture relation; ordinary SQL failure'};x['query_failures'][label]=z;save();r=cli(args,render,extra);z['result']=r;z['passed']=r['exit']!=0 and 'does not exist' in r['stderr'] and ('qa_178_missing_'+x['nonce']) in r['stderr'];save();print(json.dumps({'client':label,'exit':r['exit'],'elapsed':r['elapsed'],'stdout':r['stdout'],'stderr':r['stderr'],'SQL_error_propagated':z['passed']}),flush=True)
+else:raise ValueError(mode)

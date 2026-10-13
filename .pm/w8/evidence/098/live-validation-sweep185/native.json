@@ -1,0 +1,1620 @@
+{
+  "sweep": 185,
+  "source_head": "c5a0eb9dd15f6b417bf586fdf26510706497b032",
+  "nonce": "41e2e9",
+  "mutation": "Blueprint validation only; no Key Value or workload created",
+  "results": [
+    {
+      "client": "bex",
+      "label": "kv-env-key-complete",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa185-41e2e9-source",
+                  "envVarKey": "QA_UNDECLARED"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep185-kv-env-key-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-kv-env-key-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.946,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa185-41e2e9-source\"\n    ],\n    \"services\": [\n      \"qa185-41e2e9-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa185-41e2e9-source"
+          ],
+          "services": [
+            "qa185-41e2e9-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "redis-env-key-complete",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "redis",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "redis",
+                  "name": "qa185-41e2e9-source",
+                  "envVarKey": "QA_UNDECLARED"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep185-redis-env-key-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-redis-env-key-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.171,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa185-41e2e9-source\"\n    ],\n    \"services\": [\n      \"qa185-41e2e9-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa185-41e2e9-source"
+          ],
+          "services": [
+            "qa185-41e2e9-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "kv-missing-property-complete",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa185-41e2e9-source"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep185-kv-missing-property-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-kv-missing-property-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.748,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa185-41e2e9-target env \\\"QA_TARGET\\\": fromService keyvalue needs a property (connectionString, host, port, or password)\",\n      \"line\": 17,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa185-41e2e9-target env \"QA_TARGET\": fromService keyvalue needs a property (connectionString, host, port, or password)",
+            "line": 17,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "kv-host-complete",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa185-41e2e9-source",
+                  "property": "host"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep185-kv-host-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-kv-host-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.729,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa185-41e2e9-source\"\n    ],\n    \"services\": [\n      \"qa185-41e2e9-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa185-41e2e9-source"
+          ],
+          "services": [
+            "qa185-41e2e9-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "kv-port-complete",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa185-41e2e9-source",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep185-kv-port-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-kv-port-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.696,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa185-41e2e9-source\"\n    ],\n    \"services\": [\n      \"qa185-41e2e9-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa185-41e2e9-source"
+          ],
+          "services": [
+            "qa185-41e2e9-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "kv-connection-complete",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa185-41e2e9-source",
+                  "property": "connectionString"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep185-kv-connection-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-kv-connection-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.716,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa185-41e2e9-source\"\n    ],\n    \"services\": [\n      \"qa185-41e2e9-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa185-41e2e9-source"
+          ],
+          "services": [
+            "qa185-41e2e9-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "kv-hostport-complete",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa185-41e2e9-source",
+                  "property": "hostport"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep185-kv-hostport-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-kv-hostport-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.617,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa185-41e2e9-target env \\\"QA_TARGET\\\": fromService keyvalue property \\\"hostport\\\" is not supported (want connectionString, host, port, or password)\",\n      \"line\": 17,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa185-41e2e9-target env \"QA_TARGET\": fromService keyvalue property \"hostport\" is not supported (want connectionString, host, port, or password)",
+            "line": 17,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "kv-both-complete",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa185-41e2e9-source",
+                  "envVarKey": "QA_UNDECLARED",
+                  "property": "host"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep185-kv-both-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-kv-both-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.56,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa185-41e2e9-target env \\\"QA_TARGET\\\": fromService sets both envVarKey and property — pick one\",\n      \"line\": 17,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa185-41e2e9-target env \"QA_TARGET\": fromService sets both envVarKey and property — pick one",
+            "line": 17,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "app-missing-key",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "web",
+            "plan": "free",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-185"
+              }
+            ]
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa185-41e2e9-source",
+                  "envVarKey": "QA_UNDECLARED"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep185-app-missing-key.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-app-missing-key.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.778,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa185-41e2e9-target\\\": fromService.envVarKey references env \\\"QA_UNDECLARED\\\" on service \\\"qa185-41e2e9-source\\\", which has no such plainly-defined variable\",\n      \"line\": 26,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa185-41e2e9-target\": fromService.envVarKey references env \"QA_UNDECLARED\" on service \"qa185-41e2e9-source\", which has no such plainly-defined variable",
+            "line": 26,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "app-literal-key",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "web",
+            "plan": "free",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-185"
+              }
+            ]
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa185-41e2e9-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep185-app-literal-key.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-app-literal-key.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.061,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa185-41e2e9-source\",\n      \"qa185-41e2e9-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa185-41e2e9-source",
+            "qa185-41e2e9-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "kv-env-key-complete",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa185-41e2e9-source",
+                  "envVarKey": "QA_UNDECLARED"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep185-kv-env-key-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-kv-env-key-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.846,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa185-41e2e9-source\"\n    ],\n    \"services\": [\n      \"qa185-41e2e9-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa185-41e2e9-source"
+          ],
+          "services": [
+            "qa185-41e2e9-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "redis-env-key-complete",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "redis",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "redis",
+                  "name": "qa185-41e2e9-source",
+                  "envVarKey": "QA_UNDECLARED"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep185-redis-env-key-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-redis-env-key-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.796,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa185-41e2e9-source\"\n    ],\n    \"services\": [\n      \"qa185-41e2e9-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa185-41e2e9-source"
+          ],
+          "services": [
+            "qa185-41e2e9-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "kv-missing-property-complete",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa185-41e2e9-source"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep185-kv-missing-property-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-kv-missing-property-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 2.58,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa185-41e2e9-target env \\\"QA_TARGET\\\": fromService keyvalue needs a property (connectionString, host, port, or password)\",\n      \"line\": 17,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa185-41e2e9-target env \"QA_TARGET\": fromService keyvalue needs a property (connectionString, host, port, or password)",
+            "line": 17,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "kv-host-complete",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa185-41e2e9-source",
+                  "property": "host"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep185-kv-host-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-kv-host-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.589,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa185-41e2e9-source\"\n    ],\n    \"services\": [\n      \"qa185-41e2e9-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa185-41e2e9-source"
+          ],
+          "services": [
+            "qa185-41e2e9-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "kv-port-complete",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa185-41e2e9-source",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep185-kv-port-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-kv-port-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.593,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa185-41e2e9-source\"\n    ],\n    \"services\": [\n      \"qa185-41e2e9-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa185-41e2e9-source"
+          ],
+          "services": [
+            "qa185-41e2e9-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "kv-connection-complete",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa185-41e2e9-source",
+                  "property": "connectionString"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep185-kv-connection-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-kv-connection-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.637,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa185-41e2e9-source\"\n    ],\n    \"services\": [\n      \"qa185-41e2e9-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": [
+            "qa185-41e2e9-source"
+          ],
+          "services": [
+            "qa185-41e2e9-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "kv-hostport-complete",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa185-41e2e9-source",
+                  "property": "hostport"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep185-kv-hostport-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-kv-hostport-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.114,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa185-41e2e9-target env \\\"QA_TARGET\\\": fromService keyvalue property \\\"hostport\\\" is not supported (want connectionString, host, port, or password)\",\n      \"line\": 17,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa185-41e2e9-target env \"QA_TARGET\": fromService keyvalue property \"hostport\" is not supported (want connectionString, host, port, or password)",
+            "line": 17,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "kv-both-complete",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa185-41e2e9-source",
+                  "envVarKey": "QA_UNDECLARED",
+                  "property": "host"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep185-kv-both-complete.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-kv-both-complete.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.592,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa185-41e2e9-target env \\\"QA_TARGET\\\": fromService sets both envVarKey and property — pick one\",\n      \"line\": 17,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa185-41e2e9-target env \"QA_TARGET\": fromService sets both envVarKey and property — pick one",
+            "line": 17,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "app-missing-key",
+      "expected_valid_hypothesis": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "web",
+            "plan": "free",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-185"
+              }
+            ]
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa185-41e2e9-source",
+                  "envVarKey": "QA_UNDECLARED"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep185-app-missing-key.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-app-missing-key.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.565,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa185-41e2e9-target\\\": fromService.envVarKey references env \\\"QA_UNDECLARED\\\" on service \\\"qa185-41e2e9-source\\\", which has no such plainly-defined variable\",\n      \"line\": 26,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa185-41e2e9-target\": fromService.envVarKey references env \"QA_UNDECLARED\" on service \"qa185-41e2e9-source\", which has no such plainly-defined variable",
+            "line": 26,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "app-literal-key",
+      "expected_valid_hypothesis": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "web",
+            "plan": "free",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-185"
+              }
+            ]
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa185-41e2e9-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "intent": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep185-app-literal-key.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-app-literal-key.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.653,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa185-41e2e9-source\",\n      \"qa185-41e2e9-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa185-41e2e9-source",
+            "qa185-41e2e9-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "bex",
+      "label": "recommended-password-property",
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa185-41e2e9-source",
+                  "property": "password"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "qualification": "Harmless validation of an advertised property name, no datastore or credential access",
+      "state": "native result received",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-recommended-password.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.624,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 25,\n      \"error\": \"at '/services/1/envVars/0/fromService/property': value must be one of 'host', 'port', 'hostport', 'slug', 'connectionString'\",\n      \"line\": 23,\n      \"path\": \"services[1].envVars[0].fromService.property\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 25,
+            "error": "at '/services/1/envVars/0/fromService/property': value must be one of 'host', 'port', 'hostport', 'slug', 'connectionString'",
+            "line": 23,
+            "path": "services[1].envVars[0].fromService.property"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    },
+    {
+      "client": "render",
+      "label": "recommended-password-property",
+      "document": {
+        "services": [
+          {
+            "name": "qa185-41e2e9-source",
+            "type": "keyvalue",
+            "plan": "free",
+            "ipAllowList": []
+          },
+          {
+            "name": "qa185-41e2e9-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa185-41e2e9-source",
+                  "property": "password"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "qualification": "Harmless validation of an advertised property name, no datastore or credential access",
+      "state": "native result received",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep185-recommended-password.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.666,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 25,\n      \"error\": \"at '/services/1/envVars/0/fromService/property': value must be one of 'host', 'port', 'hostport', 'slug', 'connectionString'\",\n      \"line\": 23,\n      \"path\": \"services[1].envVars[0].fromService.property\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 25,
+            "error": "at '/services/1/envVars/0/fromService/property': value must be one of 'host', 'port', 'hostport', 'slug', 'connectionString'",
+            "line": 23,
+            "path": "services[1].envVars[0].fromService.property"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true
+    }
+  ],
+  "question": "Does validation reject a Key Value envVarKey reference that its actual apply resolver cannot resolve?",
+  "copied_render_config_removed": true
+}

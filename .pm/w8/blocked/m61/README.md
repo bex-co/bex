@@ -1,17 +1,17 @@
 # w8 · m61 — Honor application PATH during native builds
 
-**Worker:** worker8 **Goal:** Native build helpers finish their work before handing the application its exact configured PATH. **Status:** blocked — t001/t004/t005 done and shipped; t002/t003 hosted acceptance and t006 need the fix deployed to production plus fresh native Bex/Render receipts.
+**Worker:** worker8 **Goal:** native build helpers finish their work before handing the application its exact configured PATH. **Status:** blocked — source loader/preparer work and tests are complete; sweep183 still reproduces both narrow-PATH Python failures, with both same-commit broadened-PATH controls passing. Complete deployed acceptance remains required.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | Preserve application PATH across both native preparation stages — **DONE 2026-10-12** | 45m | — |
-| t002 | Audit native consumers and verify hosted recovery — **BLOCKED: needs deployed fix + native receipts** | 30m | t001 |
-| t003 | Render parity — **BLOCKED: needs deployed fix + surface receipts** | 20m | t002 |
+| t002 | Audit native consumers and verify hosted recovery — **BLOCKED: sweep183 narrow-PATH cases still fail; recovery controls pass** | 30m | t001 |
+| t003 | Render parity — **BLOCKED: native Python evidence refreshed; complete surface/Node/control acceptance remains** | 20m | t002 |
 | t004 | Simplify — **DONE 2026-10-12** | 15m | t003 |
 | t005 | Test coverage — **DONE 2026-10-12** | 35m | t003 |
-| t006 | Closeout | 20m | t004, t005 |
+| t006 | Closeout — **BLOCKED** | 20m | t004, t005 |
 
 ## Definition of done
 
@@ -24,6 +24,8 @@
 - All tasks and observable checks are complete before moving the milestone to `done/`.
 
 ## Progress / block
+
+- **2026-10-13 UTC, sweep183:** [fresh Python live acceptance](evidence/live-python-sweep183/README.md) reproduces both initial narrow-PATH build failures through released Bex and pinned Render. Changing only PATH through owned save-only setup, then native deployment of the exact initial commit, produces Live/HTTP200 and matching build/runtime PATH plus variable/file bytes in both controls. Seven targeted local tests pass; current source has 137820b94, exact deployed SHA unknown. Both fixtures/four child records reconciled, baseline6/quota termination0, own notes/config copies removed. Existing m61 stays blocked; no duplicate issue or QA implementation/ship.
 
 - **2026-10-12:** the native RUN loader resolves its decoder once under the image PATH, and the preparer carries literals under private `BEX_NATIVE_LITERAL_<i>` names, so a custom PATH (Secret-backed or literal) reaches the build command exactly while platform helpers keep working (`lego/operator/internal/build/native.go`). `TestNativeEnvironmentKeepsApplicationPATH` fails on the original source and passes fixed; operator `make test`/`make lint` pass.
 - **Blocked:** t002/t003 and t006 need the fix deployed to production, then fresh owned Free Python/Node fixtures through released Bex and pinned Render (PATH plus later variable, PATH alone, omitted/empty/full controls), surface checks and cleanup per the DoD.

@@ -1,0 +1,40 @@
+{
+  "parseCompiledStack_callers": {
+    "validation": "blueprint.go:661",
+    "compile/deploy": "deploy.go:1696",
+    "disconnect grouping reclamation": "blueprint.go:1607",
+    "generated manifest checking": "blueprint_generate.go:240"
+  },
+  "shared_pooler_wording_callers": [
+    "deploy.go:1132 resolved workspace preflight",
+    "deploy.go:2060 same-file parsing"
+  ],
+  "resource_validation_mapper_callers": [
+    "blueprint.go:675 parse errors",
+    "blueprint.go:717 action-plan errors",
+    "blueprint.go:727 create errors",
+    "blueprint.go:738 later resource errors"
+  ],
+  "validation_adapters": {
+    "REST": "rest.go:1346",
+    "GraphQL": "graphql.go:1259",
+    "MCP": "mcp.go:1024"
+  },
+  "preview_adapters": {
+    "REST": "rest.go:1401",
+    "GraphQL": "graphql.go:1296",
+    "MCP": "mcp.go:1032"
+  },
+  "generic_field_heuristic_callers": [
+    "blueprint.go:763 resource mapper",
+    "blueprint.go:1941 legacy message fallback"
+  ],
+  "affected_live_scope": "same-file pooled database reference path in root/nested Blueprints; other public adapters and apply are source-traced only",
+  "dedupe": {
+    "w8/done/019": "semantic aggregation and location population; this parser reference still emits no env key",
+    "w8/done/051": "workspace reference multiplicity/location; same-file parse exits before that stage",
+    "w8/done/055": "hostname-specific field/index association, unaffected",
+    "w8/done/m50": "database feature admission correctly points at database fields and passes this sweep",
+    "w1/done/m63/t007": "introduced the pooled-reference refusal; no generic phantom-service-field correction"
+  }
+}

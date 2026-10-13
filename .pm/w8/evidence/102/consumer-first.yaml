@@ -1,0 +1,61 @@
+{
+  "services": [
+    {
+      "type": "web",
+      "runtime": "image",
+      "plan": "free",
+      "image": {
+        "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+      },
+      "name": "qa204-ee47c6-consumer",
+      "envVars": [
+        {
+          "key": "COPY_VALUE",
+          "fromService": {
+            "name": "qa204-ee47c6-caller",
+            "type": "web",
+            "envVarKey": "VALUE"
+          }
+        }
+      ]
+    },
+    {
+      "type": "web",
+      "runtime": "image",
+      "plan": "free",
+      "image": {
+        "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+      },
+      "name": "qa204-ee47c6-caller",
+      "envVars": [
+        {
+          "key": "VALUE",
+          "value": "literal value"
+        },
+        {
+          "key": "VALUE",
+          "fromService": {
+            "name": "qa204-ee47c6-source",
+            "type": "web",
+            "envVarKey": "SOURCE_VALUE"
+          }
+        }
+      ]
+    },
+    {
+      "type": "web",
+      "runtime": "image",
+      "plan": "free",
+      "image": {
+        "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+      },
+      "name": "qa204-ee47c6-source",
+      "envVars": [
+        {
+          "key": "SOURCE_VALUE",
+          "value": "source value"
+        }
+      ]
+    }
+  ]
+}

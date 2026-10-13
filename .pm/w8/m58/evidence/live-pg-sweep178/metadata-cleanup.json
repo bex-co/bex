@@ -1,0 +1,63 @@
+{
+  "at": "2026-10-12T23:48:17.288910+00:00",
+  "source_head_at_create": "dc1043a16d9c94f1450b6ab07aa7c1b1b0769aa1",
+  "source_head_at_filing": "dc1043a16d9c94f1450b6ab07aa7c1b1b0769aa1",
+  "deployed_revision": "unknown",
+  "bex_release": "v0.3.2",
+  "render_version": "v2.27.0",
+  "upstream_commit": "a764810a768202704e7206eb7b87a47211fcd98e",
+  "api_origin": "https://api.bex.co/v1/",
+  "auth": "human OAuth",
+  "native_history_queries_passed": 6,
+  "actual_native_wire_captures": 6,
+  "native_SQL_positive_controls": 2,
+  "native_SQL_negative_controls": 2,
+  "native_SQL_log_markers": 3,
+  "history_counts_per_client": [
+    3,
+    2,
+    1
+  ],
+  "owned_id_deleted": "dpg-db6mrc15i38c73fd5o00",
+  "native_delete_exit": 0,
+  "native_delete_elapsed": 1.108,
+  "detail_after_delete": "404",
+  "cached_SQL_before_delete": {
+    "exit": 0,
+    "returns_1": true,
+    "stderr_present": false,
+    "at": "2026-10-12T23:43:18.540416+00:00"
+  },
+  "cached_SQL_after_delete": {
+    "exit": 2,
+    "returns_1": false,
+    "stderr_present": true,
+    "at": "2026-10-12T23:43:23.933386+00:00"
+  },
+  "quota": {
+    "services": {
+      "used": 6,
+      "terminating": 0,
+      "limit": 25
+    },
+    "postgres": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    },
+    "keyValues": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    }
+  },
+  "pool": "none",
+  "read_replicas": [],
+  "dependencies": [],
+  "local_containers_created": 0,
+  "own_CA_IPv4_files_removed": true,
+  "copied_render_config_absent": true,
+  "new_issue": false,
+  "product_fix": false,
+  "shipped": false
+}

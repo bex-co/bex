@@ -1,0 +1,32 @@
+{
+  "cases": [
+    {
+      "label": "root-env0",
+      "manifest": "{\n  \"databases\": [\n    {\n      \"name\": \"qa194-c4c136-pool-reference-db\",\n      \"plan\": \"free\",\n      \"postgresMajorVersion\": \"18\"\n    }\n  ],\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa194-c4c136-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"DB_REFERENCE\",\n          \"fromDatabase\": {\n            \"name\": \"qa194-c4c136-pool-reference-db\",\n            \"property\": \"connectionPoolString\"\n          }\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedEnvPointer": "#/services/0/envVars/0",
+      "phantomPointer": "#/services/0/connectionPool",
+      "servicePointer": "#/services/0"
+    },
+    {
+      "label": "root-env1",
+      "manifest": "{\n  \"databases\": [\n    {\n      \"name\": \"qa194-c4c136-pool-reference-db\",\n      \"plan\": \"free\",\n      \"postgresMajorVersion\": \"18\"\n    }\n  ],\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa194-c4c136-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"LITERAL_CONTROL\",\n          \"value\": \"qa194 literal\"\n        },\n        {\n          \"key\": \"DB_REFERENCE\",\n          \"fromDatabase\": {\n            \"name\": \"qa194-c4c136-pool-reference-db\",\n            \"property\": \"connectionPoolString\"\n          }\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedEnvPointer": "#/services/0/envVars/1",
+      "phantomPointer": "#/services/0/connectionPool",
+      "servicePointer": "#/services/0"
+    },
+    {
+      "label": "project-env0",
+      "manifest": "{\n  \"projects\": [\n    {\n      \"name\": \"qa194-c4c136-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"databases\": [\n            {\n              \"name\": \"qa194-c4c136-pool-reference-db\",\n              \"plan\": \"free\",\n              \"postgresMajorVersion\": \"18\"\n            }\n          ],\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa194-c4c136-consumer\",\n              \"envVars\": [\n                {\n                  \"key\": \"DB_REFERENCE\",\n                  \"fromDatabase\": {\n                    \"name\": \"qa194-c4c136-pool-reference-db\",\n                    \"property\": \"connectionPoolString\"\n                  }\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedEnvPointer": "#/projects/0/environments/0/services/0/envVars/0",
+      "phantomPointer": "#/projects/0/environments/0/services/0/connectionPool",
+      "servicePointer": "#/projects/0/environments/0/services/0"
+    },
+    {
+      "label": "project-env1",
+      "manifest": "{\n  \"projects\": [\n    {\n      \"name\": \"qa194-c4c136-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"databases\": [\n            {\n              \"name\": \"qa194-c4c136-pool-reference-db\",\n              \"plan\": \"free\",\n              \"postgresMajorVersion\": \"18\"\n            }\n          ],\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa194-c4c136-consumer\",\n              \"envVars\": [\n                {\n                  \"key\": \"LITERAL_CONTROL\",\n                  \"value\": \"qa194 literal\"\n                },\n                {\n                  \"key\": \"DB_REFERENCE\",\n                  \"fromDatabase\": {\n                    \"name\": \"qa194-c4c136-pool-reference-db\",\n                    \"property\": \"connectionPoolString\"\n                  }\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedEnvPointer": "#/projects/0/environments/0/services/0/envVars/1",
+      "phantomPointer": "#/projects/0/environments/0/services/0/connectionPool",
+      "servicePointer": "#/projects/0/environments/0/services/0"
+    }
+  ]
+}

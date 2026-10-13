@@ -1,0 +1,16 @@
+{
+  "command": [
+    "go",
+    "test",
+    "./internal/apps",
+    "-run",
+    "^TestBlueprintExplicitEmptyValueIsALiteral$",
+    "-count=1",
+    "-v"
+  ],
+  "exit": 0,
+  "stdout": "=== RUN   TestBlueprintExplicitEmptyValueIsALiteral\n=== RUN   TestBlueprintExplicitEmptyValueIsALiteral/explicit_empty_seed_copies\n=== RUN   TestBlueprintExplicitEmptyValueIsALiteral/one-space_seed_copies\n=== RUN   TestBlueprintExplicitEmptyValueIsALiteral/numeric_seed_copies\n=== RUN   TestBlueprintExplicitEmptyValueIsALiteral/omitted_prompt_cannot_be_copied\n=== RUN   TestBlueprintExplicitEmptyValueIsALiteral/null_is_refused_by_the_schema\n=== RUN   TestBlueprintExplicitEmptyValueIsALiteral/empty_value_beside_generateValue\n=== RUN   TestBlueprintExplicitEmptyValueIsALiteral/group_empty_value_beside_generateValue\n=== RUN   TestBlueprintExplicitEmptyValueIsALiteral/generation_alone\n=== RUN   TestBlueprintExplicitEmptyValueIsALiteral/empty_literal_with_generation_off\n--- PASS: TestBlueprintExplicitEmptyValueIsALiteral (0.04s)\n    --- PASS: TestBlueprintExplicitEmptyValueIsALiteral/explicit_empty_seed_copies (0.01s)\n    --- PASS: TestBlueprintExplicitEmptyValueIsALiteral/one-space_seed_copies (0.00s)\n    --- PASS: TestBlueprintExplicitEmptyValueIsALiteral/numeric_seed_copies (0.00s)\n    --- PASS: TestBlueprintExplicitEmptyValueIsALiteral/omitted_prompt_cannot_be_copied (0.00s)\n    --- PASS: TestBlueprintExplicitEmptyValueIsALiteral/null_is_refused_by_the_schema (0.00s)\n    --- PASS: TestBlueprintExplicitEmptyValueIsALiteral/empty_value_beside_generateValue (0.00s)\n    --- PASS: TestBlueprintExplicitEmptyValueIsALiteral/group_empty_value_beside_generateValue (0.00s)\n    --- PASS: TestBlueprintExplicitEmptyValueIsALiteral/generation_alone (0.00s)\n    --- PASS: TestBlueprintExplicitEmptyValueIsALiteral/empty_literal_with_generation_off (0.00s)\nPASS\nok  \tgithub.com/bex-co/bex/lego/backend/internal/apps\t0.791s\n",
+  "stderr": "",
+  "source_head": "c5a0eb9dd15f6b417bf586fdf26510706497b032",
+  "qualification": "Targeted existing source regression, not full backend suite or deployed semantics"
+}

@@ -1,0 +1,18 @@
+import pathlib,json,subprocess,datetime,secrets,shutil
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('<REPO>/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text())
+def save():c['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+assert c['sync195_result']==0 and 'sweep195_reference_fields' not in c
+x={'sweep':195,'nonce':secrets.token_hex(3),'source_head':c['head'],'surface':'Same-file missing environment copies whose target env keys contain service-field words, with plain missing/known controls','mutation':'none: validation only','native_wire':'not intercepted','results':[]};c['sweep195_reference_fields']=x;save();prefix='qa195-'+x['nonce'];base={'type':'web','runtime':'image','plan':'free','image':{'url':'docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592'}}
+variants=[('missing-image','IMAGE',False,'image'),('missing-plan','PLAN',False,'plan'),('missing-type','TYPE',False,'type'),('missing-poolword','CONNECTIONPOOL',False,'connectionPool'),('missing-plain','ABSENT_VALUE',False,'envVars'),('known-image','IMAGE',True,None)]
+cfg=p/'render-config/cli.yaml';assert not cfg.exists();shutil.copy2(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+try:
+ for client in ['bex','render']:
+  for layout in ['root','project']:
+   for name,target_key,valid,predicted_field in variants:
+    source={**base,'name':prefix+'-source','envVars':[{'key':'OTHER_VALUE','value':'qa195 control'}]}
+    if valid:source['envVars'].append({'key':'IMAGE','value':'qa195 existing IMAGE value'})
+    caller={**base,'name':prefix+'-caller','envVars':[{'key':'LITERAL_CONTROL','value':'qa195 literal'},{'key':'COPY_VALUE','fromService':{'name':source['name'],'type':'web','envVarKey':target_key}}]};resources={'services':[caller,source]};doc=resources if layout=='root' else {'projects':[{'name':prefix+'-project','environments':[{'name':'normal',**resources}]}]};f=p/('sweep195-'+layout+'-'+name+'.yaml');f.write_text(json.dumps(doc,ensure_ascii=False,indent=2)+'\n');f.chmod(0o600);args=['blueprints','validate',str(f),'--confirm','-o','json'];z={'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'client':client,'layout':layout,'case':name,'document':doc,'expected_valid':valid,'predicted_wrong_field':predicted_field if name not in ('missing-plain','known-image') else None,'state':'native validation intent persisted'};x['results'].append(z);save();r=json.loads(subprocess.check_output(['python3',str(p/('run.py' if client=='bex' else 'run-render.py')),*(['--release'] if client=='bex' else []),*args],text=True));v=json.loads(r['stdout']);z.update(result=r,decoded=v,decision_passed=r['exit']==(0 if valid else 1) and v['valid']==valid,state='native completed')
+    if not valid:
+     e=v['errors'][0];z['actual_path']=e.get('path');z['wrong_field_reproduced']=z['predicted_wrong_field'] is not None and e.get('path','').endswith('services[0].'+z['predicted_wrong_field'])
+    save();print(json.dumps({'client':client,'layout':layout,'case':name,'exit':r['exit'],'valid':v['valid'],'decision_passed':z['decision_passed'],'wrong_field_reproduced':z.get('wrong_field_reproduced'),'errors':v.get('errors')},ensure_ascii=False),flush=True)
+finally:cfg.unlink(missing_ok=True);x['copied_render_config_removed']=not cfg.exists();save()

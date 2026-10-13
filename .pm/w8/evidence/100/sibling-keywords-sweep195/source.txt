@@ -1,0 +1,145 @@
+lego/backend/internal/apps/deploy.go
+2052: // classifyRefs resolves one service's deferred reference env vars now that
+2053: // every name, port, and known-env is available. Database references are
+2054: // validated here but retained until apply: only then do we know the immutable
+2055: // dpg-... id that names the CNPG Secret.
+2056: func (idx *stackIndex) classifyRefs(svc parsedService, refVars []bexEnvVar) (parsedService, error) {
+2057: 	for _, r := range refVars {
+2058: 		if r.FromDatabase != nil {
+2059: 			if idx.databaseNames[r.FromDatabase.Name] && r.FromDatabase.Property == dbPropertyConnectionPoolString && !idx.databasePoolers[r.FromDatabase.Name] {
+2060: 				return parsedService{}, poolerRequiredError(svc.req.Name, r.FromDatabase.Name)
+2061: 			}
+2062: 			svc.databaseRefs = append(svc.databaseRefs, r)
+2063: 			continue
+2064: 		}
+2065: 		if r.FromService != nil && isKeyValueType(r.FromService.Type) {
+2066: 			svc.kvRefs = append(svc.kvRefs, r)
+2067: 			continue
+2068: 		}
+2069: 		// One target-existence check for every remaining fromService form
+2070: 		// (host/hostport/port/envVarKey), so the message lives in one place.
+2071: 		allowExistingServiceHost := r.FromService != nil && r.FromService.EnvVarKey == "" && r.FromService.Property == serviceRefPropertyHost
+2072: 		if r.FromService != nil && !idx.names[r.FromService.Name] && !allowExistingServiceHost {
+2073: 			return parsedService{}, fmt.Errorf("%w: service %q: fromService references unknown service %q (declare it under services: in the same file)", core.ErrBadRequest, svc.req.Name, r.FromService.Name)
+2074: 		}
+2075: 		// A supplied type must describe the declared target, or a reference
+2076: 		// meant for a worker silently resolves against a web service (w8/096).
+2077: 		if r.FromService != nil {
+2078: 			if target, declared := idx.serviceTypes[r.FromService.Name]; declared && !slices.Contains(serviceRefTypes[target], r.FromService.Type) {
+2079: 				return parsedService{}, fmt.Errorf("%w: service %q: envVars[%q] fromService.type %q does not match %q (want type %s)",
+2080: 					core.ErrBadRequest, svc.req.Name, r.Key, r.FromService.Type, r.FromService.Name, strings.Join(serviceRefTypes[target], " or "))
+2081: 			}
+2082: 		}
+2083: 		// host, hostport and port all name a declared sibling's network address,
+2084: 		// which only web/private services have; a worker, cron job or static
+2085: 		// site has no port to resolve (it would become "0"/"<slug>:0", w8/081).
+2086: 		// An undeclared host target is resolved out-of-file at apply instead.
+2087: 		if r.FromService != nil && r.FromService.EnvVarKey == "" && idx.names[r.FromService.Name] && serviceRefProperty[r.FromService.Property] {
+2088: 			if _, addressable := idx.servicePorts[r.FromService.Name]; !addressable {
+2089: 				return parsedService{}, fmt.Errorf("%w: service %q: envVars[%q] fromService %s references %q which has no network address (only web/private services are addressable)", core.ErrBadRequest, svc.req.Name, r.Key, r.FromService.Property, r.FromService.Name)
+2090: 			}
+2091: 		}
+2092: 		// host/hostport inject the sibling's slug — minted at create (w4/m19),
+2093: 		// so resolution is deferred to apply like databaseRefs above. The port
+2094: 		// half is already known and resolved into the ref now.
+2095: 		if r.FromService != nil && r.FromService.EnvVarKey == "" &&
+2096: 			(r.FromService.Property == serviceRefPropertyHost || r.FromService.Property == serviceRefPropertyHostPort) {
+2097: 			port := idx.servicePorts[r.FromService.Name]
+2098: 			svc.hostRefs = append(svc.hostRefs, hostRef{
+2099: 				key: r.Key, target: r.FromService.Name, port: port,
+2100: 				hostport: r.FromService.Property == serviceRefPropertyHostPort,
+2101: 			})
+2102: 			continue
+2103: 		}
+2104: 		ev, err := resolveRef(r, idx.servicePorts, idx.serviceKnownEnv)
+2105: 		if err != nil {
+2106: 			return parsedService{}, fmt.Errorf("%w: service %q: %v", core.ErrBadRequest, svc.req.Name, err)
+2107: 		}
+2108: 		svc.req.Env = append(svc.req.Env, ev)
+2109: 	}
+2110: 	return svc, nil
+
+lego/backend/internal/apps/deploy.go
+2770: func resolveRef(e bexEnvVar, ports map[string]int32, knownEnv map[string]map[string]string) (appv1alpha1.EnvVar, error) {
+2771: 	switch {
+2772: 	case e.FromService != nil:
+2773: 		ref := e.FromService
+2774: 		// envVarKey copies a sibling service's declared var by value (Render's
+2775: 		// copy-by-value; re-copied on each sync, not live). Same-file resolution:
+2776: 		// the target must be a service (not a database) with a parse-time-known
+2777: 		// value (a plain literal or sync:false var — not itself a reference/generate).
+2778: 		if ref.EnvVarKey != "" {
+2779: 			env, ok := knownEnv[ref.Name]
+2780: 			if !ok {
+2781: 				return appv1alpha1.EnvVar{}, fmt.Errorf("fromService.envVarKey references %q, which is not a service", ref.Name)
+2782: 			}
+2783: 			val, ok := env[ref.EnvVarKey]
+2784: 			if !ok {
+2785: 				return appv1alpha1.EnvVar{}, fmt.Errorf("fromService.envVarKey references env %q on service %q, which has no such plainly-defined variable", ref.EnvVarKey, ref.Name)
+2786: 			}
+2787: 			return appv1alpha1.EnvVar{Name: e.Key, Value: val}, nil
+2788: 		}
+2789: 		// host/hostport are classified into parsedService.hostRefs at parse and
+2790: 		// resolved at apply (the hostname is the sibling's slug, minted at create
+
+lego/backend/internal/apps/blueprint.go
+757: func blueprintResourceValidationErrors(source *BlueprintSource, ir BlueprintIR, refused blueprintResourceErrors) []BlueprintValidationError {
+758: 	out := make([]BlueprintValidationError, 0, len(refused))
+759: 	for _, problem := range refused {
+760: 		msg := blueprintManifestCreateMessage(blueprintValidationMessage(problem.err))
+761: 		var entry BlueprintValidationError
+762: 		if resource, ok := blueprintIRResource(ir, problem.kind, problem.name); ok {
+763: 			pointer := resource.SourcePath + strings.ReplaceAll(blueprintErrorField(msg), ".", "/")
+764: 			if i, ok := blueprintEnvVarIndex(resource, msg); ok {
+765: 				pointer = fmt.Sprintf("%s/envVars/%d", resource.SourcePath, i)
+766: 			} else if i, ok := blueprintDomainIndex(resource, msg); ok {
+767: 				pointer = fmt.Sprintf("%s/domains/%d", resource.SourcePath, i)
+768: 			} else if field, ok := blueprintCodedField(problem.err, resource); ok {
+769: 				pointer = resource.SourcePath + "/" + field
+770: 			}
+771: 			entry = blueprintLocatedError(source, msg, pointer)
+772: 		} else {
+773: 			entry = blueprintValidationError(ir, msg)
+774: 		}
+775: 		entry.Code = blueprintRefusalCode(problem.err)
+
+lego/backend/internal/apps/blueprint.go
+819: // blueprintEnvVarIndex resolves a message naming envVars["KEY"] to that entry.
+820: func blueprintEnvVarIndex(resource BlueprintResourceIR, msg string) (int, bool) {
+821: 	match := blueprintEnvKeyRE.FindStringSubmatch(msg)
+822: 	if match == nil {
+823: 		return 0, false
+824: 	}
+825: 	envVars, _ := resource.Fields["envVars"].Value.([]any)
+826: 	for i, raw := range envVars {
+827: 		if env, _ := raw.(map[string]any); env["key"] == match[1] {
+828: 			return i, true
+829: 		}
+830: 	}
+831: 	return 0, false
+832: }
+833:
+
+lego/backend/internal/apps/blueprint.go
+1947: func blueprintErrorField(message string) string {
+1948: 	if strings.Contains(message, "health check path") {
+1949: 		return ".healthCheckPath"
+1950: 	}
+1951: 	// Hostname refusals contain "name"; they belong to domains (w8/055).
+1952: 	for _, marker := range []string{"hostname", "wildcard", "this domain", "custom domains"} {
+1953: 		if strings.Contains(strings.ToLower(message), marker) {
+1954: 			return ".domains"
+1955: 		}
+1956: 	}
+1957: 	for _, field := range []string{"maintenanceMode", "highAvailability", "readReplicas", "diskSizeGB", "storageAutoscalingEnabled", "connectionPool", "plan", "domains", "schedule", "runtime", "type", "image", "databaseName", "name", "ipAllowList", "renderSubdomainPolicy", "scaling", "staticPublishPath", "publishPath"} {
+1958: 		if strings.Contains(strings.ToLower(message), strings.ToLower(field)) {
+1959: 			return "." + field
+1960: 		}
+1961: 	}
+1962: 	if strings.Contains(message, " env ") || strings.Contains(message, "env var") || strings.Contains(message, "envVars[") {
+1963: 		return ".envVars"
+1964: 	}
+1965: 	return ""
+1966: }
+1967:
+1968: // repoName extracts a human-friendly name from a repo URL.

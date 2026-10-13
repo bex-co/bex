@@ -1,0 +1,53 @@
+{
+  "exit": 0,
+  "elapsed": 5.475,
+  "command": [
+    "go",
+    "test",
+    "-json",
+    "./internal/apps",
+    "-run",
+    "^(TestValidateBlueprintLocatesDanglingWorkspaceReference|TestBlueprintDatabaseCapacityRefusalsAreLocatedAndWriteNothing)$",
+    "-count=1"
+  ],
+  "events": [
+    {
+      "action": "pass",
+      "test": "TestBlueprintDatabaseCapacityRefusalsAreLocatedAndWriteNothing/free_replicas"
+    },
+    {
+      "action": "pass",
+      "test": "TestBlueprintDatabaseCapacityRefusalsAreLocatedAndWriteNothing/free_storage"
+    },
+    {
+      "action": "pass",
+      "test": "TestBlueprintDatabaseCapacityRefusalsAreLocatedAndWriteNothing/free_autoscaling"
+    },
+    {
+      "action": "pass",
+      "test": "TestBlueprintDatabaseCapacityRefusalsAreLocatedAndWriteNothing/free_pooler"
+    },
+    {
+      "action": "pass",
+      "test": "TestBlueprintDatabaseCapacityRefusalsAreLocatedAndWriteNothing/replica_storage_floor"
+    },
+    {
+      "action": "pass",
+      "test": "TestBlueprintDatabaseCapacityRefusalsAreLocatedAndWriteNothing/replica_count"
+    },
+    {
+      "action": "pass",
+      "test": "TestBlueprintDatabaseCapacityRefusalsAreLocatedAndWriteNothing/paid_storage_cap"
+    },
+    {
+      "action": "pass",
+      "test": "TestBlueprintDatabaseCapacityRefusalsAreLocatedAndWriteNothing"
+    },
+    {
+      "action": "pass",
+      "test": "TestValidateBlueprintLocatesDanglingWorkspaceReference"
+    }
+  ],
+  "stderr": "",
+  "qualification": "Existing nearby source-location/capacity tests only; not full backend suite"
+}

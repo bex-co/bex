@@ -1,0 +1,26 @@
+{
+  "projects": [
+    {
+      "name": "qa202-b7aca1-project",
+      "environments": [
+        {
+          "name": "normal",
+          "services": [
+            {
+              "name": "qa202-b7aca1-static",
+              "type": "web",
+              "runtime": "static",
+              "repo": "https://github.com/bex-co/bex",
+              "branch": "main",
+              "rootDir": "examples/static-site",
+              "buildCommand": "",
+              "staticPublishPath": ".",
+              "routes": [],
+              "headers": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

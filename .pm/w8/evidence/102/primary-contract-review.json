@@ -1,0 +1,12 @@
+{
+  "reviewed_at": "2026-10-13T08:26:26.004365+00:00",
+  "render": {
+    "url": "https://render.com/docs/blueprint-spec#referencing-service-properties",
+    "meaning": "envVarKey references an environment variable on the named service; references are copied on Blueprint sync. The documentation does not establish same-array duplicate precedence."
+  },
+  "kubernetes": {
+    "url": "https://github.com/kubernetes/kubernetes/blob/v1.35.0/pkg/kubelet/kubelet_pods.go#L781-L899",
+    "meaning": "The kubelet visits container.Env in order and assigns each value by variable name into a map; a later duplicate replaces an earlier entry. The Bex operator preserves the stored App.Env array order."
+  },
+  "qualification": "This supports inference from actual current persisted App specs. Hosted apply, pod values and deployed Kubernetes/operator/API revisions were not tested. No new Render duplicate-key policy is assumed."
+}

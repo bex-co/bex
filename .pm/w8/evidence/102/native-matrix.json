@@ -1,0 +1,1801 @@
+{
+  "sweep": 204,
+  "nonce": "ee47c6",
+  "source_head": "c5a0eb9dd15f6b417bf586fdf26510706497b032",
+  "surface": "Native Blueprint accepted literal/reference overlap with actual current DeployStack create-seeder copy consistency diagnosis",
+  "mutation": "none: native validation only; local public DeployStack uses fake client and recording creation seeder",
+  "results": [
+    {
+      "client": "bex",
+      "case": "literal-then-reference",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-caller",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "literal value"
+              },
+              {
+                "key": "VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-source",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-source",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "source value"
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-consumer",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-caller",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation result retained",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep204-literal-then-reference.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.565,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa204-ee47c6-caller\",\n      \"qa204-ee47c6-source\",\n      \"qa204-ee47c6-consumer\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa204-ee47c6-caller",
+            "qa204-ee47c6-source",
+            "qa204-ee47c6-consumer"
+          ],
+          "totalActions": 3
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "reference-then-literal",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-caller",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-source",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              },
+              {
+                "key": "VALUE",
+                "value": "literal value"
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-source",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "source value"
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-consumer",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-caller",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation result retained",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep204-reference-then-literal.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.416,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa204-ee47c6-caller\",\n      \"qa204-ee47c6-source\",\n      \"qa204-ee47c6-consumer\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa204-ee47c6-caller",
+            "qa204-ee47c6-source",
+            "qa204-ee47c6-consumer"
+          ],
+          "totalActions": 3
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "literals-only",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-caller",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "first value"
+              },
+              {
+                "key": "VALUE",
+                "value": "last value"
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-source",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "source value"
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-consumer",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-caller",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation result retained",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep204-literals-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.537,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa204-ee47c6-caller\",\n      \"qa204-ee47c6-source\",\n      \"qa204-ee47c6-consumer\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa204-ee47c6-caller",
+            "qa204-ee47c6-source",
+            "qa204-ee47c6-consumer"
+          ],
+          "totalActions": 3
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "unique-control",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-caller",
+            "envVars": [
+              {
+                "key": "LOCAL_VALUE",
+                "value": "literal value"
+              },
+              {
+                "key": "VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-source",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-source",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "source value"
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-consumer",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-caller",
+                  "type": "web",
+                  "envVarKey": "LOCAL_VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation result retained",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep204-unique-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.719,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa204-ee47c6-caller\",\n      \"qa204-ee47c6-source\",\n      \"qa204-ee47c6-consumer\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa204-ee47c6-caller",
+            "qa204-ee47c6-source",
+            "qa204-ee47c6-consumer"
+          ],
+          "totalActions": 3
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "literal-then-reference",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-caller",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "literal value"
+              },
+              {
+                "key": "VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-source",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-source",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "source value"
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-consumer",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-caller",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation result retained",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep204-literal-then-reference.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.442,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa204-ee47c6-caller\",\n      \"qa204-ee47c6-source\",\n      \"qa204-ee47c6-consumer\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa204-ee47c6-caller",
+            "qa204-ee47c6-source",
+            "qa204-ee47c6-consumer"
+          ],
+          "totalActions": 3
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "reference-then-literal",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-caller",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-source",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              },
+              {
+                "key": "VALUE",
+                "value": "literal value"
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-source",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "source value"
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-consumer",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-caller",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation result retained",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep204-reference-then-literal.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.376,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa204-ee47c6-caller\",\n      \"qa204-ee47c6-source\",\n      \"qa204-ee47c6-consumer\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa204-ee47c6-caller",
+            "qa204-ee47c6-source",
+            "qa204-ee47c6-consumer"
+          ],
+          "totalActions": 3
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "literals-only",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-caller",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "first value"
+              },
+              {
+                "key": "VALUE",
+                "value": "last value"
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-source",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "source value"
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-consumer",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-caller",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation result retained",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep204-literals-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.375,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa204-ee47c6-caller\",\n      \"qa204-ee47c6-source\",\n      \"qa204-ee47c6-consumer\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa204-ee47c6-caller",
+            "qa204-ee47c6-source",
+            "qa204-ee47c6-consumer"
+          ],
+          "totalActions": 3
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "unique-control",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-caller",
+            "envVars": [
+              {
+                "key": "LOCAL_VALUE",
+                "value": "literal value"
+              },
+              {
+                "key": "VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-source",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-source",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "source value"
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-consumer",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-caller",
+                  "type": "web",
+                  "envVarKey": "LOCAL_VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation result retained",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep204-unique-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.373,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa204-ee47c6-caller\",\n      \"qa204-ee47c6-source\",\n      \"qa204-ee47c6-consumer\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa204-ee47c6-caller",
+            "qa204-ee47c6-source",
+            "qa204-ee47c6-consumer"
+          ],
+          "totalActions": 3
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "consumer-first",
+      "layout": "root",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-consumer",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-caller",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-caller",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "literal value"
+              },
+              {
+                "key": "VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-source",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-source",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "source value"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native extra validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep204-consumer-first.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.532,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa204-ee47c6-consumer\",\n      \"qa204-ee47c6-caller\",\n      \"qa204-ee47c6-source\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa204-ee47c6-consumer",
+            "qa204-ee47c6-caller",
+            "qa204-ee47c6-source"
+          ],
+          "totalActions": 3
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "client": "bex",
+      "case": "empty-shadowed-literal",
+      "layout": "root",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-caller",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": ""
+              },
+              {
+                "key": "VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-source",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-source",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "source value"
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-consumer",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-caller",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native extra validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep204-empty-shadowed-literal.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.406,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa204-ee47c6-caller\",\n      \"qa204-ee47c6-source\",\n      \"qa204-ee47c6-consumer\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa204-ee47c6-caller",
+            "qa204-ee47c6-source",
+            "qa204-ee47c6-consumer"
+          ],
+          "totalActions": 3
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "client": "bex",
+      "case": "pure-reference-chain",
+      "layout": "root",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-caller",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-source",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-source",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "source value"
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-consumer",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-caller",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native extra validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep204-pure-reference-chain.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.638,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa204-ee47c6-consumer\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa204-ee47c6-caller\\\", which has no such plainly-defined variable\",\n      \"line\": 45,\n      \"path\": \"services[2].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa204-ee47c6-consumer\": fromService.envVarKey references env \"VALUE\" on service \"qa204-ee47c6-caller\", which has no such plainly-defined variable",
+            "line": 45,
+            "path": "services[2].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "client": "bex",
+      "case": "consumer-first-pure-chain",
+      "layout": "root",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-consumer",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-caller",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-caller",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-source",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-source",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "source value"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native extra validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep204-consumer-first-pure-chain.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.642,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa204-ee47c6-consumer\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa204-ee47c6-caller\\\", which has no such plainly-defined variable\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa204-ee47c6-consumer\": fromService.envVarKey references env \"VALUE\" on service \"qa204-ee47c6-caller\", which has no such plainly-defined variable",
+            "line": 11,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "client": "render",
+      "case": "consumer-first",
+      "layout": "root",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-consumer",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-caller",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-caller",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "literal value"
+              },
+              {
+                "key": "VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-source",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-source",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "source value"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native extra validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep204-consumer-first.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.59,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa204-ee47c6-consumer\",\n      \"qa204-ee47c6-caller\",\n      \"qa204-ee47c6-source\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa204-ee47c6-consumer",
+            "qa204-ee47c6-caller",
+            "qa204-ee47c6-source"
+          ],
+          "totalActions": 3
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "client": "render",
+      "case": "empty-shadowed-literal",
+      "layout": "root",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-caller",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": ""
+              },
+              {
+                "key": "VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-source",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-source",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "source value"
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-consumer",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-caller",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native extra validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep204-empty-shadowed-literal.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.38,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa204-ee47c6-caller\",\n      \"qa204-ee47c6-source\",\n      \"qa204-ee47c6-consumer\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa204-ee47c6-caller",
+            "qa204-ee47c6-source",
+            "qa204-ee47c6-consumer"
+          ],
+          "totalActions": 3
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "client": "render",
+      "case": "pure-reference-chain",
+      "layout": "root",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-caller",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-source",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-source",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "source value"
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-consumer",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-caller",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native extra validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep204-pure-reference-chain.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.288,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa204-ee47c6-consumer\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa204-ee47c6-caller\\\", which has no such plainly-defined variable\",\n      \"line\": 45,\n      \"path\": \"services[2].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa204-ee47c6-consumer\": fromService.envVarKey references env \"VALUE\" on service \"qa204-ee47c6-caller\", which has no such plainly-defined variable",
+            "line": 45,
+            "path": "services[2].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "client": "render",
+      "case": "consumer-first-pure-chain",
+      "layout": "root",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-consumer",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-caller",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-caller",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "fromService": {
+                  "name": "qa204-ee47c6-source",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa204-ee47c6-source",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "source value"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native extra validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep204-consumer-first-pure-chain.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.291,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa204-ee47c6-consumer\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa204-ee47c6-caller\\\", which has no such plainly-defined variable\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa204-ee47c6-consumer\": fromService.envVarKey references env \"VALUE\" on service \"qa204-ee47c6-caller\", which has no such plainly-defined variable",
+            "line": 11,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    }
+  ],
+  "copied_render_config_removed": true,
+  "native_captures": [
+    {
+      "at": "2026-10-13T08:17:53.965637+00:00",
+      "client": "bex",
+      "case": "literal-then-reference",
+      "layout": "root",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep204-root-literal-then-reference.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 0.492,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa204-ee47c6-caller\",\n      \"qa204-ee47c6-source\",\n      \"qa204-ee47c6-consumer\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T08:17:54.516016+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=4b72bcf7debffcae5b9d0369ae1f4a239b2e7dd9be40969658f885f4dff7",
+            "body": "--4b72bcf7debffcae5b9d0369ae1f4a239b2e7dd9be40969658f885f4dff7\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--4b72bcf7debffcae5b9d0369ae1f4a239b2e7dd9be40969658f885f4dff7\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep204-root-literal-then-reference.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"literal value\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"SOURCE_VALUE\"\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-source\",\n      \"envVars\": [\n        {\n          \"key\": \"SOURCE_VALUE\",\n          \"value\": \"source value\"\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-caller\",\n            \"type\": \"web\",\n            \"envVarKey\": \"VALUE\"\n          }\n        }\n      ]\n    }\n  ]\n}\n\r\n--4b72bcf7debffcae5b9d0369ae1f4a239b2e7dd9be40969658f885f4dff7--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"literal value\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"SOURCE_VALUE\"\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-source\",\n      \"envVars\": [\n        {\n          \"key\": \"SOURCE_VALUE\",\n          \"value\": \"source value\"\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-caller\",\n            \"type\": \"web\",\n            \"envVarKey\": \"VALUE\"\n          }\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49ce919fa0fed36-SJC"
+          },
+          "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa204-ee47c6-caller\",\"qa204-ee47c6-source\",\"qa204-ee47c6-consumer\"],\"totalActions\":3,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa204-ee47c6-caller\",\"sourcePath\":\"#/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa204-ee47c6-consumer\",\"sourcePath\":\"#/services/2\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa204-ee47c6-source\",\"sourcePath\":\"#/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-13T08:17:54.873078+00:00",
+      "client": "render",
+      "case": "reference-then-literal",
+      "layout": "root",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep204-root-reference-then-literal.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 0.413,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa204-ee47c6-caller\",\n      \"qa204-ee47c6-source\",\n      \"qa204-ee47c6-consumer\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T08:17:55.342357+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=9099599417a9ac56ae679819fb6f17f2f9724a0f83eae9bdfe7fa2bdbd0b",
+            "body": "--9099599417a9ac56ae679819fb6f17f2f9724a0f83eae9bdfe7fa2bdbd0b\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--9099599417a9ac56ae679819fb6f17f2f9724a0f83eae9bdfe7fa2bdbd0b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep204-root-reference-then-literal.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"SOURCE_VALUE\"\n          }\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"literal value\"\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-source\",\n      \"envVars\": [\n        {\n          \"key\": \"SOURCE_VALUE\",\n          \"value\": \"source value\"\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-caller\",\n            \"type\": \"web\",\n            \"envVarKey\": \"VALUE\"\n          }\n        }\n      ]\n    }\n  ]\n}\n\r\n--9099599417a9ac56ae679819fb6f17f2f9724a0f83eae9bdfe7fa2bdbd0b--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"SOURCE_VALUE\"\n          }\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"literal value\"\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-source\",\n      \"envVars\": [\n        {\n          \"key\": \"SOURCE_VALUE\",\n          \"value\": \"source value\"\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-caller\",\n            \"type\": \"web\",\n            \"envVarKey\": \"VALUE\"\n          }\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49ce91f7bb03ecb-SJC"
+          },
+          "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa204-ee47c6-caller\",\"qa204-ee47c6-source\",\"qa204-ee47c6-consumer\"],\"totalActions\":3,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa204-ee47c6-caller\",\"sourcePath\":\"#/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa204-ee47c6-consumer\",\"sourcePath\":\"#/services/2\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa204-ee47c6-source\",\"sourcePath\":\"#/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-13T08:17:55.763295+00:00",
+      "client": "bex",
+      "case": "literals-only",
+      "layout": "root",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep204-root-literals-only.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 0.645,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa204-ee47c6-caller\",\n      \"qa204-ee47c6-source\",\n      \"qa204-ee47c6-consumer\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T08:17:56.467417+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=769e98d8499e6984c404ac8600a4d3490ae9b6fd89923cbe7d3f30f43c50",
+            "body": "--769e98d8499e6984c404ac8600a4d3490ae9b6fd89923cbe7d3f30f43c50\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--769e98d8499e6984c404ac8600a4d3490ae9b6fd89923cbe7d3f30f43c50\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep204-root-literals-only.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"first value\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"last value\"\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-source\",\n      \"envVars\": [\n        {\n          \"key\": \"SOURCE_VALUE\",\n          \"value\": \"source value\"\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-caller\",\n            \"type\": \"web\",\n            \"envVarKey\": \"VALUE\"\n          }\n        }\n      ]\n    }\n  ]\n}\n\r\n--769e98d8499e6984c404ac8600a4d3490ae9b6fd89923cbe7d3f30f43c50--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"first value\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"last value\"\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-source\",\n      \"envVars\": [\n        {\n          \"key\": \"SOURCE_VALUE\",\n          \"value\": \"source value\"\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-caller\",\n            \"type\": \"web\",\n            \"envVarKey\": \"VALUE\"\n          }\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49ce924bd6b2994-SJC"
+          },
+          "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa204-ee47c6-caller\",\"qa204-ee47c6-source\",\"qa204-ee47c6-consumer\"],\"totalActions\":3,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa204-ee47c6-caller\",\"sourcePath\":\"#/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa204-ee47c6-consumer\",\"sourcePath\":\"#/services/2\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa204-ee47c6-source\",\"sourcePath\":\"#/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-13T08:17:57.098184+00:00",
+      "client": "render",
+      "case": "unique-control",
+      "layout": "root",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep204-root-unique-control.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 0.367,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa204-ee47c6-caller\",\n      \"qa204-ee47c6-source\",\n      \"qa204-ee47c6-consumer\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T08:17:57.522605+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=9ad6672fb0457d2dd437110d61bbf4311f377b6e6eb1a6c55fd4dca4c6e9",
+            "body": "--9ad6672fb0457d2dd437110d61bbf4311f377b6e6eb1a6c55fd4dca4c6e9\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--9ad6672fb0457d2dd437110d61bbf4311f377b6e6eb1a6c55fd4dca4c6e9\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep204-root-unique-control.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"LOCAL_VALUE\",\n          \"value\": \"literal value\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"SOURCE_VALUE\"\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-source\",\n      \"envVars\": [\n        {\n          \"key\": \"SOURCE_VALUE\",\n          \"value\": \"source value\"\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-caller\",\n            \"type\": \"web\",\n            \"envVarKey\": \"LOCAL_VALUE\"\n          }\n        }\n      ]\n    }\n  ]\n}\n\r\n--9ad6672fb0457d2dd437110d61bbf4311f377b6e6eb1a6c55fd4dca4c6e9--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"LOCAL_VALUE\",\n          \"value\": \"literal value\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"SOURCE_VALUE\"\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-source\",\n      \"envVars\": [\n        {\n          \"key\": \"SOURCE_VALUE\",\n          \"value\": \"source value\"\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-caller\",\n            \"type\": \"web\",\n            \"envVarKey\": \"LOCAL_VALUE\"\n          }\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49ce92d0e43eb26-SJC"
+          },
+          "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa204-ee47c6-caller\",\"qa204-ee47c6-source\",\"qa204-ee47c6-consumer\"],\"totalActions\":3,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa204-ee47c6-caller\",\"sourcePath\":\"#/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa204-ee47c6-consumer\",\"sourcePath\":\"#/services/2\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa204-ee47c6-source\",\"sourcePath\":\"#/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-13T08:20:53.032903+00:00",
+      "client": "bex",
+      "case": "empty-shadowed-literal",
+      "layout": "root",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep204-root-empty-shadowed-literal.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 0.568,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa204-ee47c6-caller\",\n      \"qa204-ee47c6-source\",\n      \"qa204-ee47c6-consumer\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T08:20:53.660505+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=783c8abbd599cd7858a26e924799e459356a4990ba947d65733383fe66db",
+            "body": "--783c8abbd599cd7858a26e924799e459356a4990ba947d65733383fe66db\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--783c8abbd599cd7858a26e924799e459356a4990ba947d65733383fe66db\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep204-root-empty-shadowed-literal.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"SOURCE_VALUE\"\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-source\",\n      \"envVars\": [\n        {\n          \"key\": \"SOURCE_VALUE\",\n          \"value\": \"source value\"\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-caller\",\n            \"type\": \"web\",\n            \"envVarKey\": \"VALUE\"\n          }\n        }\n      ]\n    }\n  ]\n}\n\r\n--783c8abbd599cd7858a26e924799e459356a4990ba947d65733383fe66db--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"SOURCE_VALUE\"\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-source\",\n      \"envVars\": [\n        {\n          \"key\": \"SOURCE_VALUE\",\n          \"value\": \"source value\"\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-caller\",\n            \"type\": \"web\",\n            \"envVarKey\": \"VALUE\"\n          }\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49ced791bada6c4-SJC"
+          },
+          "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa204-ee47c6-caller\",\"qa204-ee47c6-source\",\"qa204-ee47c6-consumer\"],\"totalActions\":3,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa204-ee47c6-caller\",\"sourcePath\":\"#/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa204-ee47c6-consumer\",\"sourcePath\":\"#/services/2\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa204-ee47c6-source\",\"sourcePath\":\"#/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-13T08:20:53.933763+00:00",
+      "client": "render",
+      "case": "pure-reference-chain",
+      "layout": "root",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep204-root-pure-reference-chain.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 1,
+        "elapsed": 0.363,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa204-ee47c6-consumer\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa204-ee47c6-caller\\\", which has no such plainly-defined variable\",\n      \"line\": 45,\n      \"path\": \"services[2].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T08:20:54.354707+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=350cec2e6c22f65c074e09f66d24dc8bdd95608fd7fc88d8a67123840b5b",
+            "body": "--350cec2e6c22f65c074e09f66d24dc8bdd95608fd7fc88d8a67123840b5b\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--350cec2e6c22f65c074e09f66d24dc8bdd95608fd7fc88d8a67123840b5b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep204-root-pure-reference-chain.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"SOURCE_VALUE\"\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-source\",\n      \"envVars\": [\n        {\n          \"key\": \"SOURCE_VALUE\",\n          \"value\": \"source value\"\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-caller\",\n            \"type\": \"web\",\n            \"envVarKey\": \"VALUE\"\n          }\n        }\n      ]\n    }\n  ]\n}\n\r\n--350cec2e6c22f65c074e09f66d24dc8bdd95608fd7fc88d8a67123840b5b--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"SOURCE_VALUE\"\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-source\",\n      \"envVars\": [\n        {\n          \"key\": \"SOURCE_VALUE\",\n          \"value\": \"source value\"\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa204-ee47c6-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa204-ee47c6-caller\",\n            \"type\": \"web\",\n            \"envVarKey\": \"VALUE\"\n          }\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49ced7e9f987396-SJC"
+          },
+          "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa204-ee47c6-consumer\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa204-ee47c6-caller\\\", which has no such plainly-defined variable\",\"line\":45,\"column\":18,\"path\":\"services[2].envVars\"}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+{
+  "QA_owner_email": "Replaced exact QA owner email in native create/get/update/delete output and metadata owner.email; all other harmless field values/types preserved.",
+  "connection_urls": "Not archived; native command and HTTP output URL redaction preserved."
+}

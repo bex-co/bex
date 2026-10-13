@@ -1,0 +1,20 @@
+{"Time":"2026-10-12T20:22:47.656508-07:00","Action":"start","Package":"github.com/bex-co/bex/lego/backend/internal/logs"}
+{"Time":"2026-10-12T20:22:48.235477-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Test":"TestLokiQueryFor"}
+{"Time":"2026-10-12T20:22:48.235528-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Test":"TestLokiQueryFor","Output":"=== RUN   TestLokiQueryFor\n"}
+{"Time":"2026-10-12T20:22:48.23565-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Test":"TestLokiQueryFor/multiple_values_for_one_filter_OR_together"}
+{"Time":"2026-10-12T20:22:48.235656-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Test":"TestLokiQueryFor/multiple_values_for_one_filter_OR_together","Output":"=== RUN   TestLokiQueryFor/multiple_values_for_one_filter_OR_together\n"}
+{"Time":"2026-10-12T20:22:48.235778-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Test":"TestLokiQueryFor/multiple_values_for_one_filter_OR_together","Output":"--- PASS: TestLokiQueryFor/multiple_values_for_one_filter_OR_together (0.00s)\n"}
+{"Time":"2026-10-12T20:22:48.235783-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Test":"TestLokiQueryFor/multiple_values_for_one_filter_OR_together","Elapsed":0}
+{"Time":"2026-10-12T20:22:48.2358-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Test":"TestLokiQueryFor/Render_level_names_match_the_stored_buckets"}
+{"Time":"2026-10-12T20:22:48.235802-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Test":"TestLokiQueryFor/Render_level_names_match_the_stored_buckets","Output":"=== RUN   TestLokiQueryFor/Render_level_names_match_the_stored_buckets\n"}
+{"Time":"2026-10-12T20:22:48.235805-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Test":"TestLokiQueryFor/Render_level_names_match_the_stored_buckets","Output":"--- PASS: TestLokiQueryFor/Render_level_names_match_the_stored_buckets (0.00s)\n"}
+{"Time":"2026-10-12T20:22:48.235808-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Test":"TestLokiQueryFor/Render_level_names_match_the_stored_buckets","Elapsed":0}
+{"Time":"2026-10-12T20:22:48.235826-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Test":"TestLokiQueryFor/notice_and_critical"}
+{"Time":"2026-10-12T20:22:48.235839-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Test":"TestLokiQueryFor/notice_and_critical","Output":"=== RUN   TestLokiQueryFor/notice_and_critical\n"}
+{"Time":"2026-10-12T20:22:48.23585-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Test":"TestLokiQueryFor/notice_and_critical","Output":"--- PASS: TestLokiQueryFor/notice_and_critical (0.00s)\n"}
+{"Time":"2026-10-12T20:22:48.235852-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Test":"TestLokiQueryFor/notice_and_critical","Elapsed":0}
+{"Time":"2026-10-12T20:22:48.23592-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Test":"TestLokiQueryFor","Output":"--- PASS: TestLokiQueryFor (0.00s)\n"}
+{"Time":"2026-10-12T20:22:48.235926-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Test":"TestLokiQueryFor","Elapsed":0}
+{"Time":"2026-10-12T20:22:48.235928-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Output":"PASS\n"}
+{"Time":"2026-10-12T20:22:48.237032-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Output":"ok  \tgithub.com/bex-co/bex/lego/backend/internal/logs\t0.580s\n"}
+{"Time":"2026-10-12T20:22:48.237041-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Elapsed":0.581}

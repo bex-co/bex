@@ -1,0 +1,192 @@
+[
+  {
+    "at": "2026-10-13T03:50:45.776488+00:00",
+    "client": "bex",
+    "case": "pool-reference",
+    "layout": "root",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "<QA_TMP>/sweep194-root-pool-reference.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.799,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa194-c4c136-consumer\\\": fromDatabase connectionPoolString requires database \\\"qa194-c4c136-pool-reference-db\\\" connectionPool: pgbouncer\",\n      \"line\": 10,\n      \"path\": \"services[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T03:50:46.635574+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=5355d3471bbcf62a3f5c3d3a5fd2729175098b85789eda18580ca6696ab5",
+          "body": "--5355d3471bbcf62a3f5c3d3a5fd2729175098b85789eda18580ca6696ab5\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--5355d3471bbcf62a3f5c3d3a5fd2729175098b85789eda18580ca6696ab5\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep194-root-pool-reference.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"databases\": [\n    {\n      \"name\": \"qa194-c4c136-pool-reference-db\",\n      \"plan\": \"free\",\n      \"postgresMajorVersion\": \"18\"\n    }\n  ],\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa194-c4c136-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"DB_REFERENCE\",\n          \"fromDatabase\": {\n            \"name\": \"qa194-c4c136-pool-reference-db\",\n            \"property\": \"connectionPoolString\"\n          }\n        }\n      ]\n    }\n  ]\n}\n\r\n--5355d3471bbcf62a3f5c3d3a5fd2729175098b85789eda18580ca6696ab5--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"databases\": [\n    {\n      \"name\": \"qa194-c4c136-pool-reference-db\",\n      \"plan\": \"free\",\n      \"postgresMajorVersion\": \"18\"\n    }\n  ],\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa194-c4c136-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"DB_REFERENCE\",\n          \"fromDatabase\": {\n            \"name\": \"qa194-c4c136-pool-reference-db\",\n            \"property\": \"connectionPoolString\"\n          }\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49b61cb4a9f7501-BOS"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa194-c4c136-consumer\\\": fromDatabase connectionPoolString requires database \\\"qa194-c4c136-pool-reference-db\\\" connectionPool: pgbouncer\",\"line\":10,\"column\":5,\"path\":\"services[0].connectionPool\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-13T03:51:57.295455+00:00",
+    "client": "render",
+    "case": "pool-reference-second",
+    "layout": "project",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "<QA_TMP>/sweep194-project-second-pool-reference.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.774,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa194-c4c136-consumer\\\": fromDatabase connectionPoolString requires database \\\"qa194-c4c136-pool-reference-db\\\" connectionPool: pgbouncer\",\n      \"line\": 16,\n      \"path\": \"projects[0].environments[0].services[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T03:51:58.121731+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=a48e3e15e0fccd81b9ce931811497881d3ebd82800f589c95e33477912d5",
+          "body": "--a48e3e15e0fccd81b9ce931811497881d3ebd82800f589c95e33477912d5\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--a48e3e15e0fccd81b9ce931811497881d3ebd82800f589c95e33477912d5\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep194-project-second-pool-reference.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa194-c4c136-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"databases\": [\n            {\n              \"name\": \"qa194-c4c136-pool-reference-db\",\n              \"plan\": \"free\",\n              \"postgresMajorVersion\": \"18\"\n            }\n          ],\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa194-c4c136-consumer\",\n              \"envVars\": [\n                {\n                  \"key\": \"LITERAL_CONTROL\",\n                  \"value\": \"qa194 literal\"\n                },\n                {\n                  \"key\": \"DB_REFERENCE\",\n                  \"fromDatabase\": {\n                    \"name\": \"qa194-c4c136-pool-reference-db\",\n                    \"property\": \"connectionPoolString\"\n                  }\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--a48e3e15e0fccd81b9ce931811497881d3ebd82800f589c95e33477912d5--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa194-c4c136-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"databases\": [\n            {\n              \"name\": \"qa194-c4c136-pool-reference-db\",\n              \"plan\": \"free\",\n              \"postgresMajorVersion\": \"18\"\n            }\n          ],\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa194-c4c136-consumer\",\n              \"envVars\": [\n                {\n                  \"key\": \"LITERAL_CONTROL\",\n                  \"value\": \"qa194 literal\"\n                },\n                {\n                  \"key\": \"DB_REFERENCE\",\n                  \"fromDatabase\": {\n                    \"name\": \"qa194-c4c136-pool-reference-db\",\n                    \"property\": \"connectionPoolString\"\n                  }\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49b638adebd6548-LHR"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa194-c4c136-consumer\\\": fromDatabase connectionPoolString requires database \\\"qa194-c4c136-pool-reference-db\\\" connectionPool: pgbouncer\",\"line\":16,\"column\":13,\"path\":\"projects[0].environments[0].services[0].connectionPool\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-13T03:52:32.150148+00:00",
+    "client": "bex",
+    "case": "direct-reference-corrected",
+    "layout": "root",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "<QA_TMP>/sweep194-root-direct-reference.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 1.035,
+      "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa194-c4c136-direct-db\"\n    ],\n    \"services\": [\n      \"qa194-c4c136-consumer\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T03:52:33.243966+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=de108fa3540d9d784886ffa4b0768f2ec77a7b86be51c054fa4726274327",
+          "body": "--de108fa3540d9d784886ffa4b0768f2ec77a7b86be51c054fa4726274327\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--de108fa3540d9d784886ffa4b0768f2ec77a7b86be51c054fa4726274327\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep194-root-direct-reference.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"databases\": [\n    {\n      \"name\": \"qa194-c4c136-direct-db\",\n      \"plan\": \"free\",\n      \"postgresMajorVersion\": \"18\"\n    }\n  ],\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa194-c4c136-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"DB_REFERENCE\",\n          \"fromDatabase\": {\n            \"name\": \"qa194-c4c136-direct-db\",\n            \"property\": \"connectionString\"\n          }\n        }\n      ]\n    }\n  ]\n}\n\r\n--de108fa3540d9d784886ffa4b0768f2ec77a7b86be51c054fa4726274327--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"databases\": [\n    {\n      \"name\": \"qa194-c4c136-direct-db\",\n      \"plan\": \"free\",\n      \"postgresMajorVersion\": \"18\"\n    }\n  ],\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa194-c4c136-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"DB_REFERENCE\",\n          \"fromDatabase\": {\n            \"name\": \"qa194-c4c136-direct-db\",\n            \"property\": \"connectionString\"\n          }\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49b6465593cea2a-AMS"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa194-c4c136-consumer\"],\"databases\":[\"qa194-c4c136-direct-db\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"postgres\",\"name\":\"qa194-c4c136-direct-db\",\"sourcePath\":\"#/databases/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa194-c4c136-consumer\",\"sourcePath\":\"#/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-13T03:53:10.144796+00:00",
+    "client": "render",
+    "case": "direct-reference-corrected",
+    "layout": "project",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "<QA_TMP>/sweep194-project-direct-reference.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.744,
+      "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa194-c4c136-direct-db\"\n    ],\n    \"services\": [\n      \"qa194-c4c136-consumer\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T03:53:10.941565+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=3e2ef42b84a9db7e5ac5ef249d8c361bf48bb3cd0db64ec5ef69b368784b",
+          "body": "--3e2ef42b84a9db7e5ac5ef249d8c361bf48bb3cd0db64ec5ef69b368784b\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--3e2ef42b84a9db7e5ac5ef249d8c361bf48bb3cd0db64ec5ef69b368784b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep194-project-direct-reference.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa194-c4c136-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"databases\": [\n            {\n              \"name\": \"qa194-c4c136-direct-db\",\n              \"plan\": \"free\",\n              \"postgresMajorVersion\": \"18\"\n            }\n          ],\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa194-c4c136-consumer\",\n              \"envVars\": [\n                {\n                  \"key\": \"DB_REFERENCE\",\n                  \"fromDatabase\": {\n                    \"name\": \"qa194-c4c136-direct-db\",\n                    \"property\": \"connectionString\"\n                  }\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--3e2ef42b84a9db7e5ac5ef249d8c361bf48bb3cd0db64ec5ef69b368784b--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa194-c4c136-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"databases\": [\n            {\n              \"name\": \"qa194-c4c136-direct-db\",\n              \"plan\": \"free\",\n              \"postgresMajorVersion\": \"18\"\n            }\n          ],\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa194-c4c136-consumer\",\n              \"envVars\": [\n                {\n                  \"key\": \"DB_REFERENCE\",\n                  \"fromDatabase\": {\n                    \"name\": \"qa194-c4c136-direct-db\",\n                    \"property\": \"connectionString\"\n                  }\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49b65521ac0bd74-LHR"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa194-c4c136-consumer\"],\"databases\":[\"qa194-c4c136-direct-db\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"postgres\",\"name\":\"qa194-c4c136-direct-db\",\"sourcePath\":\"#/projects/0/environments/0/databases/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa194-c4c136-consumer\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  }
+]

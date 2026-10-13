@@ -1,0 +1,18 @@
+{
+  "sweep": 179,
+  "observed_at": "2026-10-12T23:55:25.849151+00:00",
+  "source_head": "dc1043a16d9c94f1450b6ab07aa7c1b1b0769aa1",
+  "filing_head": "dc1043a16d9c94f1450b6ab07aa7c1b1b0769aa1",
+  "deployed_head": "unknown",
+  "bex": "v0.3.2 / a6350da0d6e451e063143432e06c548ba7b5851b",
+  "render_pin": "v2.27.0 / a764810a768202704e7206eb7b87a47211fcd98e",
+  "api_origin": "https://api.bex.co/v1/",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "human_oauth": true,
+  "owned_id": "srv-db6n6s12s0sc73a8hki0",
+  "cleanup": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+  "local_container_created": false,
+  "proxy_configuration_copies_remaining": 0,
+  "implementation_changed": false,
+  "ship_performed": false
+}

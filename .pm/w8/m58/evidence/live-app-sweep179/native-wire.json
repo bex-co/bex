@@ -1,0 +1,750 @@
+[
+  {
+    "at": "2026-10-13T00:14:13.263225+00:00",
+    "client": "bex",
+    "case": "all-raw",
+    "term": "QA179_317383",
+    "search_terms": [
+      "QA179_317383"
+    ],
+    "expected_label_keys": [
+      "table-0",
+      "table-1",
+      "table-2",
+      "table-3",
+      "table-4",
+      "table-5",
+      "table-6",
+      "table-7",
+      "table-8",
+      "table-9",
+      "table-10",
+      "table-11",
+      "cafe-upper",
+      "cafe-lower",
+      "literal-punct",
+      "literal-quote",
+      "literal-space",
+      "literal-no-space",
+      "literal-tab",
+      "literal-comma",
+      "hidden"
+    ],
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db6n6s12s0sc73a8hki0",
+      "--type",
+      "app",
+      "--text",
+      "\"QA179_317383\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 4.91,
+      "stdout": "",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T00:14:18.232250+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db6n6s12s0sc73a8hki0&type=app&text=QA179_317383&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db6n6s12s0sc73a8hki0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA179_317383"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49a24991b8837b0-AMS"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T23:14:18Z\",\"nextEndTime\":\"2026-10-13T00:14:18Z\",\"logs\":[]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "evaluation": {
+      "rows": 0,
+      "expected_count": 21,
+      "match_set_correct": false,
+      "native_equals_captured_logs": true,
+      "hasMore": false
+    }
+  },
+  {
+    "at": "2026-10-13T00:18:11.365644+00:00",
+    "client": "render",
+    "case": "all-raw",
+    "term": "QA179_317383",
+    "search_terms": [
+      "QA179_317383"
+    ],
+    "expected_label_keys": [
+      "table-0",
+      "table-1",
+      "table-2",
+      "table-3",
+      "table-4",
+      "table-5",
+      "table-6",
+      "table-7",
+      "table-8",
+      "table-9",
+      "table-10",
+      "table-11",
+      "cafe-upper",
+      "cafe-lower",
+      "literal-punct",
+      "literal-quote",
+      "literal-space",
+      "literal-no-space",
+      "literal-tab",
+      "literal-comma",
+      "hidden"
+    ],
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db6n6s12s0sc73a8hki0",
+      "--type",
+      "app",
+      "--text",
+      "\"QA179_317383\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 4.635,
+      "stdout": "",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T00:18:16.061172+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db6n6s12s0sc73a8hki0&type=app&text=QA179_317383&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db6n6s12s0sc73a8hki0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA179_317383"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49a2a6a09f43c6d-AMS"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T23:18:15Z\",\"nextEndTime\":\"2026-10-13T00:18:15Z\",\"logs\":[]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "evaluation": {
+      "rows": 0,
+      "expected_count": 21,
+      "match_set_correct": false,
+      "native_equals_captured_logs": true,
+      "hasMore": false
+    }
+  },
+  {
+    "at": "2026-10-13T00:18:16.359517+00:00",
+    "client": "bex",
+    "case": "all-end-control",
+    "term": "QA179_317383",
+    "search_terms": [
+      "QA179_317383"
+    ],
+    "expected_label_keys": [
+      "table-0",
+      "table-1",
+      "table-2",
+      "table-3",
+      "table-4",
+      "table-5",
+      "table-6",
+      "table-7",
+      "table-8",
+      "table-9",
+      "table-10",
+      "table-11",
+      "cafe-upper",
+      "cafe-lower",
+      "literal-punct",
+      "literal-quote",
+      "literal-space",
+      "literal-no-space",
+      "literal-tab",
+      "literal-comma",
+      "hidden"
+    ],
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db6n6s12s0sc73a8hki0",
+      "--type",
+      "app",
+      "--text",
+      "\"QA179_317383\"",
+      "--limit",
+      "100",
+      "--end",
+      "2026-10-12T23:57:28.747309428Z",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 4.073,
+      "stdout": "{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.446619291Z-4225fa85\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE РУССКИЙ\",\n  \"timestamp\": \"2026-10-12T23:57:28.446619291Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.44692423Z-daf20971\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE русский\",\n  \"timestamp\": \"2026-10-12T23:57:28.44692423Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.446931884Z-f660364a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE ΡΟΔΟ\",\n  \"timestamp\": \"2026-10-12T23:57:28.446931884Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447500965Z-d79ba85f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE ροδο\",\n  \"timestamp\": \"2026-10-12T23:57:28.447500965Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447510082Z-6175f203\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE KELVIN\",\n  \"timestamp\": \"2026-10-12T23:57:28.447510082Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447511734Z-e349ae04\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE KELVIN\",\n  \"timestamp\": \"2026-10-12T23:57:28.447511734Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447512696Z-8138bf44\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE kelvin\",\n  \"timestamp\": \"2026-10-12T23:57:28.447512696Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447514108Z-82932a80\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE İSTANBUL\",\n  \"timestamp\": \"2026-10-12T23:57:28.447514108Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447515161Z-5362b017\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE ISTANBUL\",\n  \"timestamp\": \"2026-10-12T23:57:28.447515161Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447516123Z-e5826297\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE istanbul\",\n  \"timestamp\": \"2026-10-12T23:57:28.447516123Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447517705Z-d4651568\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE Ι\",\n  \"timestamp\": \"2026-10-12T23:57:28.447517705Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447518818Z-b464e308\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE ι\",\n  \"timestamp\": \"2026-10-12T23:57:28.447518818Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747209191Z-93feb986\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_CAFE CAFÉ Ελληνικά\",\n  \"timestamp\": \"2026-10-12T23:57:28.747209191Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.74724039Z-05d881a6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_CAFE café ελληνικά\",\n  \"timestamp\": \"2026-10-12T23:57:28.74724039Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747242193Z-2615abc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_LIT literal * . | \\\\ tail\",\n  \"timestamp\": \"2026-10-12T23:57:28.747242193Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747244368Z-1aaa7b97\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_LIT say \\\"quoted\\\"\",\n  \"timestamp\": \"2026-10-12T23:57:28.747244368Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747252142Z-6375c501\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_LIT space core \",\n  \"timestamp\": \"2026-10-12T23:57:28.747252142Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747253244Z-c23e8bbb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_LIT space core\",\n  \"timestamp\": \"2026-10-12T23:57:28.747253244Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747254156Z-eccff293\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_LIT \\ttab\\tend\\t\",\n  \"timestamp\": \"2026-10-12T23:57:28.747254156Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747302886Z-57a7188c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_LIT comma,left,right\",\n  \"timestamp\": \"2026-10-12T23:57:28.747302886Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747309428Z-cf9ea8c0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_HIDDEN BEHIND_RAW_PAGE\",\n  \"timestamp\": \"2026-10-12T23:57:28.747309428Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T00:18:20.489703+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&endTime=2026-10-12T23%3A57%3A28.747309428Z&direction=backward&resource=srv-db6n6s12s0sc73a8hki0&type=app&text=QA179_317383&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "endTime": [
+              "2026-10-12T23:57:28.747309428Z"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db6n6s12s0sc73a8hki0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA179_317383"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49a2a87bba5138c-ATL"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T22:57:28.747309428Z\",\"nextEndTime\":\"2026-10-12T23:57:28.44661929Z\",\"logs\":[{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.446619291Z-4225fa85\",\"message\":\"QA179_317383_TABLE РУССКИЙ\",\"timestamp\":\"2026-10-12T23:57:28.446619291Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.44692423Z-daf20971\",\"message\":\"QA179_317383_TABLE русский\",\"timestamp\":\"2026-10-12T23:57:28.44692423Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.446931884Z-f660364a\",\"message\":\"QA179_317383_TABLE ΡΟΔΟ\",\"timestamp\":\"2026-10-12T23:57:28.446931884Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447500965Z-d79ba85f\",\"message\":\"QA179_317383_TABLE ροδο\",\"timestamp\":\"2026-10-12T23:57:28.447500965Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447510082Z-6175f203\",\"message\":\"QA179_317383_TABLE KELVIN\",\"timestamp\":\"2026-10-12T23:57:28.447510082Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447511734Z-e349ae04\",\"message\":\"QA179_317383_TABLE KELVIN\",\"timestamp\":\"2026-10-12T23:57:28.447511734Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447512696Z-8138bf44\",\"message\":\"QA179_317383_TABLE kelvin\",\"timestamp\":\"2026-10-12T23:57:28.447512696Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447514108Z-82932a80\",\"message\":\"QA179_317383_TABLE İSTANBUL\",\"timestamp\":\"2026-10-12T23:57:28.447514108Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447515161Z-5362b017\",\"message\":\"QA179_317383_TABLE ISTANBUL\",\"timestamp\":\"2026-10-12T23:57:28.447515161Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447516123Z-e5826297\",\"message\":\"QA179_317383_TABLE istanbul\",\"timestamp\":\"2026-10-12T23:57:28.447516123Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447517705Z-d4651568\",\"message\":\"QA179_317383_TABLE Ι\",\"timestamp\":\"2026-10-12T23:57:28.447517705Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447518818Z-b464e308\",\"message\":\"QA179_317383_TABLE ι\",\"timestamp\":\"2026-10-12T23:57:28.447518818Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747209191Z-93feb986\",\"message\":\"QA179_317383_CAFE CAFÉ Ελληνικά\",\"timestamp\":\"2026-10-12T23:57:28.747209191Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.74724039Z-05d881a6\",\"message\":\"QA179_317383_CAFE café ελληνικά\",\"timestamp\":\"2026-10-12T23:57:28.74724039Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747242193Z-2615abc5\",\"message\":\"QA179_317383_LIT literal * . | \\\\ tail\",\"timestamp\":\"2026-10-12T23:57:28.747242193Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747244368Z-1aaa7b97\",\"message\":\"QA179_317383_LIT say \\\"quoted\\\"\",\"timestamp\":\"2026-10-12T23:57:28.747244368Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747252142Z-6375c501\",\"message\":\"QA179_317383_LIT space core \",\"timestamp\":\"2026-10-12T23:57:28.747252142Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747253244Z-c23e8bbb\",\"message\":\"QA179_317383_LIT space core\",\"timestamp\":\"2026-10-12T23:57:28.747253244Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747254156Z-eccff293\",\"message\":\"QA179_317383_LIT \\ttab\\tend\\t\",\"timestamp\":\"2026-10-12T23:57:28.747254156Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747302886Z-57a7188c\",\"message\":\"QA179_317383_LIT comma,left,right\",\"timestamp\":\"2026-10-12T23:57:28.747302886Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747309428Z-cf9ea8c0\",\"message\":\"QA179_317383_HIDDEN BEHIND_RAW_PAGE\",\"timestamp\":\"2026-10-12T23:57:28.747309428Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "evaluation": {
+      "rows": 21,
+      "expected_count": 21,
+      "match_set_correct": true,
+      "native_equals_captured_logs": true,
+      "hasMore": false,
+      "ids_match_display_baseline": true
+    }
+  },
+  {
+    "at": "2026-10-13T00:18:20.924793+00:00",
+    "client": "render",
+    "case": "all-end-control",
+    "term": "QA179_317383",
+    "search_terms": [
+      "QA179_317383"
+    ],
+    "expected_label_keys": [
+      "table-0",
+      "table-1",
+      "table-2",
+      "table-3",
+      "table-4",
+      "table-5",
+      "table-6",
+      "table-7",
+      "table-8",
+      "table-9",
+      "table-10",
+      "table-11",
+      "cafe-upper",
+      "cafe-lower",
+      "literal-punct",
+      "literal-quote",
+      "literal-space",
+      "literal-no-space",
+      "literal-tab",
+      "literal-comma",
+      "hidden"
+    ],
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db6n6s12s0sc73a8hki0",
+      "--type",
+      "app",
+      "--text",
+      "\"QA179_317383\"",
+      "--limit",
+      "100",
+      "--end",
+      "2026-10-12T23:57:28.747309428Z",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 3.997,
+      "stdout": "{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.446619291Z-4225fa85\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE РУССКИЙ\",\n  \"timestamp\": \"2026-10-12T23:57:28.446619291Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.44692423Z-daf20971\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE русский\",\n  \"timestamp\": \"2026-10-12T23:57:28.44692423Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.446931884Z-f660364a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE ΡΟΔΟ\",\n  \"timestamp\": \"2026-10-12T23:57:28.446931884Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447500965Z-d79ba85f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE ροδο\",\n  \"timestamp\": \"2026-10-12T23:57:28.447500965Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447510082Z-6175f203\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE KELVIN\",\n  \"timestamp\": \"2026-10-12T23:57:28.447510082Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447511734Z-e349ae04\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE KELVIN\",\n  \"timestamp\": \"2026-10-12T23:57:28.447511734Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447512696Z-8138bf44\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE kelvin\",\n  \"timestamp\": \"2026-10-12T23:57:28.447512696Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447514108Z-82932a80\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE İSTANBUL\",\n  \"timestamp\": \"2026-10-12T23:57:28.447514108Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447515161Z-5362b017\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE ISTANBUL\",\n  \"timestamp\": \"2026-10-12T23:57:28.447515161Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447516123Z-e5826297\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE istanbul\",\n  \"timestamp\": \"2026-10-12T23:57:28.447516123Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447517705Z-d4651568\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE Ι\",\n  \"timestamp\": \"2026-10-12T23:57:28.447517705Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447518818Z-b464e308\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_TABLE ι\",\n  \"timestamp\": \"2026-10-12T23:57:28.447518818Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747209191Z-93feb986\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_CAFE CAFÉ Ελληνικά\",\n  \"timestamp\": \"2026-10-12T23:57:28.747209191Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.74724039Z-05d881a6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_CAFE café ελληνικά\",\n  \"timestamp\": \"2026-10-12T23:57:28.74724039Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747242193Z-2615abc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_LIT literal * . | \\\\ tail\",\n  \"timestamp\": \"2026-10-12T23:57:28.747242193Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747244368Z-1aaa7b97\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_LIT say \\\"quoted\\\"\",\n  \"timestamp\": \"2026-10-12T23:57:28.747244368Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747252142Z-6375c501\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_LIT space core \",\n  \"timestamp\": \"2026-10-12T23:57:28.747252142Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747253244Z-c23e8bbb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_LIT space core\",\n  \"timestamp\": \"2026-10-12T23:57:28.747253244Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747254156Z-eccff293\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_LIT \\ttab\\tend\\t\",\n  \"timestamp\": \"2026-10-12T23:57:28.747254156Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747302886Z-57a7188c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_LIT comma,left,right\",\n  \"timestamp\": \"2026-10-12T23:57:28.747302886Z\"\n}{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747309428Z-cf9ea8c0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_HIDDEN BEHIND_RAW_PAGE\",\n  \"timestamp\": \"2026-10-12T23:57:28.747309428Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T00:18:24.975010+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&endTime=2026-10-12T23%3A57%3A28.747309428Z&direction=backward&resource=srv-db6n6s12s0sc73a8hki0&type=app&text=QA179_317383&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "endTime": [
+              "2026-10-12T23:57:28.747309428Z"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db6n6s12s0sc73a8hki0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA179_317383"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49a2aa3c8af4cc9-BOS"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T22:57:28.747309428Z\",\"nextEndTime\":\"2026-10-12T23:57:28.44661929Z\",\"logs\":[{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.446619291Z-4225fa85\",\"message\":\"QA179_317383_TABLE РУССКИЙ\",\"timestamp\":\"2026-10-12T23:57:28.446619291Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.44692423Z-daf20971\",\"message\":\"QA179_317383_TABLE русский\",\"timestamp\":\"2026-10-12T23:57:28.44692423Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.446931884Z-f660364a\",\"message\":\"QA179_317383_TABLE ΡΟΔΟ\",\"timestamp\":\"2026-10-12T23:57:28.446931884Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447500965Z-d79ba85f\",\"message\":\"QA179_317383_TABLE ροδο\",\"timestamp\":\"2026-10-12T23:57:28.447500965Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447510082Z-6175f203\",\"message\":\"QA179_317383_TABLE KELVIN\",\"timestamp\":\"2026-10-12T23:57:28.447510082Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447511734Z-e349ae04\",\"message\":\"QA179_317383_TABLE KELVIN\",\"timestamp\":\"2026-10-12T23:57:28.447511734Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447512696Z-8138bf44\",\"message\":\"QA179_317383_TABLE kelvin\",\"timestamp\":\"2026-10-12T23:57:28.447512696Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447514108Z-82932a80\",\"message\":\"QA179_317383_TABLE İSTANBUL\",\"timestamp\":\"2026-10-12T23:57:28.447514108Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447515161Z-5362b017\",\"message\":\"QA179_317383_TABLE ISTANBUL\",\"timestamp\":\"2026-10-12T23:57:28.447515161Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447516123Z-e5826297\",\"message\":\"QA179_317383_TABLE istanbul\",\"timestamp\":\"2026-10-12T23:57:28.447516123Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447517705Z-d4651568\",\"message\":\"QA179_317383_TABLE Ι\",\"timestamp\":\"2026-10-12T23:57:28.447517705Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.447518818Z-b464e308\",\"message\":\"QA179_317383_TABLE ι\",\"timestamp\":\"2026-10-12T23:57:28.447518818Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747209191Z-93feb986\",\"message\":\"QA179_317383_CAFE CAFÉ Ελληνικά\",\"timestamp\":\"2026-10-12T23:57:28.747209191Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.74724039Z-05d881a6\",\"message\":\"QA179_317383_CAFE café ελληνικά\",\"timestamp\":\"2026-10-12T23:57:28.74724039Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747242193Z-2615abc5\",\"message\":\"QA179_317383_LIT literal * . | \\\\ tail\",\"timestamp\":\"2026-10-12T23:57:28.747242193Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747244368Z-1aaa7b97\",\"message\":\"QA179_317383_LIT say \\\"quoted\\\"\",\"timestamp\":\"2026-10-12T23:57:28.747244368Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747252142Z-6375c501\",\"message\":\"QA179_317383_LIT space core \",\"timestamp\":\"2026-10-12T23:57:28.747252142Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747253244Z-c23e8bbb\",\"message\":\"QA179_317383_LIT space core\",\"timestamp\":\"2026-10-12T23:57:28.747253244Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747254156Z-eccff293\",\"message\":\"QA179_317383_LIT \\ttab\\tend\\t\",\"timestamp\":\"2026-10-12T23:57:28.747254156Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747302886Z-57a7188c\",\"message\":\"QA179_317383_LIT comma,left,right\",\"timestamp\":\"2026-10-12T23:57:28.747302886Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]},{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747309428Z-cf9ea8c0\",\"message\":\"QA179_317383_HIDDEN BEHIND_RAW_PAGE\",\"timestamp\":\"2026-10-12T23:57:28.747309428Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "evaluation": {
+      "rows": 21,
+      "expected_count": 21,
+      "match_set_correct": true,
+      "native_equals_captured_logs": true,
+      "hasMore": false,
+      "ids_match_display_baseline": true
+    }
+  },
+  {
+    "at": "2026-10-13T00:18:25.301249+00:00",
+    "client": "bex",
+    "case": "hidden-raw",
+    "term": "QA179_317383_HIDDEN BEHIND_RAW_PAGE",
+    "search_terms": [
+      "QA179_317383_HIDDEN BEHIND_RAW_PAGE"
+    ],
+    "expected_label_keys": [
+      "hidden"
+    ],
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db6n6s12s0sc73a8hki0",
+      "--type",
+      "app",
+      "--text",
+      "\"QA179_317383_HIDDEN BEHIND_RAW_PAGE\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 3.889,
+      "stdout": "",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T00:18:29.247900+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db6n6s12s0sc73a8hki0&type=app&text=QA179_317383_HIDDEN+BEHIND_RAW_PAGE&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db6n6s12s0sc73a8hki0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA179_317383_HIDDEN BEHIND_RAW_PAGE"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49a2abefb4e889f-BOS"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T23:18:29Z\",\"nextEndTime\":\"2026-10-13T00:18:29Z\",\"logs\":[]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "evaluation": {
+      "rows": 0,
+      "expected_count": 1,
+      "match_set_correct": false,
+      "native_equals_captured_logs": true,
+      "hasMore": false
+    }
+  },
+  {
+    "at": "2026-10-13T00:18:29.748841+00:00",
+    "client": "render",
+    "case": "hidden-raw",
+    "term": "QA179_317383_HIDDEN BEHIND_RAW_PAGE",
+    "search_terms": [
+      "QA179_317383_HIDDEN BEHIND_RAW_PAGE"
+    ],
+    "expected_label_keys": [
+      "hidden"
+    ],
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db6n6s12s0sc73a8hki0",
+      "--type",
+      "app",
+      "--text",
+      "\"QA179_317383_HIDDEN BEHIND_RAW_PAGE\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 4.883,
+      "stdout": "",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T00:18:34.694326+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db6n6s12s0sc73a8hki0&type=app&text=QA179_317383_HIDDEN+BEHIND_RAW_PAGE&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db6n6s12s0sc73a8hki0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA179_317383_HIDDEN BEHIND_RAW_PAGE"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49a2adc68f0b543-ATL"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T23:18:34Z\",\"nextEndTime\":\"2026-10-13T00:18:34Z\",\"logs\":[]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "evaluation": {
+      "rows": 0,
+      "expected_count": 1,
+      "match_set_correct": false,
+      "native_equals_captured_logs": true,
+      "hasMore": false
+    }
+  },
+  {
+    "at": "2026-10-13T00:18:35.222585+00:00",
+    "client": "bex",
+    "case": "hidden-end-control",
+    "term": "QA179_317383_HIDDEN BEHIND_RAW_PAGE",
+    "search_terms": [
+      "QA179_317383_HIDDEN BEHIND_RAW_PAGE"
+    ],
+    "expected_label_keys": [
+      "hidden"
+    ],
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db6n6s12s0sc73a8hki0",
+      "--type",
+      "app",
+      "--text",
+      "\"QA179_317383_HIDDEN BEHIND_RAW_PAGE\"",
+      "--limit",
+      "100",
+      "--end",
+      "2026-10-12T23:57:28.747309428Z",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 4.254,
+      "stdout": "{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747309428Z-cf9ea8c0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_HIDDEN BEHIND_RAW_PAGE\",\n  \"timestamp\": \"2026-10-12T23:57:28.747309428Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T00:18:39.533839+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&endTime=2026-10-12T23%3A57%3A28.747309428Z&direction=backward&resource=srv-db6n6s12s0sc73a8hki0&type=app&text=QA179_317383_HIDDEN+BEHIND_RAW_PAGE&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "endTime": [
+              "2026-10-12T23:57:28.747309428Z"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db6n6s12s0sc73a8hki0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA179_317383_HIDDEN BEHIND_RAW_PAGE"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49a2afd4da22c27-MIA"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T22:57:28.747309428Z\",\"nextEndTime\":\"2026-10-12T23:57:28.747309427Z\",\"logs\":[{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747309428Z-cf9ea8c0\",\"message\":\"QA179_317383_HIDDEN BEHIND_RAW_PAGE\",\"timestamp\":\"2026-10-12T23:57:28.747309428Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "evaluation": {
+      "rows": 1,
+      "expected_count": 1,
+      "match_set_correct": true,
+      "native_equals_captured_logs": true,
+      "hasMore": false,
+      "ids_match_display_baseline": true
+    }
+  },
+  {
+    "at": "2026-10-13T00:18:40.075523+00:00",
+    "client": "render",
+    "case": "hidden-end-control",
+    "term": "QA179_317383_HIDDEN BEHIND_RAW_PAGE",
+    "search_terms": [
+      "QA179_317383_HIDDEN BEHIND_RAW_PAGE"
+    ],
+    "expected_label_keys": [
+      "hidden"
+    ],
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db6n6s12s0sc73a8hki0",
+      "--type",
+      "app",
+      "--text",
+      "\"QA179_317383_HIDDEN BEHIND_RAW_PAGE\"",
+      "--limit",
+      "100",
+      "--end",
+      "2026-10-12T23:57:28.747309428Z",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 3.915,
+      "stdout": "{\n  \"id\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747309428Z-cf9ea8c0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA179_317383_HIDDEN BEHIND_RAW_PAGE\",\n  \"timestamp\": \"2026-10-12T23:57:28.747309428Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T00:18:44.046572+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&endTime=2026-10-12T23%3A57%3A28.747309428Z&direction=backward&resource=srv-db6n6s12s0sc73a8hki0&type=app&text=QA179_317383_HIDDEN+BEHIND_RAW_PAGE&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "endTime": [
+              "2026-10-12T23:57:28.747309428Z"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "srv-db6n6s12s0sc73a8hki0"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "QA179_317383_HIDDEN BEHIND_RAW_PAGE"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49a2b1b4a26318c-BOS"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T22:57:28.747309428Z\",\"nextEndTime\":\"2026-10-12T23:57:28.747309427Z\",\"logs\":[{\"id\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib-2026-10-12T23:57:28.747309428Z-cf9ea8c0\",\"message\":\"QA179_317383_HIDDEN BEHIND_RAW_PAGE\",\"timestamp\":\"2026-10-12T23:57:28.747309428Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6n6s12s0sc73a8hki0\"},{\"name\":\"instance\",\"value\":\"srv-db6n6s12s0sc73a8hki0-plbb18hnv67q9loetmib\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"unknown\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "evaluation": {
+      "rows": 1,
+      "expected_count": 1,
+      "match_set_correct": true,
+      "native_equals_captured_logs": true,
+      "hasMore": false,
+      "ids_match_display_baseline": true
+    }
+  }
+]

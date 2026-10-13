@@ -1,0 +1,389 @@
+[
+  {
+    "at": "2026-10-12T23:22:34.567103+00:00",
+    "client": "bex",
+    "term": "QA177_95304f",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "red-db6ml7h5i38c73fd5nqg",
+      "--text",
+      "\"QA177_95304f\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 6.691,
+      "stdout": "{\n  \"id\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:48.757231517Z-057b3901\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 12 Oct 2026 23:21:48.757 * QA177_95304f Ι\",\n  \"timestamp\": \"2026-10-12T23:21:48.757231517Z\"\n}{\n  \"id\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:50.36724915Z-57d3efdb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 12 Oct 2026 23:21:50.367 * QA177_95304f ι\",\n  \"timestamp\": \"2026-10-12T23:21:50.36724915Z\"\n}{\n  \"id\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:52.449242016Z-a92d8222\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 12 Oct 2026 23:21:52.449 * QA177_95304f λ\",\n  \"timestamp\": \"2026-10-12T23:21:52.449242016Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-12T23:22:41.303525+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=red-db6ml7h5i38c73fd5nqg&text=QA177_95304f&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "red-db6ml7h5i38c73fd5nqg"
+            ],
+            "text": [
+              "QA177_95304f"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a499d8f1d852d5a5-AMS"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T22:22:41.244278922Z\",\"nextEndTime\":\"2026-10-12T23:21:48.757231516Z\",\"logs\":[{\"id\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:48.757231517Z-057b3901\",\"message\":\"1:M 12 Oct 2026 23:21:48.757 * QA177_95304f Ι\",\"timestamp\":\"2026-10-12T23:21:48.757231517Z\",\"labels\":[{\"name\":\"type\",\"value\":\"keyvalue\"},{\"name\":\"resource\",\"value\":\"red-db6ml7h5i38c73fd5nqg\"},{\"name\":\"instance\",\"value\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"},{\"name\":\"container\",\"value\":\"valkey\"}]},{\"id\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:50.36724915Z-57d3efdb\",\"message\":\"1:M 12 Oct 2026 23:21:50.367 * QA177_95304f ι\",\"timestamp\":\"2026-10-12T23:21:50.36724915Z\",\"labels\":[{\"name\":\"type\",\"value\":\"keyvalue\"},{\"name\":\"resource\",\"value\":\"red-db6ml7h5i38c73fd5nqg\"},{\"name\":\"instance\",\"value\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"},{\"name\":\"container\",\"value\":\"valkey\"}]},{\"id\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:52.449242016Z-a92d8222\",\"message\":\"1:M 12 Oct 2026 23:21:52.449 * QA177_95304f λ\",\"timestamp\":\"2026-10-12T23:21:52.449242016Z\",\"labels\":[{\"name\":\"type\",\"value\":\"keyvalue\"},{\"name\":\"resource\",\"value\":\"red-db6ml7h5i38c73fd5nqg\"},{\"name\":\"instance\",\"value\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"},{\"name\":\"container\",\"value\":\"valkey\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "expected_count": 3,
+    "count_passed": true,
+    "original_ids_and_bytes_preserved": true
+  },
+  {
+    "at": "2026-10-12T23:23:28.141070+00:00",
+    "client": "bex",
+    "term": "QA177_95304f ι",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "red-db6ml7h5i38c73fd5nqg",
+      "--text",
+      "\"QA177_95304f ι\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 4.619,
+      "stdout": "{\n  \"id\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:48.757231517Z-057b3901\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 12 Oct 2026 23:21:48.757 * QA177_95304f Ι\",\n  \"timestamp\": \"2026-10-12T23:21:48.757231517Z\"\n}{\n  \"id\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:50.36724915Z-57d3efdb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 12 Oct 2026 23:21:50.367 * QA177_95304f ι\",\n  \"timestamp\": \"2026-10-12T23:21:50.36724915Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-12T23:23:32.807849+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=red-db6ml7h5i38c73fd5nqg&text=QA177_95304f+%CE%B9&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "red-db6ml7h5i38c73fd5nqg"
+            ],
+            "text": [
+              "QA177_95304f ι"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a499da3f789e6767-ATL"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T22:23:32.754635182Z\",\"nextEndTime\":\"2026-10-12T23:21:48.757231516Z\",\"logs\":[{\"id\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:48.757231517Z-057b3901\",\"message\":\"1:M 12 Oct 2026 23:21:48.757 * QA177_95304f Ι\",\"timestamp\":\"2026-10-12T23:21:48.757231517Z\",\"labels\":[{\"name\":\"type\",\"value\":\"keyvalue\"},{\"name\":\"resource\",\"value\":\"red-db6ml7h5i38c73fd5nqg\"},{\"name\":\"instance\",\"value\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"},{\"name\":\"container\",\"value\":\"valkey\"}]},{\"id\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:50.36724915Z-57d3efdb\",\"message\":\"1:M 12 Oct 2026 23:21:50.367 * QA177_95304f ι\",\"timestamp\":\"2026-10-12T23:21:50.36724915Z\",\"labels\":[{\"name\":\"type\",\"value\":\"keyvalue\"},{\"name\":\"resource\",\"value\":\"red-db6ml7h5i38c73fd5nqg\"},{\"name\":\"instance\",\"value\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"},{\"name\":\"container\",\"value\":\"valkey\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "expected_count": 2,
+    "count_passed": true,
+    "original_ids_and_bytes_preserved": true
+  },
+  {
+    "at": "2026-10-12T23:23:33.028847+00:00",
+    "client": "bex",
+    "term": "QA177_95304f λ",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "red-db6ml7h5i38c73fd5nqg",
+      "--text",
+      "\"QA177_95304f λ\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 3.734,
+      "stdout": "{\n  \"id\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:52.449242016Z-a92d8222\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 12 Oct 2026 23:21:52.449 * QA177_95304f λ\",\n  \"timestamp\": \"2026-10-12T23:21:52.449242016Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-12T23:23:36.814232+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=red-db6ml7h5i38c73fd5nqg&text=QA177_95304f+%CE%BB&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "red-db6ml7h5i38c73fd5nqg"
+            ],
+            "text": [
+              "QA177_95304f λ"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a499da5d9d7cb088-ATL"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T22:23:36.76128709Z\",\"nextEndTime\":\"2026-10-12T23:21:52.449242015Z\",\"logs\":[{\"id\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:52.449242016Z-a92d8222\",\"message\":\"1:M 12 Oct 2026 23:21:52.449 * QA177_95304f λ\",\"timestamp\":\"2026-10-12T23:21:52.449242016Z\",\"labels\":[{\"name\":\"type\",\"value\":\"keyvalue\"},{\"name\":\"resource\",\"value\":\"red-db6ml7h5i38c73fd5nqg\"},{\"name\":\"instance\",\"value\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"},{\"name\":\"container\",\"value\":\"valkey\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "expected_count": 1,
+    "count_passed": true,
+    "original_ids_and_bytes_preserved": true
+  },
+  {
+    "at": "2026-10-12T23:23:37.333892+00:00",
+    "client": "render",
+    "term": "QA177_95304f",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "red-db6ml7h5i38c73fd5nqg",
+      "--text",
+      "\"QA177_95304f\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 4.308,
+      "stdout": "{\n  \"id\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:48.757231517Z-057b3901\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 12 Oct 2026 23:21:48.757 * QA177_95304f Ι\",\n  \"timestamp\": \"2026-10-12T23:21:48.757231517Z\"\n}{\n  \"id\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:50.36724915Z-57d3efdb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 12 Oct 2026 23:21:50.367 * QA177_95304f ι\",\n  \"timestamp\": \"2026-10-12T23:21:50.36724915Z\"\n}{\n  \"id\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:52.449242016Z-a92d8222\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 12 Oct 2026 23:21:52.449 * QA177_95304f λ\",\n  \"timestamp\": \"2026-10-12T23:21:52.449242016Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-12T23:23:41.688838+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=red-db6ml7h5i38c73fd5nqg&text=QA177_95304f&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "red-db6ml7h5i38c73fd5nqg"
+            ],
+            "text": [
+              "QA177_95304f"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a499da7858abf8cb-PDX"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T22:23:41.625531841Z\",\"nextEndTime\":\"2026-10-12T23:21:48.757231516Z\",\"logs\":[{\"id\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:48.757231517Z-057b3901\",\"message\":\"1:M 12 Oct 2026 23:21:48.757 * QA177_95304f Ι\",\"timestamp\":\"2026-10-12T23:21:48.757231517Z\",\"labels\":[{\"name\":\"type\",\"value\":\"keyvalue\"},{\"name\":\"resource\",\"value\":\"red-db6ml7h5i38c73fd5nqg\"},{\"name\":\"instance\",\"value\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"},{\"name\":\"container\",\"value\":\"valkey\"}]},{\"id\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:50.36724915Z-57d3efdb\",\"message\":\"1:M 12 Oct 2026 23:21:50.367 * QA177_95304f ι\",\"timestamp\":\"2026-10-12T23:21:50.36724915Z\",\"labels\":[{\"name\":\"type\",\"value\":\"keyvalue\"},{\"name\":\"resource\",\"value\":\"red-db6ml7h5i38c73fd5nqg\"},{\"name\":\"instance\",\"value\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"},{\"name\":\"container\",\"value\":\"valkey\"}]},{\"id\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:52.449242016Z-a92d8222\",\"message\":\"1:M 12 Oct 2026 23:21:52.449 * QA177_95304f λ\",\"timestamp\":\"2026-10-12T23:21:52.449242016Z\",\"labels\":[{\"name\":\"type\",\"value\":\"keyvalue\"},{\"name\":\"resource\",\"value\":\"red-db6ml7h5i38c73fd5nqg\"},{\"name\":\"instance\",\"value\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"},{\"name\":\"container\",\"value\":\"valkey\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "expected_count": 3,
+    "count_passed": true,
+    "original_ids_and_bytes_preserved": true
+  },
+  {
+    "at": "2026-10-12T23:23:42.202069+00:00",
+    "client": "render",
+    "term": "QA177_95304f ι",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "red-db6ml7h5i38c73fd5nqg",
+      "--text",
+      "\"QA177_95304f ι\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 3.575,
+      "stdout": "{\n  \"id\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:48.757231517Z-057b3901\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 12 Oct 2026 23:21:48.757 * QA177_95304f Ι\",\n  \"timestamp\": \"2026-10-12T23:21:48.757231517Z\"\n}{\n  \"id\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:50.36724915Z-57d3efdb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 12 Oct 2026 23:21:50.367 * QA177_95304f ι\",\n  \"timestamp\": \"2026-10-12T23:21:50.36724915Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-12T23:23:45.811263+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=red-db6ml7h5i38c73fd5nqg&text=QA177_95304f+%CE%B9&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "red-db6ml7h5i38c73fd5nqg"
+            ],
+            "text": [
+              "QA177_95304f ι"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a499da96b930675d-ATL"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T22:23:45.758630076Z\",\"nextEndTime\":\"2026-10-12T23:21:48.757231516Z\",\"logs\":[{\"id\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:48.757231517Z-057b3901\",\"message\":\"1:M 12 Oct 2026 23:21:48.757 * QA177_95304f Ι\",\"timestamp\":\"2026-10-12T23:21:48.757231517Z\",\"labels\":[{\"name\":\"type\",\"value\":\"keyvalue\"},{\"name\":\"resource\",\"value\":\"red-db6ml7h5i38c73fd5nqg\"},{\"name\":\"instance\",\"value\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"},{\"name\":\"container\",\"value\":\"valkey\"}]},{\"id\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:50.36724915Z-57d3efdb\",\"message\":\"1:M 12 Oct 2026 23:21:50.367 * QA177_95304f ι\",\"timestamp\":\"2026-10-12T23:21:50.36724915Z\",\"labels\":[{\"name\":\"type\",\"value\":\"keyvalue\"},{\"name\":\"resource\",\"value\":\"red-db6ml7h5i38c73fd5nqg\"},{\"name\":\"instance\",\"value\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"},{\"name\":\"container\",\"value\":\"valkey\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "expected_count": 2,
+    "count_passed": true,
+    "original_ids_and_bytes_preserved": true
+  },
+  {
+    "at": "2026-10-12T23:23:46.513486+00:00",
+    "client": "render",
+    "term": "QA177_95304f λ",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "red-db6ml7h5i38c73fd5nqg",
+      "--text",
+      "\"QA177_95304f λ\"",
+      "--limit",
+      "100",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 3.721,
+      "stdout": "{\n  \"id\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:52.449242016Z-a92d8222\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 12 Oct 2026 23:21:52.449 * QA177_95304f λ\",\n  \"timestamp\": \"2026-10-12T23:21:52.449242016Z\"\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-12T23:23:50.285065+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=red-db6ml7h5i38c73fd5nqg&text=QA177_95304f+%CE%BB&limit=100",
+          "query": {
+            "ownerId": [
+              "tea-daif693dqjvc73e7as3g"
+            ],
+            "direction": [
+              "backward"
+            ],
+            "resource": [
+              "red-db6ml7h5i38c73fd5nqg"
+            ],
+            "text": [
+              "QA177_95304f λ"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a499dab1ce95673f-ATL"
+        },
+        "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-12T22:23:50.234277571Z\",\"nextEndTime\":\"2026-10-12T23:21:52.449242015Z\",\"logs\":[{\"id\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2-2026-10-12T23:21:52.449242016Z-a92d8222\",\"message\":\"1:M 12 Oct 2026 23:21:52.449 * QA177_95304f λ\",\"timestamp\":\"2026-10-12T23:21:52.449242016Z\",\"labels\":[{\"name\":\"type\",\"value\":\"keyvalue\"},{\"name\":\"resource\",\"value\":\"red-db6ml7h5i38c73fd5nqg\"},{\"name\":\"instance\",\"value\":\"red-db6ml7h5i38c73fd5nqg-b2ej0lbb1lvuvl3rann2\"},{\"name\":\"container\",\"value\":\"valkey\"}]}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "expected_count": 1,
+    "count_passed": true,
+    "original_ids_and_bytes_preserved": true
+  }
+]

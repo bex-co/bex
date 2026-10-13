@@ -1,0 +1,121 @@
+import datetime, hashlib, json, pathlib, secrets, shlex, shutil, subprocess, sys, time
+
+p=pathlib.Path(__file__).parent
+cp=pathlib.Path('<REPO>/.playwright-mcp/cli-qa-w8-checkpoint.json')
+c=json.loads(cp.read_text())
+ws='tea-daif693dqjvc73e7as3g'
+mode=sys.argv[1]
+client=sys.argv[2]
+assert client in ('bex','render')
+id_file=p/('sweep183-'+client+'-id.txt')
+def now(): return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():
+    c['last_updated']=now()
+    cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n')
+    cp.chmod(0o600)
+def cli(args):
+    if client=='bex':
+        return json.loads(subprocess.check_output(['python3',str(p/'run.py'),'--release',*args],text=True))
+    cfg=p/'render-config/cli.yaml'
+    assert not cfg.exists()
+    cfg.parent.mkdir(mode=0o700,exist_ok=True)
+    shutil.copyfile(p/'config/cli.yaml',cfg)
+    cfg.chmod(0o600)
+    try: return json.loads(subprocess.check_output(['python3',str(p/'run-render.py'),*args],text=True))
+    finally: cfg.unlink(missing_ok=True)
+def wire(path):
+    return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True))
+
+probe='''import hashlib,os,pathlib
+def snapshot():
+    env=os.getenv("QA_COMPLEX","<absent>").encode("utf-8")
+    path=pathlib.Path("/etc/secrets/qa-note.txt")
+    data=path.read_bytes() if path.exists() else b""
+    return {"env_length":len(env),"env_sha256":hashlib.sha256(env).hexdigest(),"file_present":path.exists(),"file_length":len(data),"file_sha256":hashlib.sha256(data).hexdigest()}
+'''
+if mode=='create':
+    assert c['sync183_result']==0
+    assert not (id_file).exists()
+    assert not any(z.get('sweep')==183 and z.get('client')==client for z in c['resources'])
+    q=wire('/v1/owners/'+ws+'/limits')
+    assert q['status']=='200'
+    limits=json.loads(q['response'])
+    assert limits['services']['used']+limits['services']['terminating']<limits['services']['limit']
+    nonce=secrets.token_hex(3)
+    tag='QA183_'+nonce
+    name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-buildbytes'
+    env_value=tag+'\n☃=second\n内側'
+    contents=(tag+'\r\n☃=file\n\n').encode('utf-8')
+    note=p/('sweep183-'+nonce+'-note.txt')
+    note.write_bytes(contents)
+    note.chmod(0o600)
+    expected={'env_length':len(env_value.encode()),'env_sha256':hashlib.sha256(env_value.encode()).hexdigest(),'file_present':True,'file_length':len(contents),'file_sha256':hashlib.sha256(contents).hexdigest()}
+    build=probe+'import json,time\npathlib.Path("qa-built.json").write_text(json.dumps({"marker":'+repr(tag)+',"snapshot":snapshot(),"build_path":os.getenv("PATH"),"built_at":time.time_ns()}))\n'
+    program=probe+'''import http.server,json,socket
+built=json.loads(pathlib.Path("qa-built.json").read_text())
+class Handler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        body=json.dumps({"marker":built["marker"],"built":built,"runtime":snapshot(),"runtime_path":os.getenv("PATH"),"instance":socket.gethostname()}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type","application/json")
+        self.send_header("Content-Length",str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+    def log_message(self,*args): pass
+http.server.ThreadingHTTPServer(("0.0.0.0",int(os.getenv("PORT","3000"))),Handler).serve_forever()
+'''
+    args=['services','create','--name',name,'--type','web_service','--runtime','python','--repo','https://github.com/bex-co/bex','--branch','main','--root-directory','examples/hello-go','--build-command','/usr/local/bin/python3 -c '+shlex.quote(build),'--start-command','/usr/local/bin/python3 -u -c '+shlex.quote(program),'--health-check-path','/','--plan','free','--region','frankfurt','--auto-deploy=false','--env-var','QA_COMPLEX='+env_value,'--env-var','PATH=/usr/local/bin','--secret-file','qa-note.txt:'+str(note),'--confirm','-o','json']
+    x={'sweep':183,'source_head':c['head'],'workspace':ws,'type':'web_service','name':name,'client':client,'nonce':nonce,'marker':tag,'time':now(),'role':'custom PATH excludes platform codec tools, absolute Python build command and harmless marker inputs','dependency_ids':[],'state':'create intent persisted','command':[client,*args],'capacity_proof':q,'expected_bytes':expected,'program':program,'build_program':build}
+    c['resources'].append(x)
+    save()
+    r=cli(args)
+    x['create_result']=r
+    x['state']='create result received; reconcile before another create'
+    save()
+    if r['exit']==0:
+        v=json.loads(r['stdout'])
+        v=v.get('data',v)
+        v=v.get('service',v)
+        x.update(id=v['id'],create_response=v,state='created: native byte transport fixture; runtime pending')
+        (id_file).write_text(v['id'])
+        save()
+    print(json.dumps({'id':x.get('id'),'name':name,'exit':r['exit'],'elapsed':r['elapsed'],'stderr':r['stderr'],'expected_lengths':{'env':expected['env_length'],'file':expected['file_length']}}),flush=True)
+    raise SystemExit(0 if r['exit']==0 else 1)
+
+sid=(id_file).read_text().strip()
+x=next(z for z in c['resources'] if z.get('id')==sid)
+base={z if isinstance(z,str) else z.get('service',z)['id'] for z in c['baseline']['services']}
+assert x['sweep']==183 and x['workspace']==ws and x['create_result']['exit']==0 and x['create_response']['id']==sid and sid not in base and x['client']==client and not x['state'].startswith('deleted:')
+def public():
+    f=p/('sweep183-'+client+'-runtime.json')
+    r=subprocess.run(['curl','-sS','--max-time','8','-o',str(f),'-w','%{http_code}',x['create_response']['serviceDetails']['url']+'/'],text=True,capture_output=True)
+    raw=f.read_text() if f.exists() else ''
+    try: body=json.loads(raw)
+    except ValueError: body=None
+    return {'at':now(),'exit':r.returncode,'http':r.stdout,'body':body,'raw':raw,'stderr':r.stderr}
+
+if mode in ('ready','settle-repair'):
+    stage='initial' if mode=='ready' else 'repair'
+    for attempt in range(3):
+        r=cli(['deploys','list',sid,'--confirm','-o','json'])
+        assert r['exit']==0
+        ds=json.loads(r['stdout'])
+        target=next(z for z in ds if z['id']==x['repair_deploy_id']) if mode=='settle-repair' else ds[0]
+        o=public()
+        obs={'at':now(),'native_list':r,'target':target,'runtime':o}
+        x.setdefault(stage+'_observations',[]).append(obs)
+        save()
+        b=o['body']
+        matched=isinstance(b,dict) and b.get('marker')==x['marker'] and b.get('built',{}).get('snapshot')==x['expected_bytes'] and b.get('runtime')==x['expected_bytes'] and b.get('built',{}).get('build_path')==('/usr/local/bin' if mode=='ready' else '/usr/local/bin:/usr/bin:/bin') and b.get('runtime_path')==('/usr/local/bin' if mode=='ready' else '/usr/local/bin:/usr/bin:/bin')
+        print(json.dumps({'stage':stage,'attempt':attempt,'status':target['status'],'http':o['http'],'build_and_runtime_bytes_match':matched}),flush=True)
+        serving_new=True
+        terminal_failure=target['status'] in ('build_failed','update_failed','canceled')
+        if terminal_failure or (target['status']=='live' and o['http']=='200' and matched and serving_new):
+            x[stage+'_settled']=True
+            x[stage+'_pass']=target['status']=='live' and o['http']=='200' and matched
+            x[stage+'_runtime']=o
+            x[stage+'_deploy']=target
+            save()
+            break
+        if attempt<2: time.sleep(6)
+else: raise ValueError(mode)

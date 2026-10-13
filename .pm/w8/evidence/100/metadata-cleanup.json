@@ -1,0 +1,46 @@
+{
+  "at": "2026-10-13T04:01:48.751500+00:00",
+  "source_head": "c5a0eb9dd15f6b417bf586fdf26510706497b032",
+  "deployed_head": "unknown",
+  "Bex": "published0.3.2/a6350da0d6e451e063143432e06c548ba7b5851b",
+  "Render_pin": "2.27/a764810a768202704e7206eb7b87a47211fcd98e",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "human_auth": "ongoing isolated QA device grant",
+  "output": "non-TTY JSON",
+  "matrix_processes": 44,
+  "excluded_fixture_name_limit_errors": 4,
+  "admission_decisions_checked": 40,
+  "admission_decisions_correct": 40,
+  "native_mislocations_in_matrix": 8,
+  "additional_actual_native_captures": 4,
+  "captured_mislocations": 2,
+  "captured_controls": 2,
+  "local_actual_validation_diagnostics": 4,
+  "local_existing_neighbor_named_passes": 9,
+  "all_temporary_copied_capture_configs_removed": true,
+  "copied_Render_config_removed": true,
+  "resources_created": 0,
+  "SQL_connections_attempted": 0,
+  "poolers_or_replicas_provisioned": 0,
+  "quota": {
+    "at": "2026-10-13T04:01:48.743464+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.695,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49b71f51ed5231a-BOS"
+    },
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+  },
+  "product_source_changed": false,
+  "ship_performed": false
+}

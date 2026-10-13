@@ -1,0 +1,4 @@
+Source HEAD c5a0eb9dd15f6b417bf586fdf26510706497b032
+2686: 				return fmt.Errorf("fromService keyvalue takes a property (connectionString, host, port, or password), not envVarKey")
+2689: 				return fmt.Errorf("fromService keyvalue needs a property (connectionString, host, port, or password)")
+2692: 				return fmt.Errorf("fromService keyvalue property %q is not supported (want connectionString, host, port, or password)", ref.Property)

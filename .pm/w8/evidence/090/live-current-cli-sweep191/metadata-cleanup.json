@@ -1,0 +1,38 @@
+{
+  "at": "2026-10-13T03:12:20.530560+00:00",
+  "source_head": "c5a0eb9dd15f6b417bf586fdf26510706497b032",
+  "checkout_binary": "private native build qa191-c5a0eb9dd15f",
+  "release": "Bex0.3.2/a6350da0d6e451e063143432e06c548ba7b5851b",
+  "pin": "Render2.27.0/a764810a768202704e7206eb7b87a47211fcd98e",
+  "deployed_head": "unknown; no server revision inferred",
+  "native_processes": 6,
+  "hosting_mutations": 0,
+  "native_PTYs_reaped": true,
+  "temporary_config_directories_removed": 6,
+  "own_opener_stub_removed": true,
+  "environment_grant_persisted": false,
+  "quota": {
+    "at": "2026-10-13T03:12:20.523901+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.32,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49b297effd5d56a-SJC"
+    },
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+  },
+  "real_browser": "not launched; exact OS opener argument recorded",
+  "deploy_menu": "not exercised",
+  "new_release": "not published",
+  "product_implementation_changed": false,
+  "ship_performed": false
+}

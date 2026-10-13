@@ -1,0 +1,42 @@
+import pathlib,json,subprocess,datetime,os,re,time,sys,threading,http.server,http.client,urllib.parse,gzip,shutil
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('<REPO>/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());client=sys.argv[1];label=sys.argv[2];assert client in ('bex','render');g=c['sweep182_groupcopy'];case=next(v for v in g['results'] if v['client']=='bex' and v['case']==label);fixture=p/('sweep182-'+label+'.yaml');expected=fixture.read_bytes();assert expected.decode()==__import__('json').dumps(case['document'],ensure_ascii=False,indent=2)+'\n';captures=[]
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,indent=2));cp.chmod(0o600)
+mask=[]
+for line in (p/'config/cli.yaml').read_text().splitlines():
+ k,sep,v=line.strip().partition(':');v=v.strip().strip("\"'")
+ if sep and re.search(r'(?i)(token|password|secret|key)',k) and len(v)>8:mask.append(v)
+for line in pathlib.Path('<REPO>/muse.env').read_text().splitlines():
+ k,sep,v=line.partition('=');v=v.strip().strip("\"'")
+ if sep and k.strip() in ('QA_EMAIL','QA_PASSWORD') and v:mask.append(v)
+def scrub(s):
+ for value in mask:s=s.replace(value,'[QA VALUE REDACTED]')
+ return s
+class Handler(http.server.BaseHTTPRequestHandler):
+ def log_message(self,*a):pass
+ def do_GET(self):self.send_error(405)
+ def do_POST(self):
+  if self.path!='/v1/blueprints/validate':self.send_error(400,'outside native validation');return
+  request_body=self.rfile.read(int(self.headers.get('Content-Length','0')));ctype=self.headers.get('Content-Type');import email.parser,email.policy
+  msg=email.parser.BytesParser(policy=email.policy.default).parsebytes(('Content-Type: '+ctype+'\r\nMIME-Version: 1.0\r\n\r\n').encode()+request_body);parts={part.get_param('name',header='content-disposition'):part.get_payload(decode=True) for part in msg.iter_parts()}
+  if parts.get('ownerId')!=b'tea-daif693dqjvc73e7as3g' or parts.get('file')!=expected:self.send_error(400,'outside exact own harmless fixture');return
+  headers={k:v for k,v in self.headers.items() if k.lower() not in ('host','connection','content-length')};headers['Host']='api.bex.co';con=http.client.HTTPSConnection('api.bex.co',timeout=25)
+  try:
+   con.request('POST',self.path,body=request_body,headers=headers);r=con.getresponse();body=r.read();hs=r.getheaders();payload=gzip.decompress(body) if r.getheader('Content-Encoding')=='gzip' else body
+   captures.append({'at':now(),'request':{'method':'POST','path':self.path,'content_type':ctype,'body':request_body.decode(),'decoded_multipart':{'ownerId':parts['ownerId'].decode(),'file':parts['file'].decode()},'headers':{k:v for k,v in headers.items() if k.lower() in ('user-agent','x-bex-workspace','x-bex-cli-version')}},'status':r.status,'response_headers':{k:v for k,v in hs if k.lower() in ('content-type','cf-ray','x-request-id')},'response':scrub(payload.decode())})
+   self.send_response(r.status)
+   for k,v in hs:
+    if k.lower() not in ('transfer-encoding','connection','content-length','keep-alive'):self.send_header(k,v)
+   self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
+  except Exception as e:
+   captures.append({'transport_error':type(e).__name__});self.send_error(502)
+  finally:con.close()
+server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler);server.daemon_threads=True;origin='http://127.0.0.1:'+str(server.server_port)+'/v1/';thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start();cfgdir=p/('sweep182-capture-'+client+'-'+str(server.server_port));cfgdir.mkdir(mode=0o700);cfg=cfgdir/'cli.yaml';cfgtext,n=re.subn(r'(?m)^(\s+)host:.*$',lambda m:m[1]+'host: '+origin,(p/'config/cli.yaml').read_text());assert n==1;cfg.write_text(cfgtext);cfg.chmod(0o600)
+prefix='BEX' if client=='bex' else 'RENDER';env={k:v for k,v in os.environ.items() if not k.startswith(('RENDER_','BEX_','QA_'))};env.update({prefix+'_HOST':origin,prefix+'_CLI_CONFIG_DIR':str(cfgdir),prefix+'_CLI_CONFIG_PATH':str(cfg),prefix+'_WORKSPACE':'tea-daif693dqjvc73e7as3g',prefix+'_CLI_DISABLE_ANALYTICS':'1','BEX_NO_UPDATE_NOTIFIER':'1','BROWSER':'/usr/bin/true'})
+binary=p/'release/bex' if client=='bex' else p/'render-pin';assert binary.exists();args=['blueprints','validate',str(fixture),'--confirm','-o','json'];o={'at':now(),'client':client,'case':label,'command':[client,*args],'authority_forwarding':'Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded'};g.setdefault('native_captures',[]).append(o);save();started=time.monotonic()
+try:
+ r=subprocess.run([str(binary),*args],env=env,text=True,capture_output=True,timeout=40);o['native_result']={'exit':r.returncode,'elapsed':round(time.monotonic()-started,3),'stdout':scrub(r.stdout),'stderr':scrub(r.stderr)}
+except subprocess.TimeoutExpired as e:o['native_result']={'exit':'harness timeout','elapsed':40,'stdout':(e.stdout or b'').decode() if isinstance(e.stdout,bytes) else e.stdout or '', 'stderr':(e.stderr or b'').decode() if isinstance(e.stderr,bytes) else e.stderr or ''}
+finally:
+ server.shutdown();server.server_close();thread.join(timeout=2);shutil.rmtree(cfgdir);o['captures']=captures;o['capture_cleanup']='child reaped, server closed, temporary copied config removed';save()
+print(client,label,'exit',o['native_result']['exit'],'seconds',o['native_result']['elapsed'],'captures',[(v.get('status'),json.loads(v.get('response','{}')).get('valid')) for v in captures],flush=True)

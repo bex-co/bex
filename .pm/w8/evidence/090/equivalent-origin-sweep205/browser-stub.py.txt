@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+import json,os,pathlib,sys
+p=pathlib.Path(os.environ["QA_DASHBOARD_CAPTURE"])
+assert p.parent==pathlib.Path("<QA_TMP>") and p.name.startswith("sweep205-")
+p.write_text(json.dumps({"argv":sys.argv[1:]}))
+p.chmod(0o600)

@@ -1,0 +1,1376 @@
+[
+  {
+    "at": "2026-10-13T00:52:46.176226+00:00",
+    "client": "bex",
+    "case": "linked-literal",
+    "document": {
+      "services": [
+        {
+          "name": "qa182-f8e73e-source",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "fromGroup": "qa182-f8e73e-group"
+            }
+          ]
+        },
+        {
+          "name": "qa182-f8e73e-copy",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "key": "COPIED",
+              "fromService": {
+                "type": "web",
+                "name": "qa182-f8e73e-source",
+                "envVarKey": "VALUE"
+              }
+            }
+          ]
+        }
+      ],
+      "envVarGroups": [
+        {
+          "name": "qa182-f8e73e-group",
+          "envVars": [
+            {
+              "key": "VALUE",
+              "value": "source-182"
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_candidate": true,
+    "state": "native validation received, no resource mutation",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep182-linked-literal.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.881,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa182-f8e73e-copy\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa182-f8e73e-source\\\", which has no such plainly-defined variable\",\n      \"line\": 25,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "decoded": {
+      "errors": [
+        {
+          "column": 18,
+          "error": "service \"qa182-f8e73e-copy\": fromService.envVarKey references env \"VALUE\" on service \"qa182-f8e73e-source\", which has no such plainly-defined variable",
+          "line": 25,
+          "path": "services[1].envVars"
+        }
+      ],
+      "valid": false
+    },
+    "consumer_consistent": true,
+    "match_candidate_expectation": false
+  },
+  {
+    "at": "2026-10-13T00:52:47.302398+00:00",
+    "client": "bex",
+    "case": "plain-literal",
+    "document": {
+      "services": [
+        {
+          "name": "qa182-f8e73e-source",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "key": "VALUE",
+              "value": "source-182"
+            }
+          ]
+        },
+        {
+          "name": "qa182-f8e73e-copy",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "key": "COPIED",
+              "fromService": {
+                "type": "web",
+                "name": "qa182-f8e73e-source",
+                "envVarKey": "VALUE"
+              }
+            }
+          ]
+        }
+      ],
+      "envVarGroups": [
+        {
+          "name": "qa182-f8e73e-group",
+          "envVars": [
+            {
+              "key": "OTHER",
+              "value": "source-182"
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_candidate": true,
+    "state": "native validation received, no resource mutation",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep182-plain-literal.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 3.123,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa182-f8e73e-group\"\n    ],\n    \"services\": [\n      \"qa182-f8e73e-source\",\n      \"qa182-f8e73e-copy\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "decoded": {
+      "plan": {
+        "envGroups": [
+          "qa182-f8e73e-group"
+        ],
+        "services": [
+          "qa182-f8e73e-source",
+          "qa182-f8e73e-copy"
+        ],
+        "totalActions": 3
+      },
+      "valid": true
+    },
+    "consumer_consistent": true,
+    "match_candidate_expectation": true
+  },
+  {
+    "at": "2026-10-13T00:52:50.684825+00:00",
+    "client": "bex",
+    "case": "local-override",
+    "document": {
+      "services": [
+        {
+          "name": "qa182-f8e73e-source",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "fromGroup": "qa182-f8e73e-group"
+            },
+            {
+              "key": "VALUE",
+              "value": "local-override"
+            }
+          ]
+        },
+        {
+          "name": "qa182-f8e73e-copy",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "key": "COPIED",
+              "fromService": {
+                "type": "web",
+                "name": "qa182-f8e73e-source",
+                "envVarKey": "VALUE"
+              }
+            }
+          ]
+        }
+      ],
+      "envVarGroups": [
+        {
+          "name": "qa182-f8e73e-group",
+          "envVars": [
+            {
+              "key": "VALUE",
+              "value": "source-182"
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_candidate": true,
+    "state": "native validation received, no resource mutation",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep182-local-override.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.345,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa182-f8e73e-group\"\n    ],\n    \"services\": [\n      \"qa182-f8e73e-source\",\n      \"qa182-f8e73e-copy\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "decoded": {
+      "plan": {
+        "envGroups": [
+          "qa182-f8e73e-group"
+        ],
+        "services": [
+          "qa182-f8e73e-source",
+          "qa182-f8e73e-copy"
+        ],
+        "totalActions": 3
+      },
+      "valid": true
+    },
+    "consumer_consistent": true,
+    "match_candidate_expectation": true
+  },
+  {
+    "at": "2026-10-13T00:52:52.261746+00:00",
+    "client": "bex",
+    "case": "missing-group-key",
+    "document": {
+      "services": [
+        {
+          "name": "qa182-f8e73e-source",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "fromGroup": "qa182-f8e73e-group"
+            }
+          ]
+        },
+        {
+          "name": "qa182-f8e73e-copy",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "key": "COPIED",
+              "fromService": {
+                "type": "web",
+                "name": "qa182-f8e73e-source",
+                "envVarKey": "VALUE"
+              }
+            }
+          ]
+        }
+      ],
+      "envVarGroups": [
+        {
+          "name": "qa182-f8e73e-group",
+          "envVars": [
+            {
+              "key": "OTHER",
+              "value": "source-182"
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_candidate": false,
+    "state": "native validation received, no resource mutation",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep182-missing-group-key.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 1.894,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa182-f8e73e-copy\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa182-f8e73e-source\\\", which has no such plainly-defined variable\",\n      \"line\": 25,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "decoded": {
+      "errors": [
+        {
+          "column": 18,
+          "error": "service \"qa182-f8e73e-copy\": fromService.envVarKey references env \"VALUE\" on service \"qa182-f8e73e-source\", which has no such plainly-defined variable",
+          "line": 25,
+          "path": "services[1].envVars"
+        }
+      ],
+      "valid": false
+    },
+    "consumer_consistent": true,
+    "match_candidate_expectation": true
+  },
+  {
+    "at": "2026-10-13T00:52:54.422786+00:00",
+    "client": "bex",
+    "case": "unlinked-group",
+    "document": {
+      "services": [
+        {
+          "name": "qa182-f8e73e-source",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": []
+        },
+        {
+          "name": "qa182-f8e73e-copy",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "key": "COPIED",
+              "fromService": {
+                "type": "web",
+                "name": "qa182-f8e73e-source",
+                "envVarKey": "VALUE"
+              }
+            }
+          ]
+        }
+      ],
+      "envVarGroups": [
+        {
+          "name": "qa182-f8e73e-group",
+          "envVars": [
+            {
+              "key": "VALUE",
+              "value": "source-182"
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_candidate": false,
+    "state": "native validation received, no resource mutation",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep182-unlinked-group.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.419,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa182-f8e73e-copy\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa182-f8e73e-source\\\", which has no such plainly-defined variable\",\n      \"line\": 21,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "decoded": {
+      "errors": [
+        {
+          "column": 18,
+          "error": "service \"qa182-f8e73e-copy\": fromService.envVarKey references env \"VALUE\" on service \"qa182-f8e73e-source\", which has no such plainly-defined variable",
+          "line": 21,
+          "path": "services[1].envVars"
+        }
+      ],
+      "valid": false
+    },
+    "consumer_consistent": true,
+    "match_candidate_expectation": true
+  },
+  {
+    "at": "2026-10-13T00:52:55.068026+00:00",
+    "client": "bex",
+    "case": "nested-linked",
+    "document": {
+      "projects": [
+        {
+          "name": "qa182-f8e73e-project",
+          "environments": [
+            {
+              "name": "production",
+              "services": [
+                {
+                  "name": "qa182-f8e73e-source",
+                  "type": "web",
+                  "runtime": "image",
+                  "plan": "free",
+                  "image": {
+                    "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                  },
+                  "envVars": [
+                    {
+                      "fromGroup": "qa182-f8e73e-group"
+                    }
+                  ]
+                },
+                {
+                  "name": "qa182-f8e73e-copy",
+                  "type": "web",
+                  "runtime": "image",
+                  "plan": "free",
+                  "image": {
+                    "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                  },
+                  "envVars": [
+                    {
+                      "key": "COPIED",
+                      "fromService": {
+                        "type": "web",
+                        "name": "qa182-f8e73e-source",
+                        "envVarKey": "VALUE"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "envVarGroups": [
+                {
+                  "name": "qa182-f8e73e-group",
+                  "envVars": [
+                    {
+                      "key": "VALUE",
+                      "value": "source-182"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_candidate": true,
+    "state": "native validation received, no resource mutation",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep182-nested-linked.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 4.789,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 26,\n      \"error\": \"service \\\"qa182-f8e73e-copy\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa182-f8e73e-source\\\", which has no such plainly-defined variable\",\n      \"line\": 31,\n      \"path\": \"projects[0].environments[0].services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "decoded": {
+      "errors": [
+        {
+          "column": 26,
+          "error": "service \"qa182-f8e73e-copy\": fromService.envVarKey references env \"VALUE\" on service \"qa182-f8e73e-source\", which has no such plainly-defined variable",
+          "line": 31,
+          "path": "projects[0].environments[0].services[1].envVars"
+        }
+      ],
+      "valid": false
+    },
+    "consumer_consistent": true,
+    "match_candidate_expectation": false
+  },
+  {
+    "at": "2026-10-13T00:53:00.408190+00:00",
+    "client": "bex",
+    "case": "linked-zero",
+    "document": {
+      "services": [
+        {
+          "name": "qa182-f8e73e-source",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "fromGroup": "qa182-f8e73e-group"
+            }
+          ]
+        },
+        {
+          "name": "qa182-f8e73e-copy",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "key": "COPIED",
+              "fromService": {
+                "type": "web",
+                "name": "qa182-f8e73e-source",
+                "envVarKey": "VALUE"
+              }
+            }
+          ]
+        }
+      ],
+      "envVarGroups": [
+        {
+          "name": "qa182-f8e73e-group",
+          "envVars": [
+            {
+              "key": "VALUE",
+              "value": 0
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_candidate": true,
+    "state": "native validation received, no resource mutation",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep182-linked-zero.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.745,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa182-f8e73e-copy\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa182-f8e73e-source\\\", which has no such plainly-defined variable\",\n      \"line\": 25,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "decoded": {
+      "errors": [
+        {
+          "column": 18,
+          "error": "service \"qa182-f8e73e-copy\": fromService.envVarKey references env \"VALUE\" on service \"qa182-f8e73e-source\", which has no such plainly-defined variable",
+          "line": 25,
+          "path": "services[1].envVars"
+        }
+      ],
+      "valid": false
+    },
+    "consumer_consistent": true,
+    "match_candidate_expectation": false
+  },
+  {
+    "at": "2026-10-13T00:53:01.399783+00:00",
+    "client": "bex",
+    "case": "linked-empty",
+    "document": {
+      "services": [
+        {
+          "name": "qa182-f8e73e-source",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "fromGroup": "qa182-f8e73e-group"
+            }
+          ]
+        },
+        {
+          "name": "qa182-f8e73e-copy",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "key": "COPIED",
+              "fromService": {
+                "type": "web",
+                "name": "qa182-f8e73e-source",
+                "envVarKey": "VALUE"
+              }
+            }
+          ]
+        }
+      ],
+      "envVarGroups": [
+        {
+          "name": "qa182-f8e73e-group",
+          "envVars": [
+            {
+              "key": "VALUE",
+              "value": ""
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_candidate": true,
+    "state": "native validation received, no resource mutation",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep182-linked-empty.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.652,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa182-f8e73e-copy\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa182-f8e73e-source\\\", which has no such plainly-defined variable\",\n      \"line\": 25,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "decoded": {
+      "errors": [
+        {
+          "column": 18,
+          "error": "service \"qa182-f8e73e-copy\": fromService.envVarKey references env \"VALUE\" on service \"qa182-f8e73e-source\", which has no such plainly-defined variable",
+          "line": 25,
+          "path": "services[1].envVars"
+        }
+      ],
+      "valid": false
+    },
+    "consumer_consistent": true,
+    "match_candidate_expectation": false
+  },
+  {
+    "at": "2026-10-13T00:53:02.283819+00:00",
+    "client": "render",
+    "case": "linked-literal",
+    "document": {
+      "services": [
+        {
+          "name": "qa182-f8e73e-source",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "fromGroup": "qa182-f8e73e-group"
+            }
+          ]
+        },
+        {
+          "name": "qa182-f8e73e-copy",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "key": "COPIED",
+              "fromService": {
+                "type": "web",
+                "name": "qa182-f8e73e-source",
+                "envVarKey": "VALUE"
+              }
+            }
+          ]
+        }
+      ],
+      "envVarGroups": [
+        {
+          "name": "qa182-f8e73e-group",
+          "envVars": [
+            {
+              "key": "VALUE",
+              "value": "source-182"
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_candidate": true,
+    "state": "native validation received, no resource mutation",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep182-linked-literal.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 2.552,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa182-f8e73e-copy\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa182-f8e73e-source\\\", which has no such plainly-defined variable\",\n      \"line\": 25,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "decoded": {
+      "errors": [
+        {
+          "column": 18,
+          "error": "service \"qa182-f8e73e-copy\": fromService.envVarKey references env \"VALUE\" on service \"qa182-f8e73e-source\", which has no such plainly-defined variable",
+          "line": 25,
+          "path": "services[1].envVars"
+        }
+      ],
+      "valid": false
+    },
+    "consumer_consistent": true,
+    "match_candidate_expectation": false
+  },
+  {
+    "at": "2026-10-13T00:53:05.067319+00:00",
+    "client": "render",
+    "case": "plain-literal",
+    "document": {
+      "services": [
+        {
+          "name": "qa182-f8e73e-source",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "key": "VALUE",
+              "value": "source-182"
+            }
+          ]
+        },
+        {
+          "name": "qa182-f8e73e-copy",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "key": "COPIED",
+              "fromService": {
+                "type": "web",
+                "name": "qa182-f8e73e-source",
+                "envVarKey": "VALUE"
+              }
+            }
+          ]
+        }
+      ],
+      "envVarGroups": [
+        {
+          "name": "qa182-f8e73e-group",
+          "envVars": [
+            {
+              "key": "OTHER",
+              "value": "source-182"
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_candidate": true,
+    "state": "native validation received, no resource mutation",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep182-plain-literal.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.496,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa182-f8e73e-group\"\n    ],\n    \"services\": [\n      \"qa182-f8e73e-source\",\n      \"qa182-f8e73e-copy\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "decoded": {
+      "plan": {
+        "envGroups": [
+          "qa182-f8e73e-group"
+        ],
+        "services": [
+          "qa182-f8e73e-source",
+          "qa182-f8e73e-copy"
+        ],
+        "totalActions": 3
+      },
+      "valid": true
+    },
+    "consumer_consistent": true,
+    "match_candidate_expectation": true
+  },
+  {
+    "at": "2026-10-13T00:53:06.793857+00:00",
+    "client": "render",
+    "case": "local-override",
+    "document": {
+      "services": [
+        {
+          "name": "qa182-f8e73e-source",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "fromGroup": "qa182-f8e73e-group"
+            },
+            {
+              "key": "VALUE",
+              "value": "local-override"
+            }
+          ]
+        },
+        {
+          "name": "qa182-f8e73e-copy",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "key": "COPIED",
+              "fromService": {
+                "type": "web",
+                "name": "qa182-f8e73e-source",
+                "envVarKey": "VALUE"
+              }
+            }
+          ]
+        }
+      ],
+      "envVarGroups": [
+        {
+          "name": "qa182-f8e73e-group",
+          "envVars": [
+            {
+              "key": "VALUE",
+              "value": "source-182"
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_candidate": true,
+    "state": "native validation received, no resource mutation",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep182-local-override.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.736,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa182-f8e73e-group\"\n    ],\n    \"services\": [\n      \"qa182-f8e73e-source\",\n      \"qa182-f8e73e-copy\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "decoded": {
+      "plan": {
+        "envGroups": [
+          "qa182-f8e73e-group"
+        ],
+        "services": [
+          "qa182-f8e73e-source",
+          "qa182-f8e73e-copy"
+        ],
+        "totalActions": 3
+      },
+      "valid": true
+    },
+    "consumer_consistent": true,
+    "match_candidate_expectation": true
+  },
+  {
+    "at": "2026-10-13T00:53:07.768962+00:00",
+    "client": "render",
+    "case": "missing-group-key",
+    "document": {
+      "services": [
+        {
+          "name": "qa182-f8e73e-source",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "fromGroup": "qa182-f8e73e-group"
+            }
+          ]
+        },
+        {
+          "name": "qa182-f8e73e-copy",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "key": "COPIED",
+              "fromService": {
+                "type": "web",
+                "name": "qa182-f8e73e-source",
+                "envVarKey": "VALUE"
+              }
+            }
+          ]
+        }
+      ],
+      "envVarGroups": [
+        {
+          "name": "qa182-f8e73e-group",
+          "envVars": [
+            {
+              "key": "OTHER",
+              "value": "source-182"
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_candidate": false,
+    "state": "native validation received, no resource mutation",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep182-missing-group-key.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.605,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa182-f8e73e-copy\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa182-f8e73e-source\\\", which has no such plainly-defined variable\",\n      \"line\": 25,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "decoded": {
+      "errors": [
+        {
+          "column": 18,
+          "error": "service \"qa182-f8e73e-copy\": fromService.envVarKey references env \"VALUE\" on service \"qa182-f8e73e-source\", which has no such plainly-defined variable",
+          "line": 25,
+          "path": "services[1].envVars"
+        }
+      ],
+      "valid": false
+    },
+    "consumer_consistent": true,
+    "match_candidate_expectation": true
+  },
+  {
+    "at": "2026-10-13T00:53:08.610431+00:00",
+    "client": "render",
+    "case": "unlinked-group",
+    "document": {
+      "services": [
+        {
+          "name": "qa182-f8e73e-source",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": []
+        },
+        {
+          "name": "qa182-f8e73e-copy",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "key": "COPIED",
+              "fromService": {
+                "type": "web",
+                "name": "qa182-f8e73e-source",
+                "envVarKey": "VALUE"
+              }
+            }
+          ]
+        }
+      ],
+      "envVarGroups": [
+        {
+          "name": "qa182-f8e73e-group",
+          "envVars": [
+            {
+              "key": "VALUE",
+              "value": "source-182"
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_candidate": false,
+    "state": "native validation received, no resource mutation",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep182-unlinked-group.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.735,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa182-f8e73e-copy\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa182-f8e73e-source\\\", which has no such plainly-defined variable\",\n      \"line\": 21,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "decoded": {
+      "errors": [
+        {
+          "column": 18,
+          "error": "service \"qa182-f8e73e-copy\": fromService.envVarKey references env \"VALUE\" on service \"qa182-f8e73e-source\", which has no such plainly-defined variable",
+          "line": 21,
+          "path": "services[1].envVars"
+        }
+      ],
+      "valid": false
+    },
+    "consumer_consistent": true,
+    "match_candidate_expectation": true
+  },
+  {
+    "at": "2026-10-13T00:53:09.572347+00:00",
+    "client": "render",
+    "case": "nested-linked",
+    "document": {
+      "projects": [
+        {
+          "name": "qa182-f8e73e-project",
+          "environments": [
+            {
+              "name": "production",
+              "services": [
+                {
+                  "name": "qa182-f8e73e-source",
+                  "type": "web",
+                  "runtime": "image",
+                  "plan": "free",
+                  "image": {
+                    "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                  },
+                  "envVars": [
+                    {
+                      "fromGroup": "qa182-f8e73e-group"
+                    }
+                  ]
+                },
+                {
+                  "name": "qa182-f8e73e-copy",
+                  "type": "web",
+                  "runtime": "image",
+                  "plan": "free",
+                  "image": {
+                    "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                  },
+                  "envVars": [
+                    {
+                      "key": "COPIED",
+                      "fromService": {
+                        "type": "web",
+                        "name": "qa182-f8e73e-source",
+                        "envVarKey": "VALUE"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "envVarGroups": [
+                {
+                  "name": "qa182-f8e73e-group",
+                  "envVars": [
+                    {
+                      "key": "VALUE",
+                      "value": "source-182"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_candidate": true,
+    "state": "native validation received, no resource mutation",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep182-nested-linked.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.759,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 26,\n      \"error\": \"service \\\"qa182-f8e73e-copy\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa182-f8e73e-source\\\", which has no such plainly-defined variable\",\n      \"line\": 31,\n      \"path\": \"projects[0].environments[0].services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "decoded": {
+      "errors": [
+        {
+          "column": 26,
+          "error": "service \"qa182-f8e73e-copy\": fromService.envVarKey references env \"VALUE\" on service \"qa182-f8e73e-source\", which has no such plainly-defined variable",
+          "line": 31,
+          "path": "projects[0].environments[0].services[1].envVars"
+        }
+      ],
+      "valid": false
+    },
+    "consumer_consistent": true,
+    "match_candidate_expectation": false
+  },
+  {
+    "at": "2026-10-13T00:53:10.557370+00:00",
+    "client": "render",
+    "case": "linked-zero",
+    "document": {
+      "services": [
+        {
+          "name": "qa182-f8e73e-source",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "fromGroup": "qa182-f8e73e-group"
+            }
+          ]
+        },
+        {
+          "name": "qa182-f8e73e-copy",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "key": "COPIED",
+              "fromService": {
+                "type": "web",
+                "name": "qa182-f8e73e-source",
+                "envVarKey": "VALUE"
+              }
+            }
+          ]
+        }
+      ],
+      "envVarGroups": [
+        {
+          "name": "qa182-f8e73e-group",
+          "envVars": [
+            {
+              "key": "VALUE",
+              "value": 0
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_candidate": true,
+    "state": "native validation received, no resource mutation",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep182-linked-zero.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 2.759,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa182-f8e73e-copy\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa182-f8e73e-source\\\", which has no such plainly-defined variable\",\n      \"line\": 25,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "decoded": {
+      "errors": [
+        {
+          "column": 18,
+          "error": "service \"qa182-f8e73e-copy\": fromService.envVarKey references env \"VALUE\" on service \"qa182-f8e73e-source\", which has no such plainly-defined variable",
+          "line": 25,
+          "path": "services[1].envVars"
+        }
+      ],
+      "valid": false
+    },
+    "consumer_consistent": true,
+    "match_candidate_expectation": false
+  },
+  {
+    "at": "2026-10-13T00:53:13.554108+00:00",
+    "client": "render",
+    "case": "linked-empty",
+    "document": {
+      "services": [
+        {
+          "name": "qa182-f8e73e-source",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "fromGroup": "qa182-f8e73e-group"
+            }
+          ]
+        },
+        {
+          "name": "qa182-f8e73e-copy",
+          "type": "web",
+          "runtime": "image",
+          "plan": "free",
+          "image": {
+            "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+          },
+          "envVars": [
+            {
+              "key": "COPIED",
+              "fromService": {
+                "type": "web",
+                "name": "qa182-f8e73e-source",
+                "envVarKey": "VALUE"
+              }
+            }
+          ]
+        }
+      ],
+      "envVarGroups": [
+        {
+          "name": "qa182-f8e73e-group",
+          "envVars": [
+            {
+              "key": "VALUE",
+              "value": ""
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid_candidate": true,
+    "state": "native validation received, no resource mutation",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep182-linked-empty.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.69,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa182-f8e73e-copy\\\": fromService.envVarKey references env \\\"VALUE\\\" on service \\\"qa182-f8e73e-source\\\", which has no such plainly-defined variable\",\n      \"line\": 25,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "decoded": {
+      "errors": [
+        {
+          "column": 18,
+          "error": "service \"qa182-f8e73e-copy\": fromService.envVarKey references env \"VALUE\" on service \"qa182-f8e73e-source\", which has no such plainly-defined variable",
+          "line": 25,
+          "path": "services[1].envVars"
+        }
+      ],
+      "valid": false
+    },
+    "consumer_consistent": true,
+    "match_candidate_expectation": false
+  }
+]

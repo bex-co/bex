@@ -1,0 +1,21 @@
+{
+  "services": [
+    {
+      "name": "qa202-b7aca1-static",
+      "type": "web",
+      "runtime": "static",
+      "repo": "https://github.com/bex-co/bex",
+      "branch": "main",
+      "rootDir": "examples/static-site",
+      "buildCommand": "",
+      "staticPublishPath": ".",
+      "headers": [
+        {
+          "path": "/*",
+          "name": "X-QA-Marker",
+          "value": ""
+        }
+      ]
+    }
+  ]
+}
