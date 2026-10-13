@@ -2310,38 +2310,51 @@ func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
 		return parsedEnvGroup{}, fmt.Errorf("%w: an envVarGroups entry is missing its name", core.ErrBadRequest)
 	}
 	pg := parsedEnvGroup{name: name, literals: map[string]string{}}
-	for _, e := range g.EnvVars {
+	for i, e := range g.EnvVars {
 		if e.Key == "" {
-			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q has an env var without a key", core.ErrBadRequest, name)
+			return parsedEnvGroup{}, atEnvEntry(i, fmt.Errorf("%w: env group %q has an env var without a key", core.ErrBadRequest, name))
 		}
 		if !core.ValidEnvKey(e.Key) {
-			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: invalid environment variable name (%s)",
-				core.ErrBadRequest, name, e.Key, core.EnvKeyRule)
+			return parsedEnvGroup{}, atEnvEntry(i, fmt.Errorf("%w: env group %q envVars[%q]: invalid environment variable name (%s)",
+				core.ErrBadRequest, name, e.Key, core.EnvKeyRule))
 		}
 		if core.IsReservedEnvKey(e.Key) {
-			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: %s",
-				core.ErrBadRequest, name, e.Key, core.ReservedEnvKeySentence(e.Key))
+			return parsedEnvGroup{}, atEnvEntry(i, fmt.Errorf("%w: env group %q envVars[%q]: %s",
+				core.ErrBadRequest, name, e.Key, core.ReservedEnvKeySentence(e.Key)))
 		}
 		switch {
 		case e.FromGroup != "", e.FromDatabase != nil, e.FromService != nil:
-			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: a group cannot reference services or other groups", core.ErrBadRequest, name, e.Key)
+			return parsedEnvGroup{}, atEnvEntry(i, fmt.Errorf("%w: env group %q envVars[%q]: a group cannot reference services or other groups", core.ErrBadRequest, name, e.Key))
 		case e.Sync != nil && !*e.Sync:
-			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: sync:false is not allowed inside an env group", core.ErrBadRequest, name, e.Key)
+			return parsedEnvGroup{}, atEnvEntry(i, fmt.Errorf("%w: env group %q envVars[%q]: sync:false is not allowed inside an env group", core.ErrBadRequest, name, e.Key))
 		case e.GenerateValue:
 			if e.hasValue() {
-				return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: sets both value and generateValue", core.ErrBadRequest, name, e.Key)
+				return parsedEnvGroup{}, atEnvEntry(i, fmt.Errorf("%w: env group %q envVars[%q]: sets both value and generateValue", core.ErrBadRequest, name, e.Key))
 			}
 			pg.generates = append(pg.generates, e.Key)
 		default:
 			if !core.ValidEnvValue(e.Value) {
-				return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: %s",
-					core.ErrBadRequest, name, e.Key, core.EnvValueSentence(e.Key))
+				return parsedEnvGroup{}, atEnvEntry(i, fmt.Errorf("%w: env group %q envVars[%q]: %s",
+					core.ErrBadRequest, name, e.Key, core.EnvValueSentence(e.Key)))
 			}
 			pg.literals[e.Key] = e.Value
 		}
 	}
 	return pg, nil
 }
+
+// envEntryError is a parse refusal of one envVars entry, carrying its index so
+// validation locates that entry even when an earlier one shares its key
+// (w8/100).
+type envEntryError struct {
+	index int
+	err   error
+}
+
+func (e *envEntryError) Error() string { return e.err.Error() }
+func (e *envEntryError) Unwrap() error { return e.err }
+
+func atEnvEntry(index int, err error) error { return &envEntryError{index: index, err: err} }
 
 // knownServiceEnv is a service's parse-time-known env as its process sees it,
 // the set a sibling's fromService.envVarKey copy resolves against (w8/099,
@@ -2623,28 +2636,28 @@ func manifestStartAndAutoDeploy(a bexService) (string, *bool, error) {
 func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv1alpha1.EnvVar, serviceEnv, error) {
 	se := serviceEnv{seedLiterals: map[string]string{}, literals: map[string]string{}}
 	literal := make([]appv1alpha1.EnvVar, 0, len(a.EnvVars))
-	for _, e := range a.EnvVars {
+	for i, e := range a.EnvVars {
 		if e.FromGroup != "" {
 			if err := validateGroupLink(e); err != nil {
-				return nil, serviceEnv{}, fmt.Errorf("%w: %s: %v", core.ErrBadRequest, a.Name, err)
+				return nil, serviceEnv{}, atEnvEntry(i, fmt.Errorf("%w: %s: %v", core.ErrBadRequest, a.Name, err))
 			}
 			se.groupLinks = append(se.groupLinks, e.FromGroup)
 			continue
 		}
 		if err := validateKeyedEnv(e); err != nil {
-			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: %v", core.ErrBadRequest, a.Name, e.Key, err)
+			return nil, serviceEnv{}, atEnvEntry(i, fmt.Errorf("%w: %s envVars[%q]: %v", core.ErrBadRequest, a.Name, e.Key, err))
 		}
 		// A reserved key is refused here, before any seed or CR write. The
 		// message carries the location the way every neighbouring Blueprint
 		// parse error does — the validation surface renders the error string,
 		// not a code (w2/m95 t003).
 		if !core.ValidEnvKey(e.Key) {
-			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: invalid environment variable name (%s)",
-				core.ErrBadRequest, a.Name, e.Key, core.EnvKeyRule)
+			return nil, serviceEnv{}, atEnvEntry(i, fmt.Errorf("%w: %s envVars[%q]: invalid environment variable name (%s)",
+				core.ErrBadRequest, a.Name, e.Key, core.EnvKeyRule))
 		}
 		if core.IsReservedEnvKey(e.Key) {
-			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: %s",
-				core.ErrBadRequest, a.Name, e.Key, core.ReservedEnvKeySentence(e.Key))
+			return nil, serviceEnv{}, atEnvEntry(i, fmt.Errorf("%w: %s envVars[%q]: %s",
+				core.ErrBadRequest, a.Name, e.Key, core.ReservedEnvKeySentence(e.Key)))
 		}
 		// The value this entry stores: its literal, or the prompt answer a
 		// sync:false key without one seeds.
@@ -2653,8 +2666,8 @@ func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv
 			value = overrides.envVarValues[e.Key]
 		}
 		if !core.ValidEnvValue(value) {
-			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: %s",
-				core.ErrBadRequest, a.Name, e.Key, core.EnvValueSentence(e.Key))
+			return nil, serviceEnv{}, atEnvEntry(i, fmt.Errorf("%w: %s envVars[%q]: %s",
+				core.ErrBadRequest, a.Name, e.Key, core.EnvValueSentence(e.Key)))
 		}
 		switch {
 		case e.FromDatabase != nil, e.FromService != nil:

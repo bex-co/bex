@@ -153,3 +153,33 @@ func TestBlueprintEnvValueRefusalsLocateTheEntry(t *testing.T) {
 		}
 	}
 }
+
+// w8/100 (sweep223): with a repeated key, the refusal belongs to the invalid
+// entry, not the first one that shares its key.
+func TestBlueprintRepeatedKeyRefusalLocatesTheInvalidEntry(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	const image = `"runtime":"image","image":{"url":"nginx:1"}`
+	valid, invalid := `{"key":"VALUE","value":"ok"}`, `{"key":"VALUE","value":"","generateValue":true}`
+	service := func(envs string) string { return `{"name":"api","type":"web",` + image + `,"envVars":[` + envs + `]}` }
+	group := func(envs string) string { return `{"name":"shared","envVars":[` + envs + `]}` }
+	nest := func(body string) string { return `{"projects":[{"name":"p","environments":[{"name":"e",` + body + `}]}]}` }
+	const plainSvc = `{"name":"api","type":"web",` + image + `}`
+	for _, tc := range []struct{ name, manifest, wantPath string }{
+		{"service second invalid", `{"services":[` + service(valid+","+invalid) + `]}`, "services[0].envVars[1]"},
+		{"service first invalid", `{"services":[` + service(invalid+","+valid) + `]}`, "services[0].envVars[0]"},
+		{"group second invalid", `{"services":[` + plainSvc + `],"envVarGroups":[` + group(valid+","+invalid) + `]}`, "envVarGroups[0].envVars[1]"},
+		{"nested service second invalid", nest(`"services":[`+service(valid+","+invalid)+`]`), "projects[0].environments[0].services[0].envVars[1]"},
+		{"nested group second invalid", nest(`"services":[`+plainSvc+`],"envVarGroups":[`+group(valid+","+invalid)+`]`), "projects[0].environments[0].envVarGroups[0].envVars[1]"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := svc.ValidateBlueprint(context.Background(), "", tc.manifest, "")
+			if err != nil || result.Valid || len(result.Errors) != 1 || result.Errors[0].Path == nil || *result.Errors[0].Path != tc.wantPath {
+				t.Fatalf("validation = %+v, %v; want one refusal at %s", result, err, tc.wantPath)
+			}
+		})
+	}
+	both := `{"services":[` + service(valid+`,{"key":"VALUE","value":"again"}`) + `]}`
+	if result, err := svc.ValidateBlueprint(context.Background(), "", both, ""); err != nil || !result.Valid {
+		t.Fatalf("both-valid repeated key = %+v, %v; want valid", result, err)
+	}
+}
