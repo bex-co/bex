@@ -107,7 +107,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **101** — [Blueprint static rule errors point to the service instead of the invalid rule](101.md) (minor; 35m) ← functional CLI sweep202: 16 native wrong locations with 16 valid controls, four native captures and eight current-source diagnostics; validation only, no resources created.
 
-- [ ] **100** — [Blueprint reference errors point to unrelated or nonexistent fields](100.md) (minor; 55m) ← functional CLI sweeps194–195: pooled references and missing IMAGE/PLAN/TYPE/CONNECTIONPOOL copies choose wrong settings; native/API/current-source proof, validity decisions correct; validation only, no resources created.
+- [ ] **100** — [Blueprint reference errors point to unrelated or nonexistent fields](blocked/100.md) — **BLOCKED (2026-10-13: fix shipped — parse-time reference refusals name and locate the authored envVars entry instead of a phantom service field; needs the fix deployed to production plus fresh native Bex/Render validation receipts)**
 
 - [ ] **099** — [Blueprint envVarKey copies omit declared linked-group literals](blocked/099.md) — **BLOCKED (2026-10-13: fix shipped — envVarKey copies resolve literals the source inherits from linked in-file groups, in link order under its own values; needs the fix deployed to production plus fresh native Bex/Render validation receipts)**
 
