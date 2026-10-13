@@ -1,0 +1,1479 @@
+{
+  "pass": "a357",
+  "kind": "functional dashboard deploy cancellation",
+  "researchHead": "fd46f58c0",
+  "credentialsSource": "muse.env through qa-login helper; credentials excluded",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "fixtureIds": ["srv-db73epva4m3s73d9i5fg", "srv-db73nmva4m3s73d9i5l0"],
+  "baseline": {
+    "at": "2026-10-13T13:51:32.412Z",
+    "request": {
+      "operationName": "QaA357Inventory",
+      "query": "query QaA357Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    }
+  },
+  "platformErrors": {
+    "context": "hetzner-prod",
+    "namespace": "bex-system",
+    "deployment": "bex-api",
+    "read": "logs --all-pods=true --since=15m --tail=1500; selected cancellation-error lines only",
+    "matchingErrors": [
+      "[pod/bex-api-56977897d9-m8bw2/api] 2026/10/13 14:09:38 bex-api graphql: internal error: mark canceled release: Operation cannot be fulfilled on apps.app.bex.co \"tea-d98210cbbpdc73dcrkvg-qa-20261013-a357-source-switch\": the object has been modified; please apply your changes to the latest version and try again",
+      "[pod/bex-api-56977897d9-ft859/api] 2026/10/13 14:08:56 bex-api graphql: internal error: mark canceled release: Operation cannot be fulfilled on apps.app.bex.co \"tea-d98210cbbpdc73dcrkvg-qa-20261013-a357-source-switch\": the object has been modified; please apply your changes to the latest version and try again"
+    ]
+  },
+  "inventoryCheck": [
+    {
+      "family": "blueprints",
+      "equal": true
+    },
+    {
+      "family": "databases",
+      "equal": true
+    },
+    {
+      "family": "envGroups",
+      "equal": true
+    },
+    {
+      "family": "keyValues",
+      "equal": true
+    },
+    {
+      "family": "projects",
+      "equal": true
+    },
+    {
+      "family": "services",
+      "equal": true
+    },
+    {
+      "family": "webhookEndpoints",
+      "equal": true
+    }
+  ],
+  "logout": {
+    "at": "2026-10-13T14:17:57.165Z",
+    "ownersStatus": 401,
+    "cookieCount": 0,
+    "url": "about:blank",
+    "pageCount": 1
+  },
+  "limits": [
+    "Two rejected UI cancellation requests; intermittent API optimistic-lock conflict confirmed by platform logs.",
+    "Source-switch commands, public marker, native initial-build cancel, queued image cancel and subsequent manual deploy passed; not complete m202 acceptance (different marker; no environment-value control).",
+    "Read-only platform log inspection; no cluster mutation.",
+    "Runtime Node label retained after switch is recorded but not filed; no CLI clone result asserted.",
+    "Control's started-window attempt observed created then Live with empty startedAt and submitted no Cancel; timestamp class remains owned by w4/m156.",
+    "No live REST/MCP cancel mutation or private/worker/cron/static failure claimed."
+  ],
+  "a357Create": {
+    "at": "2026-10-13T13:51:36.281Z",
+    "request": [
+      {
+        "operationName": "CreateService",
+        "variables": {
+          "repo": "https://github.com/bex-co/bex",
+          "branch": "main",
+          "name": "qa-20261013-a357-source-switch",
+          "type": "web_service",
+          "rootDir": "examples/hello-node",
+          "runtime": "node",
+          "buildCommand": "sleep 90 && npm install",
+          "startCommand": "npm start",
+          "plan": "free",
+          "autoDeploy": false,
+          "port": 3000,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db73epva4m3s73d9i5fg",
+            "latestDeployId": "dep-db73epva4m3s73d9i5g0",
+            "name": "qa-20261013-a357-source-switch",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": null,
+            "type": "web_service"
+          }
+        }
+      }
+    ]
+  },
+  "a357CancelInitial": {
+    "at": "2026-10-13T13:52:29.474Z",
+    "request": [
+      {
+        "operationName": "CancelDeploy",
+        "variables": {
+          "serviceId": "srv-db73epva4m3s73d9i5fg",
+          "deployId": "dep-db73epva4m3s73d9i5g0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CancelDeploy($serviceId: String!, $deployId: String!) {\n  cancelDeploy(serviceId: $serviceId, deployId: $deployId) {\n    id\n    status\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "cancelDeploy": {
+            "__typename": "Deploy",
+            "id": "dep-db73epva4m3s73d9i5g0",
+            "status": "canceled"
+          }
+        }
+      }
+    ]
+  },
+  "a357SetImage": {
+    "at": "2026-10-13T13:54:20.498Z",
+    "request": [
+      {
+        "operationName": "SetImage",
+        "variables": {
+          "id": "srv-db73epva4m3s73d9i5fg",
+          "image": "docker.io/library/busybox:1.37",
+          "registryCredentialId": null
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation SetImage($id: String!, $image: String!, $registryCredentialId: String, $confirm: String) {\n  setImage(\n    id: $id\n    image: $image\n    registryCredentialId: $registryCredentialId\n    confirm: $confirm\n  ) {\n    id\n    repo\n    branch\n    imagePath\n    registryCredentialId\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "setImage": {
+            "__typename": "Service",
+            "branch": "",
+            "id": "srv-db73epva4m3s73d9i5fg",
+            "imagePath": "docker.io/library/busybox:1.37",
+            "registryCredentialId": null,
+            "repo": ""
+          }
+        }
+      }
+    ]
+  },
+  "a357SourceStage": {
+    "at": "2026-10-13T13:54:21.794Z",
+    "request": {
+      "operationName": "QaA357SourceStage",
+      "query": "query QaA357SourceStage($id:String!){server(id:$id){id repo branch imagePath runtime rootDir buildCommand startCommand undeployedChanges plan} deploys(serviceId:$id){id status}}",
+      "variables": {
+        "id": "srv-db73epva4m3s73d9i5fg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deploys": [
+          {
+            "id": "dep-db73epva4m3s73d9i5g0",
+            "status": "canceled"
+          }
+        ],
+        "server": {
+          "branch": "",
+          "buildCommand": "sleep 90 && npm install",
+          "id": "srv-db73epva4m3s73d9i5fg",
+          "imagePath": "docker.io/library/busybox:1.37",
+          "plan": "free",
+          "repo": "",
+          "rootDir": "examples/hello-node",
+          "runtime": "node",
+          "startCommand": "npm start",
+          "undeployedChanges": false
+        }
+      }
+    },
+    "dockerCommandEditCount": 1
+  },
+  "a357SetCommand": {
+    "at": "2026-10-13T13:55:34.806Z",
+    "request": [
+      {
+        "operationName": "SetStartCommand",
+        "variables": {
+          "id": "srv-db73epva4m3s73d9i5fg",
+          "command": "sh -c 'mkdir -p /tmp/qa-a357-www; printf \"qa-a357-recovered\\n\" > /tmp/qa-a357-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a357-www'"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation SetStartCommand($id: String!, $command: String!, $confirm: String) {\n  setStartCommand(id: $id, command: $command, confirm: $confirm) {\n    id\n    startCommand\n    phase\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "setStartCommand": {
+            "__typename": "Service",
+            "id": "srv-db73epva4m3s73d9i5fg",
+            "phase": "Canceled",
+            "startCommand": "sh -c 'mkdir -p /tmp/qa-a357-www; printf \"qa-a357-recovered\\n\" > /tmp/qa-a357-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a357-www'"
+          }
+        }
+      }
+    ]
+  },
+  "a357CancelManualDialog": {
+    "at": "2026-10-13T14:08:48.318Z",
+    "request": [
+      {
+        "operationName": "TriggerDeploy",
+        "variables": {
+          "serviceId": "srv-db73epva4m3s73d9i5fg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation TriggerDeploy($serviceId: String!, $commitId: String, $deployMode: String, $clearCache: String, $confirm: String) {\n  triggerDeploy(\n    serviceId: $serviceId\n    commitId: $commitId\n    deployMode: $deployMode\n    clearCache: $clearCache\n    confirm: $confirm\n  ) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "triggerDeploy": {
+            "__typename": "Deploy",
+            "createdAt": "2026-10-13T14:08:46.816612Z",
+            "id": "dep-db73mrna4m3s73d9i5j0",
+            "image": "docker.io/library/busybox:1.37",
+            "rollbackOf": "",
+            "status": "created",
+            "trigger": "api"
+          }
+        }
+      }
+    ],
+    "url": "https://dashboard.bex.co/services/srv-db73epva4m3s73d9i5fg/deploys/dep-db73mrna4m3s73d9i5j0",
+    "dialog": "- alertdialog \"Cancel this deploy?\":\n  - heading \"Cancel this deploy?\" [level=2]\n  - paragraph: The in-progress deploy will be stopped. The last successful deploy remains live, and any changes you saved stay saved and ship with the next deploy.\n  - status\n  - button \"Go Back\"\n  - button \"Proceed\""
+  },
+  "a357CancelManual": {
+    "at": "2026-10-13T14:08:57.151Z",
+    "request": [
+      {
+        "operationName": "CancelDeploy",
+        "variables": {
+          "serviceId": "srv-db73epva4m3s73d9i5fg",
+          "deployId": "dep-db73mrna4m3s73d9i5j0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CancelDeploy($serviceId: String!, $deployId: String!) {\n  cancelDeploy(serviceId: $serviceId, deployId: $deployId) {\n    id\n    status\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "cancelDeploy": null
+        },
+        "errors": [
+          {
+            "message": "internal error",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ],
+            "path": ["cancelDeploy"]
+          }
+        ]
+      }
+    ]
+  },
+  "a357CancelRead": {
+    "at": "2026-10-13T14:09:15.155Z",
+    "request": {
+      "operationName": "QaA357CancelRead",
+      "query": "query QaA357CancelRead($id:String!){server(id:$id){id phase revision runtime imagePath startCommand} deploys(serviceId:$id){id status image startedAt finishedAt failureReason stallReason}}",
+      "variables": {
+        "id": "srv-db73epva4m3s73d9i5fg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deploys": [
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T14:09:06.980784Z",
+            "id": "dep-db73mrna4m3s73d9i5j0",
+            "image": "docker.io/library/busybox:1.37",
+            "stallReason": "",
+            "startedAt": "2026-10-13T14:08:53.041231Z",
+            "status": "live"
+          },
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T14:08:23.030975Z",
+            "id": "dep-db73mgk479ic73bbj5q0",
+            "image": "docker.io/library/busybox:1.37",
+            "stallReason": "",
+            "startedAt": "2026-10-13T14:08:06.90384Z",
+            "status": "deactivated"
+          },
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T13:55:53.12144Z",
+            "id": "dep-db73glk479ic73bbj5j0",
+            "image": "docker.io/library/busybox:1.37",
+            "stallReason": "",
+            "startedAt": "2026-10-13T13:55:36.879504Z",
+            "status": "deactivated"
+          },
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T13:52:29.37621Z",
+            "id": "dep-db73epva4m3s73d9i5g0",
+            "image": "",
+            "stallReason": "",
+            "startedAt": "",
+            "status": "canceled"
+          }
+        ],
+        "server": {
+          "id": "srv-db73epva4m3s73d9i5fg",
+          "imagePath": "docker.io/library/busybox:1.37",
+          "phase": "Running",
+          "revision": "rev-5",
+          "runtime": "node",
+          "startCommand": "sh -c 'mkdir -p /tmp/qa-a357-www; printf \"qa-a357-recovered\\n\" > /tmp/qa-a357-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a357-www'"
+        }
+      }
+    },
+    "publicStatus": 200,
+    "publicBody": "qa-a357-recovered\n",
+    "alertCount": 0,
+    "alerts": [],
+    "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261013-a357-source-switch\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a357-source-switch\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db73epva4m3s73d9i5fg/deploys/dep-db73mrna4m3s73d9i5j0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db73epva4m3s73d9i5fg/plan\n  - text: Runtime node\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db73epva4m3s73d9i5fg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a357-source-switch.onbex.co\":\n    - /url: https://qa-20261013-a357-source-switch.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a357-source-switch\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-5\n  - term: Created\n  - definition:\n    - time: 17m\n  - text: Deploy status Live Manual Deploy dep-db73mrna4m3s73d9i5j0\n  - paragraph: docker.io/library/busybox:1.37\n  - term: \"Created:\"\n  - definition: October 13, 2026 at 7:08 AM\n  - term: \"Updated:\"\n  - definition: October 13, 2026 at 7:09 AM\n  - term: \"Started:\"\n  - definition: October 13, 2026 at 7:08 AM\n  - term: \"Finished:\"\n  - definition: October 13, 2026 at 7:09 AM\n  - term: \"Duration:\"\n  - definition: 13s\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 13, 2026 at 7:08 AM\n    - listitem:\n      - paragraph: Deploy started\n      - time: October 13, 2026 at 7:08 AM\n    - listitem:\n      - paragraph: Live\n      - time: October 13, 2026 at 7:09 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\"\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 07:08:46 AM\n  - button \"Filter logs by instance srv-db73epva4m3s73d9i5fg-intb03mq0b20b7a2bpe5\": \"[intb0]\"\n  - text: ==> Deploy queued 07:08:53 AM\n  - button \"Filter logs by instance srv-db73epva4m3s73d9i5fg-intb03mq0b20b7a2bpe5\": \"[intb0]\"\n  - text: ==> Deploying image docker.io/library/busybox:1.37 07:09:06 AM\n  - button \"Filter logs by instance srv-db73epva4m3s73d9i5fg-intb03mq0b20b7a2bpe5\": \"[intb0]\"\n  - text: ==> Your service is live 🎉"
+  },
+  "a357RapidCancel": {
+    "at": "2026-10-13T14:09:38.684Z",
+    "deployment": {
+      "at": "2026-10-13T14:09:36.176Z",
+      "request": [
+        {
+          "operationName": "TriggerDeploy",
+          "variables": {
+            "serviceId": "srv-db73epva4m3s73d9i5fg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation TriggerDeploy($serviceId: String!, $commitId: String, $deployMode: String, $clearCache: String, $confirm: String) {\n  triggerDeploy(\n    serviceId: $serviceId\n    commitId: $commitId\n    deployMode: $deployMode\n    clearCache: $clearCache\n    confirm: $confirm\n  ) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "triggerDeploy": {
+              "__typename": "Deploy",
+              "createdAt": "2026-10-13T14:09:36.009001Z",
+              "id": "dep-db73n84479ic73bbj5s0",
+              "image": "docker.io/library/busybox:1.37",
+              "rollbackOf": "",
+              "status": "created",
+              "trigger": "api"
+            }
+          }
+        }
+      ]
+    },
+    "cancel": {
+      "request": [
+        {
+          "operationName": "CancelDeploy",
+          "variables": {
+            "serviceId": "srv-db73epva4m3s73d9i5fg",
+            "deployId": "dep-db73n84479ic73bbj5s0"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation CancelDeploy($serviceId: String!, $deployId: String!) {\n  cancelDeploy(serviceId: $serviceId, deployId: $deployId) {\n    id\n    status\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "cancelDeploy": null
+          },
+          "errors": [
+            {
+              "message": "internal error",
+              "locations": [
+                {
+                  "line": 2,
+                  "column": 3
+                }
+              ],
+              "path": ["cancelDeploy"]
+            }
+          ]
+        }
+      ]
+    },
+    "url": "https://dashboard.bex.co/services/srv-db73epva4m3s73d9i5fg/deploys/dep-db73n84479ic73bbj5s0"
+  },
+  "a357RapidRead": {
+    "at": "2026-10-13T14:09:58.778Z",
+    "request": {
+      "operationName": "QaA357RapidRead",
+      "query": "query QaA357RapidRead($id:String!){server(id:$id){id phase plan revision runtime imagePath startCommand} deploys(serviceId:$id){id status image startedAt finishedAt failureReason stallReason}}",
+      "variables": {
+        "id": "srv-db73epva4m3s73d9i5fg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deploys": [
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T14:09:52.998764Z",
+            "id": "dep-db73n84479ic73bbj5s0",
+            "image": "docker.io/library/busybox:1.37",
+            "stallReason": "",
+            "startedAt": "2026-10-13T14:09:36.842521Z",
+            "status": "live"
+          },
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T14:09:06.980784Z",
+            "id": "dep-db73mrna4m3s73d9i5j0",
+            "image": "docker.io/library/busybox:1.37",
+            "stallReason": "",
+            "startedAt": "2026-10-13T14:08:53.041231Z",
+            "status": "deactivated"
+          },
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T14:08:23.030975Z",
+            "id": "dep-db73mgk479ic73bbj5q0",
+            "image": "docker.io/library/busybox:1.37",
+            "stallReason": "",
+            "startedAt": "2026-10-13T14:08:06.90384Z",
+            "status": "deactivated"
+          },
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T13:55:53.12144Z",
+            "id": "dep-db73glk479ic73bbj5j0",
+            "image": "docker.io/library/busybox:1.37",
+            "stallReason": "",
+            "startedAt": "2026-10-13T13:55:36.879504Z",
+            "status": "deactivated"
+          },
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T13:52:29.37621Z",
+            "id": "dep-db73epva4m3s73d9i5g0",
+            "image": "",
+            "stallReason": "",
+            "startedAt": "",
+            "status": "canceled"
+          }
+        ],
+        "server": {
+          "id": "srv-db73epva4m3s73d9i5fg",
+          "imagePath": "docker.io/library/busybox:1.37",
+          "phase": "Running",
+          "plan": "free",
+          "revision": "rev-6",
+          "runtime": "node",
+          "startCommand": "sh -c 'mkdir -p /tmp/qa-a357-www; printf \"qa-a357-recovered\\n\" > /tmp/qa-a357-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a357-www'"
+        }
+      }
+    },
+    "publicStatus": 200,
+    "publicBody": "qa-a357-recovered\n"
+  },
+  "a357ControlCreate": {
+    "at": "2026-10-13T14:10:35.620Z",
+    "request": [
+      {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "docker.io/library/busybox:1.37",
+          "name": "qa-20261013-a357-image-control",
+          "type": "web_service",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "sh -c 'mkdir -p /tmp/qa-a357-www; printf \"qa-a357-recovered\\n\" > /tmp/qa-a357-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a357-www'",
+          "plan": "free",
+          "port": 3000,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db73nmva4m3s73d9i5l0",
+            "latestDeployId": "dep-db73nmva4m3s73d9i5lg",
+            "name": "qa-20261013-a357-image-control",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      }
+    ],
+    "url": "https://dashboard.bex.co/services/srv-db73nmva4m3s73d9i5l0/deploys/dep-db73nmva4m3s73d9i5lg"
+  },
+  "a357ControlLive": {
+    "at": "2026-10-13T14:11:08.348Z",
+    "request": {
+      "operationName": "QaA357ControlLive",
+      "query": "query QaA357ControlLive($id:String!){server(id:$id){id phase plan revision runtime repo branch imagePath buildCommand startCommand} deploys(serviceId:$id){id status image startedAt finishedAt failureReason stallReason}}",
+      "variables": {
+        "id": "srv-db73nmva4m3s73d9i5l0"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deploys": [
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T14:10:53.053612Z",
+            "id": "dep-db73nmva4m3s73d9i5lg",
+            "image": "docker.io/library/busybox:1.37",
+            "stallReason": "",
+            "startedAt": "2026-10-13T14:10:37.066066Z",
+            "status": "live"
+          }
+        ],
+        "server": {
+          "branch": "",
+          "buildCommand": "",
+          "id": "srv-db73nmva4m3s73d9i5l0",
+          "imagePath": "docker.io/library/busybox:1.37",
+          "phase": "Running",
+          "plan": "free",
+          "repo": "",
+          "revision": "rev-1",
+          "runtime": "image",
+          "startCommand": "sh -c 'mkdir -p /tmp/qa-a357-www; printf \"qa-a357-recovered\\n\" > /tmp/qa-a357-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a357-www'"
+        }
+      }
+    },
+    "publicStatus": 200,
+    "publicBody": "qa-a357-recovered\n"
+  },
+  "a357ControlCancel": {
+    "at": "2026-10-13T14:11:48.648Z",
+    "deployment": {
+      "at": "2026-10-13T14:11:45.684Z",
+      "request": [
+        {
+          "operationName": "TriggerDeploy",
+          "variables": {
+            "serviceId": "srv-db73nmva4m3s73d9i5l0"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation TriggerDeploy($serviceId: String!, $commitId: String, $deployMode: String, $clearCache: String, $confirm: String) {\n  triggerDeploy(\n    serviceId: $serviceId\n    commitId: $commitId\n    deployMode: $deployMode\n    clearCache: $clearCache\n    confirm: $confirm\n  ) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "triggerDeploy": {
+              "__typename": "Deploy",
+              "createdAt": "2026-10-13T14:11:45.503223Z",
+              "id": "dep-db73o8c479ic73bbj5ug",
+              "image": "docker.io/library/busybox:1.37",
+              "rollbackOf": "",
+              "status": "created",
+              "trigger": "api"
+            }
+          }
+        }
+      ]
+    },
+    "cancel": {
+      "request": [
+        {
+          "operationName": "CancelDeploy",
+          "variables": {
+            "serviceId": "srv-db73nmva4m3s73d9i5l0",
+            "deployId": "dep-db73o8c479ic73bbj5ug"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation CancelDeploy($serviceId: String!, $deployId: String!) {\n  cancelDeploy(serviceId: $serviceId, deployId: $deployId) {\n    id\n    status\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "cancelDeploy": {
+              "__typename": "Deploy",
+              "id": "dep-db73o8c479ic73bbj5ug",
+              "status": "canceled"
+            }
+          }
+        }
+      ]
+    },
+    "url": "https://dashboard.bex.co/services/srv-db73nmva4m3s73d9i5l0/deploys/dep-db73o8c479ic73bbj5ug"
+  },
+  "a357ControlCanceledRead": {
+    "at": "2026-10-13T14:12:11.829Z",
+    "request": {
+      "operationName": "QaA357ControlCanceledRead",
+      "query": "query QaA357ControlCanceledRead($id:String!){server(id:$id){id phase revision runtime startCommand} deploys(serviceId:$id){id status image startedAt finishedAt failureReason stallReason}}",
+      "variables": {
+        "id": "srv-db73nmva4m3s73d9i5l0"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deploys": [
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T14:11:48.486708Z",
+            "id": "dep-db73o8c479ic73bbj5ug",
+            "image": "docker.io/library/busybox:1.37",
+            "stallReason": "",
+            "startedAt": "",
+            "status": "canceled"
+          },
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T14:10:53.053612Z",
+            "id": "dep-db73nmva4m3s73d9i5lg",
+            "image": "docker.io/library/busybox:1.37",
+            "stallReason": "",
+            "startedAt": "2026-10-13T14:10:37.066066Z",
+            "status": "live"
+          }
+        ],
+        "server": {
+          "id": "srv-db73nmva4m3s73d9i5l0",
+          "phase": "Running",
+          "revision": "rev-1",
+          "runtime": "image",
+          "startCommand": "sh -c 'mkdir -p /tmp/qa-a357-www; printf \"qa-a357-recovered\\n\" > /tmp/qa-a357-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a357-www'"
+        }
+      }
+    },
+    "publicStatus": 200,
+    "publicBody": "qa-a357-recovered\n",
+    "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261013-a357-image-control\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a357-image-control\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Canceled\"':\n    - /url: /services/srv-db73nmva4m3s73d9i5l0/deploys/dep-db73o8c479ic73bbj5ug\n    - text: Latest deploy Canceled\n  - link \"Free\":\n    - /url: /services/srv-db73nmva4m3s73d9i5l0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db73nmva4m3s73d9i5l0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a357-image-control.onbex.co\":\n    - /url: https://qa-20261013-a357-image-control.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a357-image-control\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 1m\n  - text: Deploy status Canceled Manual Deploy dep-db73o8c479ic73bbj5ug\n  - paragraph: docker.io/library/busybox:1.37\n  - term: \"Created:\"\n  - definition: October 13, 2026 at 7:11 AM\n  - term: \"Updated:\"\n  - definition: October 13, 2026 at 7:11 AM\n  - term: \"Finished:\"\n  - definition: October 13, 2026 at 7:11 AM\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 13, 2026 at 7:11 AM\n    - listitem:\n      - paragraph: Canceled\n      - time: October 13, 2026 at 7:11 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\"\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 07:11:45 AM\n  - button \"Filter logs by instance srv-db73nmva4m3s73d9i5l0-25u838d8m7e8a1fqpfi1\": \"[25u83]\"\n  - text: ==> Deploy queued 07:11:48 AM\n  - button \"Filter logs by instance srv-db73nmva4m3s73d9i5l0-25u838d8m7e8a1fqpfi1\": \"[25u83]\"\n  - text: ==> Deploy canceled"
+  },
+  "a357ControlStartedCancel": {
+    "at": "2026-10-13T14:12:47.108Z",
+    "deployment": {
+      "at": "2026-10-13T14:12:37.466Z",
+      "request": [
+        {
+          "operationName": "TriggerDeploy",
+          "variables": {
+            "serviceId": "srv-db73nmva4m3s73d9i5l0"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation TriggerDeploy($serviceId: String!, $commitId: String, $deployMode: String, $clearCache: String, $confirm: String) {\n  triggerDeploy(\n    serviceId: $serviceId\n    commitId: $commitId\n    deployMode: $deployMode\n    clearCache: $clearCache\n    confirm: $confirm\n  ) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "triggerDeploy": {
+              "__typename": "Deploy",
+              "createdAt": "2026-10-13T14:12:37.308039Z",
+              "id": "dep-db73olfa4m3s73d9i5ng",
+              "image": "docker.io/library/busybox:1.37",
+              "rollbackOf": "",
+              "status": "created",
+              "trigger": "api"
+            }
+          }
+        }
+      ]
+    },
+    "pre": {
+      "at": "2026-10-13T14:12:44.977Z",
+      "request": {
+        "operationName": "QaA357ControlPreCancel",
+        "query": "query QaA357ControlPreCancel($id:String!){deploys(serviceId:$id){id status startedAt finishedAt}}",
+        "variables": {
+          "id": "srv-db73nmva4m3s73d9i5l0"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "finishedAt": "",
+              "id": "dep-db73olfa4m3s73d9i5ng",
+              "startedAt": "",
+              "status": "created"
+            },
+            {
+              "finishedAt": "2026-10-13T14:11:48.486708Z",
+              "id": "dep-db73o8c479ic73bbj5ug",
+              "startedAt": "",
+              "status": "canceled"
+            },
+            {
+              "finishedAt": "2026-10-13T14:10:53.053612Z",
+              "id": "dep-db73nmva4m3s73d9i5lg",
+              "startedAt": "2026-10-13T14:10:37.066066Z",
+              "status": "live"
+            }
+          ]
+        }
+      }
+    },
+    "cancel": {
+      "request": [
+        {
+          "operationName": "CancelDeploy",
+          "variables": {
+            "serviceId": "srv-db73nmva4m3s73d9i5l0",
+            "deployId": "dep-db73olfa4m3s73d9i5ng"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation CancelDeploy($serviceId: String!, $deployId: String!) {\n  cancelDeploy(serviceId: $serviceId, deployId: $deployId) {\n    id\n    status\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "cancelDeploy": {
+              "__typename": "Deploy",
+              "id": "dep-db73olfa4m3s73d9i5ng",
+              "status": "canceled"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "a357ThirdCancel": {
+    "at": "2026-10-13T14:13:13.866Z",
+    "deployment": {
+      "at": "2026-10-13T14:13:10.539Z",
+      "request": [
+        {
+          "operationName": "TriggerDeploy",
+          "variables": {
+            "serviceId": "srv-db73epva4m3s73d9i5fg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation TriggerDeploy($serviceId: String!, $commitId: String, $deployMode: String, $clearCache: String, $confirm: String) {\n  triggerDeploy(\n    serviceId: $serviceId\n    commitId: $commitId\n    deployMode: $deployMode\n    clearCache: $clearCache\n    confirm: $confirm\n  ) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "triggerDeploy": {
+              "__typename": "Deploy",
+              "createdAt": "2026-10-13T14:13:10.365077Z",
+              "id": "dep-db73otk479ic73bbj60g",
+              "image": "docker.io/library/busybox:1.37",
+              "rollbackOf": "",
+              "status": "created",
+              "trigger": "api"
+            }
+          }
+        }
+      ]
+    },
+    "cancel": {
+      "at": "2026-10-13T14:13:13.573Z",
+      "request": [
+        {
+          "operationName": "CancelDeploy",
+          "variables": {
+            "serviceId": "srv-db73epva4m3s73d9i5fg",
+            "deployId": "dep-db73otk479ic73bbj60g"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation CancelDeploy($serviceId: String!, $deployId: String!) {\n  cancelDeploy(serviceId: $serviceId, deployId: $deployId) {\n    id\n    status\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "cancelDeploy": {
+              "__typename": "Deploy",
+              "id": "dep-db73otk479ic73bbj60g",
+              "status": "canceled"
+            }
+          }
+        }
+      ]
+    },
+    "instant": {
+      "request": {
+        "operationName": "QaA357CancelInstantRead",
+        "query": "query QaA357CancelInstantRead($id:String!){server(id:$id){id phase revision} deploys(serviceId:$id){id status startedAt finishedAt}}",
+        "variables": {
+          "id": "srv-db73epva4m3s73d9i5fg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "finishedAt": "2026-10-13T14:13:13.415004Z",
+              "id": "dep-db73otk479ic73bbj60g",
+              "startedAt": "",
+              "status": "canceled"
+            },
+            {
+              "finishedAt": "2026-10-13T14:09:52.998764Z",
+              "id": "dep-db73n84479ic73bbj5s0",
+              "startedAt": "2026-10-13T14:09:36.842521Z",
+              "status": "live"
+            },
+            {
+              "finishedAt": "2026-10-13T14:09:06.980784Z",
+              "id": "dep-db73mrna4m3s73d9i5j0",
+              "startedAt": "2026-10-13T14:08:53.041231Z",
+              "status": "deactivated"
+            },
+            {
+              "finishedAt": "2026-10-13T14:08:23.030975Z",
+              "id": "dep-db73mgk479ic73bbj5q0",
+              "startedAt": "2026-10-13T14:08:06.90384Z",
+              "status": "deactivated"
+            },
+            {
+              "finishedAt": "2026-10-13T13:55:53.12144Z",
+              "id": "dep-db73glk479ic73bbj5j0",
+              "startedAt": "2026-10-13T13:55:36.879504Z",
+              "status": "deactivated"
+            },
+            {
+              "finishedAt": "2026-10-13T13:52:29.37621Z",
+              "id": "dep-db73epva4m3s73d9i5g0",
+              "startedAt": "",
+              "status": "canceled"
+            }
+          ],
+          "server": {
+            "id": "srv-db73epva4m3s73d9i5fg",
+            "phase": "Deploying",
+            "revision": "rev-6"
+          }
+        }
+      }
+    }
+  },
+  "a357ControlTrueStartedCancel": {
+    "deployment": {
+      "at": "2026-10-13T14:13:52.838Z",
+      "request": [
+        {
+          "operationName": "TriggerDeploy",
+          "variables": {
+            "serviceId": "srv-db73nmva4m3s73d9i5l0"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation TriggerDeploy($serviceId: String!, $commitId: String, $deployMode: String, $clearCache: String, $confirm: String) {\n  triggerDeploy(\n    serviceId: $serviceId\n    commitId: $commitId\n    deployMode: $deployMode\n    clearCache: $clearCache\n    confirm: $confirm\n  ) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "triggerDeploy": {
+              "__typename": "Deploy",
+              "createdAt": "2026-10-13T14:13:52.672249Z",
+              "id": "dep-db73p87a4m3s73d9i5pg",
+              "image": "docker.io/library/busybox:1.37",
+              "rollbackOf": "",
+              "status": "created",
+              "trigger": "api"
+            }
+          }
+        }
+      ]
+    },
+    "pre": {
+      "at": "2026-10-13T14:14:07.225Z",
+      "request": {
+        "operationName": "QaA357ControlStarted",
+        "query": "query QaA357ControlStarted($id:String!){deploys(serviceId:$id){id status startedAt finishedAt}}",
+        "variables": {
+          "id": "srv-db73nmva4m3s73d9i5l0"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "finishedAt": "2026-10-13T14:14:07.11316Z",
+              "id": "dep-db73p87a4m3s73d9i5pg",
+              "startedAt": "",
+              "status": "live"
+            },
+            {
+              "finishedAt": "2026-10-13T14:12:46.947616Z",
+              "id": "dep-db73olfa4m3s73d9i5ng",
+              "startedAt": "",
+              "status": "canceled"
+            },
+            {
+              "finishedAt": "2026-10-13T14:11:48.486708Z",
+              "id": "dep-db73o8c479ic73bbj5ug",
+              "startedAt": "",
+              "status": "canceled"
+            },
+            {
+              "finishedAt": "2026-10-13T14:10:53.053612Z",
+              "id": "dep-db73nmva4m3s73d9i5lg",
+              "startedAt": "2026-10-13T14:10:37.066066Z",
+              "status": "deactivated"
+            }
+          ]
+        }
+      }
+    },
+    "aborted": "No active started deploy observed; no cancel submitted"
+  },
+  "a357FinalManual": {
+    "at": "2026-10-13T14:14:38.581Z",
+    "request": [
+      {
+        "operationName": "TriggerDeploy",
+        "variables": {
+          "serviceId": "srv-db73epva4m3s73d9i5fg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation TriggerDeploy($serviceId: String!, $commitId: String, $deployMode: String, $clearCache: String, $confirm: String) {\n  triggerDeploy(\n    serviceId: $serviceId\n    commitId: $commitId\n    deployMode: $deployMode\n    clearCache: $clearCache\n    confirm: $confirm\n  ) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "triggerDeploy": {
+            "__typename": "Deploy",
+            "createdAt": "2026-10-13T14:14:38.411227Z",
+            "id": "dep-db73pjk479ic73bbj62g",
+            "image": "docker.io/library/busybox:1.37",
+            "rollbackOf": "",
+            "status": "created",
+            "trigger": "api"
+          }
+        }
+      }
+    ]
+  },
+  "a357FinalSourceRead": {
+    "at": "2026-10-13T14:15:02.731Z",
+    "request": {
+      "operationName": "QaA357FinalSourceRead",
+      "query": "query QaA357FinalSourceRead($id:String!){server(id:$id){id phase plan revision runtime repo branch imagePath rootDir buildCommand startCommand undeployedChanges} deploys(serviceId:$id){id status image startedAt finishedAt failureReason stallReason}}",
+      "variables": {
+        "id": "srv-db73epva4m3s73d9i5fg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deploys": [
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T14:14:53.188486Z",
+            "id": "dep-db73pjk479ic73bbj62g",
+            "image": "docker.io/library/busybox:1.37",
+            "stallReason": "",
+            "startedAt": "",
+            "status": "live"
+          },
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T14:13:13.415004Z",
+            "id": "dep-db73otk479ic73bbj60g",
+            "image": "docker.io/library/busybox:1.37",
+            "stallReason": "",
+            "startedAt": "",
+            "status": "canceled"
+          },
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T14:09:52.998764Z",
+            "id": "dep-db73n84479ic73bbj5s0",
+            "image": "docker.io/library/busybox:1.37",
+            "stallReason": "",
+            "startedAt": "2026-10-13T14:09:36.842521Z",
+            "status": "deactivated"
+          },
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T14:09:06.980784Z",
+            "id": "dep-db73mrna4m3s73d9i5j0",
+            "image": "docker.io/library/busybox:1.37",
+            "stallReason": "",
+            "startedAt": "2026-10-13T14:08:53.041231Z",
+            "status": "deactivated"
+          },
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T14:08:23.030975Z",
+            "id": "dep-db73mgk479ic73bbj5q0",
+            "image": "docker.io/library/busybox:1.37",
+            "stallReason": "",
+            "startedAt": "2026-10-13T14:08:06.90384Z",
+            "status": "deactivated"
+          },
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T13:55:53.12144Z",
+            "id": "dep-db73glk479ic73bbj5j0",
+            "image": "docker.io/library/busybox:1.37",
+            "stallReason": "",
+            "startedAt": "2026-10-13T13:55:36.879504Z",
+            "status": "deactivated"
+          },
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T13:52:29.37621Z",
+            "id": "dep-db73epva4m3s73d9i5g0",
+            "image": "",
+            "stallReason": "",
+            "startedAt": "",
+            "status": "canceled"
+          }
+        ],
+        "server": {
+          "branch": "",
+          "buildCommand": "sleep 90 && npm install",
+          "id": "srv-db73epva4m3s73d9i5fg",
+          "imagePath": "docker.io/library/busybox:1.37",
+          "phase": "Running",
+          "plan": "free",
+          "repo": "",
+          "revision": "rev-8",
+          "rootDir": "examples/hello-node",
+          "runtime": "node",
+          "startCommand": "sh -c 'mkdir -p /tmp/qa-a357-www; printf \"qa-a357-recovered\\n\" > /tmp/qa-a357-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a357-www'",
+          "undeployedChanges": false
+        }
+      }
+    },
+    "publicStatus": 200,
+    "publicBody": "qa-a357-recovered\n",
+    "url": "https://dashboard.bex.co/services/srv-db73epva4m3s73d9i5fg/deploys/dep-db73pjk479ic73bbj62g",
+    "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261013-a357-source-switch\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a357-source-switch\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db73epva4m3s73d9i5fg/deploys/dep-db73pjk479ic73bbj62g\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db73epva4m3s73d9i5fg/plan\n  - text: Runtime node\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db73epva4m3s73d9i5fg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a357-source-switch.onbex.co\":\n    - /url: https://qa-20261013-a357-source-switch.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a357-source-switch\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-8\n  - term: Created\n  - definition:\n    - time: 22m\n  - text: Deploy status Live Manual Deploy dep-db73pjk479ic73bbj62g\n  - paragraph: docker.io/library/busybox:1.37\n  - term: \"Created:\"\n  - definition: October 13, 2026 at 7:14 AM\n  - term: \"Updated:\"\n  - definition: October 13, 2026 at 7:14 AM\n  - term: \"Finished:\"\n  - definition: October 13, 2026 at 7:14 AM\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 13, 2026 at 7:14 AM\n    - listitem:\n      - paragraph: Live\n      - time: October 13, 2026 at 7:14 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\"\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 07:14:38 AM\n  - button \"Filter logs by instance srv-db73epva4m3s73d9i5fg-kfutstng3hr1on7cdvuc\": \"[kfuts]\"\n  - text: ==> Deploy queued 07:14:53 AM\n  - button \"Filter logs by instance srv-db73epva4m3s73d9i5fg-kfutstng3hr1on7cdvuc\": \"[kfuts]\"\n  - text: ==> Your service is live 🎉"
+  },
+  "a357DeleteSource": {
+    "at": "2026-10-13T14:16:09.192Z",
+    "request": [
+      {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db73epva4m3s73d9i5fg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "deleteService": true
+        }
+      }
+    ]
+  },
+  "a357DeleteControl": {
+    "at": "2026-10-13T14:16:32.577Z",
+    "request": [
+      {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db73nmva4m3s73d9i5l0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "deleteService": true
+        }
+      }
+    ]
+  },
+  "a357Cleanup": {
+    "at": "2026-10-13T14:17:04.087Z",
+    "request": {
+      "operationName": "QaA357Cleanup",
+      "query": "query QaA357Cleanup($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    },
+    "details": [
+      {
+        "id": "srv-db73epva4m3s73d9i5fg",
+        "detailStatus": 404,
+        "publicStatus": 404
+      },
+      {
+        "id": "srv-db73nmva4m3s73d9i5l0",
+        "detailStatus": 404,
+        "publicStatus": 404
+      }
+    ]
+  },
+  "firstImageLive": {
+    "at": "2026-10-13T13:58:07.121Z",
+    "request": {
+      "operationName": "QaA357RunningSource",
+      "query": "query QaA357RunningSource($id:String!){server(id:$id){id phase plan revision repo branch imagePath runtime rootDir buildCommand startCommand undeployedChanges} deploys(serviceId:$id){id status image startedAt finishedAt failureReason stallReason}}",
+      "variables": {
+        "id": "srv-db73epva4m3s73d9i5fg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deploys": [
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T13:55:53.12144Z",
+            "id": "dep-db73glk479ic73bbj5j0",
+            "image": "docker.io/library/busybox:1.37",
+            "stallReason": "",
+            "startedAt": "2026-10-13T13:55:36.879504Z",
+            "status": "live"
+          },
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T13:52:29.37621Z",
+            "id": "dep-db73epva4m3s73d9i5g0",
+            "image": "",
+            "stallReason": "",
+            "startedAt": "",
+            "status": "canceled"
+          }
+        ],
+        "server": {
+          "branch": "",
+          "buildCommand": "sleep 90 && npm install",
+          "id": "srv-db73epva4m3s73d9i5fg",
+          "imagePath": "docker.io/library/busybox:1.37",
+          "phase": "Running",
+          "plan": "free",
+          "repo": "",
+          "revision": "rev-3",
+          "rootDir": "examples/hello-node",
+          "runtime": "node",
+          "startCommand": "sh -c 'mkdir -p /tmp/qa-a357-www; printf \"qa-a357-recovered\\n\" > /tmp/qa-a357-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a357-www'",
+          "undeployedChanges": false
+        }
+      }
+    },
+    "publicStatus": 200,
+    "publicBody": "qa-a357-recovered\n"
+  }
+}
