@@ -62,7 +62,7 @@ func NewLokiSource(base string, hc *http.Client) LogHistorySource {
 		// asks for a scan page of raw lines rather than the caller's page of matches.
 		pageQ := q
 		pageQ.Limit = lokiFetchLimit(q)
-		if q.displaySearch() && !q.End.IsZero() {
+		if q.localTextSearch() && !q.End.IsZero() {
 			// Its coverage edges are Loki-exclusive ends, so the caller's inclusive
 			// End is applied once, here, rather than re-bumped whenever an edge
 			// lands on it (which could re-read the same full page forever).
@@ -83,21 +83,16 @@ func NewLokiSource(base string, hc *http.Client) LogHistorySource {
 			if err := lokiGet(ctx, hc, u, &lr); err != nil {
 				return nil, err
 			}
-			entries, err := parseLokiStreams(lr, pageQ)
-			if err != nil {
-				return nil, err
-			}
-			if q.localTextSearch() && !q.displaySearch() {
-				entries = slices.DeleteFunc(entries, func(e LogEntry) bool { return !q.matchesText(e.Message) })
-			}
-			return entries, nil
+			// Raw candidates, unmatched: scanLokiWindow measures coverage by
+			// every line read before it keeps the matches (w8/m58).
+			return parseLokiStreams(lr, pageQ)
 		}
 		return scanLokiWindow(ctx, q, start, end, lokiScansLines(q), lokiScanBudget, fetch)
 	}
 }
 
-// A line-filtered history read (text, path, or host) makes Loki scan every
-// line in the window, so a search with few or no matches over a week of a busy
+// A line-filtered history read (text, path, or host) reads every line in the
+// window (Loki applies path/host; text is matched in Go over raw pages), so a search with few or no matches over a week of a busy
 // service outlasts the HTTP write deadline and reaches the browser as an edge
 // 502 (w4/m140). Such reads are scanned in slices from the end the direction
 // keeps (newest-first by default), each twice the last, so the common case (the
@@ -128,26 +123,26 @@ func (e *ScanIncompleteError) Error() string {
 	return fmt.Sprintf("log search covered only up to %s before its time budget ran out", e.ScannedTo.UTC().Format(time.RFC3339))
 }
 
-// lokiScansLines reports whether q carries a line filter, which Loki can only
-// answer by reading every line in the window.
+// lokiScansLines reports whether q carries a line filter, which can only be
+// answered by reading every line in the window.
 func lokiScansLines(q LogQuery) bool {
 	return len(q.Search) > 0 || len(q.Path) > 0 || len(q.Host) > 0
 }
 
-// lokiDisplayScanPage is how many raw lines one request of a local text search
+// lokiTextScanPage is how many raw lines one request of a local text search
 // reads (w4/m189, w8/m58). Loki cannot match the displayed text — an escape
 // inside the needle breaks a raw substring — and its raw case-insensitive regexp
 // simplifier is not a safe Unicode superset, so text searches read raw pages and
 // match in Go. A page larger than Render's 100-line cap keeps a week's scan to
 // fewer round trips; it stays under Loki's default max_entries_limit_per_query
 // (5000).
-const lokiDisplayScanPage = 1000
+const lokiTextScanPage = 1000
 
 // lokiFetchLimit is the line cap of one query_range request: the caller's page
 // of matches, or a raw scan page for a local text search.
 func lokiFetchLimit(q LogQuery) int64 {
 	if q.localTextSearch() {
-		return lokiDisplayScanPage
+		return lokiTextScanPage
 	}
 	return lokiLimit(q)
 }
@@ -173,7 +168,7 @@ func scanLokiWindow(
 
 	forward := lokiDirection(q) == DirectionForward
 	limit := lokiLimit(q)
-	display := q.displaySearch()
+	local := q.localTextSearch()
 	var out []LogEntry
 	seen := map[string]struct{}{}
 	covered := end // backward: [covered, end] is done; forward: [start, covered)
@@ -212,8 +207,8 @@ func scanLokiWindow(
 		if forward {
 			next = to
 		}
-		if display {
-			page, next, saturated = displayScanPage(q, page, forward, next)
+		if local {
+			page, next, saturated = textScanPage(q, page, forward, next)
 		}
 		// Adjacent slices share a boundary instant; a line exactly on it may come
 		// back from both, and must count once.
@@ -239,18 +234,18 @@ func scanLokiWindow(
 	}
 }
 
-// displayScanPage turns one raw page of a display-mode search into its
-// matches and the coverage edge the page proves (w4/m189); next is the edge of
-// a fully read slice. Coverage advances by raw lines actually read, never by
-// matches: when Loki filled the raw page (saturated), the slice was only read
+// textScanPage turns one raw page of a local text search (raw or display
+// mode) into its matches and the coverage edge the page proves (w4/m189,
+// w8/m58); next is the edge of a fully read slice. Coverage advances by raw
+// lines actually read, never by matches: when Loki filled the raw page (saturated), the slice was only read
 // back to the page's far timestamp t. That instant's group may have been cut
 // by Loki's limit, so its lines are dropped and re-read whole by the next
 // request — a backward edge of t+1ns (Loki's end is exclusive), a forward edge
 // of t (its start is inclusive). A page that is one single instant cannot
 // progress that way; it is kept as read, and the edge moves just past t.
-func displayScanPage(q LogQuery, page []LogEntry, forward bool, next time.Time) (matches []LogEntry, edge time.Time, saturated bool) {
+func textScanPage(q LogQuery, page []LogEntry, forward bool, next time.Time) (matches []LogEntry, edge time.Time, saturated bool) {
 	edge = next
-	if int64(len(page)) >= lokiDisplayScanPage {
+	if int64(len(page)) >= lokiTextScanPage {
 		saturated = true
 		far := page[0] // backward: the oldest line read
 		if forward {
