@@ -1,16 +1,16 @@
 # w4 · m202 — Honor image commands after switching from native Git
 
-**Worker:** worker4 **Goal:** a prebuilt image executes its saved Docker Command after a native Git source switch **Status:** todo
+**Worker:** worker4 **Goal:** a prebuilt image executes its saved Docker Command after a native Git source switch **Status:** blocked (release pipeline deploys the operator; then QA replays the DoD for t006). t001–t005 done.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Apply prebuilt command overrides independently of retained build metadata | 45m | — |
-| t002 | Audit shared command consumers and preserve selected native artifacts | 35m | t001 |
-| t003 | Render parity | 20m | t002 |
-| t004 | Simplify | 15m | t003 |
-| t005 | Test coverage | 35m | t003 |
+| t001 | Apply prebuilt command overrides independently of retained build metadata — **DONE** | 45m | — |
+| t002 | Audit shared command consumers and preserve selected native artifacts — **DONE** | 35m | t001 |
+| t003 | Render parity — **DONE** | 20m | t002 |
+| t004 | Simplify — **DONE** | 15m | t003 |
+| t005 | Test coverage — **DONE** | 35m | t003 |
 | t006 | Closeout | 20m | t004, t005 |
 
 ## Definition of done

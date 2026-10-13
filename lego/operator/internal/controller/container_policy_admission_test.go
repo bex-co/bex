@@ -322,7 +322,7 @@ func admissionApplicationWorkloads(namespace, policy string) []client.Object {
 	app.Spec.Schedule = "*/5 * * * *"
 	app.Spec.RunAt = "2026-10-02T12:00:00Z"
 	Expect(r.Update(ctx, app)).To(Succeed())
-	template := r.cronPodSpec(app, "busybox:latest", 8080, map[string]string{labelApp: app.Name})
+	template := r.cronPodSpec(app, "busybox:latest", 8080, map[string]string{labelApp: app.Name}, launchUnknown)
 	_, err := r.convergeCronRuntime(ctx, app, template)
 	Expect(err).NotTo(HaveOccurred())
 	cron := &batchv1.CronJob{}

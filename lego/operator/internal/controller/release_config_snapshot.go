@@ -646,10 +646,11 @@ func (r *AppReconciler) afterServingDeployment(ctx context.Context, app *appv1al
 // afterServingDeployment with whether the pod template actually changed — which is
 // the difference between a rollout and a no-op.
 func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, params deploymentParams, restore *corev1.PodTemplateSpec) error {
-	runtime, err := r.selectedRuntimeApp(ctx, app)
+	runtime, launch, err := r.selectedRuntime(ctx, app)
 	if err != nil {
 		return err
 	}
+	params.launch = launch
 	var prior *corev1.PodTemplateSpec
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, dep, func() error {
 		if !dep.CreationTimestamp.IsZero() {

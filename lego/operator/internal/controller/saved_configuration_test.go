@@ -69,7 +69,7 @@ func savedConfigurationFixture(t *testing.T, serviceType string, files map[strin
 	}
 	var tmpl corev1.PodTemplateSpec
 	if serviceType == appv1alpha1.TypeCronJob {
-		tmpl = r.cronPodSpec(app, app.Status.Image, 3000, map[string]string{labelApp: app.Name})
+		tmpl = r.cronPodSpec(app, app.Status.Image, 3000, map[string]string{labelApp: app.Name}, launchUnknown)
 		cj := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.CronJobName(app.Name), Namespace: app.Namespace},
 			Spec: batchv1.CronJobSpec{Schedule: app.Spec.Schedule, JobTemplate: batchv1.JobTemplateSpec{Spec: batchv1.JobSpec{Template: tmpl}}}}
 		if err := controllerutil.SetControllerReference(app, cj, sch); err != nil {
@@ -202,7 +202,7 @@ func TestSavedConfigurationFirstReferencesRemainDeferredAcrossRuntimeTypes(t *te
 					if err != nil {
 						t.Fatal(err)
 					}
-					tmpl := r.cronPodSpec(runtime, app.Status.Image, 3000, before.Labels)
+					tmpl := r.cronPodSpec(runtime, app.Status.Image, 3000, before.Labels, launchUnknown)
 					if _, err := r.applyServingCronJob(t.Context(), app, tmpl, false); err != nil {
 						t.Fatal(err)
 					}
@@ -294,7 +294,7 @@ func TestSavedConfigurationMissingRecordUsesAlreadyAppliedMembership(t *testing.
 			}
 			var projected corev1.PodTemplateSpec
 			if serviceType == appv1alpha1.TypeCronJob {
-				projected = r.cronPodSpec(runtime, app.Status.Image, 3000, before.Labels)
+				projected = r.cronPodSpec(runtime, app.Status.Image, 3000, before.Labels, launchUnknown)
 			} else {
 				dep := &appsv1.Deployment{}
 				applyDeploymentSpec(dep, runtime, deploymentParams{image: app.Status.Image, port: 3000, replicas: 1})

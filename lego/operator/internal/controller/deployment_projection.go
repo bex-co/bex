@@ -167,6 +167,8 @@ type deploymentParams struct {
 	// baseDomain is the reconciler's platform domain: the probe Host's
 	// fallback (healthProbeHost).
 	baseDomain string
+	// launch is the selected or served release's recorded launch, if any.
+	launch launchMode
 }
 
 // appPodLabels builds the pod template's label set.
@@ -202,6 +204,42 @@ const appContainerName = "app"
 // both stable Services.
 const servingPortName = "bex-http"
 
+// launchMode is how a release's app container launches the saved StartCommand.
+type launchMode string
+
+const (
+	launchUnknown launchMode = ""      // no recorded evidence: the saved source decides
+	launchShell   launchMode = "shell" // the app container runs it through the shell
+	launchImage   launchMode = "image" // the image's own entrypoint, which a native/buildpack build bakes it into
+)
+
+// shellCommand is the app container's Command for a shell-launched command.
+func shellCommand(command string) []string {
+	return []string{shellBinary, "-c", command}
+}
+
+// shellRunsStartCommand reports whether the app container running image must
+// launch the saved StartCommand itself (the Docker Command override) rather
+// than keep the image's own entrypoint. A recorded launch decides first (a
+// release whose artifact predates the saved source: selectedRuntime). Then the
+// saved prebuilt image actually being run gets the override whatever build
+// settings it retains from a native source (w4/m202). Otherwise the builder
+// decides: bex has no control over an opaque Dockerfile image's ENTRYPOINT/CMD,
+// while a native or buildpack build bakes the command into its image's CMD.
+func shellRunsStartCommand(app *appv1alpha1.App, image string, recorded launchMode) bool {
+	switch recorded {
+	case launchShell:
+		return true
+	case launchImage:
+		return false
+	}
+	if app.Spec.Repo == "" && app.Spec.Image != "" && image == app.Spec.Image {
+		return true
+	}
+	b := effectiveBuilder(app.Spec)
+	return b != build.BuilderNative && b != build.BuilderBuildpack
+}
+
 // appContainer projects the App onto its single "app" container.
 // probeHost is the Host header its HTTP health probes send ("" for none).
 func appContainer(app *appv1alpha1.App, p deploymentParams, probeHost string) corev1.Container {
@@ -225,13 +263,8 @@ func appContainer(app *appv1alpha1.App, p deploymentParams, probeHost string) co
 		Resources:       resourcesForTier(app.Spec.Tier),
 		SecurityContext: appSecCtx(app.Spec),
 	}
-	// StartCommand overrides the running container's entrypoint whenever the
-	// image comes from an opaque Dockerfile (or a prebuilt image) — bex has no
-	// control over that image's own ENTRYPOINT/CMD. A native-runtime or
-	// buildpack build instead bakes the command into the image's own CMD at
-	// build time, so no Deployment-level override is needed there.
-	if b := effectiveBuilder(app.Spec); b != build.BuilderNative && b != build.BuilderBuildpack && app.Spec.StartCommand != "" {
-		container.Command = []string{shellBinary, "-c", app.Spec.StartCommand}
+	if app.Spec.StartCommand != "" && shellRunsStartCommand(app, p.image, p.launch) {
+		container.Command = shellCommand(app.Spec.StartCommand)
 	}
 	// Health-gating: a non-worker service speaks HTTP, so gate pod readiness on
 	// spec.healthCheckPath — Render's health check. A failure pulls the pod out

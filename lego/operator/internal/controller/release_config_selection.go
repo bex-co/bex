@@ -308,6 +308,64 @@ func (rec *runtimeConfigRecord) projectRuntimeApp(app *appv1alpha1.App, ref *app
 	return effectiveApp
 }
 
+// selectedRuntime is selectedRuntimeApp for the two command projections, plus
+// the launch recorded for the artifact this release runs when that artifact can
+// predate the saved source: a selected release (Restart, rollback, environment
+// reuse), or the served artifact a staged source switch keeps running. A native
+// artifact rolled back after a switch to an image keeps its baked launch, and an
+// image one after a switch back to Git its shell launch (w4/m202).
+func (r *AppReconciler) selectedRuntime(ctx context.Context, app *appv1alpha1.App) (*appv1alpha1.App, launchMode, error) {
+	if ref := app.ActiveReleaseConfig(); ref != nil && ref.SourceGeneration != 0 && !canceledOverServed(app) {
+		rec, err := r.readRuntimeConfigRecord(ctx, app, ref.Generation)
+		if err != nil {
+			return nil, launchUnknown, fmt.Errorf("read materialized release %d: %w", ref.Generation, err)
+		}
+		return rec.projectRuntimeApp(app, ref), rec.launch(app), nil
+	}
+	runtime, err := r.retainReleaseSources(ctx, app)
+	if err != nil || !sourceUpdatePending(app) || canceledOverServed(app) {
+		return runtime, launchUnknown, err
+	}
+	served := successfulReleaseGeneration(app)
+	if served <= 0 {
+		return runtime, launchUnknown, nil
+	}
+	rec, err := r.readRuntimeConfigRecord(ctx, app, served)
+	if apierrors.IsNotFound(err) {
+		return runtime, launchUnknown, nil
+	}
+	if err != nil {
+		return nil, launchUnknown, fmt.Errorf("read served release %d: %w", served, err)
+	}
+	return runtime, rec.launch(app), nil
+}
+
+// launch reads how the release launched its StartCommand back from its recorded
+// app container: through the shell, or by the artifact's own entrypoint.
+// launchUnknown when the record cannot tell: no template, no StartCommand, a
+// cron Command that took precedence, or a command-less container running the
+// saved prebuilt image, which operators before w4/m202 also recorded for an
+// image that kept native build settings.
+func (rec *runtimeConfigRecord) launch(app *appv1alpha1.App) launchMode {
+	if rec.spec.StartCommand == "" || (rec.spec.Command != nil && *rec.spec.Command != "") {
+		return launchUnknown
+	}
+	for _, c := range rec.template.Spec.Containers {
+		if c.Name != appContainerName {
+			continue
+		}
+		switch {
+		case len(c.Command) == 0 && app.Spec.Repo == "" && c.Image == app.Spec.Image:
+			return launchUnknown
+		case len(c.Command) == 0:
+			return launchImage
+		case slices.Equal(c.Command, shellCommand(rec.spec.StartCommand)):
+			return launchShell
+		}
+	}
+	return launchUnknown
+}
+
 func (rec *runtimeConfigRecord) applySources(app *appv1alpha1.App) {
 	app.Spec.EnvFromSecret = rec.spec.EnvFromSecret
 	app.Spec.EnvFromSecrets = rec.spec.EnvFromSecrets

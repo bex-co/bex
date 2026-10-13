@@ -31,7 +31,7 @@ func TestApplicationContainerPolicies(t *testing.T) {
 		t.Run(policy, func(t *testing.T) {
 			app := projectionApp(func(a *appv1alpha1.App) { a.Spec.ContainerPolicy = policy })
 			dep := project(app, webParams())
-			cron := (&AppReconciler{}).cronPodSpec(app, "image", 8123, nil)
+			cron := (&AppReconciler{}).cronPodSpec(app, "image", 8123, nil, launchUnknown)
 			app.Spec.PreDeployCommand = "true"
 			app.UID = "policy-test"
 			scheme := datastoreSecretScheme(t)
