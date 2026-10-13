@@ -762,7 +762,7 @@ func blueprintResourceValidationErrors(source *BlueprintSource, ir BlueprintIR, 
 		if resource, ok := blueprintIRResource(ir, problem.kind, problem.name); ok {
 			pointer := resource.SourcePath + strings.ReplaceAll(blueprintErrorField(msg), ".", "/")
 			if i, ok := blueprintEnvVarIndex(resource, msg); ok {
-				pointer = fmt.Sprintf("%s/envVars/%d", resource.SourcePath, i)
+				pointer = fmt.Sprintf("%s/envVars/%d", resource.SourcePath, i) + blueprintEnvRefField(resource, i, msg)
 			} else if i, ok := blueprintDomainIndex(resource, msg); ok {
 				pointer = fmt.Sprintf("%s/domains/%d", resource.SourcePath, i)
 			} else if rule, ok := blueprintStaticRulePointer(resource, msg); ok {
@@ -831,6 +831,22 @@ func blueprintEnvVarIndex(resource BlueprintResourceIR, msg string) (int, bool) 
 		}
 	}
 	return 0, false
+}
+
+// blueprintEnvRefField narrows an env-entry refusal that names its
+// fromService.type to that authored field (w8/096), when the entry declares it.
+func blueprintEnvRefField(resource BlueprintResourceIR, i int, msg string) string {
+	if !strings.Contains(msg, "fromService.type") {
+		return ""
+	}
+	envVars, _ := resource.Fields["envVars"].Value.([]any)
+	entry, _ := envVars[i].(map[string]any)
+	if ref, _ := entry["fromService"].(map[string]any); ref != nil {
+		if _, declared := ref["type"]; declared {
+			return "/fromService/type"
+		}
+	}
+	return ""
 }
 
 var blueprintStaticRuleRE = regexp.MustCompile(`\b(routes|headers)\[(\d+)\]\.(type|source|destination|path|name|value)\b`)

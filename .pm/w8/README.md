@@ -117,7 +117,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **097** — [Literal alert/emergency severities become unknown and disappear from CLI level filters](done/097.md) — **DONE 2026-10-13** (fix `b250f2acb`; live App severity labels and all 20 native filters pass; platform/GraphQL/MCP/dashboard and pre-rollout history recorded as unexercised boundaries)
 
-- [ ] **096** — [Blueprint validation ignores a supplied service-reference type](096.md) (minor; 20m remaining acceptance) ← sweep207 full native matrix now passes after API pin advancement; exact native wire, aliases/containers/controls; hosted apply and remaining surfaces untested; no fixtures.
+- [x] **096** — [Blueprint validation ignores a supplied service-reference type](done/096.md) — **DONE 2026-10-13** (fix `e8129f739`; sweep207 32-case native matrix passes; refusal now located at `fromService.type`; hosted apply, non-REST surfaces and out-of-file hosts recorded as boundaries)
 
 - [ ] **095** — [Blueprint reapply skips a new empty variable in an existing environment group](blocked/095.md) — **BLOCKED (2026-10-12: fix shipped — reapplying a Blueprint onto an existing env group writes a newly declared empty variable; needs the fix deployed to production plus a hosted apply/reapply receipt and cleanup)**
 - [ ] **094** — [Blueprint plans call an existing environment group a create when its name is padded](blocked/094.md) — **BLOCKED (2026-10-12: fix shipped — a padded env-group name plans the update of the existing group under its canonical name; needs the fix deployed to production plus fresh full-server validation receipts and cleanup)**

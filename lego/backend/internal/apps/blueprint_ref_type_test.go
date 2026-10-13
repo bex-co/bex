@@ -80,6 +80,10 @@ func TestBlueprintFromServiceTypeMustMatchItsTarget(t *testing.T) {
 				if !tc.valid && (result.Valid || !strings.Contains(joined, `fromService.type "`+tc.refType+`" does not match "source"`)) {
 					t.Errorf("%s (%s) = valid %v %s, want the type mismatch", tc.name, order, result.Valid, joined)
 				}
+				// Located at the authored fromService.type, not just its entry.
+				if !tc.valid && len(result.Errors) > 0 && (result.Errors[0].Path == nil || !strings.HasSuffix(*result.Errors[0].Path, "envVars[0].fromService.type")) {
+					t.Errorf("%s (%s) path = %v, want the entry's fromService.type", tc.name, order, result.Errors[0].Path)
+				}
 			}
 		}
 	}
