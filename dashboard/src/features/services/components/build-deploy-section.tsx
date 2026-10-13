@@ -155,9 +155,6 @@ export function BuildDeploySection({
   const { setBuildCommand, busy: buildCommandBusy } = useBuildCommand();
   const { setDockerfilePath, busy: dockerfilePathBusy } = useDockerfilePath();
   const { setAutoDeploy, busy: autoDeployBusy } = useAutoDeploy();
-  // Optimistic switch state — reverted on a failed mutation.
-  const [autoDeployOn, setAutoDeployOn] = useState(autoDeploy);
-
   const autoDeployHint = t(autoDeployHintKey(pushDeliveryMethod));
 
   // Render presents Auto-Deploy as a select ("On Commit" | "Off"), not a switch
@@ -181,17 +178,14 @@ export function BuildDeploySection({
     <EditableFieldRow
       label={t("services.autoDeployLabel")}
       hint={autoDeployHint}
-      value={autoDeployOn ? "commit" : "off"}
+      value={autoDeploy ? "commit" : "off"}
       editLabel={t("services.autoDeployEdit")}
       busy={autoDeployBusy}
       options={autoDeployOptions}
-      onSave={async (value) => {
-        const next = value === "commit";
-        setAutoDeployOn(next); // optimistic
-        const ok = await setAutoDeploy(serviceId, next);
-        if (!ok) setAutoDeployOn(!next); // revert
-        return ok;
-      }}
+      // Bound to the saved prop, never a local copy: a poll or another tab's
+      // save must reach an untouched row, its Edit baseline and Cancel (w4/281).
+      // The accepted mutation normalizes Service.autoDeploy into the cache.
+      onSave={(value) => setAutoDeploy(serviceId, value === "commit")}
     />
   );
 
