@@ -145,8 +145,10 @@ func TestNativeBuildJobPreparesDockerfileAndSecretEnv(t *testing.T) {
 	if hasEnv(prep.Env, "PORT") {
 		t.Fatal("operator-owned PORT must not enter the native build env bundle")
 	}
-	if !hasEnv(prep.Env, "NODE_ENV") {
-		t.Fatal("literal service env missing from native build preparer")
+	// A literal rides a private carrier, never its own name, so it cannot
+	// change the preparer's shell (w8/m61).
+	if hasEnv(prep.Env, "NODE_ENV") || !hasEnv(prep.Env, nativeLiteralEnvPrefix+"0") {
+		t.Fatalf("literal service env must ride a private carrier: %v", prep.Env)
 	}
 	prepScript := prep.Args[0]
 	if strings.Index(prepScript, "for path in /runtime-env/*") > strings.Index(prepScript, "for key in $BEX_NATIVE_LITERAL_KEYS") {
@@ -237,11 +239,6 @@ func TestNativeEnvironmentRoundTrip(t *testing.T) {
 	for _, value := range []string{"", "a", "ab", "abc", "qa-build\n", "two\n\n", "embedded\nline", "literal $HOME quote'."} {
 		for _, literal := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%x/literal=%t", value, literal), func(t *testing.T) {
-				dir := t.TempDir()
-				secret := filepath.Join(dir, "secret")
-				if err := os.Mkdir(secret, 0700); err != nil {
-					t.Fatal(err)
-				}
 				secretValue := value
 				o := nativeOptions()
 				o.BuildCommand = "printf '%s' \"$MESSAGE\""
@@ -250,20 +247,7 @@ func TestNativeEnvironmentRoundTrip(t *testing.T) {
 					secretValue = "overridden"
 					o.BuildEnv = []corev1.EnvVar{{Name: "MESSAGE", Value: value}}
 				}
-				if err := os.WriteFile(filepath.Join(secret, "MESSAGE"), []byte(secretValue), 0600); err != nil {
-					t.Fatal(err)
-				}
-				prep := nativeBuildPreparer(o)
-				script := strings.NewReplacer("/native", dir, "/runtime-env", secret).Replace(prep.Args[0])
-				cmd := exec.Command("sh", "-eu", "-c", script)
-				cmd.Env = os.Environ()
-				for _, env := range prep.Env {
-					cmd.Env = append(cmd.Env, env.Name+"="+env.Value)
-				}
-				if out, err := cmd.CombinedOutput(); err != nil {
-					t.Fatalf("prepare: %v: %s", err, out)
-				}
-				out, err := runNativeBuildShell(t, o, filepath.Join(dir, "render-env"))
+				out, err := runNativeBuildShell(t, o, prepareNativeEnv(t, o, []corev1.EnvVar{{Name: "MESSAGE", Value: secretValue}}))
 				if err != nil {
 					t.Fatalf("decode: %v: %s", err, out)
 				}
@@ -273,6 +257,78 @@ func TestNativeEnvironmentRoundTrip(t *testing.T) {
 			})
 		}
 	}
+}
+
+// TestNativeEnvironmentKeepsApplicationPATH is w8/m61: a PATH without the
+// platform's tools, followed by another variable, stopped the build before its
+// command ran. Both sources must hand the command that exact PATH and the
+// later value; omitted and empty PATH are the neighbors.
+func TestNativeEnvironmentKeepsApplicationPATH(t *testing.T) {
+	const narrow = "/nonexistent-bex-m61"
+	for _, tc := range []struct {
+		name string
+		path *string
+	}{
+		{"narrow", new(narrow)},
+		{"empty", new("")},
+		{"omitted", nil},
+	} {
+		for _, literal := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/literal=%t", tc.name, literal), func(t *testing.T) {
+				o := nativeOptions()
+				o.BuildCommand = `printf '%s|%s' "$PATH" "$QA_NOTE"`
+				vars := []corev1.EnvVar{{Name: "QA_NOTE", Value: "note=ü\nline"}}
+				if tc.path != nil {
+					vars = append([]corev1.EnvVar{{Name: "PATH", Value: *tc.path}}, vars...)
+				}
+				var secrets []corev1.EnvVar
+				o.BuildEnv = nil
+				if literal {
+					o.BuildEnv = vars
+				} else {
+					secrets = vars
+				}
+				out, err := runNativeBuildShell(t, o, prepareNativeEnv(t, o, secrets))
+				if err != nil {
+					t.Fatalf("build command never ran: %v: %q", err, out)
+				}
+				want := os.Getenv("PATH")
+				if tc.path != nil {
+					want = *tc.path
+				}
+				if got := string(out); got != want+"|note=ü\nline" {
+					t.Fatalf("command saw %q, want PATH %q and the later value", got, want)
+				}
+			})
+		}
+	}
+}
+
+// prepareNativeEnv runs the generated preparer locally with secrets as its
+// runtime-env Secret files and returns the env bundle it writes.
+func prepareNativeEnv(t *testing.T, o Options, secrets []corev1.EnvVar) string {
+	t.Helper()
+	dir := t.TempDir()
+	secret := filepath.Join(dir, "secret")
+	if err := os.Mkdir(secret, 0700); err != nil {
+		t.Fatal(err)
+	}
+	for _, v := range secrets {
+		if err := os.WriteFile(filepath.Join(secret, v.Name), []byte(v.Value), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	prep := nativeBuildPreparer(o)
+	script := strings.NewReplacer("/native", dir, "/runtime-env", secret).Replace(prep.Args[0])
+	cmd := exec.Command("sh", "-eu", "-c", script)
+	cmd.Env = os.Environ()
+	for _, env := range prep.Env {
+		cmd.Env = append(cmd.Env, env.Name+"="+env.Value)
+	}
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("prepare: %v: %s", err, out)
+	}
+	return filepath.Join(dir, "render-env")
 }
 
 // runNativeBuildShell plays the generated Dockerfile's env loader (its COPY

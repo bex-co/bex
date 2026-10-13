@@ -17,7 +17,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m62** — [Reject unlaunchable environment values](m62/README.md) (6 tasks; 2h35m) ← functional CLI QA sweep171: both native clients validate NUL literals/seeds/groups; actual local runtime refuses them and generated loader drops the byte; file-byte control passes; five local containers cleaned, no hosted apply.
 
-- [ ] **m61** — [Honor application PATH during native builds](m61/README.md) (6 tasks; 2h45m) ← functional CLI QA sweep163: both native clients fail before the absolute Python build command; same-commit PATH-only controls recover; literal preparation also fails locally; two hosted fixtures and seven local containers cleaned.
+- [ ] **m61** — [Honor application PATH during native builds](blocked/m61/README.md) — **BLOCKED (2026-10-12: t001/t004/t005 done — native builds hand the command the exact configured PATH while the decoder and preparer keep platform tool lookup; needs the fix deployed to production plus fresh native Bex/Render Python/Node acceptance receipts and cleanup before t002/t003/t006 can close)**
 
 - [ ] **m60** — [Preserve accepted arguments when copying CLI commands](m60/README.md) (7 tasks; 2h50m) ← functional CLI QA sweep135: both native clients change phrase/literal-comma searches and reject copied relative times; original controls pass; own fixture fully cleaned.
 
