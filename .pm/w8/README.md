@@ -15,7 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m65** — Retain PostgreSQL process logs during bursts (7 tasks, ~2h30) ← live CLI sweep218; source-loss pattern through both clients, compatible patched CNPG manager required
+- [ ] **m65** — [Retain PostgreSQL process logs during bursts](blocked/m65/README.md) — **BLOCKED (2026-10-13: t001 done — the fix is upstream CNPG #11131 in operator 1.30.1 / chart 0.29.1, we run 1.30.0; needs the user to approve a CNPG upgrade rollout that restarts every managed Postgres pod (control plane + tenant Free single-instance DBs), or decide to enable in-place instance-manager updates first; then the credentialed chart mirror, live 300/1005-record burst acceptance and cleanup)**
 
 - [ ] **m64** — [Keep Blueprint environment copies consistent across applies](blocked/m64/README.md) — **BLOCKED (2026-10-13: t001–t005, t007, t008 done — copies follow the source effective links and seeds, manifest literals beat same-key seeds, and a same-key own store variable is a located refusal; needs the API deployed to production plus fresh pinned native validation captures and hosted dispositions before t006)**
 
