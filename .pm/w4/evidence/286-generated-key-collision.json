@@ -1,0 +1,507 @@
+{
+  "pass": "a356",
+  "researchHead": "4f03e81f1",
+  "finding": "Generated secret chooses a duplicate variable key after an existing key is padded",
+  "severity": "minor",
+  "scope": "Unlinked owned group, desktop and independently reloaded mobile. Group generation intent is server-side; generated value stripped before output/read ledger. Service adapter source-traced, not live-replayed; no product fixes.",
+  "receipts": {
+    "a356Baseline": {
+      "at": "2026-10-13T13:32:37.448Z",
+      "request": {
+        "operationName": "QaA356Inventory",
+        "query": "query QaA356Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      },
+      "checkedLinks": 0
+    },
+    "a356Create": {
+      "at": "2026-10-13T13:33:13.139Z",
+      "request": [
+        {
+          "operationName": "CreateEnvGroup",
+          "variables": {
+            "name": "qa-20261013-a356-generated-keys",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "envVars": [
+              {
+                "key": "NEW_SECRET",
+                "value": "qa-a356-existing"
+              }
+            ],
+            "secretFiles": [],
+            "serviceIds": [],
+            "environmentId": null
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation CreateEnvGroup($name: String!, $ownerId: String, $envVars: [EnvGroupVarInput!], $secretFiles: [EnvGroupSecretFileInput!], $serviceIds: [String!], $environmentId: String) {\n  createEnvGroup(\n    name: $name\n    ownerId: $ownerId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    serviceIds: $serviceIds\n    environmentId: $environmentId\n  ) {\n    id\n    name\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "createEnvGroup": {
+              "__typename": "EnvGroup",
+              "id": "evg-db7364va4m3s73d9i5cg",
+              "name": "qa-20261013-a356-generated-keys"
+            }
+          }
+        }
+      ]
+    },
+    "a356PaddedClean": {
+      "at": "2026-10-13T13:33:19.395Z",
+      "key": " NEW_SECRET ",
+      "alerts": [],
+      "saveEnabled": false
+    },
+    "a356DesktopDuplicateSettled": {
+      "at": "2026-10-13T13:34:33.621Z",
+      "keys": [" NEW_SECRET ", "NEW_SECRET"],
+      "alerts": [
+        "Each variable key must be unique.",
+        "Each variable key must be unique."
+      ],
+      "saveEnabled": false
+    },
+    "a356MobilePaddedClean": {
+      "at": "2026-10-13T13:34:35.776Z",
+      "key": " NEW_SECRET ",
+      "alerts": [],
+      "saveEnabled": false,
+      "width": 390
+    },
+    "a356MobileDuplicateSettled": {
+      "at": "2026-10-13T13:35:00.676Z",
+      "url": "https://dashboard.bex.co/env-groups/evg-db7364va4m3s73d9i5cg",
+      "keys": [" NEW_SECRET ", "NEW_SECRET"],
+      "alerts": [
+        "Each variable key must be unique.",
+        "Each variable key must be unique."
+      ],
+      "saveEnabled": false,
+      "width": 390
+    },
+    "a356PersistedControl": {
+      "at": "2026-10-13T13:35:01.536Z",
+      "request": {
+        "operationName": "QaA356PersistedControl",
+        "query": "query QaA356PersistedControl($id:String!){envGroup(id:$id){id revision serviceLinks envVars{key}} envGroupVar(id:$id,key:\"NEW_SECRET\"){key value}}",
+        "variables": {
+          "id": "evg-db7364va4m3s73d9i5cg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "envGroup": {
+            "envVars": [
+              {
+                "key": "NEW_SECRET"
+              }
+            ],
+            "id": "evg-db7364va4m3s73d9i5cg",
+            "revision": "egr1_AAAAAAAAAAE",
+            "serviceLinks": []
+          },
+          "envGroupVar": {
+            "key": "NEW_SECRET",
+            "value": "qa-a356-existing"
+          }
+        }
+      }
+    },
+    "a356NormalControlSettled": {
+      "at": "2026-10-13T13:35:50.112Z",
+      "keys": ["NEW_SECRET", "NEW_SECRET_2"],
+      "alerts": [],
+      "saveEnabled": true
+    },
+    "a356NormalControlSave": {
+      "at": "2026-10-13T13:35:52.065Z",
+      "request": [
+        {
+          "operationName": "PatchEnvGroupEnvironment",
+          "variables": {
+            "id": "evg-db7364va4m3s73d9i5cg",
+            "envVars": [
+              {
+                "key": "NEW_SECRET_2",
+                "generateValue": true
+              }
+            ],
+            "secretFiles": [],
+            "saveMode": "save_only",
+            "expectedRevision": "egr1_AAAAAAAAAAE"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation PatchEnvGroupEnvironment($id: String!, $envVars: [EnvGroupVarPatchInput!], $secretFiles: [EnvGroupSecretFilePatchInput!], $saveMode: String!, $expectedRevision: String) {\n  patchEnvGroupEnvironment(\n    id: $id\n    envVars: $envVars\n    secretFiles: $secretFiles\n    saveMode: $saveMode\n    expectedRevision: $expectedRevision\n  ) {\n    envVarKeys\n    secretFileNames\n    revision\n    affectedServiceIds\n    failedServiceIds\n    pendingServiceIds\n    rolledOut\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "patchEnvGroupEnvironment": {
+              "__typename": "EnvGroupEnvironmentPatchResult",
+              "affectedServiceIds": [],
+              "envVarKeys": ["NEW_SECRET", "NEW_SECRET_2"],
+              "failedServiceIds": [],
+              "pendingServiceIds": [],
+              "revision": "egr1_AAAAAAAAAAI",
+              "rolledOut": false,
+              "secretFileNames": []
+            }
+          }
+        }
+      ]
+    },
+    "a356NormalControlRead": {
+      "at": "2026-10-13T13:35:53.835Z",
+      "request": {
+        "operationName": "QaA356NormalRead",
+        "query": "query QaA356NormalRead($id:String!){envGroup(id:$id){id revision envVars{key} serviceLinks} existing:envGroupVar(id:$id,key:\"NEW_SECRET\"){key value} generated:envGroupVar(id:$id,key:\"NEW_SECRET_2\"){key value}}",
+        "variables": {
+          "id": "evg-db7364va4m3s73d9i5cg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "envGroup": {
+            "envVars": [
+              {
+                "key": "NEW_SECRET"
+              },
+              {
+                "key": "NEW_SECRET_2"
+              }
+            ],
+            "id": "evg-db7364va4m3s73d9i5cg",
+            "revision": "egr1_AAAAAAAAAAI",
+            "serviceLinks": []
+          },
+          "existing": {
+            "key": "NEW_SECRET",
+            "value": "qa-a356-existing"
+          },
+          "generated": {
+            "key": "NEW_SECRET_2",
+            "valueLength": 44
+          }
+        }
+      }
+    },
+    "a356PaddedSaveReady": {
+      "at": "2026-10-13T13:37:02.858Z",
+      "key": " NEW_SECRET ",
+      "alerts": [],
+      "saveEnabled": true
+    },
+    "a356PaddedSave": {
+      "at": "2026-10-13T13:37:06.794Z",
+      "request": [
+        {
+          "operationName": "PatchEnvGroupEnvironment",
+          "variables": {
+            "id": "evg-db7364va4m3s73d9i5cg",
+            "envVars": [
+              {
+                "key": "NEW_SECRET",
+                "value": "qa-a356-padded-saved"
+              }
+            ],
+            "secretFiles": [],
+            "saveMode": "save_only",
+            "expectedRevision": "egr1_AAAAAAAAAAI"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation PatchEnvGroupEnvironment($id: String!, $envVars: [EnvGroupVarPatchInput!], $secretFiles: [EnvGroupSecretFilePatchInput!], $saveMode: String!, $expectedRevision: String) {\n  patchEnvGroupEnvironment(\n    id: $id\n    envVars: $envVars\n    secretFiles: $secretFiles\n    saveMode: $saveMode\n    expectedRevision: $expectedRevision\n  ) {\n    envVarKeys\n    secretFileNames\n    revision\n    affectedServiceIds\n    failedServiceIds\n    pendingServiceIds\n    rolledOut\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "patchEnvGroupEnvironment": {
+              "__typename": "EnvGroupEnvironmentPatchResult",
+              "affectedServiceIds": [],
+              "envVarKeys": ["NEW_SECRET", "NEW_SECRET_2"],
+              "failedServiceIds": [],
+              "pendingServiceIds": [],
+              "revision": "egr1_AAAAAAAAAAM",
+              "rolledOut": false,
+              "secretFileNames": []
+            }
+          }
+        }
+      ]
+    },
+    "a356PaddedRead": {
+      "at": "2026-10-13T13:38:07.548Z",
+      "request": {
+        "operationName": "QaA356PersistedControl",
+        "query": "query QaA356PersistedControl($id:String!){envGroup(id:$id){id revision serviceLinks envVars{key}} envGroupVar(id:$id,key:\"NEW_SECRET\"){key value}}",
+        "variables": {
+          "id": "evg-db7364va4m3s73d9i5cg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "envGroup": {
+            "envVars": [
+              {
+                "key": "NEW_SECRET"
+              },
+              {
+                "key": "NEW_SECRET_2"
+              }
+            ],
+            "id": "evg-db7364va4m3s73d9i5cg",
+            "revision": "egr1_AAAAAAAAAAM",
+            "serviceLinks": []
+          },
+          "envGroupVar": {
+            "key": "NEW_SECRET",
+            "value": "qa-a356-padded-saved"
+          }
+        }
+      }
+    },
+    "a356Delete": {
+      "at": "2026-10-13T13:38:09.642Z",
+      "request": [
+        {
+          "operationName": "DeleteEnvGroup",
+          "variables": {
+            "id": "evg-db7364va4m3s73d9i5cg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation DeleteEnvGroup($id: String!) {\n  deleteEnvGroup(id: $id)\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "deleteEnvGroup": true
+          }
+        }
+      ]
+    },
+    "a356Cleanup": {
+      "at": "2026-10-13T13:38:18.258Z",
+      "request": {
+        "operationName": "QaA356Inventory",
+        "query": "query QaA356Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      },
+      "groupStatus": 404
+    },
+    "a356SessionCleanup": {
+      "at": "2026-10-13T13:39:05.181Z",
+      "ownersStatus": 401,
+      "url": "about:blank",
+      "cookieCount": 0
+    }
+  }
+}
