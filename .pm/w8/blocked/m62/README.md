@@ -1,16 +1,16 @@
 # w8 · m62 — Reject unlaunchable environment values
 
-**Worker:** worker8 **Goal:** Reject environment values that cannot reach an application process before reporting validation or save success. **Status:** todo
+**Worker:** worker8 **Goal:** Reject environment values that cannot reach an application process before reporting validation or save success. **Status:** blocked — t001/t002/t004/t005 done and shipped; t003 native/surface acceptance and t006 need the fix deployed to production plus fresh native Bex/Render receipts.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Validate new environment values and Blueprint literals | 35m | — |
-| t002 | Cover shared writers and preserve repair paths | 35m | t001 |
-| t003 | Render parity | 20m | t002 |
-| t004 | Simplify | 15m | t003 |
-| t005 | Test coverage | 35m | t003 |
+| t001 | Validate new environment values and Blueprint literals — **DONE 2026-10-12** | 35m | — |
+| t002 | Cover shared writers and preserve repair paths — **DONE 2026-10-12** | 35m | t001 |
+| t003 | Render parity — **BLOCKED: needs deployed fix + native receipts** | 20m | t002 |
+| t004 | Simplify — **DONE 2026-10-12** | 15m | t003 |
+| t005 | Test coverage — **DONE 2026-10-12** | 35m | t003 |
 | t006 | Closeout | 15m | t004, t005 |
 
 ## Definition of done
@@ -22,9 +22,14 @@
 - Run meaningful shared-service and cross-surface tests, native validation controls, and the actual generated-loader/OCI controls. Record any hosted apply or API path still unverified explicitly. Do not claim a production runtime repro from local Docker evidence.
 - All tasks and observable checks are complete before moving the milestone to `done/`.
 
+## Progress / block
+
+- **2026-10-12:** one rule (`core.ValidEnvValue`/`CheckEnvValue`, code `ENVIRONMENT_VARIABLE_VALUE_INVALID`) refuses newly supplied NUL environment values on every service, Environment Group, create and Blueprint writer before any effect; Blueprint validation reports `valid:false` with the entry location. Legacy values stay replaceable/deletable; secret-file bytes are untouched. ADR004 documents the rule. Backend `go test ./...` passes.
+- **Blocked:** t003 and t006 need the fix deployed to production, then the three finding documents and newline controls through released Bex and pinned Render (exit1 vs exit0), REST/GraphQL/MCP/dashboard receipts, and cleanup.
+
 ## Source + Goal linkage
 
-- **Source:** user-requested continuous `$qa-find-bugs-cli` in w8, sweep171, 2026-10-12 UTC. [Finding](finding.md) and [sanitized evidence](../evidence/m62/README.md).
+- **Source:** user-requested continuous `$qa-find-bugs-cli` in w8, sweep171, 2026-10-12 UTC. [Finding](finding.md) and [sanitized evidence](../../evidence/m62/README.md).
 - **Goal linkage:** ADR008 core hosting, ADR004 deploy configuration and ADR018 Render compatibility. Validation should catch configuration that cannot start a process.
 - **Expected outcome:** invalid environment values receive useful feedback at validation/save time; accepted representable values and binary files retain their bytes.
 - **Why now:** both native clients accept all three invalid forms. The actual parser and shared patch preserve them, while local runtime refuses them and the actual generated loader changes them.

@@ -540,7 +540,7 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 // passes through unchanged. Shared by every write path so the rule lives once.
 func resolveValue(key, value string, generate bool) (string, error) {
 	if !generate {
-		return value, nil
+		return value, core.CheckEnvValue(key, value)
 	}
 	if value != "" {
 		return "", fmt.Errorf("%w: env var %q sets both value and generateValue — pick one", core.ErrBadRequest, key)
