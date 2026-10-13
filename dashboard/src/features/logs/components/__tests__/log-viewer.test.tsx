@@ -1,5 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  act,
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+} from "@testing-library/react";
+import { useState } from "react";
 import { LogViewer } from "../log-viewer";
 import type { UseLogHistoryResult } from "../../hooks/use-log-history";
 import { RANGE_PRESETS } from "@/features/metrics/lib/range";
@@ -97,7 +104,7 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
     render(
       <LogViewer
         resource="web"
-        initialFilters={{ ...EMPTY_LOG_FILTERS, text: "zzz_no_such_term" }}
+        urlFilters={{ ...EMPTY_LOG_FILTERS, text: "zzz_no_such_term" }}
       />,
     );
     expect(screen.getByText("No matching logs")).toBeInTheDocument();
@@ -113,7 +120,7 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
     render(
       <LogViewer
         resource="web"
-        initialFilters={{
+        urlFilters={{
           ...EMPTY_LOG_FILTERS,
           instance: "zzz-no-such-pod",
         }}
@@ -199,7 +206,7 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
     render(
       <LogViewer
         resource="web"
-        initialFilters={{ ...EMPTY_LOG_FILTERS, text: "zzqqxx-no-such-token" }}
+        urlFilters={{ ...EMPTY_LOG_FILTERS, text: "zzqqxx-no-such-token" }}
       />,
     );
     expect(screen.getByText("No matching logs")).toBeInTheDocument();
@@ -289,7 +296,7 @@ describe("LogViewer display-text search (w4/m189)", () => {
     render(
       <LogViewer
         resource="web"
-        initialFilters={{ ...EMPTY_LOG_FILTERS, text: "QA_A31_ANSI_red_end" }}
+        urlFilters={{ ...EMPTY_LOG_FILTERS, text: "QA_A31_ANSI_red_end" }}
       />,
     );
     expect(useHistorySpy.mock.calls.at(-1)?.[1]).toMatchObject({
@@ -309,8 +316,8 @@ describe("LogViewer URL-backed filter state (w7/m42)", () => {
     render(
       <LogViewer
         resource="web"
-        initialFilters={{ ...EMPTY_LOG_FILTERS, level: "error" }}
-        initialLive={false}
+        urlFilters={{ ...EMPTY_LOG_FILTERS, level: "error" }}
+        urlLive={false}
         onFiltersChange={onFiltersChange}
       />,
     );
@@ -393,7 +400,7 @@ describe("LogViewer zero-result empty state (w6/m47, w6/m111)", () => {
     render(
       <LogViewer
         resource="web"
-        initialFilters={{ ...EMPTY_LOG_FILTERS, text: "zzz_no_such_term" }}
+        urlFilters={{ ...EMPTY_LOG_FILTERS, text: "zzz_no_such_term" }}
       />,
     );
     expect(screen.getByText("No matching logs")).toBeInTheDocument();
@@ -439,13 +446,13 @@ describe("LogViewer populated background failures", () => {
         },
       ];
       const { container, rerender } = render(
-        <LogViewer resource="web" initialLive={false} />,
+        <LogViewer resource="web" urlLive={false} />,
       );
       const viewport = container.querySelector("[data-log-viewport]");
       historyState.error = new Error("background request failed");
       historyState.timedOut = failure === "timeout";
       historyState.storeUnavailable = failure === "no-store";
-      rerender(<LogViewer resource="web" initialLive={false} />);
+      rerender(<LogViewer resource="web" urlLive={false} />);
       expect(container.querySelector("[data-log-viewport]")).toBe(viewport);
       expect(
         screen.getByText("retained investigation row"),
@@ -503,9 +510,212 @@ describe("LogViewer combined live reader (w4/m192)", () => {
       <LogViewer
         key="filtered"
         resource="web"
-        initialFilters={{ ...EMPTY_LOG_FILTERS, level: "error" }}
+        urlFilters={{ ...EMPTY_LOG_FILTERS, level: "error" }}
       />,
     );
     expect(readerKey()).not.toBe(unfiltered);
+  });
+});
+
+describe("LogViewer adopts navigation it did not write (w4/m204)", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  const SOURCE = {
+    ...EMPTY_LOG_FILTERS,
+    type: "app" as const,
+    text: "qa-alpha",
+  };
+  const search = () => screen.getByLabelText<HTMLInputElement>("Search logs");
+  const historyFilters = () => useHistorySpy.mock.calls.at(-1)?.[1];
+  const tail = () => useLiveLogsSpy.mock.calls.at(-1)?.[0];
+  const type = (value: string) =>
+    fireEvent.change(search(), { target: { value } });
+  const settle = (ms = 300) => act(() => vi.advanceTimersByTime(ms));
+
+  it("means all logs, no search and Live on once a clean link is followed", () => {
+    const onFiltersChange = vi.fn();
+    const { rerender } = render(
+      <LogViewer
+        resource="web"
+        urlFilters={SOURCE}
+        urlLive={false}
+        onFiltersChange={onFiltersChange}
+      />,
+    );
+    expect(search().value).toBe("qa-alpha");
+    expect(tail()).toMatchObject({ enabled: false, type: "app" });
+    useHistorySpy.mockClear();
+    useLiveLogsSpy.mockClear();
+
+    rerender(<LogViewer resource="web" onFiltersChange={onFiltersChange} />);
+
+    // No pass after the navigation queries or tails with the source's filters.
+    for (const [, filters] of useHistorySpy.mock.calls) {
+      expect(filters).toEqual(EMPTY_LOG_FILTERS);
+    }
+    for (const [options] of useLiveLogsSpy.mock.calls) {
+      expect(options).toMatchObject({ enabled: true, type: "all", text: "" });
+    }
+    expect(useHistorySpy).toHaveBeenCalled();
+    expect(search().value).toBe("");
+    expect(
+      screen
+        .getByRole("switch", { name: /live/i })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    // Nothing written back but the destination itself, now or after a debounce.
+    settle(1000);
+    for (const call of onFiltersChange.mock.calls) {
+      expect(call).toEqual([EMPTY_LOG_FILTERS, true]);
+    }
+    expect(historyFilters()).toEqual(EMPTY_LOG_FILTERS);
+  });
+
+  it("adopts every filter field and the paused state of a filtered destination", () => {
+    const destination = {
+      type: "request" as const,
+      level: "error",
+      method: "POST",
+      statusCode: "503",
+      instance: "pod-2",
+      text: "needle",
+      path: "/api",
+    };
+    const { rerender } = render(<LogViewer resource="web" />);
+    rerender(
+      <LogViewer resource="web" urlFilters={destination} urlLive={false} />,
+    );
+    expect(historyFilters()).toEqual(destination);
+    expect(tail()).toMatchObject({
+      enabled: false,
+      type: "request",
+      text: "needle",
+      instance: "pod-2",
+    });
+    expect(search().value).toBe("needle");
+  });
+
+  it("drops a pending draft when an external navigation supersedes it", () => {
+    const onFiltersChange = vi.fn();
+    const { rerender } = render(
+      <LogViewer
+        resource="web"
+        urlFilters={SOURCE}
+        onFiltersChange={onFiltersChange}
+      />,
+    );
+    type("qa-alpha-and-more");
+    settle(200);
+    rerender(<LogViewer resource="web" onFiltersChange={onFiltersChange} />);
+    settle(1000);
+    expect(search().value).toBe("");
+    expect(historyFilters()).toEqual(EMPTY_LOG_FILTERS);
+    expect(onFiltersChange).not.toHaveBeenCalledWith(
+      expect.objectContaining({ text: "qa-alpha-and-more" }),
+      expect.anything(),
+    );
+  });
+
+  it("keeps text typed since its own write when that write echoes back", () => {
+    // A route-like host: every reported state comes back as the next URL.
+    function Host() {
+      const [url, setUrl] = useState({
+        filters: EMPTY_LOG_FILTERS,
+        live: true,
+      });
+      return (
+        <LogViewer
+          resource="web"
+          urlFilters={url.filters}
+          urlLive={url.live}
+          onFiltersChange={(filters, live) => setUrl({ filters, live })}
+        />
+      );
+    }
+    render(<Host />);
+    type("a");
+    settle(299);
+    expect(historyFilters()).toMatchObject({ text: "" });
+    settle(1);
+    // "a" is committed and written; its echo arrives while "ab" is a draft.
+    expect(historyFilters()).toMatchObject({ text: "a" });
+    type("ab");
+    settle(100);
+    expect(search().value).toBe("ab");
+    settle(200);
+    expect(historyFilters()).toMatchObject({ text: "ab" });
+    expect(search().value).toBe("ab");
+  });
+
+  it("cancels a draft timer when the destination changes another field", () => {
+    const { rerender } = render(<LogViewer resource="web" />);
+    type("boom");
+    settle(200);
+    rerender(
+      <LogViewer
+        resource="web"
+        urlFilters={{ ...EMPTY_LOG_FILTERS, type: "request" }}
+      />,
+    );
+    // The destination replaced the draft, so nothing commits "boom" later.
+    settle(300);
+    expect(historyFilters()).toEqual({ ...EMPTY_LOG_FILTERS, type: "request" });
+  });
+
+  it("does not reopen the reader on rerenders that navigate nowhere", () => {
+    const { rerender } = render(
+      <LogViewer resource="web" urlFilters={{ ...SOURCE }} urlLive={false} />,
+    );
+    const first = historyFilters();
+    type("typed");
+    rerender(
+      <LogViewer resource="web" urlFilters={{ ...SOURCE }} urlLive={false} />,
+    );
+    // Same URL, fresh object: the draft stays and the query identity holds.
+    expect(search().value).toBe("typed");
+    expect(historyFilters()).toBe(first);
+  });
+
+  it("keeps a change made before an earlier write echoes, and re-reports it", () => {
+    const onFiltersChange = vi.fn();
+    const view = (urlLive: boolean) => (
+      <LogViewer
+        resource="web"
+        urlLive={urlLive}
+        onFiltersChange={onFiltersChange}
+      />
+    );
+    const liveSwitch = () => screen.getByRole("switch", { name: /live/i });
+    const { rerender } = render(view(true));
+    fireEvent.click(liveSwitch()); // pause: reported, not yet echoed
+    fireEvent.click(liveSwitch()); // resume before the echo
+    expect(onFiltersChange.mock.calls).toEqual([
+      [EMPTY_LOG_FILTERS, false],
+      [EMPTY_LOG_FILTERS, true],
+    ]);
+    onFiltersChange.mockClear();
+
+    rerender(view(false)); // the pause echoes back late
+
+    expect(liveSwitch().getAttribute("aria-checked")).toBe("true");
+    expect(tail()).toMatchObject({ enabled: true });
+    // The URL is told the current state again, so it converges on the view.
+    expect(onFiltersChange).toHaveBeenLastCalledWith(EMPTY_LOG_FILTERS, true);
+    rerender(view(true));
+    expect(liveSwitch().getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("still adopts a state it once showed after that state has been acknowledged", () => {
+    const view = (urlLive: boolean) => (
+      <LogViewer resource="web" urlLive={urlLive} />
+    );
+    const liveSwitch = () => screen.getByRole("switch", { name: /live/i });
+    const { rerender } = render(view(true));
+    fireEvent.click(liveSwitch());
+    rerender(view(false)); // own write acknowledged
+    rerender(view(true)); // Back to the earlier entry: not an echo
+    expect(liveSwitch().getAttribute("aria-checked")).toBe("true");
+    expect(tail()).toMatchObject({ enabled: true });
   });
 });
