@@ -253,6 +253,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **282** — [Deploy Blueprint enables before the first preview has reviewed the file](282.md) (55m) ← functional QA a318; initial desktop/mobile branch completion enables Deploy with a blank review, measured 404ms before the missing-file request; settled controls pass, no deployment submitted, session revoked.
+
 - [ ] **281** — [Auto-Deploy keeps an old value after receiving newer saved settings](blocked/281.md) — **BLOCKED (release pipeline deploys the dashboard; QA replays the a312 two-tab journey on an owned Free repo-backed service: tab B saves On Commit then Off, and tab A's untouched row, Edit baseline and Cancel follow each polled value on desktop and a fresh 390px page; then cleans up)**. Row correction + saved-value refresh regressions done 2026-10-13: the row binds to the saved prop instead of a mount-time copy; dashboard suite + lint green.
 
 - [x] **280** — [Log history still claims 100 lines after loading 200](done/280.md) — **DONE 2026-10-12** (count-free capped-history caption, en/zh) (40m) ← functional QA a303; fresh desktop/mobile preserve 200 rows while the caption still says newest 100; complete 206-record paging and no-match controls pass; owned Free service deleted and session revoked.
