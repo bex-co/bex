@@ -107,7 +107,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **097** — [Literal alert/emergency severities become unknown and disappear from CLI level filters](097.md) (minor; 55m) ← functional CLI sweep174: both clients omit six stored records from level views; ten passing controls and rendered collector proof; producer gap left by done/031; hosted/local fixtures cleaned.
 
-- [ ] **096** — [Blueprint validation ignores a supplied service-reference type](096.md) (minor; 55m) ← functional CLI sweep173: 14 mismatches pass in both native clients; matching and refusal controls plus actual typed parser proof; validation only, no resource created.
+- [ ] **096** — [Blueprint validation ignores a supplied service-reference type](blocked/096.md) — **BLOCKED (2026-10-12: fix shipped — a same-file `fromService` whose type does not describe its target is refused with a located error; needs the fix deployed to production plus fresh native Bex/Render validation receipts)**
 
 - [ ] **095** — [Blueprint reapply skips a new empty variable in an existing environment group](blocked/095.md) — **BLOCKED (2026-10-12: fix shipped — reapplying a Blueprint onto an existing env group writes a newly declared empty variable; needs the fix deployed to production plus a hosted apply/reapply receipt and cleanup)**
 - [ ] **094** — [Blueprint plans call an existing environment group a create when its name is padded](blocked/094.md) — **BLOCKED (2026-10-12: fix shipped — a padded env-group name plans the update of the existing group under its canonical name; needs the fix deployed to production plus fresh full-server validation receipts and cleanup)**
