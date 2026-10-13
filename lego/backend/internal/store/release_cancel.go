@@ -30,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -74,16 +75,27 @@ func CancelRelease(ctx context.Context, c client.Client, a *appv1alpha1.App, gen
 // the caller's copy can be a whole reconcile pass old, and a blind merge could
 // overwrite a newer release's cancel that landed since. A namesake recreated
 // since is never stamped (w5/157).
+//
+// The operator writes the App's status throughout a rollout, which is exactly
+// when a cancel arrives, so losing the optimistic lock is ordinary. Each lost
+// attempt re-reads and decides again; one that still loses after the bounded
+// retries is a conflict the caller can retry, not an internal error (w4/287).
 func markReleaseCanceled(ctx context.Context, c client.Client, a *appv1alpha1.App, generation int64) error {
-	if err := core.RereadApp(ctx, c, a); err != nil {
-		return fmt.Errorf("mark canceled release: %w", err)
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		if err := core.RereadApp(ctx, c, a); err != nil {
+			return err
+		}
+		if marked, ok := canceledReleaseGeneration(a); ok && marked >= generation {
+			return nil
+		}
+		base := a.DeepCopy()
+		metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.AnnotationCanceledReleaseGeneration, strconv.FormatInt(generation, 10))
+		return c.Patch(ctx, a, client.MergeFromWithOptions(base, client.MergeFromWithOptimisticLock{}))
+	})
+	if apierrors.IsConflict(err) {
+		return fmt.Errorf("%w: the service kept changing while its deploy was being canceled; retry the cancel", core.ErrConflict)
 	}
-	if marked, ok := canceledReleaseGeneration(a); ok && marked >= generation {
-		return nil
-	}
-	base := a.DeepCopy()
-	metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.AnnotationCanceledReleaseGeneration, strconv.FormatInt(generation, 10))
-	if err := c.Patch(ctx, a, client.MergeFromWithOptions(base, client.MergeFromWithOptimisticLock{})); err != nil {
+	if err != nil {
 		return fmt.Errorf("mark canceled release: %w", err)
 	}
 	return nil
