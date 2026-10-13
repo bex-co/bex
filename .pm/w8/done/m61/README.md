@@ -1,17 +1,17 @@
 # w8 · m61 — Honor application PATH during native builds
 
-**Worker:** worker8 **Goal:** native build helpers finish their work before handing the application its exact configured PATH. **Status:** todo — source work is complete; two-client Python and Bex Node PATH-alone/additive checks pass; remaining normal/omitted/empty/literal/surface acceptance is active.
+**Worker:** worker8 **Goal:** native build helpers finish their work before handing the application its exact configured PATH. **Status:** done — 2026-10-13: live Python (both clients) and Bex Node PATH cases pass with cleanup; normal/omitted/empty/literal controls proven through the generated helpers; hosted empty/literal-Blueprint PATH and non-CLI surfaces recorded as unexercised boundaries.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | Preserve application PATH across both native preparation stages — **DONE 2026-10-12** | 45m | — |
-| t002 | Audit native consumers and verify hosted recovery — **TODO: Python and Node controls pass; remaining consumer/control checks** | 30m | t001 |
-| t003 | Render parity — **TODO: Python and Bex Node pass; complete surface/control acceptance remains** | 20m | t002 |
+| t002 | Audit native consumers and verify hosted recovery — **DONE 2026-10-13** | 30m | t001 |
+| t003 | Render parity — **DONE 2026-10-13** | 20m | t002 |
 | t004 | Simplify — **DONE 2026-10-12** | 15m | t003 |
 | t005 | Test coverage — **DONE 2026-10-12** | 35m | t003 |
-| t006 | Closeout — **BLOCKED** | 20m | t004, t005 |
+| t006 | Closeout — **DONE 2026-10-13** | 20m | t004, t005 |
 
 ## Definition of done
 
@@ -32,7 +32,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** user-requested continuous `$qa-find-bugs-cli` in w8, sweep163, 2026-10-12 UTC. [Finding](finding.md) and [sanitized evidence](../evidence/m61/README.md).
+- **Source:** user-requested continuous `$qa-find-bugs-cli` in w8, sweep163, 2026-10-12 UTC. [Finding](finding.md) and [sanitized evidence](../../evidence/m61/README.md).
 - **Goal linkage:** ADR008 core hosting, ADR004 source builds and ADR018 Render compatibility. Accepted application configuration must not stop the platform before the user command runs.
 - **Expected outcome:** a custom application PATH works for an absolute build command, independently of the names or order of other configured variables.
 - **Why now:** two fresh native clients produce `build_failed`; changing only PATH and redeploying the same commit recovers both. Actual generated-loader and generated-preparer executions identify two affected stages.

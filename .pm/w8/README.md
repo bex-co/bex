@@ -21,7 +21,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m62** — [Reject unlaunchable environment values](blocked/m62/README.md) — **BLOCKED (2026-10-12: t001/t002/t004/t005 done — every environment writer and Blueprint validation refuse newly supplied NUL values before any effect; needs the fix deployed to production plus fresh native Bex/Render validation receipts and surface checks before t003/t006 can close)**
 
-- [ ] **m61** — [Honor application PATH during native builds](m61/README.md) (6 tasks) ← source repair is on main; sweeps210–211 Python in both clients and Bex Node PATH-alone/additive cases reach Live/HTTP200 with exact PATH/env/file bytes and refreshed build input; all fixtures deleted, baseline quota restored; normal/omitted/empty/literal/surface acceptance remains active.
+- [x] **m61** — [Honor application PATH during native builds](done/m61/README.md) — **DONE 2026-10-13** (fix `137820b94`; live Python both clients + Bex Node PATH cases, helper-level normal/omitted/empty/literal controls; hosted empty/literal-Blueprint PATH recorded as boundaries)
 
 - [ ] **m60** — [Preserve accepted arguments when copying CLI commands](blocked/m60/README.md) — **BLOCKED (2026-10-12: t001/t002 prepared and tested with `blocked/m60/evidence/upstream-copy-command-formatter.patch` + caller audit; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release, and native Bex/Render receipts; no fork/backend workaround per scope/DO_NOT_DO)**
 
