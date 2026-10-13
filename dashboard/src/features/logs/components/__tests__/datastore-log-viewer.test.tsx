@@ -161,12 +161,14 @@ describe("DatastoreLogViewer", () => {
     const { rerender } = render(
       <DatastoreLogViewer kind="databases" resource="dpg-example" />,
     );
-    expect(screen.queryByText(/newest 100 matching lines/)).toBeNull();
+    expect(
+      screen.queryByText(/Only part of this time range is loaded/),
+    ).toBeNull();
 
     state.hasMore = true;
     rerender(<DatastoreLogViewer kind="databases" resource="dpg-example" />);
     expect(screen.getByRole("status")).toHaveTextContent(
-      /newest 100 matching lines/,
+      /Only part of this time range is loaded/,
     );
   });
 
