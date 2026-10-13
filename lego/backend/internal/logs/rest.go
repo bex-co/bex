@@ -189,6 +189,12 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer release()
+		// After authorization, before any streaming header or 101: the pinned
+		// CLI reads a closed socket as a finished tail and exits 0 (w8/083).
+		if err := unsupportedLiveResource(resource); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
 	}
 
 	// Render CLI v2+ sends an upgrade request; everyone else gets SSE or NDJSON.
