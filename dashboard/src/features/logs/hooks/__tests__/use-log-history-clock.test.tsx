@@ -284,4 +284,40 @@ describe("relative history with real Apollo and virtual reader", () => {
       server.client.stop();
     },
   );
+  it("sends the first query after a relative selection with the selection-time end", async () => {
+    const custom: RangeSelection = {
+      id: "custom",
+      startTime: "2026-10-02T09:00:00.000Z",
+      endTime: "2026-10-02T11:00:00.000Z",
+      resolutionSeconds: 30,
+    };
+    const last12h: RangeSelection = {
+      id: "12h",
+      spanSeconds: 43_200,
+      resolutionSeconds: 300,
+    };
+    const server = transport();
+    const view = (range: RangeSelection) => (
+      <ApolloProvider client={server.client}>
+        <Reader range={range} />
+      </ApolloProvider>
+    );
+    const { rerender } = render(view(custom));
+    await flush();
+    await reply(server.requests[0], envelope([]));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(90_000);
+    });
+    expect(server.requests).toHaveLength(1);
+    rerender(view(last12h));
+    await flush();
+    // Well inside the 300-second cadence: only the selection asked.
+    expect(server.requests).toHaveLength(2);
+    const selectedAt = NOW + 1 + 90_000 + 1;
+    expect(server.requests[1].variables).toMatchObject({
+      startTime: new Date(selectedAt - 43_200_000).toISOString(),
+      endTime: new Date(selectedAt).toISOString(),
+    });
+    server.client.stop();
+  });
 });
