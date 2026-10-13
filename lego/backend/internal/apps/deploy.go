@@ -1754,7 +1754,11 @@ func validateUniqueName(raw, entityType string, seen map[string]bool) (string, e
 // reference to a database without connectionPool: pgbouncer, so the
 // parse-time and resolve-time checks can't drift.
 func poolerRequiredError(service, database string) error {
-	return fmt.Errorf("%w: service %q: fromDatabase connectionPoolString requires database %q connectionPool: pgbouncer", core.ErrBadRequest, service, database)
+	return fmt.Errorf("%w: service %q: %v", core.ErrBadRequest, service, poolerRequirement(database))
+}
+
+func poolerRequirement(database string) error {
+	return fmt.Errorf("fromDatabase connectionPoolString requires database %q connectionPool: pgbouncer", database)
 }
 
 // envRefError names the referencing env entry in a parse-time reference
@@ -2070,7 +2074,7 @@ func (idx *stackIndex) classifyRefs(svc parsedService, refVars []bexEnvVar) (par
 	for _, r := range refVars {
 		if r.FromDatabase != nil {
 			if idx.databaseNames[r.FromDatabase.Name] && r.FromDatabase.Property == dbPropertyConnectionPoolString && !idx.databasePoolers[r.FromDatabase.Name] {
-				return parsedService{}, envRefError(svc.req.Name, r.Key, fmt.Errorf("fromDatabase connectionPoolString requires database %q connectionPool: pgbouncer", r.FromDatabase.Name))
+				return parsedService{}, envRefError(svc.req.Name, r.Key, poolerRequirement(r.FromDatabase.Name))
 			}
 			svc.databaseRefs = append(svc.databaseRefs, r)
 			continue
@@ -2219,13 +2223,12 @@ func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
 }
 
 // knownServiceEnv is a service's parse-time-known env as its process sees it,
-// the set a sibling's fromService.envVarKey copy resolves against (w8/099):
-// its linked in-file groups' literals in link order (a later group wins, as
-// the operator's envFrom does), then its own values on top. A group's
-// generateValue key, and a local reference, generated value or unanswered
-// prompt, has no parse-time value, so it masks any lower literal rather than
-// letting a shadowed one be copied. A link to a group not declared in the file
-// contributes unknown keys, so then no group value is indexed at all.
+// the set a sibling's fromService.envVarKey copy resolves against (w8/099,
+// w8/102). Precedence follows the runtime: linked in-file groups in link order
+// (the later wins, as envFrom), then the service's own literals and seeds,
+// then its references. A value with no parse-time content (a generated value,
+// an unanswered prompt, a reference) masks what it overrides, and a link to a
+// group not declared in the file makes group keys unknowable.
 func knownServiceEnv(se serviceEnv, groups []parsedEnvGroup) map[string]string {
 	byName := make(map[string]parsedEnvGroup, len(groups))
 	for _, g := range groups {
@@ -2233,7 +2236,7 @@ func knownServiceEnv(se serviceEnv, groups []parsedEnvGroup) map[string]string {
 	}
 	known := map[string]string{}
 	for _, link := range se.groupLinks {
-		g, declared := byName[strings.TrimSpace(link)]
+		g, declared := byName[link] // raw, as preflight and LinkEnvGroup read it
 		if !declared {
 			known = map[string]string{}
 			break
@@ -2245,9 +2248,6 @@ func knownServiceEnv(se serviceEnv, groups []parsedEnvGroup) map[string]string {
 			delete(known, k)
 		}
 	}
-	for _, r := range se.refVars {
-		delete(known, r.Key)
-	}
 	for _, k := range se.seedGenerates {
 		delete(known, k)
 	}
@@ -2256,6 +2256,12 @@ func knownServiceEnv(se serviceEnv, groups []parsedEnvGroup) map[string]string {
 	}
 	for k, v := range se.known {
 		known[k] = v
+	}
+	// A reference resolves after every literal and is appended after them in
+	// spec.Env, so it wins at runtime: a same-key literal, in either entry
+	// order, is not the value the process sees and must not be copied (w8/102).
+	for _, r := range se.refVars {
+		delete(known, r.Key)
 	}
 	return known
 }
