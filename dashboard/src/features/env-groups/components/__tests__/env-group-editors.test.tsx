@@ -577,3 +577,24 @@ describe("EnvGroupEditors overlapping file uploads (w4/m205)", () => {
     expect(screen.queryByDisplayValue("late.txt")).not.toBeInTheDocument();
   });
 });
+
+// w4/286 through the group adapter, which asks the server for the value.
+describe("EnvGroupEditors generated secret names (w4/286)", () => {
+  it("names a generated secret past a padded existing key", async () => {
+    const user = userEvent.setup();
+    renderEditors({ ...GROUP, envVarKeys: ["NEW_SECRET"] });
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    const existing = screen.getByDisplayValue("NEW_SECRET");
+    await user.clear(existing);
+    await user.type(existing, " NEW_SECRET ");
+    await user.click(screen.getByRole("button", { name: "Add variable" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Generated secret" }),
+    );
+    expect(screen.getByDisplayValue("NEW_SECRET_2")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/variable key must be unique/i),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Save/ })).toBeEnabled();
+  });
+});
