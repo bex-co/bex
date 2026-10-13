@@ -2305,12 +2305,12 @@ func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
 		}
 		switch {
 		case e.FromGroup != "", e.FromDatabase != nil, e.FromService != nil:
-			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q var %q: a group cannot reference services or other groups", core.ErrBadRequest, name, e.Key)
+			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: a group cannot reference services or other groups", core.ErrBadRequest, name, e.Key)
 		case e.Sync != nil && !*e.Sync:
-			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q var %q: sync:false is not allowed inside an env group", core.ErrBadRequest, name, e.Key)
+			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: sync:false is not allowed inside an env group", core.ErrBadRequest, name, e.Key)
 		case e.GenerateValue:
 			if e.hasValue() {
-				return parsedEnvGroup{}, fmt.Errorf("%w: env group %q var %q sets both value and generateValue", core.ErrBadRequest, name, e.Key)
+				return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: sets both value and generateValue", core.ErrBadRequest, name, e.Key)
 			}
 			pg.generates = append(pg.generates, e.Key)
 		default:
@@ -2608,7 +2608,7 @@ func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv
 			continue
 		}
 		if err := validateKeyedEnv(e); err != nil {
-			return nil, serviceEnv{}, fmt.Errorf("%w: %s env %q: %v", core.ErrBadRequest, a.Name, e.Key, err)
+			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: %v", core.ErrBadRequest, a.Name, e.Key, err)
 		}
 		// A reserved key is refused here, before any seed or CR write. The
 		// message carries the location the way every neighbouring Blueprint
