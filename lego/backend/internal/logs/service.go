@@ -737,6 +737,22 @@ func (s *Service) queryKeyValueLogs(ctx context.Context, q LogQuery) ([]LogEntry
 	return setLogResource(q.filterAndCap(entries), requested), nil
 }
 
+// unsupportedLiveResource is the named refusal for a managed datastore's live
+// tail, which bex does not offer; nil for any other resource. Callers
+// authorize the resource first, so the refusal never confirms existence.
+func unsupportedLiveResource(resource string) error {
+	var family string
+	switch {
+	case isPostgresResource(resource):
+		family = "Postgres"
+	case isKeyValueResource(resource):
+		family = "Key Value"
+	default:
+		return nil
+	}
+	return fmt.Errorf("%w: managed %s live log subscription is not supported; use the historical logs query", core.ErrBadRequest, family)
+}
+
 func isKeyValueResource(resource string) bool {
 	kind, ok := ids.KindOf(resource)
 	return ok && kind == ids.KeyValue
@@ -917,13 +933,13 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 		if _, err := s.AuthorizeDatabase(ctx, core.RelCanViewLogs, q.App); err != nil {
 			return err
 		}
-		return fmt.Errorf("%w: managed Postgres live log subscription is not supported; use the historical logs query", core.ErrBadRequest)
+		return unsupportedLiveResource(q.App)
 	}
 	if isKeyValueResource(q.App) {
 		if _, err := s.AuthorizeKeyValue(ctx, core.RelCanViewLogs, q.App); err != nil {
 			return err
 		}
-		return fmt.Errorf("%w: managed Key Value live log subscription is not supported; use the historical logs query", core.ErrBadRequest)
+		return unsupportedLiveResource(q.App)
 	}
 	requested := q.App
 	app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, requested)
