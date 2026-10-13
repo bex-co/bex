@@ -109,7 +109,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **100** — [Blueprint reference errors point to unrelated or nonexistent fields](100.md) (minor; 55m) ← functional CLI sweeps194–195: pooled references and missing IMAGE/PLAN/TYPE/CONNECTIONPOOL copies choose wrong settings; native/API/current-source proof, validity decisions correct; validation only, no resources created.
 
-- [ ] **099** — [Blueprint envVarKey copies omit declared linked-group literals](099.md) (minor; 55m) ← functional CLI sweep182: eight false refusals across both clients, eight controls, four exact native captures and actual group/provider/parser proof; validation only, no resources created.
+- [ ] **099** — [Blueprint envVarKey copies omit declared linked-group literals](blocked/099.md) — **BLOCKED (2026-10-13: fix shipped — envVarKey copies resolve literals the source inherits from linked in-file groups, in link order under its own values; needs the fix deployed to production plus fresh native Bex/Render validation receipts)**
 
 - [ ] **098** — [Blueprint validation accepts Key Value envVarKey refs that resolve to an empty key](blocked/098.md) — **BLOCKED (2026-10-13: guard and manifest-accurate guidance shipped (connectionString/host/port only); needs the fix deployed to production plus fresh native Bex/Render validation receipts)**
 
