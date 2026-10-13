@@ -647,6 +647,11 @@ var serviceRefProperty = map[string]bool{
 // kvPropertyKey maps a render.yaml fromService (type:keyvalue/redis) property to
 // the key in the keyvalue credentials Secret (the operator writes uri/host/port/
 // password/username; docs/ADR021-keyvalue-management.md).
+// kvManifestProperties is the Key Value property list validation recommends:
+// the ones the pinned render.yaml schema accepts. password stays in
+// kvPropertyKey for the resolver only; the schema refuses it (w8/098).
+const kvManifestProperties = "connectionString, host, or port"
+
 var kvPropertyKey = map[string]string{
 	"connectionString": "uri",
 	"host":             "host",
@@ -2683,13 +2688,13 @@ func validateKeyedEnv(e bexEnvVar) error {
 		// variable, so an envVarKey there became an empty Secret key (w8/098).
 		case isKeyValueType(ref.Type):
 			if ref.EnvVarKey != "" {
-				return fmt.Errorf("fromService keyvalue takes a property (connectionString, host, port, or password), not envVarKey")
+				return fmt.Errorf("fromService keyvalue takes a property (%s), not envVarKey", kvManifestProperties)
 			}
 			if ref.Property == "" {
-				return fmt.Errorf("fromService keyvalue needs a property (connectionString, host, port, or password)")
+				return fmt.Errorf("fromService keyvalue needs a property (%s)", kvManifestProperties)
 			}
 			if _, ok := kvPropertyKey[ref.Property]; !ok {
-				return fmt.Errorf("fromService keyvalue property %q is not supported (want connectionString, host, port, or password)", ref.Property)
+				return fmt.Errorf("fromService keyvalue property %q is not supported (want %s)", ref.Property, kvManifestProperties)
 			}
 		case ref.EnvVarKey != "":
 			if ref.Property != "" {

@@ -57,6 +57,10 @@ func TestBlueprintKeyValueReferenceNeedsAProperty(t *testing.T) {
 			if tc.wantErr != "" && (result.Valid || !strings.Contains(joined, tc.wantErr)) {
 				t.Errorf("%s %s = valid %v %s, want %q", kvType, tc.ref, result.Valid, joined, tc.wantErr)
 			}
+			// The guidance recommends only properties the manifest schema accepts.
+			if tc.wantErr != "" && (strings.Contains(joined, "password") || !strings.Contains(joined, kvManifestProperties)) {
+				t.Errorf("%s %s guidance = %s, want only %s", kvType, tc.ref, joined, kvManifestProperties)
+			}
 		}
 	}
 

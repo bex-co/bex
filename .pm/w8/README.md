@@ -111,9 +111,9 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **099** — [Blueprint envVarKey copies omit declared linked-group literals](099.md) (minor; 55m) ← functional CLI sweep182: eight false refusals across both clients, eight controls, four exact native captures and actual group/provider/parser proof; validation only, no resources created.
 
-- [ ] **098** — [Blueprint validation accepts Key Value envVarKey refs that resolve to an empty key](098.md) — **TODO (reopened 2026-10-13 UTC: core source guard shipped/tests pass, but public guidance still recommends an unsupported property; 10m correction. Fresh 20-case native matrix still reproduces four false-valid cases in production, 16 controls pass; two advertised-property schema refusals. No resources created; deployed SHA unknown.)**
+- [ ] **098** — [Blueprint validation accepts Key Value envVarKey refs that resolve to an empty key](blocked/098.md) — **BLOCKED (2026-10-13: guard and manifest-accurate guidance shipped (connectionString/host/port only); needs the fix deployed to production plus fresh native Bex/Render validation receipts)**
 
-- [ ] **097** — [Literal alert/emergency severities become unknown and disappear from CLI level filters](097.md) — **TODO (20m remaining acceptance review; 2026-10-13 UTC: live App severity labels and all 20 Bex/Render filters now pass, fatal/WARNING/warn controls pass, fixture cleaned; remaining platform/cross-surface/retained-history boundaries need review)**
+- [x] **097** — [Literal alert/emergency severities become unknown and disappear from CLI level filters](done/097.md) — **DONE 2026-10-13** (fix `b250f2acb`; live App severity labels and all 20 native filters pass; platform/GraphQL/MCP/dashboard and pre-rollout history recorded as unexercised boundaries)
 
 - [ ] **096** — [Blueprint validation ignores a supplied service-reference type](blocked/096.md) — **BLOCKED (2026-10-12: fix shipped — a same-file `fromService` whose type does not describe its target is refused with a located error; needs the fix deployed to production plus fresh native Bex/Render validation receipts)**
 
