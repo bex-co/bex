@@ -790,6 +790,11 @@ func (r *AppReconciler) observeCanceledPreDeploy(ctx context.Context, app *appv1
 		return childHealthRequeue
 	}
 	app.Status.PreDeploy = &ended
+	// A canceled release left to finish may have been the one running the
+	// initial hook; its success still completes it (w8/m63).
+	if _, initial := preDeployStepCommand(app); initial && ended.Status == appv1alpha1.PreDeploySucceeded {
+		app.Status.InitialDeployHookCompleted = true
+	}
 	return 0
 }
 
@@ -5566,7 +5571,8 @@ func (r *AppReconciler) settlePriorRelease(ctx context.Context, app *appv1alpha1
 // already passed or failed for the same revision. That terminal bookkeeping also
 // guards against re-creating the Job after its TTL reap.
 func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, bool, error) {
-	if app.Spec.PreDeployCommand == "" || canceledOverServed(app) {
+	command, initialHook := preDeployStepCommand(app)
+	if command == "" || canceledOverServed(app) {
 		if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
 			return ctrl.Result{}, true, err
 		}
@@ -5657,7 +5663,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		AppNamespace:     app.Namespace,
 		VerifyImage:      r.TenantSignKeySecret != "",
 		Image:            image,
-		Command:          app.Spec.PreDeployCommand,
+		Command:          command,
 		Revision:         rev,
 		Generation:       gen,
 		Env:              appEnv(app, port),
@@ -5684,6 +5690,10 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 			return r.failPreDeploy(ctx, app, &ended)
 		}
 		app.Status.PreDeploy = &ended
+		if initialHook {
+			// Its one success completes the hook: no later release selects it.
+			app.Status.InitialDeployHookCompleted = true
+		}
 		r.updateStatusRetrying(ctx, app, "predeploy-succeeded")
 		logf.FromContext(ctx).Info("pre-deploy succeeded", "name", app.Name, "job", job.Name)
 		return ctrl.Result{}, false, nil // proceed to the rollout
@@ -5763,7 +5773,19 @@ func preDeployNotStarted(err error) string {
 // against the served image — as a Job for the served generation, since the gen-2
 // verdict never matches it — and held the service in Deploying until it finished.
 func hasPreDeployStep(app *appv1alpha1.App) bool {
-	return strings.TrimSpace(app.Spec.PreDeployCommand) != "" && scalableRuntime(app) && !canceledOverServed(app)
+	command, _ := preDeployStepCommand(app)
+	return strings.TrimSpace(command) != "" && scalableRuntime(app) && !canceledOverServed(app)
+}
+
+// preDeployStepCommand is the command a release's pre-deploy step runs: the
+// one-time spec.initialDeployHook until a release has run it to success, then
+// spec.preDeployCommand (w8/m63). The roles stay separate even when the two
+// commands are equal; initial reports which one was selected.
+func preDeployStepCommand(app *appv1alpha1.App) (command string, initial bool) {
+	if strings.TrimSpace(app.Spec.InitialDeployHook) != "" && !app.Status.InitialDeployHookCompleted {
+		return app.Spec.InitialDeployHook, true
+	}
+	return app.Spec.PreDeployCommand, false
 }
 
 // preDeployPassed reports whether the current release may reach the pod

@@ -85,6 +85,7 @@ var AppSpecIdentityClasses = map[string]SpecIdentityClass{
 	"NotifyOnFail":               IdentityOperational,
 	"NotificationsToSend":        IdentityOperational,
 	"PreDeployCommand":           IdentityRelease,
+	"InitialDeployHook":          IdentityRelease,
 	"IdleTTLSeconds":             IdentityOperational,
 	"RestartedAt":                IdentityArtifact | IdentityRelease,
 	"ReleaseConfig":              IdentityRelease,

@@ -941,15 +941,17 @@ func TestParseStackInitialDeployHookParsed(t *testing.T) {
 }
 
 // TestDeployStackInitialHookSetsPreDeployCommandOnFirstCreate verifies that on
-// first create the hook overrides spec.preDeployCommand and the annotation is set.
+// first create the hook and the regular command keep separate roles (w8/m63):
+// spec.initialDeployHook carries the one-time command, spec.preDeployCommand
+// the regular one, and the annotation echoes the hook.
 func TestDeployStackInitialHookSetsPreDeployCommandOnFirstCreate(t *testing.T) {
 	svc, cl := newService(nil)
 	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: hookManifest}); err != nil {
 		t.Fatalf("DeployStack: %v", err)
 	}
 	app := getApp(t, cl, "web")
-	if app.Spec.PreDeployCommand != "npm run db:setup" {
-		t.Errorf("preDeployCommand = %q, want npm run db:setup (hook on first deploy)", app.Spec.PreDeployCommand)
+	if app.Spec.InitialDeployHook != "npm run db:setup" || app.Spec.PreDeployCommand != "npm run db:migrate" {
+		t.Errorf("hook %q / preDeployCommand %q, want the hook and the regular command apart", app.Spec.InitialDeployHook, app.Spec.PreDeployCommand)
 	}
 	if app.Annotations[initialDeployHookAnnotation] != "npm run db:setup" {
 		t.Errorf("annotation %s = %q, want npm run db:setup", initialDeployHookAnnotation, app.Annotations[initialDeployHookAnnotation])
@@ -968,9 +970,10 @@ func TestDeployStackInitialHookMarkedRanWhenPreDeploySucceeds(t *testing.T) {
 	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: hookManifest}); err != nil {
 		t.Fatalf("first DeployStack: %v", err)
 	}
-	// Simulate the operator: first pre-deploy Job succeeded.
+	// Simulate the operator: the hook's pre-deploy Job succeeded.
 	app := getApp(t, cl, "web")
 	app.Status.PreDeploy = &appv1alpha1.PreDeployStatus{Status: appv1alpha1.PreDeploySucceeded}
+	app.Status.InitialDeployHookCompleted = true
 	if err := cl.Update(ctx, app); err != nil {
 		t.Fatalf("update status: %v", err)
 	}
@@ -987,6 +990,56 @@ func TestDeployStackInitialHookMarkedRanWhenPreDeploySucceeds(t *testing.T) {
 	}
 }
 
+// A service created when the hook was injected as its preDeployCommand
+// migrates on its next sync (w8/m63): once that hook has succeeded it is never
+// reintroduced, and the regular command comes back.
+func TestDeployStackMigratesALegacyInjectedHook(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		succeeded bool
+		wantHook  string
+	}{
+		{"hook already succeeded", true, ""},
+		{"hook still pending", false, "npm run db:setup"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, cl := newService(nil)
+			ctx := context.Background()
+			if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: hookManifest}); err != nil {
+				t.Fatalf("first DeployStack: %v", err)
+			}
+			app := getApp(t, cl, "web")
+			app.Spec.PreDeployCommand, app.Spec.InitialDeployHook = "npm run db:setup", "" // the pre-split shape
+			if tc.succeeded {
+				app.Status.PreDeploy = &appv1alpha1.PreDeployStatus{Status: appv1alpha1.PreDeploySucceeded}
+			}
+			if err := cl.Update(ctx, app); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: hookManifest}); err != nil {
+				t.Fatalf("re-sync: %v", err)
+			}
+			app = getApp(t, cl, "web")
+			if app.Spec.PreDeployCommand != "npm run db:migrate" || app.Spec.InitialDeployHook != tc.wantHook {
+				t.Fatalf("preDeployCommand %q / hook %q, want regular command and hook %q", app.Spec.PreDeployCommand, app.Spec.InitialDeployHook, tc.wantHook)
+			}
+			if ran := app.Annotations[initialDeployHookRanAnnotation] == "true"; ran != tc.succeeded {
+				t.Fatalf("ran-once annotation = %v, want %v", ran, tc.succeeded)
+			}
+			// The migrated service now plans as unchanged: no update the apply never makes.
+			v, err := svc.ValidateBlueprint(ctx, "", hookManifest, "")
+			if err != nil || v.Plan == nil {
+				t.Fatalf("plan: %+v, %v", v, err)
+			}
+			for _, a := range v.Plan.Actions {
+				if a.Kind == BlueprintResourceService && a.Operation != BlueprintPlanNoop {
+					t.Fatalf("plan after migration = %s %+v, want noop", a.Operation, a.ChangedFields)
+				}
+			}
+		})
+	}
+}
+
 func TestDeployStackUpdatesPendingInitialDeployHook(t *testing.T) {
 	svc, cl := newService(nil)
 	ctx := context.Background()
@@ -998,8 +1051,8 @@ func TestDeployStackUpdatesPendingInitialDeployHook(t *testing.T) {
 		t.Fatalf("update pending initial hook: %v", err)
 	}
 	app := getApp(t, cl, "web")
-	if app.Spec.PreDeployCommand != "npm run db:prepare" {
-		t.Errorf("preDeployCommand = %q, want updated pending hook", app.Spec.PreDeployCommand)
+	if app.Spec.InitialDeployHook != "npm run db:prepare" || app.Spec.PreDeployCommand != "npm run db:migrate" {
+		t.Errorf("hook %q / preDeployCommand %q, want the updated pending hook beside the regular command", app.Spec.InitialDeployHook, app.Spec.PreDeployCommand)
 	}
 	if app.Annotations[initialDeployHookAnnotation] != "npm run db:prepare" {
 		t.Errorf("initial hook annotation = %q, want updated pending hook", app.Annotations[initialDeployHookAnnotation])

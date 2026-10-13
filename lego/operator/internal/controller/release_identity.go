@@ -95,6 +95,7 @@ type releaseIdentityInput struct {
 	HealthCheckPath            string                              `json:"healthCheckPath,omitempty"`
 	MaxShutdownDelaySeconds    *int32                              `json:"maxShutdownDelaySeconds,omitempty"`
 	PreDeployCommand           string                              `json:"preDeployCommand,omitempty"`
+	InitialDeployHook          string                              `json:"initialDeployHook,omitempty"`
 	RestartedAt                string                              `json:"restartedAt,omitempty"`
 	Tier                       string                              `json:"tier,omitempty"`
 	Disk                       *releaseDiskIdentity                `json:"disk,omitempty"`
@@ -202,6 +203,7 @@ func appReleaseIdentityOf(spec appv1alpha1.AppSpec, version string) appReleaseId
 		HealthCheckPath:            spec.HealthCheckPath,
 		MaxShutdownDelaySeconds:    spec.MaxShutdownDelaySeconds,
 		PreDeployCommand:           spec.PreDeployCommand,
+		InitialDeployHook:          spec.InitialDeployHook,
 		RestartedAt:                spec.RestartedAt,
 		Tier:                       spec.Tier,
 		Disk:                       releaseDisk(spec.Disk),

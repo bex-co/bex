@@ -250,7 +250,12 @@ var blueprintServiceFieldAppliers = []struct {
 		dst.MaintenanceMode = want.MaintenanceMode.DeepCopy()
 	}},
 	{names: []string{"preDeployCommand"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.PreDeployCommand = want.PreDeployCommand }},
-	{names: []string{"initialDeployHook"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.PreDeployCommand = want.PreDeployCommand }},
+	{names: []string{"initialDeployHook"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+		dst.InitialDeployHook = want.InitialDeployHook
+		// A Blueprint that declares the hook also owns the regular command: a
+		// service created when the hook was injected there gets it back (w8/m63).
+		dst.PreDeployCommand = want.PreDeployCommand
+	}},
 	{names: []string{"envVars"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 		dst.Env = mergeBlueprintEnv(dst.Env, want.Env)
 	}},
