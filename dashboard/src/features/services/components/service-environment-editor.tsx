@@ -435,7 +435,9 @@ export function EnvironmentEditor({
 
   function addVariable(generated = false) {
     if (!draft || createDenied) return;
-    const existing = new Set(draft.envVars.map((row) => row.key));
+    // Trimmed, as validation and the save patch compare keys: a padded
+    // " NEW_SECRET " already holds the name (w4/286).
+    const existing = new Set(draft.envVars.map((row) => row.key.trim()));
     let key = generated ? "NEW_SECRET" : "";
     let suffix = 2;
     while (key && existing.has(key)) key = `NEW_SECRET_${suffix++}`;

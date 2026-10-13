@@ -1349,3 +1349,81 @@ describe("ServiceEnvironmentEditor uploaded file contents (w4/285)", () => {
     expect(screen.queryByDisplayValue("nul.txt")).not.toBeInTheDocument();
   });
 });
+
+// w4/286: the generator judged names by the raw key text while validation and
+// the save patch trim it, so a padded existing key let it add a duplicate that
+// disabled Save.
+describe("ServiceEnvironmentEditor generated secret names (w4/286)", () => {
+  async function generate(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole("button", { name: "Add variable" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Generated secret" }),
+    );
+  }
+  const keys = () =>
+    screen
+      .getAllByRole<HTMLInputElement>("textbox")
+      .map((input) => input.value)
+      .filter((value) => /NEW_SECRET/.test(value));
+
+  it("skips a name an existing padded key already holds, and the draft stays saveable", async () => {
+    envKeys = [{ id: "NEW_SECRET", key: "NEW_SECRET", managedBy: "" }];
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    const existing = screen.getByDisplayValue("NEW_SECRET");
+    await user.clear(existing);
+    await user.type(existing, " NEW_SECRET ");
+
+    await generate(user);
+    expect(keys()).toEqual([" NEW_SECRET ", "NEW_SECRET_2"]);
+    expect(
+      screen.queryByText(/variable key must be unique/i),
+    ).not.toBeInTheDocument();
+    const submit = screen.getByRole("button", { name: "Save and deploy" });
+    expect(submit).toBeEnabled();
+
+    await user.click(submit);
+    await waitFor(() => expect(save).toHaveBeenCalled());
+    // Only the generated key is written; the padded row is the same saved key.
+    const { envVars } = save.mock.calls[0][1];
+    expect(envVars).toHaveLength(1);
+    expect(envVars[0].key).toBe("NEW_SECRET_2");
+    expect(envVars[0].value).toHaveLength(44);
+  });
+
+  it("walks past padded suffixes in order", async () => {
+    envKeys = [
+      { id: "NEW_SECRET", key: "NEW_SECRET", managedBy: "" },
+      { id: "NEW_SECRET_2", key: "NEW_SECRET_2", managedBy: "" },
+    ];
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    const second = screen.getByDisplayValue("NEW_SECRET_2");
+    await user.clear(second);
+    await user.type(second, "NEW_SECRET_2  ");
+
+    await generate(user);
+    await generate(user);
+    expect(keys()).toEqual([
+      "NEW_SECRET",
+      "NEW_SECRET_2  ",
+      "NEW_SECRET_3",
+      "NEW_SECRET_4",
+    ]);
+    expect(
+      screen.getByRole("button", { name: "Save and deploy" }),
+    ).toBeEnabled();
+  });
+
+  it("still starts at NEW_SECRET, and treats a different-case key as another name", async () => {
+    envKeys = [{ id: "new_secret", key: "new_secret", managedBy: "" }];
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await generate(user);
+    expect(screen.getByDisplayValue("NEW_SECRET")).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("NEW_SECRET_2")).not.toBeInTheDocument();
+  });
+});
