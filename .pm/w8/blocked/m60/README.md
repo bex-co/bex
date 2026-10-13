@@ -1,14 +1,14 @@
 # w8 · m60 — Preserve accepted arguments when copying CLI commands
 
-**Worker:** worker8 **Goal:** Copy from a working CLI log view produces a command that preserves its search and time filters. **Status:** todo
+**Worker:** worker8 **Goal:** Copy from a working CLI log view produces a command that preserves its search and time filters. **Status:** blocked — t001/t002 prepared and tested; t003–t007 need separately authorized upstream submission, upstream acceptance/release, Bex pin/release and native receipts.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Prepare an upstream command-aware Copy formatter | 50m | — |
-| t002 | Verify shared Copy callers and command aliases | 25m | t001 |
-| t003 | Adopt the accepted upstream correction through the CLI pin | 30m | t002 |
+| t001 | Prepare an upstream command-aware Copy formatter — **DONE 2026-10-12** | 50m | — |
+| t002 | Verify shared Copy callers and command aliases — **DONE 2026-10-12** | 25m | t001 |
+| t003 | Adopt the accepted upstream correction through the CLI pin — **BLOCKED: needs separately authorized external upstream submission, upstream acceptance/release, then Bex pin/release** | 30m | t002 |
 | t004 | Render parity | 20m | t003 |
 | t005 | Simplify | 10m | t004 |
 | t006 | Test coverage | 25m | t004 |
@@ -21,6 +21,11 @@
 - Plain and explicit two-OR-term controls retain their results; actual flag-parser checks cover counted shared callers, command aliases, enums, repeated arrays, positional spaces, Unicode, quotes and nil/default/accepted empty neighbors. Preserve bytes accepted by the existing parser, qualifying077's separate CRLF issue.
 - The upstream correction is accepted, included in a reviewed Bex pin and released under separate authorization. A locally prepared patch cannot satisfy Done. Preserve existing server/UI filter semantics and the no-fork decision.
 - Native evidence records version identities and gaps. Every fresh owned fixture reaches detail/list/runtime absence and quota convergence. Complete standing tasks and perform the final PM move only when all outcomes hold.
+
+## Progress / block
+
+- **2026-10-12:** prepared `evidence/upstream-copy-command-formatter.patch` against the pinned upstream module and `evidence/upstream-prep-audit.md`; `go test ./pkg/command ./cmd` passed in a temporary upstream checkout (13 subtests fail without the fix). Tasks t001 and t002 are done.
+- **Blocked:** t003–t007 require the user to authorize external submission to `render-oss/cli` after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release, and native Bex/Render receipts. No Bex fork/vendor patch or backend workaround, honoring the milestone scope and DO_NOT_DO no-fork rule.
 
 ## Source + Goal linkage
 

@@ -1,0 +1,233 @@
+diff --git a/cmd/restart_test.go b/cmd/restart_test.go
+new file mode 100644
+index 0000000..2a10169
+--- /dev/null
++++ b/cmd/restart_test.go
+@@ -0,0 +1,106 @@
++package cmd
++
++import (
++	"bytes"
++	"encoding/json"
++	"net/http"
++	"net/http/httptest"
++	"testing"
++
++	"github.com/stretchr/testify/assert"
++	"github.com/stretchr/testify/require"
++
++	"github.com/render-oss/cli/pkg/client"
++	"github.com/render-oss/cli/pkg/command"
++	"github.com/render-oss/cli/pkg/dependencies"
++	"github.com/render-oss/cli/pkg/pointers"
++)
++
++const (
++	restartTestPostgresID = "dpg-00000000000000000000"
++	restartTestServiceID  = "srv-00000000000000000000"
++)
++
++// executeRestart runs `render restart` against a server that answers every
++// POST /{postgres,services}/{id}/restart with status (and a NOT_FOUND body for
++// error statuses). It returns the command output, restart paths hit and error.
++func executeRestart(t *testing.T, status int, args ...string) (CommandResult, []string, error) {
++	t.Helper()
++
++	var restartPaths []string
++	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		require.Equal(t, http.MethodPost, r.Method, "unexpected request %s %s", r.Method, r.URL.Path)
++		restartPaths = append(restartPaths, r.URL.Path)
++		if status < http.StatusBadRequest {
++			w.WriteHeader(status)
++			return
++		}
++		w.Header().Set("Content-Type", "application/json")
++		w.WriteHeader(status)
++		_ = json.NewEncoder(w).Encode(client.Error{
++			Code:    pointers.From("NOT_FOUND"),
++			Id:      pointers.From("not_found"),
++			Message: pointers.From("not found"),
++		})
++	}))
++	t.Cleanup(server.Close)
++
++	t.Setenv("RENDER_CLI_CONFIG_PATH", newTestConfigPath(t))
++	t.Setenv("RENDER_HOST", server.URL)
++	t.Setenv("RENDER_API_KEY", "test-api-key")
++
++	c, err := client.NewClientWithResponses(server.URL)
++	require.NoError(t, err)
++	deps := dependencies.New(c)
++	deps.DetectRuntimeSignals = func() (command.RuntimeSignals, error) {
++		return command.RuntimeSignals{}, nil
++	}
++
++	root := newRootCmd()
++	cmd := *restartCmd
++	cmd.ResetFlags()
++	root.AddCommand(&cmd)
++	setupRootCmdPersistentRun(root, deps)
++
++	var stdout, stderr bytes.Buffer
++	root.SetOut(&stdout)
++	root.SetErr(&stderr)
++	root.SetArgs(append([]string{"restart"}, args...))
++
++	execErr := root.Execute()
++	return CommandResult{Stdout: stdout.String(), Stderr: stderr.String()}, restartPaths, execErr
++}
++
++func TestRestart_PostgresAPIRefusal_FailsInEveryOutputFormat(t *testing.T) {
++	for _, output := range []string{"json", "yaml", "text"} {
++		t.Run(output, func(t *testing.T) {
++			result, paths, err := executeRestart(t, http.StatusNotFound, restartTestPostgresID, "--confirm", "-o", output)
++
++			require.EqualError(t, err, "failed to restart resource: received response code 404 (NOT_FOUND): not found")
++			assert.Equal(t, []string{"/postgres/" + restartTestPostgresID + "/restart"}, paths)
++			assert.Empty(t, result.Stdout)
++			assert.NotContains(t, result.Stdout, "restarted successfully")
++			assert.Contains(t, result.Stderr, "received response code 404 (NOT_FOUND): not found")
++		})
++	}
++}
++
++func TestRestart_ServiceAPIRefusal_Fails(t *testing.T) {
++	result, paths, err := executeRestart(t, http.StatusNotFound, restartTestServiceID, "--confirm", "-o", "json")
++
++	require.EqualError(t, err, "failed to restart resource: received response code 404 (NOT_FOUND): not found")
++	assert.Equal(t, []string{"/services/" + restartTestServiceID + "/restart"}, paths)
++	assert.Empty(t, result.Stdout)
++}
++
++func TestRestart_PostgresAccepted_ReportsSuccess(t *testing.T) {
++	for _, status := range []int{http.StatusOK, http.StatusAccepted} {
++		t.Run(http.StatusText(status), func(t *testing.T) {
++			result, paths, err := executeRestart(t, status, restartTestPostgresID, "--confirm", "-o", "json")
++
++			require.NoError(t, err)
++			assert.Equal(t, []string{"/postgres/" + restartTestPostgresID + "/restart"}, paths)
++			assert.JSONEq(t, `"`+restartTestPostgresID+` restarted successfully"`, result.Stdout)
++		})
++	}
++}
+diff --git a/pkg/postgres/repo.go b/pkg/postgres/repo.go
+index 74df855..2e6f452 100644
+--- a/pkg/postgres/repo.go
++++ b/pkg/postgres/repo.go
+@@ -88,7 +88,7 @@ func (r *Repo) GetPostgresConnectionInfo(ctx context.Context, id string) (*clien
+ }
+ 
+ func (r *Repo) RestartPostgresDatabase(ctx context.Context, id string) error {
+-	resp, err := r.client.RestartPostgres(ctx, id)
++	resp, err := r.client.RestartPostgresWithResponse(ctx, id)
+ 	if err != nil {
+ 		return err
+ 	}
+diff --git a/pkg/postgres/repo_test.go b/pkg/postgres/repo_test.go
+new file mode 100644
+index 0000000..7ceee18
+--- /dev/null
++++ b/pkg/postgres/repo_test.go
+@@ -0,0 +1,102 @@
++package postgres
++
++import (
++	"context"
++	"encoding/json"
++	"net/http"
++	"net/http/httptest"
++	"testing"
++
++	"github.com/stretchr/testify/assert"
++	"github.com/stretchr/testify/require"
++
++	"github.com/render-oss/cli/pkg/client"
++	"github.com/render-oss/cli/pkg/pointers"
++)
++
++const restartTestPostgresID = "dpg-00000000000000000000"
++
++// newRestartTestRepo serves POST /postgres/{id}/restart with the given status
++// and returns a Repo pointed at it plus a counter of restart requests.
++func newRestartTestRepo(t *testing.T, status int, body *client.Error) (*Repo, *int) {
++	t.Helper()
++
++	restartCalls := 0
++	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		require.Equal(t, http.MethodPost, r.Method)
++		require.Equal(t, "/postgres/"+restartTestPostgresID+"/restart", r.URL.Path)
++		restartCalls++
++		if body == nil {
++			w.WriteHeader(status)
++			return
++		}
++		w.Header().Set("Content-Type", "application/json")
++		w.WriteHeader(status)
++		_ = json.NewEncoder(w).Encode(body)
++	}))
++	t.Cleanup(server.Close)
++
++	c, err := client.NewClientWithResponses(server.URL)
++	require.NoError(t, err)
++	return NewRepo(c), &restartCalls
++}
++
++func TestRestartPostgresDatabase_AcceptsSuccessStatuses(t *testing.T) {
++	for _, status := range []int{http.StatusOK, http.StatusAccepted} {
++		t.Run(http.StatusText(status), func(t *testing.T) {
++			repo, calls := newRestartTestRepo(t, status, nil)
++
++			err := repo.RestartPostgresDatabase(context.Background(), restartTestPostgresID)
++
++			require.NoError(t, err)
++			assert.Equal(t, 1, *calls)
++		})
++	}
++}
++
++func TestRestartPostgresDatabase_ReturnsAPIErrors(t *testing.T) {
++	for _, tc := range []struct {
++		status    int
++		code      string
++		message   string
++		wantErr   string
++		wantErrIs error
++	}{
++		{status: http.StatusBadRequest, code: "BAD_REQUEST", message: "bad request", wantErr: "received response code 400 (BAD_REQUEST): bad request"},
++		{status: http.StatusNotFound, code: "NOT_FOUND", message: "not found", wantErr: "received response code 404 (NOT_FOUND): not found"},
++		{status: http.StatusConflict, code: "CONFLICT", message: "restart already in progress", wantErr: "received response code 409 (CONFLICT): restart already in progress"},
++		{status: http.StatusTooManyRequests, code: "TOO_MANY_REQUESTS", message: "slow down", wantErrIs: client.ErrTooManyRequests},
++		{status: http.StatusInternalServerError, code: "INTERNAL", message: "internal error", wantErr: "received response code 500 (INTERNAL): internal error"},
++		{status: http.StatusServiceUnavailable, code: "UNAVAILABLE", message: "unavailable", wantErr: "received response code 503 (UNAVAILABLE): unavailable"},
++	} {
++		t.Run(http.StatusText(tc.status), func(t *testing.T) {
++			repo, calls := newRestartTestRepo(t, tc.status, &client.Error{
++				Code:    pointers.From(tc.code),
++				Message: pointers.From(tc.message),
++			})
++
++			err := repo.RestartPostgresDatabase(context.Background(), restartTestPostgresID)
++
++			require.Error(t, err)
++			if tc.wantErrIs != nil {
++				require.ErrorIs(t, err, tc.wantErrIs)
++			} else {
++				require.EqualError(t, err, tc.wantErr)
++			}
++			assert.Equal(t, 1, *calls)
++		})
++	}
++}
++
++func TestRestartPostgresDatabase_ReturnsTransportErrors(t *testing.T) {
++	server := httptest.NewServer(http.NotFoundHandler())
++	url := server.URL
++	server.Close()
++
++	c, err := client.NewClientWithResponses(url)
++	require.NoError(t, err)
++
++	err = NewRepo(c).RestartPostgresDatabase(context.Background(), restartTestPostgresID)
++
++	require.Error(t, err)
++}
