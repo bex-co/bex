@@ -255,7 +255,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **278** — [Padding an unchanged port starts unnecessary deployments](278.md) (35m) ← functional QA a294; fresh desktop/mobile numeric-equivalent saves send port 3000 and each roll a new Live revision; genuine 3001 change, invalid inputs, Cancel and shutdown numeric control pass; own Free fixture deleted and session revoked.
 
-- [ ] **277** — [Valid zero-padded cron schedules display malformed clock times](277.md) (35m) ← functional QA a292; Create and fresh saved Settings show 0009:0005 for an accepted 09:05 UTC schedule, with mobile/Chinese repeat and controls; owned Free cron deleted and session revoked.
+- [x] **277** — [Valid zero-padded cron schedules display malformed clock times](done/277.md) — **DONE 2026-10-12** (preview normalizes padded numeric tokens; en/zh tests) (35m) ← functional QA a292; Create and fresh saved Settings show 0009:0005 for an accepted 09:05 UTC schedule, with mobile/Chinese repeat and controls; owned Free cron deleted and session revoked.
 
 - [x] **276** — [Cron settings can undo a previous save after a late refresh](done/276.md) (55m) — **DONE 2026-10-12** (`86ae0f1b6`, real-Apollo regression suite: both late-read rollback directions, a rejected held read beside a pending one, refresh-failure read-only retry with exactly one mutation, and the no-overlap control; full dashboard suite + lint pass) ← functional QA a289; controlled late Server responses revert a saved schedule or command, the next other-field save persists the rollback, and native cron output confirms the older command; owned fixture deleted and session revoked.
 
@@ -350,11 +350,11 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [x] **228** — [Datastore log text and instance filters disappear on reload](done/228.md) (55m) — **DONE 2026-10-12** (`5b82d6e60`, live-verified on Postgres + Key Value) ← live qa-find-bugs 2026-10-10 pass a36; Key Value text/instance and Postgres text reset, while service text and datastore range persist.
 
-- [ ] **227** — [Cron “Last run” labels the last successful run](227.md) (30m) ← live `$qa-find-bugs w4`, 2026-10-09 pass a27; fresh English/Chinese failure repro with correct last-success API data and passing run controls.
+- [x] **227** — [Cron “Last run” labels the last successful run](done/227.md) — **DONE 2026-10-11** (see done note) (30m) ← live `$qa-find-bugs w4`, 2026-10-09 pass a27; fresh English/Chinese failure repro with correct last-success API data and passing run controls.
 
-- [ ] **226** — [Existing Image creation sends a hidden Git Root Directory](226.md) (55m) ← live `$qa-find-bugs w4`, 2026-10-09 pass a26; fresh desktop/mobile refusal, one-field recovery, and Live image/Git controls.
+- [x] **226** — [Existing Image creation sends a hidden Git Root Directory](done/226.md) — **DONE 2026-10-11** (see done note) (55m) ← live `$qa-find-bugs w4`, 2026-10-09 pass a26; fresh desktop/mobile refusal, one-field recovery, and Live image/Git controls.
 
-- [ ] **225** — [Clearing a service label falsely says its name resets to the immutable ID](225.md) (30m) ← live `$qa-find-bugs w4`, 2026-10-09 pass a25; fresh English and Chinese repro with correct API identity/name fields.
+- [x] **225** — [Clearing a service label falsely says its name resets to the immutable ID](done/225.md) — **DONE 2026-10-11** (see done note) (30m) ← live `$qa-find-bugs w4`, 2026-10-09 pass a25; fresh English and Chinese repro with correct API identity/name fields.
 
 - [x] **219** — [Long Docker-command confirmations hide Save and Cancel below the mobile viewport](done/219.md) — **DONE 2026-10-09** (`465c725fe`, live-verified at 390×667/390×844/1280×900) ← live `$qa-find-bugs w4` cycle a1, 2026-10-08.
 - [x] **220** — [Cached environment membership misclassifies newly created services as workspace-scoped](done/220.md) — **DONE 2026-10-09** (`5f65179d4`, live-verified) ← live `$qa-find-bugs w4` cycle 2.

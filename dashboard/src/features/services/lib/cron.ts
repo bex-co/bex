@@ -203,8 +203,12 @@ const DAY_NAME_KEYS = [
 // synonym), so describeCron's phrase branches treat "0 0 * * MON" exactly like
 // "0 0 * * 1" and "0 0 ? * *" like "0 0 * * *". Compound terms (ranges, lists,
 // steps) pass through untouched — the phrase branches don't describe those.
+// A whole unsigned number is rewritten without its leading zeros ("0009" is 9,
+// as robfig's Atoi reads it), so a padded schedule previews as "09:05", not
+// "0009:0005". Only the preview is normalized; the saved schedule stays as typed.
 function canonicalField(field: string, spec: FieldSpec): string {
   if (field === "?") return "*";
+  if (/^\d+$/.test(field)) return String(parseUint(field) ?? field);
   const named = spec.names?.get(field.toLowerCase());
   return named === undefined ? field : String(named);
 }
@@ -249,7 +253,9 @@ export function describeCron(s: string, t: Translate): string | null {
   if (stepMinute && hour === "*" && allDates) {
     switch (stepShape(Number(stepMinute[1]), FIELDS[0])) {
       case "uniform":
-        return t("services.cronEveryNMinutes", { n: stepMinute[1] });
+        return t("services.cronEveryNMinutes", {
+          n: String(Number(stepMinute[1])),
+        });
       // Wider than the minute field: only minute 0 ever fires, so it is hourly
       // — the same schedule as "0 * * * *", and described the same way.
       case "start-only":
@@ -263,7 +269,9 @@ export function describeCron(s: string, t: Translate): string | null {
   if (/^\d+$/.test(minute) && stepHour && allDates) {
     switch (stepShape(Number(stepHour[1]), FIELDS[1])) {
       case "uniform":
-        return t("services.cronEveryNHours", { n: stepHour[1] });
+        return t("services.cronEveryNHours", {
+          n: String(Number(stepHour[1])),
+        });
       // Wider than the hour field: only hour 0 ever fires, so it is daily.
       case "start-only":
         return t("services.cronDailyAt", { time: hhmm("0", minute) });

@@ -97,6 +97,36 @@ describe("describeCron", () => {
     );
   });
 
+  // w4/277: the preview interpolated numeric fields as typed, so an accepted
+  // "0005 0009 * * *" (09:05 UTC to the server's Atoi) read "0009:0005". A
+  // padded schedule previews exactly like its unpadded form; acceptance and the
+  // saved text are unchanged.
+  it("previews zero-padded numbers like their unpadded form", () => {
+    const zh = translator("zh");
+    const pairs: [string, string][] = [
+      ["0005 0009 * * *", "5 9 * * *"],
+      ["05 09 * * *", "5 9 * * *"],
+      ["0000 * * * *", "0 * * * *"],
+      ["007 * * * *", "7 * * * *"],
+      ["00 008 * * 0001", "0 8 * * 1"],
+      ["0005 0009 001 * *", "5 9 1 * *"],
+      ["*/05 * * * *", "*/5 * * * *"],
+      ["0 */02 * * *", "0 */2 * * *"],
+      ["00000000000000000000005 * * * *", "5 * * * *"],
+    ];
+    for (const [padded, plain] of pairs) {
+      expect(isValidCron(padded), padded).toBe(true);
+      expect(describeCron(padded, t), padded).toBe(describeCron(plain, t));
+      expect(describeCron(padded, zh), padded).toBe(describeCron(plain, zh));
+    }
+    expect(describeCron("0005 0009 * * *", t)).toBe("Every day at 09:05");
+    expect(describeCron("0005 0009 001 * *", t)).toBe(
+      "On day 1 of every month at 09:05",
+    );
+    expect(describeCron("0000 * * * *", t)).toBe("Every hour");
+    expect(describeCron("0005 0009 * * *", zh)).toBe("每天 09:05");
+  });
+
   it("returns null for invalid input and unhandled shapes", () => {
     expect(describeCron("99 99 * * *", t)).toBeNull();
     expect(describeCron("not a cron", t)).toBeNull();
