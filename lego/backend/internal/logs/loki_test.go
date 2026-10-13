@@ -474,16 +474,20 @@ func TestHistoryAndLiveConvergeAcrossTheMessageCap(t *testing.T) {
 
 // fakeLoki captures the last request (path + query) and replies with body.
 type fakeLoki struct {
-	srv        *httptest.Server
-	lastValues url.Values
-	lastPath   string
-	status     int
-	body       string
+	srv         *httptest.Server
+	firstValues url.Values
+	lastValues  url.Values
+	lastPath    string
+	status      int
+	body        string
 }
 
 func newFakeLoki(body string) *fakeLoki {
 	f := &fakeLoki{status: http.StatusOK, body: body}
 	f.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if f.firstValues == nil {
+			f.firstValues = r.URL.Query()
+		}
 		f.lastValues = r.URL.Query()
 		f.lastPath = r.URL.Path
 		w.WriteHeader(f.status)
@@ -510,8 +514,8 @@ func TestLokiSourceRequestAndDecode(t *testing.T) {
 		t.Fatalf("want one decoded entry: %+v", entries)
 	}
 
-	// The request pushed the filters/bounds/limit to Loki (real time range).
-	got := f.lastValues
+	// The first request pushed the filters/bounds/limit to Loki (real time range).
+	got := f.firstValues
 	if q := got.Get("query"); q != `{namespace="default", app="web", container=~"app|"}` {
 		t.Errorf("query pushed to loki wrong: %s", q)
 	}
@@ -521,7 +525,9 @@ func TestLokiSourceRequestAndDecode(t *testing.T) {
 	if got.Get("limit") != "1000" {
 		t.Errorf("limit = %q, want 1000", got.Get("limit"))
 	}
-	if s, _ := strconv.ParseInt(got.Get("start"), 10, 64); s != since.UnixNano() {
+	// The inclusive End shifts the first hour slice by 1ns, so the window's
+	// start is read by the last request.
+	if s, _ := strconv.ParseInt(f.lastValues.Get("start"), 10, 64); s != since.UnixNano() {
 		t.Errorf("start = %q, want %d", got.Get("start"), since.UnixNano())
 	}
 	// Loki's end is exclusive; a caller's End is inclusive (w8/043).
@@ -554,40 +560,94 @@ func TestLokiSourceAppliesUnicodeTextSearchLocally(t *testing.T) {
 	}
 }
 
+// w8/m58 t007: a raw text search kept only matches from each fetch, so a full
+// raw page with no match advanced coverage past the whole slice and skipped a
+// stored match behind it (live sweep179: HTTP 200, logs [], hasMore false).
+// This fake honors the requested start, end, limit and direction over one
+// short interval, so the match sits inside the saturated slice.
 func TestLokiSourceLocalTextSearchReachesMatchBehindRawPage(t *testing.T) {
-	var values strings.Builder
-	values.WriteString("[")
-	base := time.Date(2026, 7, 5, 0, 0, 0, 0, time.UTC)
-	for i := 0; i < 1000; i++ {
-		if i > 0 {
-			values.WriteString(",")
-		}
-		fmt.Fprintf(&values, "[%q,%q]", strconv.FormatInt(base.Add(time.Duration(i)*time.Second).UnixNano(), 10), fmt.Sprintf("filler-%04d", i))
+	base := time.Now().Add(-30 * time.Minute).Truncate(time.Second)
+	type line struct {
+		ns  int64
+		msg string
 	}
-	values.WriteString("]")
-	calls := 0
-	f := &fakeLoki{status: http.StatusOK}
-	f.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls++
-		f.lastValues = r.URL.Query()
-		body := lokiResp(map[string]any{"stream": `{"app":"web","pod":"web-1","container":"app"}`, "values": values.String()})
-		if calls == 2 {
-			body = lokiResp(map[string]any{"stream": `{"app":"web","pod":"web-1","container":"app"}`, "values": `[["1751677200000000000","older CAFÉ Ελληνικά"]]`})
+	build := func(match string, newest bool) []line {
+		var lines []line
+		for i := 0; i < 1006; i++ {
+			lines = append(lines, line{base.Add(time.Duration(i) * time.Millisecond).UnixNano(), fmt.Sprintf("filler-%04d", i)})
 		}
-		_, _ = w.Write([]byte(body))
-	}))
-	defer f.srv.Close()
+		at := 0 // oldest: behind 1,005 newer lines for a backward read
+		if newest {
+			at = len(lines) - 1 // newest: behind 1,005 older lines for a forward read
+		}
+		lines[at].msg = match
+		return lines
+	}
+	serve := func(lines []line, requests *[]url.Values) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			v := r.URL.Query()
+			*requests = append(*requests, v)
+			start, _ := strconv.ParseInt(v.Get("start"), 10, 64)
+			end, _ := strconv.ParseInt(v.Get("end"), 10, 64)
+			limit, _ := strconv.Atoi(v.Get("limit"))
+			var in []line
+			for _, l := range lines {
+				if l.ns >= start && l.ns < end { // Loki: start inclusive, end exclusive
+					in = append(in, l)
+				}
+			}
+			if v.Get("direction") == "backward" && len(in) > limit {
+				in = in[len(in)-limit:]
+			} else if len(in) > limit {
+				in = in[:limit]
+			}
+			var values []string
+			for _, l := range in {
+				values = append(values, fmt.Sprintf("[%q,%q]", strconv.FormatInt(l.ns, 10), l.msg))
+			}
+			_, _ = w.Write([]byte(lokiResp(map[string]any{"stream": `{"app":"web","pod":"web-1","container":"app"}`, "values": "[" + strings.Join(values, ",") + "]"})))
+		}))
+	}
+	for _, tc := range []struct {
+		name, match, term string
+		direction         string
+		mode              string
+	}{
+		{"ascii backward raw", "QA179 marker", "QA179", DirectionBackward, ""},
+		{"ascii forward raw", "QA179 marker", "QA179", DirectionForward, ""},
+		{"unicode backward raw", "older CAFÉ Ελληνικά", "ι", DirectionBackward, ""},
+		{"unicode forward raw", "older CAFÉ Ελληνικά", "ι", DirectionForward, ""},
+		{"ascii backward display", "QA179 marker", "QA179", DirectionBackward, TextModeDisplay},
+		{"ascii forward display", "QA179 marker", "QA179", DirectionForward, TextModeDisplay},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			lines := build(tc.match, tc.direction == DirectionForward)
+			var requests []url.Values
+			srv := serve(lines, &requests)
+			defer srv.Close()
+			q := LogQuery{App: "web", Search: []string{tc.term}, Direction: tc.direction, TextMode: tc.mode, Limit: 100}
+			entries, err := NewLokiSource(srv.URL, srv.Client())(context.Background(), "default", q)
+			if err != nil {
+				t.Fatalf("source: %v", err)
+			}
+			if len(entries) != 1 || entries[0].Message != tc.match {
+				t.Fatalf("entries = %+v after %d requests, want the one match behind the full raw page", entries, len(requests))
+			}
 
-	src := NewLokiSource(f.srv.URL, f.srv.Client())
-	entries, err := src(context.Background(), "default", LogQuery{App: "web", Search: []string{"ι"}, Limit: 100})
-	if err != nil {
-		t.Fatalf("source: %v", err)
-	}
-	if calls < 2 {
-		t.Fatalf("calls = %d, want scan to continue past one full raw page", calls)
-	}
-	if len(entries) != 1 || entries[0].Message != "older CAFÉ Ελληνικά" {
-		t.Fatalf("entries = %+v", entries)
+			// An inclusive End on the match's exact nanosecond still reaches it.
+			at := lines[0]
+			if tc.direction == DirectionForward {
+				at = lines[len(lines)-1]
+			}
+			q.End = time.Unix(0, at.ns).UTC()
+			if tc.direction == DirectionForward {
+				q.Since = time.Unix(0, lines[0].ns).UTC()
+			}
+			entries, err = NewLokiSource(srv.URL, srv.Client())(context.Background(), "default", q)
+			if err != nil || len(entries) != 1 || entries[0].Message != tc.match {
+				t.Fatalf("end-bound control = %+v, %v; want the match", entries, err)
+			}
+		})
 	}
 }
 

@@ -307,7 +307,7 @@ func TestScanLokiWindowDisplayCoversRawLinesNotMatches(t *testing.T) {
 			calls := 0
 			q := LogQuery{Search: []string{"-end"}, TextMode: TextModeDisplay, Limit: 100, Direction: direction}.normalized()
 			got, err := scanLokiWindow(context.Background(), q, scanStart, scanEnd, true, time.Minute,
-				rangeLoki(data, lokiDisplayScanPage, direction == DirectionForward, &calls))
+				rangeLoki(data, lokiTextScanPage, direction == DirectionForward, &calls))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -323,30 +323,44 @@ func TestScanLokiWindowDisplayCoversRawLinesNotMatches(t *testing.T) {
 			}
 		})
 	}
-	// The raw default is untouched: the same visible needle finds nothing.
-	calls := 0
-	raw := LogQuery{Search: []string{"hit-0-end"}, Limit: 100}.normalized()
-	got, err := scanLokiWindow(context.Background(), raw, scanStart, scanEnd, true, time.Minute,
-		func(ctx context.Context, from, to time.Time) ([]LogEntry, error) {
-			page, err := rangeLoki(data, 100, false, &calls)(ctx, from, to)
-			return slices.DeleteFunc(page, func(e LogEntry) bool { return !raw.matchesText(e.Message) }), err
-		})
-	if err != nil || len(got) != 0 {
-		t.Fatalf("raw scan = %v, %v; want the existing empty answer", got, err)
+	// Raw mode pages the same raw candidates (w8/m58): the visible needle finds
+	// nothing in the raw bytes, while a raw needle reaches line 0 behind 2,999
+	// raw lines in both directions.
+	for _, direction := range []string{DirectionBackward, DirectionForward} {
+		calls := 0
+		visible := LogQuery{Search: []string{"hit-0-end"}, Limit: 100, Direction: direction}.normalized()
+		got, err := scanLokiWindow(context.Background(), visible, scanStart, scanEnd, true, time.Minute,
+			rangeLoki(data, lokiTextScanPage, direction == DirectionForward, &calls))
+		if err != nil || len(got) != 0 {
+			t.Fatalf("%s raw scan for the visible needle = %v, %v; want empty", direction, got, err)
+		}
+		rawNeedle := LogQuery{Search: []string{"hit-\x1b[1m0\x1b"}, Limit: 100, Direction: direction}.normalized()
+		got, err = scanLokiWindow(context.Background(), rawNeedle, scanStart, scanEnd, true, time.Minute,
+			rangeLoki(data, lokiTextScanPage, direction == DirectionForward, &calls))
+		if err != nil || len(got) != 1 || got[0].Message != "hit-\x1b[1m0\x1b[0m-end" {
+			t.Fatalf("%s raw scan for the raw needle = %v, %v; want line 0", direction, got, err)
+		}
 	}
 }
 
 // When the budget runs out mid-scan, coverage stops at the raw lines actually
 // read — never at the slice start — so the page continues instead of
 // declaring unscanned history empty.
+// Raw mode shares it (w8/m58).
 func TestScanLokiWindowDisplayBudgetReportsRawCoverage(t *testing.T) {
+	for _, mode := range []string{TextModeDisplay, ""} {
+		t.Run("mode="+mode, func(t *testing.T) { budgetReportsRawCoverage(t, mode) })
+	}
+}
+
+func budgetReportsRawCoverage(t *testing.T, mode string) {
 	var data []LogEntry
 	for i := 0; i < 20000; i++ {
 		data = append(data, lineAt(scanEnd.Add(-10*time.Minute+time.Duration(i)*30*time.Millisecond), "noise"))
 	}
 	calls := 0
-	slow := rangeLoki(data, lokiDisplayScanPage, false, &calls)
-	q := LogQuery{Search: []string{"absent"}, TextMode: TextModeDisplay, Limit: 100}.normalized()
+	slow := rangeLoki(data, lokiTextScanPage, false, &calls)
+	q := LogQuery{Search: []string{"absent"}, TextMode: mode, Limit: 100}.normalized()
 	_, err := scanLokiWindow(context.Background(), q, scanStart, scanEnd, true, 150*time.Millisecond,
 		func(ctx context.Context, from, to time.Time) ([]LogEntry, error) {
 			time.Sleep(60 * time.Millisecond)

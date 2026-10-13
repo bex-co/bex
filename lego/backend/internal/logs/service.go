@@ -461,12 +461,6 @@ func NormalizeTypes(types []string) ([]string, error) {
 	return slices.Compact(slices.Sorted(slices.Values(out))), nil
 }
 
-// displaySearch reports whether the query searches the displayed text rather
-// than the raw bytes — the case where a raw-byte prefilter would be wrong.
-func (q LogQuery) displaySearch() bool {
-	return len(q.Search) > 0 && q.TextMode == TextModeDisplay
-}
-
 // localTextSearch reports whether Loki must return raw candidate lines and let
 // Go apply the final text matcher. Loki's regexp simplifier can turn some
 // case-insensitive Unicode literals into byte contains filters that are not a
