@@ -184,6 +184,59 @@ describe("RangeSelect edit active custom range (w4/245)", () => {
     );
   });
 
+  // w4/279: the footer Cancel bypassed the dialog's close handler, so the
+  // rejected-Apply warning survived and reappeared beside the reseeded dates.
+  it.each([
+    ["2026-10-10T17:46", "The end must be after the start."],
+    ["2026-09-01T17:45", "Choose a window of 30 days or less."],
+  ])(
+    "drops a rejected-Apply warning on Cancel (start %s)",
+    async (badStart, warning) => {
+      const user = userEvent.setup();
+      const onRangeChange = vi.fn();
+      render(
+        <StatefulRangeSelect
+          initial={{
+            id: "custom",
+            startTime: iso("2026-10-10T17:45"),
+            endTime: iso("2026-10-10T17:46"),
+            resolutionSeconds: 60,
+          }}
+          onRangeChange={onRangeChange}
+        />,
+      );
+
+      await user.click(
+        screen.getByRole("button", { name: "Edit custom range" }),
+      );
+      fireEvent.change(screen.getByLabelText("Start"), {
+        target: { value: badStart },
+      });
+      await user.click(screen.getByRole("button", { name: "Apply" }));
+      expect(screen.getByRole("alert")).toHaveTextContent(warning);
+
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+      await user.click(
+        screen.getByRole("button", { name: "Edit custom range" }),
+      );
+      expect(screen.getByLabelText("Start")).toHaveValue("2026-10-10T17:45");
+      expect(screen.getByLabelText("End")).toHaveValue("2026-10-10T17:46");
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(onRangeChange).not.toHaveBeenCalled();
+
+      fireEvent.change(screen.getByLabelText("End"), {
+        target: { value: "2026-10-10T17:47" },
+      });
+      await user.click(screen.getByRole("button", { name: "Apply" }));
+      expect(onRangeChange).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          startTime: iso("2026-10-10T17:45"),
+          endTime: iso("2026-10-10T17:47"),
+        }),
+      );
+    },
+  );
+
   it("edits a custom range loaded from the URL with the keyboard", async () => {
     const user = userEvent.setup();
     const onRangeChange = vi.fn();

@@ -168,14 +168,15 @@ function CustomRangeDialog({
     onApply(made);
   }
 
+  // Every close — Radix dismissal and the footer Cancel alike — drops the
+  // warning, or reopening shows it beside the reseeded valid dates (w4/279).
+  function changeOpen(next: boolean) {
+    if (!next) setError(null);
+    onOpenChange(next);
+  }
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) setError(null);
-        onOpenChange(next);
-      }}
-    >
+    <Dialog open={open} onOpenChange={changeOpen}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t("metrics.rangeCustomTitle")}</DialogTitle>
@@ -218,7 +219,7 @@ function CustomRangeDialog({
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => changeOpen(false)}>
             {t("metrics.rangeCustomCancel")}
           </Button>
           <Button onClick={apply}>{t("metrics.rangeCustomApply")}</Button>
