@@ -91,3 +91,65 @@ func TestBlueprintReferenceErrorsLocateTheEnvEntry(t *testing.T) {
 		})
 	}
 }
+
+// w8/100 (sweep208): ordinary service and group env refusals also name their
+// entry, so a key such as IMAGE, PLAN, TYPE or CONNECTIONPOOL no longer
+// selects an unrelated or nonexistent field by keyword.
+func TestBlueprintEnvValueRefusalsLocateTheEntry(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	const image = `"runtime":"image","image":{"url":"nginx:1"}`
+	plain := `{"key":"PLAIN","value":"ok"}`
+	conflict := func(key string) string { return `{"key":"` + key + `","value":"","generateValue":true}` }
+	service := func(envs string) string {
+		return `{"name":"api","type":"web",` + image + `,"envVars":[` + envs + `]}`
+	}
+	group := func(envs string) string { return `{"name":"shared","envVars":[` + envs + `]}` }
+	root := func(services, groups string) string {
+		doc := `{"services":[` + services + `]`
+		if groups != "" {
+			doc += `,"envVarGroups":[` + groups + `]`
+		}
+		return doc + `}`
+	}
+	nested := func(services, groups string) string {
+		env := `{"name":"e","services":[` + services + `]`
+		if groups != "" {
+			env += `,"envVarGroups":[` + groups + `]`
+		}
+		return `{"projects":[{"name":"p","environments":[` + env + `}]}]}`
+	}
+	const nest = "projects[0].environments[0]."
+	type tc struct{ name, manifest, wantPath string }
+	var cases []tc
+	for _, key := range []string{"IMAGE", "PLAN", "TYPE", "CONNECTIONPOOL"} {
+		cases = append(cases,
+			tc{"service first " + key, root(service(conflict(key)), ""), "services[0].envVars[0]"},
+			tc{"service second " + key, root(service(plain+","+conflict(key)), ""), "services[0].envVars[1]"},
+			tc{"nested service second " + key, nested(service(plain+","+conflict(key)), ""), nest + "services[0].envVars[1]"},
+			tc{"group first " + key, root(service(plain), group(conflict(key))), "envVarGroups[0].envVars[0]"},
+			tc{"group second " + key, root(service(plain), group(plain+","+conflict(key))), "envVarGroups[0].envVars[1]"},
+			tc{"nested group second " + key, nested(service(plain), group(plain+","+conflict(key))), nest + "envVarGroups[0].envVars[1]"},
+		)
+	}
+	// A group reference is refused by the pinned schema before parsing.
+	cases = append(cases,
+		tc{"group sync:false", root(service(plain), group(plain+`,{"key":"TYPE","value":"x","sync":false}`)), "envVarGroups[0].envVars[1]"},
+	)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			result, err := svc.ValidateBlueprint(context.Background(), "", c.manifest, "")
+			if err != nil {
+				t.Fatalf("ValidateBlueprint: %v", err)
+			}
+			if result.Valid || len(result.Errors) != 1 || result.Errors[0].Path == nil || *result.Errors[0].Path != c.wantPath {
+				t.Fatalf("validation = %+v, want one refusal at %s", result, c.wantPath)
+			}
+		})
+	}
+	// Controls keep their decisions: an empty literal alone and generation alone are valid.
+	for _, ok := range []string{root(service(`{"key":"PLAN","value":""}`), group(`{"key":"TYPE","generateValue":true}`))} {
+		if result, err := svc.ValidateBlueprint(context.Background(), "", ok, ""); err != nil || !result.Valid {
+			t.Fatalf("control = %+v, %v; want valid", result, err)
+		}
+	}
+}

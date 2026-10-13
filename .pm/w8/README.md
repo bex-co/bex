@@ -111,7 +111,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **101** — [Blueprint static rule errors point to the service instead of the invalid rule](done/101.md) — **DONE 2026-10-13** (fix `2fb562c4a`; sweep212 native matrix passes with exact field locations; GraphQL/MCP details agree in code)
 
-- [ ] **100** — [Blueprint environment errors point to unrelated or nonexistent fields](100.md) (minor; 35m remaining) ← reopened by sweep208: reference-only fix is on main, but ordinary service/group value-generation conflicts still select unrelated or phantom fields; 24 native checks, four exact wire captures and eight current-source diagnostics; no resources.
+- [ ] **100** — [Blueprint environment errors point to unrelated or nonexistent fields](blocked/100.md) — **BLOCKED (2026-10-13: reference and ordinary service/group env refusals now locate the authored envVars entry; needs the fix deployed to production plus fresh native Bex/Render replay of the sweep208 matrix)**
 
 - [x] **098** — [Blueprint validation accepts Key Value envVarKey refs that resolve to an empty key](done/098.md) — **DONE 2026-10-13** (fixes `fcd0d1124`/`0daac2275`; sweeps 207/212 native matrices pass; REST/GraphQL/MCP agreement in code; hosted apply recorded as a boundary)
 
