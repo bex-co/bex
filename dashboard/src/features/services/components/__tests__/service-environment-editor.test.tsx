@@ -1279,3 +1279,73 @@ describe("ServiceEnvironmentEditor overlapping file uploads (w4/m205)", () => {
     expect(skippedNotice()).toBeInTheDocument();
   });
 });
+
+// w4/285: the upload decoder dropped a leading UTF-8 byte-order mark, so the
+// saved file was three bytes shorter than the one selected.
+describe("ServiceEnvironmentEditor uploaded file contents (w4/285)", () => {
+  function bytesFile(name: string, bytes: number[]) {
+    const file = new File([new Uint8Array(bytes)], name);
+    Object.defineProperty(file, "arrayBuffer", {
+      value: () => Promise.resolve(new Uint8Array(bytes).buffer),
+    });
+    return file;
+  }
+  const utf8 = (text: string) => Array.from(new TextEncoder().encode(text));
+  const BOM = [0xef, 0xbb, 0xbf];
+
+  it("saves the exact text of each accepted upload, a leading byte-order mark included", async () => {
+    const user = userEvent.setup();
+    const { container } = renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    const input = container.querySelector<HTMLInputElement>(
+      'input[type="file"][multiple]',
+    )!;
+    fireEvent.change(input, {
+      target: {
+        files: [
+          bytesFile("bom.txt", [...BOM, ...utf8("qa-bom\n")]),
+          bytesFile("crlf.txt", utf8("one\r\ntwo\r\n")),
+          bytesFile("inner.txt", utf8("a\uFEFFb")),
+          bytesFile("empty.txt", []),
+        ],
+      },
+    });
+    expect(await screen.findByDisplayValue("empty.txt")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/upload it base64-encoded/),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Save and deploy" }));
+    await waitFor(() => expect(save).toHaveBeenCalled());
+    const saved = save.mock.calls[0][1].secretFiles;
+    expect(saved).toEqual([
+      { name: "bom.txt", content: "\uFEFFqa-bom\n" },
+      { name: "crlf.txt", content: "one\r\ntwo\r\n" },
+      { name: "inner.txt", content: "a\uFEFFb" },
+      { name: "empty.txt", content: "" },
+    ]);
+    expect(saved[0].content.codePointAt(0)).toBe(0xfeff);
+  });
+
+  it("still refuses invalid UTF-8 and NUL bytes, with or without a byte-order mark", async () => {
+    const user = userEvent.setup();
+    const { container } = renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    const input = container.querySelector<HTMLInputElement>(
+      'input[type="file"][multiple]',
+    )!;
+    fireEvent.change(input, {
+      target: {
+        files: [
+          bytesFile("bad.bin", [...BOM, 0xff, 0xfe]),
+          bytesFile("nul.txt", [...BOM, 0x61, 0x00]),
+          bytesFile("good.txt", utf8("ok")),
+        ],
+      },
+    });
+    expect(await screen.findByDisplayValue("good.txt")).toBeInTheDocument();
+    expect(screen.getByText(/upload it base64-encoded/)).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("bad.bin")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("nul.txt")).not.toBeInTheDocument();
+  });
+});

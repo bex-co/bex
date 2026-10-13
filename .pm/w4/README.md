@@ -272,7 +272,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **286** — [Generated secret adds a duplicate variable key after padding an existing key](286.md) (40m) ← functional QA a356; desktop/fresh mobile generation uses raw names while validation trims, blocking Save; normal suffix and accepted-padding controls pass, unlinked owned group deleted and session revoked.
 
-- [ ] **285** — [Secret-file uploads drop a valid leading UTF-8 byte-order mark](285.md) (45m) ← functional QA a349; desktop and fresh mobile uploads omit the prefix before saving, while direct edits and empty/CRLF controls preserve contents; unlinked owned group deleted and session revoked.
+- [ ] **285** — [Secret-file uploads drop a valid leading UTF-8 byte-order mark](blocked/285.md) — **BLOCKED (release pipeline deploys the dashboard; QA replays the a349 journey on an owned unlinked group: upload the 15-byte BOM file with the empty and CRLF files, Save only, and the read-back content starts with U+FEFF, at desktop and a fresh 390px page; empty and CRLF contents unchanged; then deletes the group)**. Decoder option + regressions done 2026-10-13: the upload decoder keeps a leading byte-order mark (`ignoreBOM: true`, still `fatal`); dashboard suite + lint green.
 
 - [ ] **284** — [Browser Back from a deploy detail discards history filters](284.md) (55m) ← functional QA a347; desktop and fresh 390px filtered list → detail → Back clear search/status and broaden the list; ordinary filter controls pass, owned Free service deleted and session revoked.
 
