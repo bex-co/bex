@@ -14,8 +14,8 @@ export interface UseAutoDeployResult {
 /**
  * Wires the Build & Deploy Auto-Deploy toggle to bex-api's `setAutoDeploy`
  * (spec.autoDeploy). Flipping it changes whether a future git push redeploys the
- * service; it does not itself redeploy. On failure the caller reverts the
- * optimistic switch state.
+ * service; it does not itself redeploy. The mutation returns `{ id autoDeploy }`,
+ * so the normalized Service carries the saved value before this resolves.
  */
 export function useAutoDeploy(): UseAutoDeployResult {
   const { t } = useTranslations();
