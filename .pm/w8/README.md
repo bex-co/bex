@@ -107,13 +107,13 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **102** — [Blueprint environment copies use a literal shadowed by a reference](102.md) (20m remaining acceptance) ← sweep212 primary native gate passes after API pin c1dab29d39c9; complete matrix/wire and no resources; original caller/current-state/sibling/non-REST boundaries remain open.
+- [x] **102** — [Blueprint environment copies use a literal shadowed by a reference](done/102.md) — **DONE 2026-10-13** (fix `13a2fd5eb`; sweep212 16-case native matrix passes; DeployStack zero-write and GraphQL/MCP agreement in code; hosted apply recorded as a boundary)
 
-- [ ] **101** — [Blueprint static rule errors point to the service instead of the invalid rule](101.md) (15m remaining acceptance) ← sweep212 primary native gate passes after API pin c1dab29d39c9; complete matrix/wire and no resources; original caller/current-state/sibling/non-REST boundaries remain open.
+- [x] **101** — [Blueprint static rule errors point to the service instead of the invalid rule](done/101.md) — **DONE 2026-10-13** (fix `2fb562c4a`; sweep212 native matrix passes with exact field locations; GraphQL/MCP details agree in code)
 
 - [ ] **100** — [Blueprint environment errors point to unrelated or nonexistent fields](100.md) (minor; 35m remaining) ← reopened by sweep208: reference-only fix is on main, but ordinary service/group value-generation conflicts still select unrelated or phantom fields; 24 native checks, four exact wire captures and eight current-source diagnostics; no resources.
 
-- [ ] **098** — [Blueprint validation accepts Key Value envVarKey refs that resolve to an empty key](098.md) (10m remaining acceptance) ← sweep212 primary native gate passes after API pin c1dab29d39c9; complete matrix/wire and no resources; original caller/current-state/sibling/non-REST boundaries remain open.
+- [x] **098** — [Blueprint validation accepts Key Value envVarKey refs that resolve to an empty key](done/098.md) — **DONE 2026-10-13** (fixes `fcd0d1124`/`0daac2275`; sweeps 207/212 native matrices pass; REST/GraphQL/MCP agreement in code; hosted apply recorded as a boundary)
 
 - [x] **097** — [Literal alert/emergency severities become unknown and disappear from CLI level filters](done/097.md) — **DONE 2026-10-13** (fix `b250f2acb`; live App severity labels and all 20 native filters pass; platform/GraphQL/MCP/dashboard and pre-rollout history recorded as unexercised boundaries)
 
