@@ -1757,6 +1757,13 @@ func poolerRequiredError(service, database string) error {
 	return fmt.Errorf("%w: service %q: fromDatabase connectionPoolString requires database %q connectionPool: pgbouncer", core.ErrBadRequest, service, database)
 }
 
+// envRefError names the referencing env entry in a parse-time reference
+// refusal, so validation locates envVars["KEY"] instead of guessing a service
+// field from words in the message (w8/100).
+func envRefError(service, key string, err error) error {
+	return fmt.Errorf("%w: service %q: envVars[%q]: %v", core.ErrBadRequest, service, key, err)
+}
+
 // registerUniqueName checks for duplicate names across services and databases.
 func registerUniqueName(name string, seen map[string]bool) error {
 	if seen[name] {
@@ -2063,7 +2070,7 @@ func (idx *stackIndex) classifyRefs(svc parsedService, refVars []bexEnvVar) (par
 	for _, r := range refVars {
 		if r.FromDatabase != nil {
 			if idx.databaseNames[r.FromDatabase.Name] && r.FromDatabase.Property == dbPropertyConnectionPoolString && !idx.databasePoolers[r.FromDatabase.Name] {
-				return parsedService{}, poolerRequiredError(svc.req.Name, r.FromDatabase.Name)
+				return parsedService{}, envRefError(svc.req.Name, r.Key, fmt.Errorf("fromDatabase connectionPoolString requires database %q connectionPool: pgbouncer", r.FromDatabase.Name))
 			}
 			svc.databaseRefs = append(svc.databaseRefs, r)
 			continue
@@ -2076,7 +2083,7 @@ func (idx *stackIndex) classifyRefs(svc parsedService, refVars []bexEnvVar) (par
 		// (host/hostport/port/envVarKey), so the message lives in one place.
 		allowExistingServiceHost := r.FromService != nil && r.FromService.EnvVarKey == "" && r.FromService.Property == serviceRefPropertyHost
 		if r.FromService != nil && !idx.names[r.FromService.Name] && !allowExistingServiceHost {
-			return parsedService{}, fmt.Errorf("%w: service %q: fromService references unknown service %q (declare it under services: in the same file)", core.ErrBadRequest, svc.req.Name, r.FromService.Name)
+			return parsedService{}, envRefError(svc.req.Name, r.Key, fmt.Errorf("fromService references unknown service %q (declare it under services: in the same file)", r.FromService.Name))
 		}
 		// A supplied type must describe the declared target, or a reference
 		// meant for a worker silently resolves against a web service (w8/096).
@@ -2109,7 +2116,7 @@ func (idx *stackIndex) classifyRefs(svc parsedService, refVars []bexEnvVar) (par
 		}
 		ev, err := resolveRef(r, idx.servicePorts, idx.serviceKnownEnv)
 		if err != nil {
-			return parsedService{}, fmt.Errorf("%w: service %q: %v", core.ErrBadRequest, svc.req.Name, err)
+			return parsedService{}, envRefError(svc.req.Name, r.Key, err)
 		}
 		svc.req.Env = append(svc.req.Env, ev)
 	}
