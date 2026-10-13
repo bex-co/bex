@@ -1,0 +1,965 @@
+{
+  "pass": "a364",
+  "scope": "Functional live dashboard QA; filing only; numeric free-text URL decoding",
+  "fixture": {
+    "id": "srv-db75ubna4m3s73d9i6j0",
+    "name": "qa-20261013-a364-logs",
+    "plan": "free",
+    "publicUrl": "https://qa-20261013-a364-logs.onbex.co",
+    "image": "docker.io/library/python:3.13-alpine",
+    "command": "python -u -c 'exec(\"import json,os\\nfrom http.server import BaseHTTPRequestHandler,HTTPServer\\nclass H(BaseHTTPRequestHandler):\\n def do_GET(self):\\n  if self.path.startswith('\\''/qa-a364-log'\\''):\\n   print(json.dumps({\\\"event\\\":\\\"qa-a364-structured\\\",\\\"counter\\\":9007199254740993,\\\"label\\\":\\\"雪 café 🐟\\\",\\\"empty\\\":\\\"\\\",\\\"zero\\\":0,\\\"flag\\\":False},ensure_ascii=False,separators=('\\'','\\'','\\'':'\\'')),flush=True)\\n   print('\\''qa-a364-'\\''+chr(27)+'\\''[31mcolor'\\''+chr(27)+'\\''[0m 雪 café 🐟'\\'',flush=True)\\n  body=b'\\''qa-a364-live\\\\n'\\''\\n  self.send_response(200);self.send_header('\\''Content-Type'\\'','\\''text/plain'\\'');self.send_header('\\''Content-Length'\\'',str(len(body)));self.end_headers();self.wfile.write(body)\\n def log_message(self,*args):pass\\nHTTPServer(('\\''0.0.0.0'\\'',int(os.environ['\\''PORT'\\''])),H).serve_forever()\\n\")'",
+    "program": "import json,os\nfrom http.server import BaseHTTPRequestHandler,HTTPServer\nclass H(BaseHTTPRequestHandler):\n def do_GET(self):\n  if self.path.startswith('/qa-a364-log'):\n   print(json.dumps({\"event\":\"qa-a364-structured\",\"counter\":9007199254740993,\"label\":\"雪 café 🐟\",\"empty\":\"\",\"zero\":0,\"flag\":False},ensure_ascii=False,separators=(',',':')),flush=True)\n   print('qa-a364-'+chr(27)+'[31mcolor'+chr(27)+'[0m 雪 café 🐟',flush=True)\n  body=b'qa-a364-live\\n'\n  self.send_response(200);self.send_header('Content-Type','text/plain');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)\n def log_message(self,*args):pass\nHTTPServer(('0.0.0.0',int(os.environ['PORT'])),H).serve_forever()\n",
+    "expectedMessage": "{\"event\":\"qa-a364-structured\",\"counter\":9007199254740993,\"label\":\"雪 café 🐟\",\"empty\":\"\",\"zero\":0,\"flag\":false}",
+    "expectedColor": "qa-a364-\u001b[31mcolor\u001b[0m 雪 café 🐟"
+  },
+  "baseline": {
+    "at": "2026-10-13T16:41:17.371Z",
+    "request": {
+      "operationName": "QaA364Inventory",
+      "query": "query QaA364Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    },
+    "createEnabled": true
+  },
+  "create": {
+    "at": "2026-10-13T16:41:18.894Z",
+    "request": [
+      {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "docker.io/library/python:3.13-alpine",
+          "name": "qa-20261013-a364-logs",
+          "type": "web_service",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "python -u -c 'exec(\"import json,os\\nfrom http.server import BaseHTTPRequestHandler,HTTPServer\\nclass H(BaseHTTPRequestHandler):\\n def do_GET(self):\\n  if self.path.startswith('\\''/qa-a364-log'\\''):\\n   print(json.dumps({\\\"event\\\":\\\"qa-a364-structured\\\",\\\"counter\\\":9007199254740993,\\\"label\\\":\\\"雪 café 🐟\\\",\\\"empty\\\":\\\"\\\",\\\"zero\\\":0,\\\"flag\\\":False},ensure_ascii=False,separators=('\\'','\\'','\\'':'\\'')),flush=True)\\n   print('\\''qa-a364-'\\''+chr(27)+'\\''[31mcolor'\\''+chr(27)+'\\''[0m 雪 café 🐟'\\'',flush=True)\\n  body=b'\\''qa-a364-live\\\\n'\\''\\n  self.send_response(200);self.send_header('\\''Content-Type'\\'','\\''text/plain'\\'');self.send_header('\\''Content-Length'\\'',str(len(body)));self.end_headers();self.wfile.write(body)\\n def log_message(self,*args):pass\\nHTTPServer(('\\''0.0.0.0'\\'',int(os.environ['\\''PORT'\\''])),H).serve_forever()\\n\")'",
+          "plan": "free",
+          "port": 3000,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db75ubna4m3s73d9i6j0",
+            "latestDeployId": "dep-db75ubna4m3s73d9i6jg",
+            "name": "qa-20261013-a364-logs",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      }
+    ],
+    "url": "https://dashboard.bex.co/services/srv-db75ubna4m3s73d9i6j0/deploys/dep-db75ubna4m3s73d9i6jg"
+  },
+  "liveAndMarker": {
+    "at": "2026-10-13T16:43:33.060Z",
+    "request": {
+      "operationName": "QaA364Live",
+      "query": "query QaA364Live($id:String!){server(id:$id){id phase plan revision} deploys(serviceId:$id){id status startedAt finishedAt failureReason}}",
+      "variables": {
+        "id": "srv-db75ubna4m3s73d9i6j0"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deploys": [
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-13T16:41:36.891214Z",
+            "id": "dep-db75ubna4m3s73d9i6jg",
+            "startedAt": "2026-10-13T16:41:23.0587Z",
+            "status": "live"
+          }
+        ],
+        "server": {
+          "id": "srv-db75ubna4m3s73d9i6j0",
+          "phase": "Running",
+          "plan": "free",
+          "revision": "rev-1"
+        }
+      }
+    },
+    "publicStatus": 200,
+    "publicBody": "qa-a364-live\n",
+    "markerStatus": 200,
+    "markerBody": "qa-a364-live\n",
+    "url": "https://dashboard.bex.co/services/srv-db75ubna4m3s73d9i6j0/logs?type=app&live=0&text=qa-a364-structured"
+  },
+  "exactStoredLogs": {
+    "at": "2026-10-13T16:46:46.207Z",
+    "request": {
+      "operationName": "QaA364ExactLogs",
+      "query": "query QaA364ExactLogs($resource:String!){logs(resource:$resource,type:\"app\",text:\"qa-a364\",textMode:\"raw\",limit:100){hasMore logs{timestamp message instance type}} display:logs(resource:$resource,type:\"app\",text:\"qa-a364-color\",textMode:\"display\",limit:100){hasMore logs{timestamp message instance type}} raw:logs(resource:$resource,type:\"app\",text:\"qa-a364-color\",textMode:\"raw\",limit:100){hasMore logs{timestamp message instance type}}}",
+      "variables": {
+        "resource": "srv-db75ubna4m3s73d9i6j0"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "display": {
+          "hasMore": false,
+          "logs": [
+            {
+              "instance": "srv-db75ubna4m3s73d9i6j0-ks50su20c7hdhf8l236c",
+              "message": "qa-a364-\u001b[31mcolor\u001b[0m 雪 café 🐟",
+              "timestamp": "2026-10-13T16:43:31.473100858Z",
+              "type": "app"
+            }
+          ]
+        },
+        "logs": {
+          "hasMore": false,
+          "logs": [
+            {
+              "instance": "srv-db75ubna4m3s73d9i6j0-ks50su20c7hdhf8l236c",
+              "message": "{\"event\":\"qa-a364-structured\",\"counter\":9007199254740993,\"label\":\"雪 café 🐟\",\"empty\":\"\",\"zero\":0,\"flag\":false}",
+              "timestamp": "2026-10-13T16:43:31.473051586Z",
+              "type": "app"
+            },
+            {
+              "instance": "srv-db75ubna4m3s73d9i6j0-ks50su20c7hdhf8l236c",
+              "message": "qa-a364-\u001b[31mcolor\u001b[0m 雪 café 🐟",
+              "timestamp": "2026-10-13T16:43:31.473100858Z",
+              "type": "app"
+            }
+          ]
+        },
+        "raw": {
+          "hasMore": false,
+          "logs": []
+        }
+      }
+    }
+  },
+  "coloredTextControl": {
+    "at": "2026-10-13T16:46:48.196Z",
+    "request": [
+      {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db75ubna4m3s73d9i6j0",
+          "type": "app",
+          "text": "qa-a364-color",
+          "textMode": "display",
+          "startTime": "2026-10-13T15:46:33.318Z",
+          "endTime": "2026-10-13T16:46:33.318Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db75ubna4m3s73d9i6j0-ks50su20c7hdhf8l236c",
+                "level": "unknown",
+                "message": "qa-a364-\u001b[31mcolor\u001b[0m 雪 café 🐟",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-13T16:43:31.473100858Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-13T16:43:31.473100857Z",
+            "nextStartTime": "2026-10-13T15:46:33.318Z"
+          }
+        }
+      }
+    ],
+    "url": "https://dashboard.bex.co/services/srv-db75ubna4m3s73d9i6j0/logs?type=app&text=qa-a364-color&live=0",
+    "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261013-a364-logs\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a364-logs\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db75ubna4m3s73d9i6j0/deploys/dep-db75ubna4m3s73d9i6jg\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db75ubna4m3s73d9i6j0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db75ubna4m3s73d9i6j0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a364-logs.onbex.co\":\n    - /url: https://qa-20261013-a364-logs.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a364-logs\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 5m\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\": qa-a364-color\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 09:43:31 AM\n  - button \"Filter logs by instance srv-db75ubna4m3s73d9i6j0-ks50su20c7hdhf8l236c\": \"[ks50s]\"\n  - text: qa-a364-color 雪 café 🐟\n  - paragraph: Live tail paused",
+    "colorSpan": [
+      {
+        "text": "color",
+        "color": "oklch(0.505 0.213 27.518)"
+      }
+    ]
+  },
+  "initialMobileFailure": {
+    "at": "2026-10-13T16:51:28.356Z",
+    "url": "https://dashboard.bex.co/services/srv-db75ubna4m3s73d9i6j0/logs?type=app&text=%229007199254740992%22&live=0",
+    "search": "9007199254740992",
+    "live": false,
+    "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261013-a364-logs\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a364-logs\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db75ubna4m3s73d9i6j0/deploys/dep-db75ubna4m3s73d9i6jg\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db75ubna4m3s73d9i6j0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db75ubna4m3s73d9i6j0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a364-logs.onbex.co\":\n    - /url: https://qa-20261013-a364-logs.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a364-logs\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 10m\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\": \"9007199254740992\"\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - paragraph: No matching logs\n  - paragraph: No logs match these filters."
+  },
+  "typedExactControl": {
+    "at": "2026-10-13T16:54:58.909Z",
+    "request": [
+      {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db75ubna4m3s73d9i6j0",
+          "type": "app",
+          "text": "9007199254740993",
+          "textMode": "display",
+          "startTime": "2026-10-13T15:54:53.743Z",
+          "endTime": "2026-10-13T16:54:53.743Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db75ubna4m3s73d9i6j0-ks50su20c7hdhf8l236c",
+                "level": "unknown",
+                "message": "{\"event\":\"qa-a364-structured\",\"counter\":9007199254740993,\"label\":\"雪 café 🐟\",\"empty\":\"\",\"zero\":0,\"flag\":false}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-13T16:43:31.473051586Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-13T16:43:31.473051585Z",
+            "nextStartTime": "2026-10-13T15:54:53.743Z"
+          }
+        }
+      }
+    ],
+    "search": "9007199254740993",
+    "url": "https://dashboard.bex.co/services/srv-db75ubna4m3s73d9i6j0/logs?type=app&text=%229007199254740993%22&live=0",
+    "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261013-a364-logs\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a364-logs\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db75ubna4m3s73d9i6j0/deploys/dep-db75ubna4m3s73d9i6jg\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db75ubna4m3s73d9i6j0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db75ubna4m3s73d9i6j0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a364-logs.onbex.co\":\n    - /url: https://qa-20261013-a364-logs.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a364-logs\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 13m\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\": \"9007199254740993\"\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 09:43:31 AM\n  - button \"Filter logs by instance srv-db75ubna4m3s73d9i6j0-ks50su20c7hdhf8l236c\": \"[ks50s]\"\n  - text: \"{\\\"event\\\":\\\"qa-a364-structured\\\",\\\"counter\\\":9007199254740993,\\\"label\\\":\\\"雪 café 🐟\\\",\\\"empty\\\":\\\"\\\",\\\"zero\\\":0,\\\"flag\\\":false}\"\n  - paragraph: Live tail paused"
+  },
+  "quotedReloadControl": {
+    "at": "2026-10-13T16:59:00.932Z",
+    "url": "https://dashboard.bex.co/services/srv-db75ubna4m3s73d9i6j0/logs?type=app&text=%229007199254740993%22&live=0",
+    "search": "9007199254740993",
+    "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261013-a364-logs\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a364-logs\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db75ubna4m3s73d9i6j0/deploys/dep-db75ubna4m3s73d9i6jg\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db75ubna4m3s73d9i6j0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db75ubna4m3s73d9i6j0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a364-logs.onbex.co\":\n    - /url: https://qa-20261013-a364-logs.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a364-logs\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 17m\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\": \"9007199254740993\"\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 09:43:31 AM\n  - button \"Filter logs by instance srv-db75ubna4m3s73d9i6j0-ks50su20c7hdhf8l236c\": \"[ks50s]\"\n  - text: \"{\\\"event\\\":\\\"qa-a364-structured\\\",\\\"counter\\\":9007199254740993,\\\"label\\\":\\\"雪 café 🐟\\\",\\\"empty\\\":\\\"\\\",\\\"zero\\\":0,\\\"flag\\\":false}\"\n  - paragraph: Live tail paused"
+  },
+  "freshDesktopFailure": {
+    "at": "2026-10-13T17:01:09.957Z",
+    "requestedUrl": "https://dashboard.bex.co/services/srv-db75ubna4m3s73d9i6j0/logs?type=app&text=9007199254740993&live=0",
+    "url": "https://dashboard.bex.co/services/srv-db75ubna4m3s73d9i6j0/logs?type=app&text=%229007199254740992%22&live=0",
+    "request": [
+      {
+        "operationName": "LogLabelValues",
+        "variables": {
+          "resource": "srv-db75ubna4m3s73d9i6j0",
+          "label": "level"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+      },
+      {
+        "operationName": "LogLabelValues",
+        "variables": {
+          "resource": "srv-db75ubna4m3s73d9i6j0",
+          "label": "method"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+      },
+      {
+        "operationName": "LogLabelValues",
+        "variables": {
+          "resource": "srv-db75ubna4m3s73d9i6j0",
+          "label": "statusCode"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+      },
+      {
+        "operationName": "LogLabelValues",
+        "variables": {
+          "resource": "srv-db75ubna4m3s73d9i6j0",
+          "label": "instance"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+      },
+      {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db75ubna4m3s73d9i6j0",
+          "type": "app",
+          "text": "9007199254740992",
+          "textMode": "display",
+          "startTime": "2026-10-13T16:01:08.852Z",
+          "endTime": "2026-10-13T17:01:08.852Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "logLabelValues": ["unknown"]
+        }
+      },
+      {
+        "data": {
+          "logLabelValues": ["GET"]
+        }
+      },
+      {
+        "data": {
+          "logLabelValues": ["200", "503"]
+        }
+      },
+      {
+        "data": {
+          "logLabelValues": ["srv-db75ubna4m3s73d9i6j0-ks50su20c7hdhf8l236c"]
+        }
+      },
+      {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [],
+            "nextEndTime": "2026-10-13T17:01:08Z",
+            "nextStartTime": "2026-10-13T16:01:08Z"
+          }
+        }
+      }
+    ],
+    "search": "9007199254740992",
+    "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261013-a364-logs\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a364-logs\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db75ubna4m3s73d9i6j0/deploys/dep-db75ubna4m3s73d9i6jg\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db75ubna4m3s73d9i6j0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db75ubna4m3s73d9i6j0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a364-logs.onbex.co\":\n    - /url: https://qa-20261013-a364-logs.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a364-logs\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 19m\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\": \"9007199254740992\"\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - paragraph: No matching logs\n  - paragraph: No logs match these filters."
+  },
+  "liveAppendControl": {
+    "at": "2026-10-13T17:07:22.310Z",
+    "url": "https://dashboard.bex.co/services/srv-db75ubna4m3s73d9i6j0/logs?type=app&text=%229007199254740993%22",
+    "markerStatus": 200,
+    "before": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261013-a364-logs\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a364-logs\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db75ubna4m3s73d9i6j0/deploys/dep-db75ubna4m3s73d9i6jg\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db75ubna4m3s73d9i6j0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db75ubna4m3s73d9i6j0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a364-logs.onbex.co\":\n    - /url: https://qa-20261013-a364-logs.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a364-logs\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 26m\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\": \"9007199254740993\"\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 09:43:31 AM\n  - button \"Filter logs by instance srv-db75ubna4m3s73d9i6j0-ks50su20c7hdhf8l236c\": \"[ks50s]\"\n  - text: \"{\\\"event\\\":\\\"qa-a364-structured\\\",\\\"counter\\\":9007199254740993,\\\"label\\\":\\\"雪 café 🐟\\\",\\\"empty\\\":\\\"\\\",\\\"zero\\\":0,\\\"flag\\\":false}\"\n  - paragraph: Live tail paused",
+    "after": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261013-a364-logs\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a364-logs\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db75ubna4m3s73d9i6j0/deploys/dep-db75ubna4m3s73d9i6jg\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db75ubna4m3s73d9i6j0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db75ubna4m3s73d9i6j0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a364-logs.onbex.co\":\n    - /url: https://qa-20261013-a364-logs.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a364-logs\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 26m\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\": \"9007199254740993\"\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\" [checked]\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 09:43:31 AM\n  - button \"Filter logs by instance srv-db75ubna4m3s73d9i6j0-ks50su20c7hdhf8l236c\": \"[ks50s]\"\n  - text: \"{\\\"event\\\":\\\"qa-a364-structured\\\",\\\"counter\\\":9007199254740993,\\\"label\\\":\\\"雪 café 🐟\\\",\\\"empty\\\":\\\"\\\",\\\"zero\\\":0,\\\"flag\\\":false} 10:07:22 AM\"\n  - button \"Filter logs by instance srv-db75ubna4m3s73d9i6j0-ks50su20c7hdhf8l236c\": \"[ks50s]\"\n  - text: \"{\\\"event\\\":\\\"qa-a364-structured\\\",\\\"counter\\\":9007199254740993,\\\"label\\\":\\\"雪 café 🐟\\\",\\\"empty\\\":\\\"\\\",\\\"zero\\\":0,\\\"flag\\\":false}\"\n  - paragraph: Live — streaming new lines",
+    "search": "9007199254740993",
+    "width": {
+      "inner": 390,
+      "scroll": 390
+    }
+  },
+  "freshMobileFailure": {
+    "at": "2026-10-13T17:07:59.613Z",
+    "requestedUrl": "https://dashboard.bex.co/services/srv-db75ubna4m3s73d9i6j0/logs?type=app&text=9007199254740993&live=0",
+    "url": "https://dashboard.bex.co/services/srv-db75ubna4m3s73d9i6j0/logs?type=app&text=%229007199254740992%22&live=0",
+    "request": [
+      {
+        "operationName": "BillingReadiness",
+        "variables": {
+          "workspaceId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query BillingReadiness($workspaceId: String!) {\n  workspaceBillingReadiness(workspaceId: $workspaceId) {\n    workspaceId\n    mode\n    customerReady\n    subscriptionReady\n    paymentMethodReady\n    paymentMethodBrand\n    paymentMethodLast4\n    paymentMethodRequired\n    paymentMethodOnboardingRequired\n    lifecycle {\n      status\n      reason\n      graceDeadline\n      enforcementOwned\n      recoveryPending\n      allowedActions\n      updatedAt\n      __typename\n    }\n    tax {\n      configured\n      enabled\n      reason\n      productTaxCode\n      taxBehavior\n      registrationCount\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      {
+        "operationName": "Workspaces",
+        "variables": {},
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query Workspaces {\n  workspaces {\n    id\n    name\n    plan\n    role\n    createdAt\n    __typename\n  }\n}"
+      },
+      {
+        "operationName": "InstanceTypes",
+        "variables": {},
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query InstanceTypes {\n  instanceTypes {\n    id\n    name\n    cpu\n    memory\n    monthlyUsd\n    __typename\n  }\n}"
+      },
+      {
+        "operationName": "Deploys",
+        "variables": {
+          "serviceId": "srv-db75ubna4m3s73d9i6j0",
+          "limit": 1
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query Deploys($serviceId: String!, $status: [String], $createdBefore: String, $createdAfter: String, $updatedBefore: String, $updatedAfter: String, $finishedBefore: String, $finishedAfter: String, $cursor: String, $limit: Int) {\n  deploys(\n    serviceId: $serviceId\n    status: $status\n    createdBefore: $createdBefore\n    createdAfter: $createdAfter\n    updatedBefore: $updatedBefore\n    updatedAfter: $updatedAfter\n    finishedBefore: $finishedBefore\n    finishedAfter: $finishedAfter\n    cursor: $cursor\n    limit: $limit\n  ) {\n    id\n    status\n    trigger\n    image\n    rollbackOf\n    commitId\n    commitMessage\n    commitCreatedAt\n    createdAt\n    updatedAt\n    startedAt\n    finishedAt\n    preDeployStatus\n    failureReason\n    cancelReason\n    stallReason\n    __typename\n  }\n}"
+      },
+      {
+        "operationName": "LogLabelValues",
+        "variables": {
+          "resource": "srv-db75ubna4m3s73d9i6j0",
+          "label": "level"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+      },
+      {
+        "operationName": "LogLabelValues",
+        "variables": {
+          "resource": "srv-db75ubna4m3s73d9i6j0",
+          "label": "method"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+      },
+      {
+        "operationName": "LogLabelValues",
+        "variables": {
+          "resource": "srv-db75ubna4m3s73d9i6j0",
+          "label": "statusCode"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+      },
+      {
+        "operationName": "LogLabelValues",
+        "variables": {
+          "resource": "srv-db75ubna4m3s73d9i6j0",
+          "label": "instance"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+      },
+      {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db75ubna4m3s73d9i6j0",
+          "type": "app",
+          "text": "9007199254740992",
+          "textMode": "display",
+          "startTime": "2026-10-13T16:07:58.568Z",
+          "endTime": "2026-10-13T17:07:58.568Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "workspaceBillingReadiness": {
+            "__typename": "WorkspaceBillingReadiness",
+            "customerReady": true,
+            "lifecycle": {
+              "__typename": "BillingLifecycle",
+              "allowedActions": ["update_payment_method", "open_portal"],
+              "enforcementOwned": false,
+              "graceDeadline": "",
+              "reason": "",
+              "recoveryPending": false,
+              "status": "healthy",
+              "updatedAt": "2026-09-16T01:07:23Z"
+            },
+            "mode": "live",
+            "paymentMethodBrand": "amex",
+            "paymentMethodLast4": "2005",
+            "paymentMethodOnboardingRequired": false,
+            "paymentMethodReady": true,
+            "paymentMethodRequired": true,
+            "subscriptionReady": true,
+            "tax": {
+              "__typename": "BillingTaxReadiness",
+              "configured": false,
+              "enabled": false,
+              "productTaxCode": "",
+              "reason": "product_tax_not_configured",
+              "registrationCount": 0,
+              "taxBehavior": ""
+            },
+            "workspaceId": "tea-d98210cbbpdc73dcrkvg"
+          }
+        }
+      },
+      {
+        "data": {
+          "workspaces": [
+            {
+              "__typename": "Workspace",
+              "createdAt": "2026-07-09T22:28:17Z",
+              "id": "tea-d98210cbbpdc73dcrkvg",
+              "name": "bex",
+              "plan": "scale",
+              "role": "admin"
+            },
+            {
+              "__typename": "Workspace",
+              "createdAt": "2026-08-19T04:17:14Z",
+              "id": "tea-da2isimlm39c739m4ofg",
+              "name": "tian-personal",
+              "plan": "hobby",
+              "role": "admin"
+            },
+            {
+              "__typename": "Workspace",
+              "createdAt": "2026-09-12T06:37:24Z",
+              "id": "tea-daif693dqjvc73e7as3g",
+              "name": "bex-canary",
+              "plan": "hobby",
+              "role": "admin"
+            }
+          ]
+        }
+      },
+      {
+        "data": {
+          "instanceTypes": [
+            {
+              "__typename": "InstanceType",
+              "cpu": "100m",
+              "id": "free",
+              "memory": "512Mi",
+              "monthlyUsd": "0.00",
+              "name": "Free"
+            },
+            {
+              "__typename": "InstanceType",
+              "cpu": "500m",
+              "id": "starter",
+              "memory": "512Mi",
+              "monthlyUsd": "4.90",
+              "name": "Starter"
+            },
+            {
+              "__typename": "InstanceType",
+              "cpu": "1",
+              "id": "standard",
+              "memory": "2Gi",
+              "monthlyUsd": "17.50",
+              "name": "Standard"
+            },
+            {
+              "__typename": "InstanceType",
+              "cpu": "2",
+              "id": "pro",
+              "memory": "4Gi",
+              "monthlyUsd": "59.50",
+              "name": "Pro"
+            },
+            {
+              "__typename": "InstanceType",
+              "cpu": "4",
+              "id": "pro_plus",
+              "memory": "8Gi",
+              "monthlyUsd": "122.50",
+              "name": "Pro Plus"
+            },
+            {
+              "__typename": "InstanceType",
+              "cpu": "4",
+              "id": "pro_max",
+              "memory": "16Gi",
+              "monthlyUsd": "157.50",
+              "name": "Pro Max"
+            },
+            {
+              "__typename": "InstanceType",
+              "cpu": "8",
+              "id": "pro_ultra",
+              "memory": "32Gi",
+              "monthlyUsd": "315.00",
+              "name": "Pro Ultra"
+            }
+          ]
+        }
+      },
+      {
+        "data": {
+          "deploys": [
+            {
+              "__typename": "Deploy",
+              "cancelReason": "",
+              "commitCreatedAt": "",
+              "commitId": "",
+              "commitMessage": "",
+              "createdAt": "2026-10-13T16:41:18.76668Z",
+              "failureReason": "",
+              "finishedAt": "2026-10-13T16:41:36.891214Z",
+              "id": "dep-db75ubna4m3s73d9i6jg",
+              "image": "docker.io/library/python:3.13-alpine",
+              "preDeployStatus": "",
+              "rollbackOf": "",
+              "stallReason": "",
+              "startedAt": "2026-10-13T16:41:23.0587Z",
+              "status": "live",
+              "trigger": "create",
+              "updatedAt": "2026-10-13T16:41:36.891215Z"
+            }
+          ]
+        }
+      },
+      {
+        "data": {
+          "logLabelValues": ["unknown"]
+        }
+      },
+      {
+        "data": {
+          "logLabelValues": ["GET"]
+        }
+      },
+      {
+        "data": {
+          "logLabelValues": ["200", "503"]
+        }
+      },
+      {
+        "data": {
+          "logLabelValues": ["srv-db75ubna4m3s73d9i6j0-ks50su20c7hdhf8l236c"]
+        }
+      },
+      {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [],
+            "nextEndTime": "2026-10-13T17:07:58Z",
+            "nextStartTime": "2026-10-13T16:07:58Z"
+          }
+        }
+      }
+    ],
+    "search": "9007199254740992",
+    "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261013-a364-logs\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a364-logs\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db75ubna4m3s73d9i6j0/deploys/dep-db75ubna4m3s73d9i6jg\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db75ubna4m3s73d9i6j0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db75ubna4m3s73d9i6j0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a364-logs.onbex.co\":\n    - /url: https://qa-20261013-a364-logs.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a364-logs\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 26m\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\": \"9007199254740992\"\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - paragraph: No matching logs\n  - paragraph: No logs match these filters.",
+    "screenshot": "qa-numeric-log-search-a364-mobile.png",
+    "width": {
+      "inner": 390,
+      "scroll": 390
+    }
+  },
+  "delete": {
+    "at": "2026-10-13T17:08:11.551Z",
+    "request": [
+      {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db75ubna4m3s73d9i6j0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "deleteService": true
+        }
+      }
+    ],
+    "url": "https://dashboard.bex.co/"
+  },
+  "cleanup": {
+    "at": "2026-10-13T17:08:39.159Z",
+    "request": {
+      "operationName": "QaA364Inventory",
+      "query": "query QaA364Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    },
+    "detailStatus": 404,
+    "publicStatus": 404
+  },
+  "allSevenInventoryIdsRestored": true,
+  "sessionCleanup": {
+    "at": "2026-10-13T17:09:07.634Z",
+    "ownersStatus": 401,
+    "cookies": 0,
+    "pages": 1,
+    "url": "about:blank"
+  },
+  "ownedSessionHandlesRemoved": true,
+  "screenshot": {
+    "path": ".playwright-mcp/qa-numeric-log-search-a364-mobile.png",
+    "bytes": 60230,
+    "viewed": true,
+    "durableEvidence": "Complete request/response and DOM receipts above are primary; screenshot is ignored."
+  },
+  "limitations": [
+    "Bare numeric links were manually composed from the documented accepted numeric-looking text input; UI-generated quoted links pass.",
+    "Only service Logs was driven for this URL-decoding failure; Postgres/Key Value share the text decoder by source census and require implementation regression coverage.",
+    "Scientific-notation normalization is an installed-framework source control, not a live logged-message failure.",
+    "Initial erroneous GraphQL instanceId field and failed mobile wait are harness errors, excluded from bug evidence.",
+    "Live append was verified through UI row count and exact message text; the streaming transport envelope was not captured.",
+    "No signed-in Render numeric-link replay was performed."
+  ]
+}

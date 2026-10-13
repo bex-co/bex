@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **289** — [Preserve numeric log-search links](289.md) (55m inbox) ← functional QA a364; fresh desktop/mobile links round an exact identifier while typed and quoted-link controls pass; owned Free fixture deleted and session revoked.
+
 - [ ] **m205** — [Keep overlapping file uploads unique](m205/README.md) (6 tasks, 130m) ← functional QA a362; valid native desktop/fresh-mobile selections race into duplicate names and disabled Save, settled upload and saved-content controls pass; unlinked owned group deleted and session revoked.
 
 - [ ] **m204** — [Keep service Logs filters aligned with navigation](m204/README.md) (6 tasks, 140m) ← functional live `$qa-find-bugs w4` a334, 2026-10-13; clicking the same-service Logs link clears the URL but retains text/type/Live off, including on the next history tick. Desktop twice and fresh 390px reproduce; clean reload restores defaults. Filing only; owned Free fixture deleted and session revoked.
