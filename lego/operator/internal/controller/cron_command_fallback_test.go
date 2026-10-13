@@ -44,7 +44,7 @@ func TestCronCommandFallbackThroughTheCarryingRelease(t *testing.T) {
 		})
 	}
 	command := func(app *appv1alpha1.App) []string {
-		return (&AppReconciler{}).cronPodSpec(app, "busybox", 0, nil).Spec.Containers[0].Command
+		return (&AppReconciler{}).cronPodSpec(app, "busybox", 0, nil, launchUnknown).Spec.Containers[0].Command
 	}
 
 	if got := command(cron(nil)); !slices.Equal(got, []string{shellBinary, "-c", script}) {

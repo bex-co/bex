@@ -159,6 +159,8 @@ func appReleaseIdentityOf(spec appv1alpha1.AppSpec, version string) appReleaseId
 	// selected literal build env must also participate in the artifact identity;
 	// buildEnv applies the same native-vs-BP_/BPE_ filter as the build plane.
 	// Dockerfile/prebuilt services apply these only to the release pod below.
+	// A prebuilt image that kept native settings (w4/m202) still lands here; that
+	// only re-fingerprints it, since reusableArtifactImage runs spec.image unbuilt.
 	if builder == build.BuilderNative || builder == build.BuilderBuildpack {
 		artifactInput.StartCommand = spec.StartCommand
 		artifactInput.BuildEnv = buildEnv(builder, spec.Env)
