@@ -89,7 +89,7 @@ func ApplyEnvVarPatch(env map[string]string, writes []EnvVarPatch) error {
 				if write.GenerateValue {
 					return GenerateValue()
 				}
-				return write.Value, nil
+				return write.Value, CheckEnvValue(key, write.Value)
 			},
 		}
 	}
