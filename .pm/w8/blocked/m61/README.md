@@ -1,16 +1,16 @@
 # w8 · m61 — Honor application PATH during native builds
 
-**Worker:** worker8 **Goal:** Native build helpers finish their work before handing the application its exact configured PATH. **Status:** todo
+**Worker:** worker8 **Goal:** Native build helpers finish their work before handing the application its exact configured PATH. **Status:** blocked — t001/t004/t005 done and shipped; t002/t003 hosted acceptance and t006 need the fix deployed to production plus fresh native Bex/Render receipts.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Preserve application PATH across both native preparation stages | 45m | — |
-| t002 | Audit native consumers and verify hosted recovery | 30m | t001 |
-| t003 | Render parity | 20m | t002 |
-| t004 | Simplify | 15m | t003 |
-| t005 | Test coverage | 35m | t003 |
+| t001 | Preserve application PATH across both native preparation stages — **DONE 2026-10-12** | 45m | — |
+| t002 | Audit native consumers and verify hosted recovery — **BLOCKED: needs deployed fix + native receipts** | 30m | t001 |
+| t003 | Render parity — **BLOCKED: needs deployed fix + surface receipts** | 20m | t002 |
+| t004 | Simplify — **DONE 2026-10-12** | 15m | t003 |
+| t005 | Test coverage — **DONE 2026-10-12** | 35m | t003 |
 | t006 | Closeout | 20m | t004, t005 |
 
 ## Definition of done
@@ -23,9 +23,14 @@
 - Delete each owned fixture by its recorded ID and verify detail/list/public absence, baseline preservation and quota reconciliation. Record any unverified Kubernetes descendant teardown explicitly.
 - All tasks and observable checks are complete before moving the milestone to `done/`.
 
+## Progress / block
+
+- **2026-10-12:** the native RUN loader resolves its decoder once under the image PATH, and the preparer carries literals under private `BEX_NATIVE_LITERAL_<i>` names, so a custom PATH (Secret-backed or literal) reaches the build command exactly while platform helpers keep working (`lego/operator/internal/build/native.go`). `TestNativeEnvironmentKeepsApplicationPATH` fails on the original source and passes fixed; operator `make test`/`make lint` pass.
+- **Blocked:** t002/t003 and t006 need the fix deployed to production, then fresh owned Free Python/Node fixtures through released Bex and pinned Render (PATH plus later variable, PATH alone, omitted/empty/full controls), surface checks and cleanup per the DoD.
+
 ## Source + Goal linkage
 
-- **Source:** user-requested continuous `$qa-find-bugs-cli` in w8, sweep163, 2026-10-12 UTC. [Finding](finding.md) and [sanitized evidence](../evidence/m61/README.md).
+- **Source:** user-requested continuous `$qa-find-bugs-cli` in w8, sweep163, 2026-10-12 UTC. [Finding](finding.md) and [sanitized evidence](../../evidence/m61/README.md).
 - **Goal linkage:** ADR008 core hosting, ADR004 source builds and ADR018 Render compatibility. Accepted application configuration must not stop the platform before the user command runs.
 - **Expected outcome:** a custom application PATH works for an absolute build command, independently of the names or order of other configured variables.
 - **Why now:** two fresh native clients produce `build_failed`; changing only PATH and redeploying the same commit recovers both. Actual generated-loader and generated-preparer executions identify two affected stages.
