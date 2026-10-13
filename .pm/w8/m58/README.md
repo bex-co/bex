@@ -1,17 +1,18 @@
 # w8 · m58 — Preserve Unicode matches in log history
 
-**Worker:** worker8 **Goal:** normalized Unicode log matches survive raw and display history through the unchanged CLI and shared API **Status:** blocked — local backend fix/tests are complete and partial App live acceptance passes; remaining gates are the full App matrix, Postgres/Key Value and cross-surface native acceptance.
+**Worker:** worker8 **Goal:** normalized Unicode matches and complete raw-page coverage survive log history through the unchanged CLI and shared API **Status:** todo — reopened by live sweep179: raw searches skip matches behind a full page; t007 is actionable. Partial App and nonsaturated managed-data controls pass; complete acceptance remains required.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | Make the Loki text prefilter preserve normalized Unicode matches — **DONE 2026-10-12** | 50m | — |
-| t002 | Verify shared history callers and resource families — **DONE 2026-10-12** | 30m | t001 |
-| t003 | Render parity and live native CLI acceptance — **BLOCKED: partial App live receipts pass; complete App and managed Postgres/Key Value acceptance still needed** | 20m | t002 |
-| t004 | Simplify — **DONE 2026-10-12** | 10m | t003 |
-| t005 | Meaningful Unicode and pagination regression coverage — **DONE 2026-10-12** | 35m | t003 |
-| t006 | Closeout — **BLOCKED: needs t003 live acceptance evidence before milestone can close** | 10m | t005 |
+| t007 | Advance raw text scans by raw candidate coverage | 45m | t001 |
+| t002 | Verify shared history callers and resource families — reopened for t007 | 30m | t007 |
+| t003 | Render parity and live native CLI acceptance — reopened; saturated App fails | 20m | t002 |
+| t004 | Simplify — reopened for t007 | 10m | t003 |
+| t005 | Meaningful Unicode and pagination regression coverage — reopened for realistic bounds | 35m | t003 |
+| t006 | Closeout — full observable DoD still required | 10m | t004, t005 |
 
 ## Definition of done
 
@@ -23,13 +24,19 @@ Managed Postgres acceptance: emit the three sweep-100 markers through native SQL
 
 Managed Key Value acceptance: use the native EVAL marker commands in sweep 101 and require both clients to return three prefix records, two iota records and one lambda record; preserve native terminal completion and original bytes.
 
-## Progress / block
+## Progress / remaining work
+
+- **2026-10-12, live sweep179:** [raw pagination regression](evidence/live-app-sweep179/README.md) reproduces four false-empty native searches across both clients, plus four passing end-bound controls; display REST returns all 21. Eight actual native wire captures and realistic current-source probes isolate missing raw-candidate coverage. Add t007 (45m), reopen t002–t006, and move this milestone from blocked/m58 to active m58. The previous implementation/tests are historical evidence, not proof that the complete DoD holds. Exact App cleanup passes; no product fix or ship by QA.
+
+- **2026-10-12, live sweep178:** [managed PostgreSQL acceptance](evidence/live-pg-sweep178/README.md) passes the exact three-marker/three-prefix/two-iota/one-lambda matrix through both clients, with six actual native HTTP captures and original IDs/bytes preserved. Four native SQL success/error controls pass. Exact owned DB deletion is confirmed by detail 404/listempty, former SQL endpoint no row and PGquota0/termination0. Both managed-data sections pass; complete App/GraphQL/native App wire gates remain and t003/t006 stay blocked.
+
+- **2026-10-12, live sweep177:** [managed Key Value acceptance](evidence/live-kv-sweep177/README.md) passes the exact three-marker/three-prefix/two-iota/one-lambda matrix through both clients, with six actual native HTTP captures and original IDs/bytes preserved. Both native PONG controls pass. Exact owned KV deletion is confirmed by detail 404/listempty, former endpoint no-PONG and quota0/termination0. The KV section passes; full App/GraphQL and Postgres gates remain and t003/t006 stay blocked.
 
 - **2026-10-12, live sweep176:** [partial App acceptance](evidence/live-app-sweep176/README.md) passes 28 native text cases plus 12 timestamp/direction/limit controls across both clients, and six REST raw/display comparisons. Fresh App and its one child were enumerated and cleaned; detail/list/public404 and baseline6/quota termination0 confirmed. Exact deployed SHA remains unknown. Full App/table/pagination/instance/GraphQL and managed Postgres/Key Value gates remain; t003/t006 stay blocked.
 
 - **2026-10-12:** local backend implementation completed. Text matching now stays out of Loki's Unicode-unsafe regexp simplifier and is applied by the shared Go matcher over bounded raw scan pages. Evidence: [`evidence/implementation-closeout.md`](evidence/implementation-closeout.md).
 - Validation passed: `cd lego/backend && go test ./internal/logs` and `cd lego/backend && go test ./...`.
-- **Blocked:** production-deployed acceptance is still required. Replay the native Bex and unmodified Render CLI App/Postgres/Key Value cases after deploy, capture requests/responses and cleanup, then close t003/t006 and move the milestone to done.
+- **Current next step:** t007 must fix raw-page progress in current code; follow with t002 shared caller checks and t003–t006 closing work. Production-deployed acceptance and complete cleanup remain required before moving to done.
 
 ## Source + Goal linkage
 
