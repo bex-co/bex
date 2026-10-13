@@ -31,6 +31,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
@@ -994,5 +996,92 @@ func TestFallbackRefusesStoreOnlyFilters(t *testing.T) {
 	_, err = svc.QueryLogs(context.Background(), LogQuery{App: "web", Types: []string{LogTypeBuild}})
 	if !errors.Is(err, core.ErrLogStoreUnavailable) {
 		t.Errorf("type=build without store => ErrLogStoreUnavailable, got %v", err)
+	}
+}
+
+// w8/m58: REST (the CLI), GraphQL (the dashboard) and MCP share one history
+// path, so a raw Unicode search behind a full page of nonmatching lines
+// returns the same two original messages on every adapter.
+func TestRawUnicodeHistoryAgreesAcrossAdapters(t *testing.T) {
+	base := time.Now().Add(-20 * time.Minute)
+	type line struct {
+		ns  int64
+		msg string
+	}
+	lines := []line{{base.UnixNano(), "CAFÉ Ελληνικά"}, {base.Add(time.Millisecond).UnixNano(), "café ελληνικά"}}
+	for i := 0; i < 1005; i++ {
+		lines = append(lines, line{base.Add(time.Second + time.Duration(i)*time.Millisecond).UnixNano(), fmt.Sprintf("padding-%04d", i)})
+	}
+	loki := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		v := r.URL.Query()
+		start, _ := strconv.ParseInt(v.Get("start"), 10, 64)
+		end, _ := strconv.ParseInt(v.Get("end"), 10, 64)
+		limit, _ := strconv.Atoi(v.Get("limit"))
+		var in []string
+		for _, l := range lines {
+			if l.ns >= start && l.ns < end {
+				in = append(in, fmt.Sprintf("[%q,%q]", strconv.FormatInt(l.ns, 10), l.msg))
+			}
+		}
+		if len(in) > limit { // backward keeps the newest
+			in = in[len(in)-limit:]
+		}
+		_, _ = w.Write([]byte(lokiResp(map[string]any{"stream": `{"app":"web","pod":"web-1","container":"app"}`, "values": "[" + strings.Join(in, ",") + "]"})))
+	}))
+	defer loki.Close()
+	svc := newService(nil, sampleApp("web"), podFor("web", "web-1"))
+	svc.History = NewLokiSource(loki.URL, loki.Client())
+	want := []string{"CAFÉ Ελληνικά", "café ελληνικά"}
+
+	rec := serveREST(svc, http.MethodGet, "/v1/logs?resource=web&text=%CE%B9&limit=100")
+	var env renderLogList
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &env) != nil {
+		t.Fatalf("REST => %d %s", rec.Code, rec.Body.String())
+	}
+	var restMsgs []string
+	for _, l := range env.Logs {
+		restMsgs = append(restMsgs, l.Message)
+	}
+	if !slices.Equal(restMsgs, want) || env.HasMore {
+		t.Fatalf("REST messages = %q hasMore=%v, want %q", restMsgs, env.HasMore, want)
+	}
+
+	schema, err := gqlSchema(svc)
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	rows := runQuery(t, schema, `{ logs(resource:"web", text:"ι", limit:100) { logs { message } } }`)["logs"].(map[string]any)["logs"].([]any)
+	var gqlMsgs []string
+	for _, row := range rows {
+		gqlMsgs = append(gqlMsgs, row.(map[string]any)["message"].(string))
+	}
+	if !slices.Equal(gqlMsgs, want) {
+		t.Fatalf("GraphQL messages = %q, want %q", gqlMsgs, want)
+	}
+
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	serverT, clientT := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	t.Cleanup(func() { _ = cs.Close() })
+	result, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "list_logs", Arguments: map[string]any{"resource": []string{"web"}, "text": []string{"ι"}, "limit": 100}})
+	if err != nil || result.IsError {
+		t.Fatalf("MCP list_logs = %+v, %v", result, err)
+	}
+	text := result.Content[0].(*mcp.TextContent).Text
+	for _, m := range want {
+		if !strings.Contains(text, m) {
+			t.Fatalf("MCP result lacks %q: %s", m, text)
+		}
+	}
+	if strings.Contains(text, "padding-") {
+		t.Fatalf("MCP returned nonmatching lines: %s", text)
 	}
 }
