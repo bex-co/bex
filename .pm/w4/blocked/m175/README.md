@@ -1,16 +1,16 @@
 # w4 · m175 — Include newest request buckets and clip them to the selected window
 
-**Worker:** worker4 **Goal:** `http_requests` counts every request in `[start, end]` for every resolution, including the bucket that contains `end`, so N driven requests sum to N on every window and surface (the full w4/m119 guarantee, "for any query alignment"). **Status:** todo (a313 boundary-clipping residual; original t001 retained, t003/t004 reopened for the added work)
+**Worker:** worker4 **Goal:** `http_requests` counts every request in `[start, end]` for every resolution, including the bucket that contains `end`, so N driven requests sum to N on every window and surface (the full w4/m119 guarantee, "for any query alignment"). **Status:** blocked (release pipeline deploys backend; then QA replays the DoD for t002 + t005). t001, t003, t004, t006 done.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | Include the bucket containing `end` in Loki-backed request reads — **DONE** | 45m | — |
-| t006 | Clip request entries to the requested time window before aggregation | 45m | w4/m175/t001 |
+| t006 | Clip request entries to the requested time window before aggregation — **DONE** | 45m | w4/m175/t001 |
 | t002 | Render parity | 20m | w4/m175/t006 |
-| t003 | Simplify the clipping update (original review retained) | 15m | w4/m175/t002 |
-| t004 | Test boundary clipping (original coverage retained) | 45m | w4/m175/t002 |
+| t003 | Simplify the clipping update (original review retained) — **DONE** | 15m | w4/m175/t002 |
+| t004 | Test boundary clipping (original coverage retained) — **DONE** | 45m | w4/m175/t002 |
 | t005 | Closeout | 10m | w4/m175/t004 |
 
 ## Definition of done

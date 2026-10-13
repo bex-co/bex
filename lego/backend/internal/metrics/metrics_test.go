@@ -1203,6 +1203,14 @@ func TestLokiRequestQueryFor(t *testing.T) {
 			want: `quantile_over_time(0.95, {namespace="default", app="web", type="request"} | json latency_ns="Duration", request_host="RequestHost", request_path="RequestPath" | request_host="web.example.com" | unwrap latency_ns [60s]) by (method) / 1000000000`,
 		},
 		{
+			name: "requests clipped to the entry-time window (w4/m175)",
+			req: with(func(r *RequestMetricsRequest) {
+				r.Metric, r.Path = MetricHTTPRequests, "/api"
+				r.Start, r.End = time.Unix(1791852980, 123456789), time.Unix(1791853000, 0)
+			}),
+			want: `sum(count_over_time({namespace="default", app="web", type="request"} | json request_host="RequestHost", request_path="RequestPath" | request_path="/api" | label_format bex_ts_s="{{ unixEpoch (__timestamp__) }}", bex_ts_ns="{{ (__timestamp__).Nanosecond }}" | (bex_ts_s > 1791852980 or (bex_ts_s == 1791852980 and bex_ts_ns >= 123456789)) and (bex_ts_s < 1791853000 or (bex_ts_s == 1791853000 and bex_ts_ns <= 0)) | drop bex_ts_s, bex_ts_ns [60s]))`,
+		},
+		{
 			name: "bandwidth has no host/path axis",
 			req:  with(func(r *RequestMetricsRequest) { r.Metric = MetricBandwidth; r.Host = "web.example.com" }),
 			want: "",
