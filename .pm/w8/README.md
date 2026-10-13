@@ -109,7 +109,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **096** — [Blueprint validation ignores a supplied service-reference type](096.md) (minor; 55m) ← functional CLI sweep173: 14 mismatches pass in both native clients; matching and refusal controls plus actual typed parser proof; validation only, no resource created.
 
-- [ ] **095** — [Blueprint reapply skips a new empty variable in an existing environment group](095.md) (minor; 50m) ← terminal sweep155: native validation passes; actual unchanged backend writer drops absent empty keys; source-confirmed, hosted apply unverified; no platform fixture.
+- [ ] **095** — [Blueprint reapply skips a new empty variable in an existing environment group](blocked/095.md) — **BLOCKED (2026-10-12: fix shipped — reapplying a Blueprint onto an existing env group writes a newly declared empty variable; needs the fix deployed to production plus a hosted apply/reapply receipt and cleanup)**
 - [ ] **094** — [Blueprint plans call an existing environment group a create when its name is padded](blocked/094.md) — **BLOCKED (2026-10-12: fix shipped — a padded env-group name plans the update of the existing group under its canonical name; needs the fix deployed to production plus fresh full-server validation receipts and cleanup)**
 
 - [ ] **093** — [CLI scope selectors cannot resolve accepted ID-shaped project and environment names](blocked/093.md) — **BLOCKED (2026-10-12: upstream patch prepared and tested — [`093-upstream.patch`](blocked/093-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**

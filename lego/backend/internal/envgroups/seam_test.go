@@ -135,3 +135,69 @@ func TestLinkEnvGroupUnknownGroupErrors(t *testing.T) {
 		t.Errorf("LinkEnvGroup unknown group => ErrBadRequest, got %v", err)
 	}
 }
+
+// w8/095: an absent key reads as "" from a Go map, so reapplying a group that
+// already existed silently skipped a newly declared empty variable. Presence
+// decides now; a present empty value is still a no-op.
+func TestApplyEnvGroupAddsAnEmptyVariableToAnExistingGroup(t *testing.T) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		name     string
+		existing map[string]string
+		declared map[string]string
+		want     map[string]string
+	}{
+		{"add empty", map[string]string{"OTHER": "x"}, map[string]string{"OTHER": "x", "QA_EMPTY": ""}, map[string]string{"OTHER": "x", "QA_EMPTY": ""}},
+		{"add empty beside a changed value", map[string]string{"OTHER": "x"}, map[string]string{"OTHER": "y", "QA_EMPTY": ""}, map[string]string{"OTHER": "y", "QA_EMPTY": ""}},
+		{"add a space", map[string]string{"OTHER": "x"}, map[string]string{"OTHER": "x", "QA_EMPTY": " "}, map[string]string{"OTHER": "x", "QA_EMPTY": " "}},
+		{"set to empty", map[string]string{"QA_EMPTY": "before"}, map[string]string{"QA_EMPTY": ""}, map[string]string{"QA_EMPTY": ""}},
+		{"omitted key kept", map[string]string{"KEEP": "k", "OTHER": "x"}, map[string]string{"QA_EMPTY": ""}, map[string]string{"KEEP": "k", "OTHER": "x", "QA_EMPTY": ""}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := newFakeStore()
+			svc := newService(st)
+			if err := svc.ApplyEnvGroup(ctx, "shared", tc.existing, nil); err != nil {
+				t.Fatalf("fixture: %v", err)
+			}
+			gid, _, _, _ := svc.findGroupByName(ctx, "shared")
+			if err := svc.ApplyEnvGroup(ctx, "shared", tc.declared, nil); err != nil {
+				t.Fatalf("reapply: %v", err)
+			}
+			if gid2, _, _, _ := svc.findGroupByName(ctx, "shared"); gid2 != gid {
+				t.Fatalf("reapply changed the group id %q -> %q", gid, gid2)
+			}
+			got := st.m[st.key(ctx, envPath(gid))]
+			if len(got) != len(tc.want) {
+				t.Fatalf("env = %q, want %q", got, tc.want)
+			}
+			for k, v := range tc.want {
+				if value, ok := got[k]; !ok || value != v {
+					t.Fatalf("env = %q, want %q", got, tc.want)
+				}
+			}
+		})
+	}
+
+	// A present empty value reapplied writes nothing.
+	st := newFakeStore()
+	svc := newService(st)
+	if err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"QA_EMPTY": ""}, nil); err != nil {
+		t.Fatal(err)
+	}
+	before, _ := svc.GetEnvGroup(ctx, mustGroupID(t, svc, "shared"))
+	if err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"QA_EMPTY": ""}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if after, _ := svc.GetEnvGroup(ctx, before.ID); after.Revision != before.Revision {
+		t.Fatalf("a present-empty reapply wrote: revision %q -> %q", before.Revision, after.Revision)
+	}
+}
+
+func mustGroupID(t *testing.T, svc *Service, name string) string {
+	t.Helper()
+	gid, _, found, err := svc.findGroupByName(context.Background(), name)
+	if err != nil || !found {
+		t.Fatalf("group %q: found=%v err=%v", name, found, err)
+	}
+	return gid
+}
