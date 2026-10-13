@@ -1,0 +1,1861 @@
+{
+  "sweep": 188,
+  "nonce": "6281f0",
+  "source_head": "c5a0eb9dd15f6b417bf586fdf26510706497b032",
+  "surface": "native Blueprint literal-empty vs sync:false seeded-empty sibling envVarKey validation",
+  "mutation": "none: Blueprint validation only",
+  "native_wire": "not intercepted",
+  "results": [
+    {
+      "client": "bex",
+      "container": "root",
+      "case": "literal-empty",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa188-6281f0-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-13T02:47:49.401461+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-root-literal-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.902,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-6281f0-caller\",\n      \"qa188-6281f0-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-6281f0-caller",
+            "qa188-6281f0-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "bex",
+      "container": "root",
+      "case": "seed-empty",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa188-6281f0-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-13T02:47:50.642511+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-root-seed-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.789,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa188-6281f0-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa188-6281f0-target\\\", which has no such plainly-defined variable\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa188-6281f0-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa188-6281f0-target\", which has no such plainly-defined variable",
+            "line": 11,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": true,
+      "matches_expected": false
+    },
+    {
+      "client": "bex",
+      "container": "root",
+      "case": "seed-space",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa188-6281f0-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": " ",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-13T02:47:51.763614+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-root-seed-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.747,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-6281f0-caller\",\n      \"qa188-6281f0-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-6281f0-caller",
+            "qa188-6281f0-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "bex",
+      "container": "root",
+      "case": "seed-value",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa188-6281f0-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "qa188-6281f0",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-13T02:47:52.834429+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-root-seed-value.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.787,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-6281f0-caller\",\n      \"qa188-6281f0-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-6281f0-caller",
+            "qa188-6281f0-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "bex",
+      "container": "root",
+      "case": "prompt-only",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa188-6281f0-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-13T02:47:53.957233+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-root-prompt-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.572,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa188-6281f0-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa188-6281f0-target\\\", which has no such plainly-defined variable\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa188-6281f0-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa188-6281f0-target\", which has no such plainly-defined variable",
+            "line": 11,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": false,
+      "matches_expected": true
+    },
+    {
+      "client": "bex",
+      "container": "root",
+      "case": "seed-empty-reversed",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "",
+                "sync": false
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa188-6281f0-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-13T02:47:54.882164+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-root-seed-empty-reversed.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.744,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa188-6281f0-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa188-6281f0-target\\\", which has no such plainly-defined variable\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa188-6281f0-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa188-6281f0-target\", which has no such plainly-defined variable",
+            "line": 27,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": true,
+      "matches_expected": false
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "case": "literal-empty",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa188-6281f0-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-13T02:47:55.959286+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-root-literal-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.465,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-6281f0-caller\",\n      \"qa188-6281f0-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-6281f0-caller",
+            "qa188-6281f0-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "case": "seed-empty",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa188-6281f0-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-13T02:47:56.753851+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-root-seed-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.636,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa188-6281f0-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa188-6281f0-target\\\", which has no such plainly-defined variable\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa188-6281f0-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa188-6281f0-target\", which has no such plainly-defined variable",
+            "line": 11,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": true,
+      "matches_expected": false
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "case": "seed-space",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa188-6281f0-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": " ",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-13T02:47:57.714573+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-root-seed-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.636,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-6281f0-caller\",\n      \"qa188-6281f0-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-6281f0-caller",
+            "qa188-6281f0-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "case": "seed-value",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa188-6281f0-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "qa188-6281f0",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-13T02:47:58.681215+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-root-seed-value.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.791,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-6281f0-caller\",\n      \"qa188-6281f0-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-6281f0-caller",
+            "qa188-6281f0-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "case": "prompt-only",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa188-6281f0-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-13T02:47:59.790365+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-root-prompt-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.451,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa188-6281f0-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa188-6281f0-target\\\", which has no such plainly-defined variable\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa188-6281f0-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa188-6281f0-target\", which has no such plainly-defined variable",
+            "line": 11,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": false,
+      "matches_expected": true
+    },
+    {
+      "client": "render",
+      "container": "root",
+      "case": "seed-empty-reversed",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-target",
+            "envVars": [
+              {
+                "key": "SOURCE_VALUE",
+                "value": "",
+                "sync": false
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa188-6281f0-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa188-6281f0-target",
+                  "type": "web",
+                  "envVarKey": "SOURCE_VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-13T02:48:00.551909+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-root-seed-empty-reversed.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.615,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa188-6281f0-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa188-6281f0-target\\\", which has no such plainly-defined variable\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa188-6281f0-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa188-6281f0-target\", which has no such plainly-defined variable",
+            "line": 27,
+            "path": "services[1].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": true,
+      "matches_expected": false
+    },
+    {
+      "client": "bex",
+      "container": "ungrouped",
+      "case": "literal-empty",
+      "document": {
+        "ungrouped": {
+          "services": [
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa188-6281f0-caller",
+              "envVars": [
+                {
+                  "key": "COPY_VALUE",
+                  "fromService": {
+                    "name": "qa188-6281f0-target",
+                    "type": "web",
+                    "envVarKey": "SOURCE_VALUE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa188-6281f0-target",
+              "envVars": [
+                {
+                  "key": "SOURCE_VALUE",
+                  "value": ""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "at": "2026-10-13T02:48:01.805323+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-ungrouped-literal-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.67,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-6281f0-caller\",\n      \"qa188-6281f0-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-6281f0-caller",
+            "qa188-6281f0-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "bex",
+      "container": "ungrouped",
+      "case": "seed-empty",
+      "document": {
+        "ungrouped": {
+          "services": [
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa188-6281f0-caller",
+              "envVars": [
+                {
+                  "key": "COPY_VALUE",
+                  "fromService": {
+                    "name": "qa188-6281f0-target",
+                    "type": "web",
+                    "envVarKey": "SOURCE_VALUE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa188-6281f0-target",
+              "envVars": [
+                {
+                  "key": "SOURCE_VALUE",
+                  "value": "",
+                  "sync": false
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "at": "2026-10-13T02:48:02.778250+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-ungrouped-seed-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.494,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"service \\\"qa188-6281f0-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa188-6281f0-target\\\", which has no such plainly-defined variable\",\n      \"line\": 12,\n      \"path\": \"ungrouped.services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 20,
+            "error": "service \"qa188-6281f0-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa188-6281f0-target\", which has no such plainly-defined variable",
+            "line": 12,
+            "path": "ungrouped.services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": true,
+      "matches_expected": false
+    },
+    {
+      "client": "bex",
+      "container": "ungrouped",
+      "case": "seed-space",
+      "document": {
+        "ungrouped": {
+          "services": [
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa188-6281f0-caller",
+              "envVars": [
+                {
+                  "key": "COPY_VALUE",
+                  "fromService": {
+                    "name": "qa188-6281f0-target",
+                    "type": "web",
+                    "envVarKey": "SOURCE_VALUE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa188-6281f0-target",
+              "envVars": [
+                {
+                  "key": "SOURCE_VALUE",
+                  "value": " ",
+                  "sync": false
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "at": "2026-10-13T02:48:03.568754+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-ungrouped-seed-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.691,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-6281f0-caller\",\n      \"qa188-6281f0-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-6281f0-caller",
+            "qa188-6281f0-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "render",
+      "container": "ungrouped",
+      "case": "literal-empty",
+      "document": {
+        "ungrouped": {
+          "services": [
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa188-6281f0-caller",
+              "envVars": [
+                {
+                  "key": "COPY_VALUE",
+                  "fromService": {
+                    "name": "qa188-6281f0-target",
+                    "type": "web",
+                    "envVarKey": "SOURCE_VALUE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa188-6281f0-target",
+              "envVars": [
+                {
+                  "key": "SOURCE_VALUE",
+                  "value": ""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "at": "2026-10-13T02:48:04.576770+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-ungrouped-literal-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.661,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-6281f0-caller\",\n      \"qa188-6281f0-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-6281f0-caller",
+            "qa188-6281f0-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "render",
+      "container": "ungrouped",
+      "case": "seed-empty",
+      "document": {
+        "ungrouped": {
+          "services": [
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa188-6281f0-caller",
+              "envVars": [
+                {
+                  "key": "COPY_VALUE",
+                  "fromService": {
+                    "name": "qa188-6281f0-target",
+                    "type": "web",
+                    "envVarKey": "SOURCE_VALUE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa188-6281f0-target",
+              "envVars": [
+                {
+                  "key": "SOURCE_VALUE",
+                  "value": "",
+                  "sync": false
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "at": "2026-10-13T02:48:05.577169+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-ungrouped-seed-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.642,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"service \\\"qa188-6281f0-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa188-6281f0-target\\\", which has no such plainly-defined variable\",\n      \"line\": 12,\n      \"path\": \"ungrouped.services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 20,
+            "error": "service \"qa188-6281f0-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa188-6281f0-target\", which has no such plainly-defined variable",
+            "line": 12,
+            "path": "ungrouped.services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": true,
+      "matches_expected": false
+    },
+    {
+      "client": "render",
+      "container": "ungrouped",
+      "case": "seed-space",
+      "document": {
+        "ungrouped": {
+          "services": [
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa188-6281f0-caller",
+              "envVars": [
+                {
+                  "key": "COPY_VALUE",
+                  "fromService": {
+                    "name": "qa188-6281f0-target",
+                    "type": "web",
+                    "envVarKey": "SOURCE_VALUE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "web",
+              "runtime": "image",
+              "plan": "free",
+              "image": {
+                "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+              },
+              "name": "qa188-6281f0-target",
+              "envVars": [
+                {
+                  "key": "SOURCE_VALUE",
+                  "value": " ",
+                  "sync": false
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "at": "2026-10-13T02:48:06.530122+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-ungrouped-seed-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.654,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-6281f0-caller\",\n      \"qa188-6281f0-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-6281f0-caller",
+            "qa188-6281f0-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "bex",
+      "container": "project",
+      "case": "literal-empty",
+      "document": {
+        "projects": [
+          {
+            "name": "qa188-6281f0-project",
+            "environments": [
+              {
+                "name": "qa188-6281f0-env",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa188-6281f0-caller",
+                    "envVars": [
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa188-6281f0-target",
+                          "type": "web",
+                          "envVarKey": "SOURCE_VALUE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa188-6281f0-target",
+                    "envVars": [
+                      {
+                        "key": "SOURCE_VALUE",
+                        "value": ""
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-13T02:48:07.791284+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-project-literal-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.254,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-6281f0-caller\",\n      \"qa188-6281f0-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-6281f0-caller",
+            "qa188-6281f0-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "bex",
+      "container": "project",
+      "case": "seed-empty",
+      "document": {
+        "projects": [
+          {
+            "name": "qa188-6281f0-project",
+            "environments": [
+              {
+                "name": "qa188-6281f0-env",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa188-6281f0-caller",
+                    "envVars": [
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa188-6281f0-target",
+                          "type": "web",
+                          "envVarKey": "SOURCE_VALUE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa188-6281f0-target",
+                    "envVars": [
+                      {
+                        "key": "SOURCE_VALUE",
+                        "value": "",
+                        "sync": false
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-13T02:48:09.352623+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-project-seed-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.588,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 26,\n      \"error\": \"service \\\"qa188-6281f0-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa188-6281f0-target\\\", which has no such plainly-defined variable\",\n      \"line\": 17,\n      \"path\": \"projects[0].environments[0].services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 26,
+            "error": "service \"qa188-6281f0-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa188-6281f0-target\", which has no such plainly-defined variable",
+            "line": 17,
+            "path": "projects[0].environments[0].services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": true,
+      "matches_expected": false
+    },
+    {
+      "client": "bex",
+      "container": "project",
+      "case": "seed-space",
+      "document": {
+        "projects": [
+          {
+            "name": "qa188-6281f0-project",
+            "environments": [
+              {
+                "name": "qa188-6281f0-env",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa188-6281f0-caller",
+                    "envVars": [
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa188-6281f0-target",
+                          "type": "web",
+                          "envVarKey": "SOURCE_VALUE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa188-6281f0-target",
+                    "envVars": [
+                      {
+                        "key": "SOURCE_VALUE",
+                        "value": " ",
+                        "sync": false
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-13T02:48:10.265550+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-project-seed-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.804,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-6281f0-caller\",\n      \"qa188-6281f0-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-6281f0-caller",
+            "qa188-6281f0-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "render",
+      "container": "project",
+      "case": "literal-empty",
+      "document": {
+        "projects": [
+          {
+            "name": "qa188-6281f0-project",
+            "environments": [
+              {
+                "name": "qa188-6281f0-env",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa188-6281f0-caller",
+                    "envVars": [
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa188-6281f0-target",
+                          "type": "web",
+                          "envVarKey": "SOURCE_VALUE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa188-6281f0-target",
+                    "envVars": [
+                      {
+                        "key": "SOURCE_VALUE",
+                        "value": ""
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-13T02:48:11.392165+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-project-literal-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.742,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-6281f0-caller\",\n      \"qa188-6281f0-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-6281f0-caller",
+            "qa188-6281f0-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    },
+    {
+      "client": "render",
+      "container": "project",
+      "case": "seed-empty",
+      "document": {
+        "projects": [
+          {
+            "name": "qa188-6281f0-project",
+            "environments": [
+              {
+                "name": "qa188-6281f0-env",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa188-6281f0-caller",
+                    "envVars": [
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa188-6281f0-target",
+                          "type": "web",
+                          "envVarKey": "SOURCE_VALUE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa188-6281f0-target",
+                    "envVars": [
+                      {
+                        "key": "SOURCE_VALUE",
+                        "value": "",
+                        "sync": false
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-13T02:48:12.447965+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-project-seed-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.548,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 26,\n      \"error\": \"service \\\"qa188-6281f0-caller\\\": fromService.envVarKey references env \\\"SOURCE_VALUE\\\" on service \\\"qa188-6281f0-target\\\", which has no such plainly-defined variable\",\n      \"line\": 17,\n      \"path\": \"projects[0].environments[0].services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 26,
+            "error": "service \"qa188-6281f0-caller\": fromService.envVarKey references env \"SOURCE_VALUE\" on service \"qa188-6281f0-target\", which has no such plainly-defined variable",
+            "line": 17,
+            "path": "projects[0].environments[0].services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": true,
+      "matches_expected": false
+    },
+    {
+      "client": "render",
+      "container": "project",
+      "case": "seed-space",
+      "document": {
+        "projects": [
+          {
+            "name": "qa188-6281f0-project",
+            "environments": [
+              {
+                "name": "qa188-6281f0-env",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa188-6281f0-caller",
+                    "envVars": [
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa188-6281f0-target",
+                          "type": "web",
+                          "envVarKey": "SOURCE_VALUE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa188-6281f0-target",
+                    "envVars": [
+                      {
+                        "key": "SOURCE_VALUE",
+                        "value": " ",
+                        "sync": false
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "at": "2026-10-13T02:48:13.296899+00:00",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-project-seed-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.624,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-6281f0-caller\",\n      \"qa188-6281f0-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-6281f0-caller",
+            "qa188-6281f0-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "matches_expected": true
+    }
+  ],
+  "copied_render_config": "removed; ongoing isolated human grant retained"
+}

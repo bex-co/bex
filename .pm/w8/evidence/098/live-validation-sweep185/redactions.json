@@ -1,0 +1,9 @@
+{
+  "actual_QA_OAuth_values_absent": true,
+  "Authorization_not_journaled": true,
+  "path_placeholders": [
+    "<QA_TMP>",
+    "<REPO>"
+  ],
+  "environment_files_archived": false
+}

@@ -104,3 +104,7 @@ Both hosted fixtures were deleted by recorded IDs. Each had two enumerated child
 Unverified: deployed revision, authenticated Render production, hosted Blueprint apply, Elixir/Go/Ruby/Rust and other App kinds, GraphQL/MCP/dashboard acceptance, replicas, Kubernetes descendants and a fixed product build. There is no product implementation, commit or push in this filing.
 
 Estimate: **2h45m**, scheduled in six tasks including both preparation stages and shared-surface closing checks.
+
+## Fresh live reproduction — sweep183, 2026-10-13 UTC
+
+[Native Python failure/recovery and full cleanup](evidence/live-python-sweep183/README.md) reproduce the same accepted narrow-PATH failure through both clients. Same-commit controls change only PATH and become Live with exact variable/file hashes at build/runtime. The current source fix/tests pass, but deployment revision remains unknown; preserve this existing item rather than file a duplicate.

@@ -1,0 +1,23 @@
+import pathlib,json,subprocess,secrets,datetime,shutil
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('<REPO>/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text())
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+assert c['sync194_result']==0 and 'sweep194_databases' not in c
+x={'sweep':194,'nonce':secrets.token_hex(3),'source_head':c['head'],'surface':'Blueprint Free PostgreSQL connection-pool/storage/replica/HA admission and disabled-feature controls at root and nested locations','mutation':'none: native validation only; paid resource creation/apply not attempted','native_wire':'not intercepted','results':[]};c['sweep194_databases']=x;save()
+prefix='qa194-'+x['nonce'];variants=[('minimal',{},True,None),('disabled',{'diskSizeGB':1,'storageAutoscalingEnabled':False,'connectionPool':'none','highAvailability':{'enabled':False},'readReplicas':[]},True,None),('pooler',{'connectionPool':'pgbouncer'},False,'paid'),('storage',{'diskSizeGB':15},False,'1 GB'),('autoscaling',{'storageAutoscalingEnabled':True},False,'paid'),('replicas',{'readReplicas':[{'name':prefix+'-reader'}]},False,'0.5 CPU'),('HA',{'highAvailability':{'enabled':True}},False,'1 CPU'),('direct-reference',{},True,None),('pool-reference',{},False,'connectionPool')]
+base={'type':'web','runtime':'image','plan':'free','image':{'url':'docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592'}}
+cfg=p/'render-config/cli.yaml';assert not cfg.exists();shutil.copy2(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+try:
+ for client in ['bex','render']:
+  for layout in ['root','project']:
+   for name,fields,valid,reason in variants:
+    db={'name':prefix+'-'+name.lower()+'-db','plan':'free','postgresMajorVersion':'18',**fields};resources={'databases':[db]}
+    if name.endswith('reference'):
+     property='connectionString' if name=='direct-reference' else 'connectionPoolString';resources['services']=[{**base,'name':prefix+'-consumer','envVars':[{'key':'DB_REFERENCE','fromDatabase':{'name':db['name'],'property':property}}]}]
+    doc=resources if layout=='root' else {'projects':[{'name':prefix+'-project','environments':[{'name':'normal','databases':resources['databases'],**({'services':resources['services']} if 'services' in resources else {})}]}]}
+    f=p/('sweep194-'+layout+'-'+name+'.yaml');f.write_text(json.dumps(doc,ensure_ascii=False,indent=2)+'\n');f.chmod(0o600);args=['blueprints','validate',str(f),'--confirm','-o','json'];z={'at':now(),'client':client,'case':name,'layout':layout,'document':doc,'expected_valid':valid,'expected_reason_fragment':reason,'state':'native validation intent persisted'};x['results'].append(z);save()
+    r=json.loads(subprocess.check_output(['python3',str(p/('run.py' if client=='bex' else 'run-render.py')),*(['--release'] if client=='bex' else []),*args],text=True));z['result']=r;save()
+    try:
+     v=json.loads(r['stdout']);errors=v.get('errors') or [];ok=r['exit']==(0 if valid else 1) and v['valid']==valid and (valid or any(reason in e.get('error','') for e in errors));z.update(decoded=v,passed=ok,state='native validation completed');save();print(json.dumps({'client':client,'case':name,'layout':layout,'exit':r['exit'],'valid':v['valid'],'passed':ok,'elapsed':r['elapsed'],'errors':errors},ensure_ascii=False),flush=True)
+    except Exception as e:z.update(check_error=str(e),passed=False,state='native result retained');save();print(json.dumps({'client':client,'case':name,'layout':layout,'exit':r['exit'],'check_error':str(e)}),flush=True)
+finally:cfg.unlink(missing_ok=True);x['copied_render_config_removed']=not cfg.exists();save()

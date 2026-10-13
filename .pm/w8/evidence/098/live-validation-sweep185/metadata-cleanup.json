@@ -1,0 +1,42 @@
+{
+  "sweep": 185,
+  "at": "2026-10-13T02:02:24.800001+00:00",
+  "source_head": "c5a0eb9dd15f6b417bf586fdf26510706497b032",
+  "source_fix": "398112289",
+  "deployed_revision": "unknown",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "human_oauth": true,
+  "api_origin": "https://api.bex.co/v1/",
+  "bex": "v0.3.2 / a6350da0d6e451e063143432e06c548ba7b5851b",
+  "render_pin": "v2.27.0 / a764810a768202704e7206eb7b87a47211fcd98e",
+  "native_guard_matrix_cases": 20,
+  "still_false_valid_cases": 4,
+  "other_positive_and_negative_controls": 16,
+  "advertised_property_schema_refusals": 2,
+  "native_wire": "not intercepted",
+  "resources_created": 0,
+  "local_containers_created": 0,
+  "Render_copied_config_removed": true,
+  "quota_end": {
+    "at": "2026-10-13T02:02:24.790931+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.633,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49ac30f785cc418-LHR"
+    },
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+  },
+  "source_fix_test_pass": true,
+  "product_implementation_by_QA": false,
+  "ship_by_QA": false
+}

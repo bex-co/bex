@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-13T03:21:02.309697+00:00",
+  "request": {
+    "method": "GET",
+    "path": "/v1/logs?ownerId=tea-daif693dqjvc73e7as3g&resource=srv-db6q4ipg8k9s73eehmrg&type=app&text=QA192_b634b8&level=warn&limit=100",
+    "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "authorization": "[REDACTED]"
+  },
+  "status": "200",
+  "elapsed": 4.037,
+  "curl_exit": 0,
+  "stderr": "",
+  "headers": {
+    "content-type": "application/json",
+    "cf-ray": "a49b36273f079a0e-AMS"
+  },
+  "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-13T02:21:02.270162369Z\",\"nextEndTime\":\"2026-10-13T03:17:22.929319983Z\",\"logs\":[{\"id\":\"srv-db6q4ipg8k9s73eehmrg-22893oqqel6jt6j37q68-2026-10-13T03:17:22.929319984Z-024ed743\",\"message\":\"{\\\"level\\\":\\\"warning\\\",\\\"message\\\":\\\"QA192_b634b8 JSON_WARNING\\\"}\",\"timestamp\":\"2026-10-13T03:17:22.929319984Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6q4ipg8k9s73eehmrg\"},{\"name\":\"instance\",\"value\":\"srv-db6q4ipg8k9s73eehmrg-22893oqqel6jt6j37q68\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"warning\"}]},{\"id\":\"srv-db6q4ipg8k9s73eehmrg-22893oqqel6jt6j37q68-2026-10-13T03:17:22.929765525Z-2edeae94\",\"message\":\"{\\\"severity\\\":\\\"WARNING\\\",\\\"message\\\":\\\"QA192_b634b8 EXTRA_severity_WARNING\\\"}\",\"timestamp\":\"2026-10-13T03:17:22.929765525Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6q4ipg8k9s73eehmrg\"},{\"name\":\"instance\",\"value\":\"srv-db6q4ipg8k9s73eehmrg-22893oqqel6jt6j37q68\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"warning\"}]},{\"id\":\"srv-db6q4ipg8k9s73eehmrg-22893oqqel6jt6j37q68-2026-10-13T03:17:22.929766888Z-ffab8fd2\",\"message\":\"{\\\"level\\\":\\\"warn\\\",\\\"message\\\":\\\"QA192_b634b8 EXTRA_level_warn\\\"}\",\"timestamp\":\"2026-10-13T03:17:22.929766888Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-db6q4ipg8k9s73eehmrg\"},{\"name\":\"instance\",\"value\":\"srv-db6q4ipg8k9s73eehmrg-22893oqqel6jt6j37q68\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"warning\"}]}]}\n"
+}

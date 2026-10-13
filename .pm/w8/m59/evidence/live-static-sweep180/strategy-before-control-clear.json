@@ -1,0 +1,86 @@
+[
+  {
+    "at": "2026-10-13T00:37:18.967478+00:00",
+    "api_only": true,
+    "request": {
+      "method": "POST",
+      "path": "/graphql",
+      "body": {
+        "query": "query QA180StaticStrategy($id: String!) { service(id: $id) { id type runtime builder buildCommand publishPath } }",
+        "variables": {
+          "id": "srv-db6nmeh2s0sc73a8hkvg"
+        }
+      },
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 0.51,
+    "response": "{\"data\":{\"service\":{\"buildCommand\":\"\",\"builder\":\"native\",\"id\":\"srv-db6nmeh2s0sc73a8hkvg\",\"publishPath\":\".\",\"runtime\":\"\",\"type\":\"static_site\"}}}\n",
+    "stderr": ""
+  },
+  {
+    "at": "2026-10-13T00:37:19.758409+00:00",
+    "api_only": true,
+    "request": {
+      "method": "POST",
+      "path": "/graphql",
+      "body": {
+        "query": "query QA180StaticStrategy($id: String!) { service(id: $id) { id type runtime builder buildCommand publishPath } }",
+        "variables": {
+          "id": "srv-db6nmhh2s0sc73a8hl1g"
+        }
+      },
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 0.776,
+    "response": "{\"data\":{\"service\":{\"buildCommand\":\"\",\"builder\":\"native\",\"id\":\"srv-db6nmhh2s0sc73a8hl1g\",\"publishPath\":\".\",\"runtime\":\"\",\"type\":\"static_site\"}}}\n",
+    "stderr": ""
+  },
+  {
+    "at": "2026-10-13T00:37:22.165499+00:00",
+    "api_only": true,
+    "request": {
+      "method": "POST",
+      "path": "/graphql",
+      "body": {
+        "query": "query QA180StaticStrategy($id: String!) { service(id: $id) { id type runtime builder buildCommand publishPath } }",
+        "variables": {
+          "id": "srv-db6nnd92s0sc73a8hl3g"
+        }
+      },
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 2.407,
+    "response": "{\"data\":{\"service\":{\"buildCommand\":\"mkdir -p dist; printf '%s' 'QA180_2cc43a' \\u003e dist/index.html; printf '%s' 'QA180_2cc43a_asset' \\u003e dist/version.txt\",\"builder\":\"auto\",\"id\":\"srv-db6nnd92s0sc73a8hl3g\",\"publishPath\":\"dist\",\"runtime\":\"\",\"type\":\"static_site\"}}}\n",
+    "stderr": ""
+  },
+  {
+    "at": "2026-10-13T00:37:22.703843+00:00",
+    "api_only": true,
+    "request": {
+      "method": "POST",
+      "path": "/graphql",
+      "body": {
+        "query": "query QA180StaticStrategy($id: String!) { service(id: $id) { id type runtime builder buildCommand publishPath } }",
+        "variables": {
+          "id": "srv-db6nng15i38c73fd5ojg"
+        }
+      },
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 0.537,
+    "response": "{\"data\":{\"service\":{\"buildCommand\":\"mkdir -p dist; printf '%s' 'QA180_f56078' \\u003e dist/index.html; printf '%s' 'QA180_f56078_asset' \\u003e dist/version.txt\",\"builder\":\"auto\",\"id\":\"srv-db6nng15i38c73fd5ojg\",\"publishPath\":\"dist\",\"runtime\":\"\",\"type\":\"static_site\"}}}\n",
+    "stderr": ""
+  }
+]

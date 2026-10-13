@@ -1,0 +1,25 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package apps
+import("context";"encoding/json";"maps";"os";"testing";"github.com/bex-co/bex/lego/backend/internal/core";appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1")
+type qaCopySeeder204 struct{env map[string]map[string]string}
+func(s *qaCopySeeder204)CheckCreateSecrets([]core.SecretFile,map[string]string)error{return nil}
+func(s *qaCopySeeder204)PrepareCreateSecrets(_ context.Context,service string,a *appv1alpha1.App,_ []core.SecretFile,env map[string]string)error{s.env[service]=maps.Clone(env);if len(env)>0{a.Spec.EnvFromSecret=a.Name+"-env"};return nil}
+func(s *qaCopySeeder204)CommitCreateSecrets(context.Context,string,*appv1alpha1.App)error{return nil}
+func(s *qaCopySeeder204)AbortCreateSecrets(context.Context,string,*appv1alpha1.App)error{return nil}
+func TestQABlueprintCopyConsistency204(t *testing.T){raw,err:=os.ReadFile(os.Getenv("BEX_QA_COPY204_INPUT"));if err!=nil{t.Fatal(err)};var in struct{Cases []struct{Label string;Manifest string;Caller string;Consumer string;TargetKey string;ExpectedMismatch bool}};if err=json.Unmarshal(raw,&in);err!=nil{t.Fatal(err)};for _,tc:=range in.Cases{t.Run(tc.Label,func(t *testing.T){svc,cl:=newBlueprintEnvService(nil,nil);seed:=&qaCopySeeder204{env:map[string]map[string]string{}};svc.CreateSecrets=seed;valid,err:=svc.ValidateBlueprint(context.Background(),"",tc.Manifest,"");if err!=nil||!valid.Valid{t.Fatalf("validation:%+v %v",valid,err)};result,err:=svc.DeployStack(context.Background(),DeployRequest{Manifest:tc.Manifest});if err!=nil||len(result.Services)!=3{t.Fatalf("local public apply:%+v %v",result,err)};var apps appv1alpha1.AppList;if err=cl.List(context.Background(),&apps);err!=nil{t.Fatal(err)};persisted:=map[string][]appv1alpha1.EnvVar{};effective:=map[string]map[string]string{};for _,app:=range apps.Items{persisted[app.Name]=app.Spec.Env;values:=map[string]string{};for _,env:=range app.Spec.Env{if env.ValueFrom!=nil{t.Fatal("unexpected deferred valueFrom in literal-copy probe")};values[env.Name]=env.Value};effective[app.Name]=values};source,ok:=effective[tc.Caller][tc.TargetKey];copyValue,copied:=effective[tc.Consumer]["COPY_VALUE"];mismatch:=source!=copyValue;if !ok||!copied||mismatch!=tc.ExpectedMismatch{t.Fatalf("unexpected seeding:%+v expectedMismatch%v",seed.env,tc.ExpectedMismatch)};b,_:=json.Marshal(map[string]any{"label":tc.Label,"native_equivalent_validation_valid":valid.Valid,"public_DeployStack_services_created_in_fake_client":len(result.Services),"persisted_source_env_last_value":source,"persisted_consumer_copy":copyValue,"mismatch":mismatch,"persisted_App_env_arrays":persisted,"create_seed_maps":seed.env,"qualification":"Actual current public apply persisted App env arrays; last-entry interpretation recorded for investigation, no live apply/runtime/secret storage"});t.Log("QA204_COPY "+string(b))})}
+}

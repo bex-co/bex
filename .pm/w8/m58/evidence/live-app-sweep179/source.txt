@@ -1,0 +1,421 @@
+Source HEAD: dc1043a16d9c94f1450b6ab07aa7c1b1b0769aa1
+
+lego/backend/internal/logs/loki.go
+52: func NewLokiSource(base string, hc *http.Client) LogHistorySource {
+53: 	if hc == nil {
+54: 		hc = core.UpstreamClient
+55: 	}
+56: 	base = strings.TrimRight(base, "/")
+57: 	return func(ctx context.Context, namespace string, q LogQuery) ([]LogEntry, error) {
+58: 		q.Search = normalizeLogText(q.Search)
+59: 		start, end := lokiRange(q, time.Now())
+60: 		query := lokiQueryFor(namespace, q)
+61: 		// A local text search reads raw pages and matches in Go, so each request
+62: 		// asks for a scan page of raw lines rather than the caller's page of matches.
+63: 		pageQ := q
+64: 		pageQ.Limit = lokiFetchLimit(q)
+65: 		if q.displaySearch() && !q.End.IsZero() {
+66: 			// Its coverage edges are Loki-exclusive ends, so the caller's inclusive
+67: 			// End is applied once, here, rather than re-bumped whenever an edge
+68: 			// lands on it (which could re-read the same full page forever).
+69: 			end = end.Add(time.Nanosecond)
+70: 			pageQ.End = time.Time{}
+71: 		}
+72: 		fetch := func(ctx context.Context, from, to time.Time) ([]LogEntry, error) {
+73: 			u := fmt.Sprintf("%s/loki/api/v1/query_range?%s", base, url.Values{
+74: 				"query": {query},
+75: 				"start": {strconv.FormatInt(from.UnixNano(), 10)},
+76: 				"end":   {lokiEndParam(pageQ, to)},
+77: 				"limit": {strconv.FormatInt(pageQ.Limit, 10)},
+78: 				// Render's direction decides which end of the window `limit` keeps:
+79: 				// backward (default) the newest lines, forward the oldest.
+80: 				"direction": {lokiDirection(q)},
+81: 			}.Encode())
+82: 			var lr lokiRangeResponse
+83: 			if err := lokiGet(ctx, hc, u, &lr); err != nil {
+84: 				return nil, err
+85: 			}
+86: 			entries, err := parseLokiStreams(lr, pageQ)
+87: 			if err != nil {
+88: 				return nil, err
+89: 			}
+90: 			if q.localTextSearch() && !q.displaySearch() {
+91: 				entries = slices.DeleteFunc(entries, func(e LogEntry) bool { return !q.matchesText(e.Message) })
+92: 			}
+93: 			return entries, nil
+94: 		}
+95: 		return scanLokiWindow(ctx, q, start, end, lokiScansLines(q), lokiScanBudget, fetch)
+96: 	}
+
+lego/backend/internal/logs/loki.go
+176: 	display := q.displaySearch()
+177: 	var out []LogEntry
+178: 	seen := map[string]struct{}{}
+179: 	covered := end // backward: [covered, end] is done; forward: [start, covered)
+180: 	if forward {
+181: 		covered = start
+182: 	}
+183: 	initial := covered
+184: 	slice := lokiFirstSlice
+185: 	if !sliced {
+186: 		slice = end.Sub(start)
+187: 	}
+188: 	for {
+189: 		from, to := covered.Add(-slice), covered
+190: 		if forward {
+191: 			from, to = covered, covered.Add(slice)
+192: 		}
+193: 		if from.Before(start) {
+194: 			from = start
+195: 		}
+196: 		if to.After(end) {
+197: 			to = end
+198: 		}
+199: 		page, err := fetch(scanCtx, from, to)
+200: 		if err != nil {
+201: 			if ctx.Err() != nil || scanCtx.Err() == nil {
+202: 				return nil, err // the caller went away, or Loki itself failed
+203: 			}
+204: 			// Our own budget ran out mid-slice: report what is covered, or, if
+205: 			// not even the first slice finished, a named timeout.
+206: 			if covered.Equal(initial) {
+207: 				return nil, errLogSearchTimeout
+208: 			}
+209: 			return nil, &ScanIncompleteError{Entries: q.capToLimit(sortedEntries(out)), ScannedTo: covered}
+210: 		}
+211: 		next, saturated := from, false
+212: 		if forward {
+213: 			next = to
+214: 		}
+215: 		if display {
+216: 			page, next, saturated = displayScanPage(q, page, forward, next)
+217: 		}
+218: 		// Adjacent slices share a boundary instant; a line exactly on it may come
+219: 		// back from both, and must count once.
+220: 		for _, e := range page {
+221: 			key := e.Timestamp + "\x00" + e.Labels[LabelInstance] + "\x00" + e.Message
+222: 			if _, dup := seen[key]; dup {
+223: 				continue
+224: 			}
+225: 			seen[key] = struct{}{}
+226: 			out = append(out, e)
+227: 		}
+228: 		covered = next
+229: 		done := int64(len(out)) >= limit || (forward && !covered.Before(end)) || (!forward && !covered.After(start))
+230: 		if done {
+231: 			return q.capToLimit(sortedEntries(out)), nil
+232: 		}
+233: 		if scanCtx.Err() != nil {
+234: 			return nil, &ScanIncompleteError{Entries: q.capToLimit(sortedEntries(out)), ScannedTo: covered}
+235: 		}
+236: 		if !saturated { // a full raw page already bounds the next read
+237: 			slice *= 2
+238: 		}
+239: 	}
+240: }
+241:
+242: // displayScanPage turns one raw page of a display-mode search into its
+243: // matches and the coverage edge the page proves (w4/m189); next is the edge of
+244: // a fully read slice. Coverage advances by raw lines actually read, never by
+245: // matches: when Loki filled the raw page (saturated), the slice was only read
+246: // back to the page's far timestamp t. That instant's group may have been cut
+247: // by Loki's limit, so its lines are dropped and re-read whole by the next
+248: // request — a backward edge of t+1ns (Loki's end is exclusive), a forward edge
+249: // of t (its start is inclusive). A page that is one single instant cannot
+250: // progress that way; it is kept as read, and the edge moves just past t.
+251: func displayScanPage(q LogQuery, page []LogEntry, forward bool, next time.Time) (matches []LogEntry, edge time.Time, saturated bool) {
+252: 	edge = next
+253: 	if int64(len(page)) >= lokiDisplayScanPage {
+254: 		saturated = true
+255: 		far := page[0] // backward: the oldest line read
+256: 		if forward {
+257: 			far = page[len(page)-1] // forward: the newest line read
+258: 		}
+259: 		near := page[len(page)-1].Timestamp
+260: 		if forward {
+261: 			near = page[0].Timestamp
+262: 		}
+263: 		t, _ := time.Parse(time.RFC3339Nano, far.Timestamp) // parseLokiStreams formatted it
+264: 		cut := far.Timestamp != near
+265: 		if cut {
+266: 			page = slices.DeleteFunc(page, func(e LogEntry) bool { return e.Timestamp == far.Timestamp })
+267: 		}
+268: 		// Backward re-reads t (edge t+1ns) unless the page is all t; forward
+269: 		// re-reads t (edge t) unless the page is all t.
+270: 		if cut == forward {
+271: 			edge = t
+272: 		} else {
+273: 			edge = t.Add(time.Nanosecond)
+274: 		}
+275: 	}
+276: 	for _, e := range page {
+277: 		if q.matchesText(e.Message) {
+278: 			matches = append(matches, e)
+279: 		}
+280: 	}
+281: 	return matches, edge, saturated
+282: }
+283:
+284: // errLogSearchTimeout is the answer when even the first slice of a search cannot
+285: // finish inside the budget: nothing honest can be paged, so the caller is told
+286: // to narrow the search (a 503 on REST, a QUERY_TIMEOUT-coded error on GraphQL).
+
+lego/backend/internal/logs/loki_test.go
+557: func TestLokiSourceLocalTextSearchReachesMatchBehindRawPage(t *testing.T) {
+558: 	var values strings.Builder
+559: 	values.WriteString("[")
+560: 	base := time.Date(2026, 7, 5, 0, 0, 0, 0, time.UTC)
+561: 	for i := 0; i < 1000; i++ {
+562: 		if i > 0 {
+563: 			values.WriteString(",")
+564: 		}
+565: 		fmt.Fprintf(&values, "[%q,%q]", strconv.FormatInt(base.Add(time.Duration(i)*time.Second).UnixNano(), 10), fmt.Sprintf("filler-%04d", i))
+566: 	}
+567: 	values.WriteString("]")
+568: 	calls := 0
+569: 	f := &fakeLoki{status: http.StatusOK}
+570: 	f.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+571: 		calls++
+572: 		f.lastValues = r.URL.Query()
+573: 		body := lokiResp(map[string]any{"stream": `{"app":"web","pod":"web-1","container":"app"}`, "values": values.String()})
+574: 		if calls == 2 {
+575: 			body = lokiResp(map[string]any{"stream": `{"app":"web","pod":"web-1","container":"app"}`, "values": `[["1751677200000000000","older CAFÉ Ελληνικά"]]`})
+576: 		}
+577: 		_, _ = w.Write([]byte(body))
+578: 	}))
+579: 	defer f.srv.Close()
+580:
+581: 	src := NewLokiSource(f.srv.URL, f.srv.Client())
+582: 	entries, err := src(context.Background(), "default", LogQuery{App: "web", Search: []string{"ι"}, Limit: 100})
+583: 	if err != nil {
+584: 		t.Fatalf("source: %v", err)
+585: 	}
+586: 	if calls < 2 {
+587: 		t.Fatalf("calls = %d, want scan to continue past one full raw page", calls)
+588: 	}
+589: 	if len(entries) != 1 || entries[0].Message != "older CAFÉ Ελληνικά" {
+590: 		t.Fatalf("entries = %+v", entries)
+591: 	}
+592: }
+593:
+594: func TestLokiSourceDownSurfacesError(t *testing.T) {
+
+lego/backend/internal/logs/service.go
+464: // displaySearch reports whether the query searches the displayed text rather
+465: // than the raw bytes — the case where a raw-byte prefilter would be wrong.
+466: func (q LogQuery) displaySearch() bool {
+467: 	return len(q.Search) > 0 && q.TextMode == TextModeDisplay
+468: }
+469:
+470: // localTextSearch reports whether Loki must return raw candidate lines and let
+471: // Go apply the final text matcher. Loki's regexp simplifier can turn some
+472: // case-insensitive Unicode literals into byte contains filters that are not a
+473: // superset of Go's strings.ToLower + literal contains contract (for example
+474: // Greek iota folds through U+0345). Running the same matcher for raw and display
+475: // history keeps the REST/GraphQL/MCP/CLI contract exact; scanLokiWindow still
+476: // bounds the work and returns an honest partial page when it cannot cover the
+477: // whole window.
+478: func (q LogQuery) localTextSearch() bool {
+479: 	return len(q.Search) > 0
+480: }
+481:
+482: // matchesText reports whether message contains any normalized Search term, in
+483: // the query's TextMode. No terms matches everything.
+484: func (q LogQuery) matchesText(message string) bool {
+485: 	if len(q.Search) == 0 {
+486: 		return true
+487: 	}
+488: 	if q.TextMode == TextModeDisplay {
+489: 		message = displayText(message)
+490: 	}
+491: 	message = strings.ToLower(message)
+492: 	return slices.ContainsFunc(q.Search, func(term string) bool { return strings.Contains(message, term) })
+493: }
+
+lego/backend/internal/logs/render.go
+138: func (s *Service) queryLogPage(ctx context.Context, resources []string, q LogQuery) (logPage, error) {
+139: 	n := q.normalized()
+140: 	forward := n.Direction == DirectionForward
+141: 	var all []LogEntry
+142: 	var edge *time.Time
+143: 	for _, id := range resources {
+144: 		q.App = id
+145: 		entries, err := s.QueryLogs(ctx, q)
+146: 		var partial *ScanIncompleteError
+147: 		if errors.As(err, &partial) {
+148: 			entries, err = partial.Entries, nil
+149: 			if to := partial.ScannedTo; edge == nil || (forward && to.Before(*edge)) || (!forward && to.After(*edge)) {
+150: 				edge = &to
+151: 			}
+152: 		}
+153: 		if err != nil {
+154: 			return logPage{}, err
+155: 		}
+156: 		all = append(all, entries...)
+157: 	}
+158: 	if edge != nil {
+159: 		all = slices.DeleteFunc(all, func(e LogEntry) bool {
+160: 			t, err := time.Parse(time.RFC3339Nano, e.Timestamp)
+161: 			if err != nil {
+162: 				return false
+163: 			}
+164: 			if forward {
+165: 				return !t.Before(*edge)
+166: 			}
+167: 			return t.Before(*edge)
+168: 		})
+169: 	}
+170: 	sort.SliceStable(all, func(i, j int) bool { return core.TimestampLess(all[i].Timestamp, all[j].Timestamp) })
+171: 	all = n.capToLimit(all) // the limit is a total across resources, not per resource
+172: 	page := logPage{Entries: all}
+173: 	page.HasMore, page.NextStartTime, page.NextEndTime = pageCursors(all, n.Limit, n.Since, n.End, n.Direction)
+174: 	if edge != nil && !page.HasMore {
+175: 		since, end := resolveCursorWindow(n.Since, n.End)
+176: 		page.HasMore = true
+177: 		if forward {
+178: 			page.NextStartTime = edge.UTC().Format(time.RFC3339Nano)
+179: 			page.NextEndTime = end.UTC().Format(time.RFC3339Nano)
+180: 		} else {
+181: 			page.NextStartTime = since.UTC().Format(time.RFC3339Nano)
+182: 			page.NextEndTime = edge.Add(-time.Nanosecond).UTC().Format(time.RFC3339Nano)
+183: 		}
+184: 	}
+185: 	return page, nil
+186: }
+187:
+188: // pageCursors computes the Render paging envelope fields shared by REST,
+189: // GraphQL, and MCP. Callers feed nextStartTime/nextEndTime back as
+190: // startTime/endTime to fetch the next page.
+191: //
+192: // Boundary rule (start and end are inclusive on the pod-log path; Loki's
+193: // query_range end is exclusive — both stay correct with the adjustments
+194: // below):
+195: //
+196: //   - backward (default): nextStartTime = query start, nextEndTime = one
+197: //     nanosecond before the page's oldest timestamp — so an inclusive end
+198: //     does not re-include the boundary group. capToLimit keeps a shared-
+199: //     timestamp group whole first, so every sibling at that instant is
+200: //     already on this page.
+201: //   - forward: nextStartTime = one nanosecond past the page's newest
+202: //     timestamp, nextEndTime = query end — so an inclusive start does not
+203: //     repeat the newest line (same whole-group guarantee from capToLimit).
+204: func pageCursors(entries []LogEntry, limit int64, since, end time.Time, direction string) (hasMore bool, nextStart, nextEnd string) {
+205: 	since, end = resolveCursorWindow(since, end)
+206: 	hasMore = limit > 0 && int64(len(entries)) >= limit
+207: 	if len(entries) == 0 {
+208: 		// Second precision matches Render's empty-page cursors and keeps two
+209: 		// identical empty reads byte-identical within the same second.
+210: 		return hasMore, since.UTC().Format(time.RFC3339), end.UTC().Format(time.RFC3339)
+211: 	}
+212: 	oldest, newest := entries[0].Timestamp, entries[len(entries)-1].Timestamp
+213: 	if direction == DirectionForward {
+214: 		return hasMore, advancePast(newest), end.UTC().Format(time.RFC3339Nano)
+215: 	}
+216: 	return hasMore, since.UTC().Format(time.RFC3339Nano), retreatBefore(oldest)
+217: }
+218:
+219: // resolveCursorWindow fills Render's documented defaults so REQUIRED cursors
+220: // are never empty when the caller omitted a bound.
+
+lego/backend/internal/logs/display_test.go
+262: // rangeLoki answers like query_range over data (oldest-first): [from, to) with
+263: // the newest (backward) or oldest (forward) `limit` lines, returned oldest-first.
+264: func rangeLoki(data []LogEntry, limit int, forward bool, calls *int) func(context.Context, time.Time, time.Time) ([]LogEntry, error) {
+265: 	return func(_ context.Context, from, to time.Time) ([]LogEntry, error) {
+266: 		*calls++
+267: 		var in []LogEntry
+268: 		for _, e := range data {
+269: 			ts, _ := time.Parse(time.RFC3339Nano, e.Timestamp)
+270: 			if !ts.Before(from) && ts.Before(to) {
+271: 				in = append(in, e)
+272: 			}
+273: 		}
+274: 		if len(in) > limit {
+275: 			if forward {
+276: 				in = in[:limit]
+277: 			} else {
+278: 				in = in[len(in)-limit:]
+279: 			}
+280: 		}
+281: 		return slices.Clone(in), nil
+282: 	}
+283: }
+284:
+285: // A display search must reach matches behind far more than a page of
+286: // unmatched raw lines, and lose nothing where Loki's limit cuts a group of
+287: // lines sharing one timestamp.
+288: func TestScanLokiWindowDisplayCoversRawLinesNotMatches(t *testing.T) {
+289: 	const n = 3000
+290: 	base := scanEnd.Add(-30 * time.Minute)
+291: 	var data []LogEntry
+292: 	var want []string
+293: 	for i := 0; i < n; i++ {
+294: 		ts := base.Add(time.Duration(i/3) * time.Millisecond) // groups of three share an instant
+295: 		msg := fmt.Sprintf("noise %d", i)
+296: 		// 1998/1999 share an instant with 2000, the line where the first backward
+297: 		// raw page is cut; 999-1001 sit at the forward cut. Line 0 is the oldest
+298: 		// match, behind 2999 unmatched-or-sparse lines.
+299: 		if i%250 == 0 || i == 1998 || i == 1999 || i == 1001 {
+300: 			msg = fmt.Sprintf("hit-\x1b[1m%d\x1b[0m-end", i)
+301: 			want = append(want, fmt.Sprintf("hit-\x1b[1m%d\x1b[0m-end", i))
+302: 		}
+303: 		data = append(data, LogEntry{Timestamp: ts.UTC().Format(time.RFC3339Nano), Message: msg, Labels: map[string]string{LabelInstance: fmt.Sprint("web-", i%3)}})
+304: 	}
+305: 	for _, direction := range []string{DirectionBackward, DirectionForward} {
+306: 		t.Run(direction, func(t *testing.T) {
+307: 			calls := 0
+308: 			q := LogQuery{Search: []string{"-end"}, TextMode: TextModeDisplay, Limit: 100, Direction: direction}.normalized()
+309: 			got, err := scanLokiWindow(context.Background(), q, scanStart, scanEnd, true, time.Minute,
+310: 				rangeLoki(data, lokiDisplayScanPage, direction == DirectionForward, &calls))
+311: 			if err != nil {
+312: 				t.Fatal(err)
+313: 			}
+314: 			var messages []string
+315: 			for _, e := range got {
+316: 				messages = append(messages, e.Message)
+317: 			}
+318: 			if !slices.Equal(messages, want) {
+319: 				t.Fatalf("got %d matches %q, want %d %q", len(messages), messages, len(want), want)
+320: 			}
+321: 			if calls < 3 {
+322: 				t.Fatalf("%d requests cannot have read %d raw lines", calls, n)
+323: 			}
+324: 		})
+325: 	}
+326: 	// The raw default is untouched: the same visible needle finds nothing.
+327: 	calls := 0
+328: 	raw := LogQuery{Search: []string{"hit-0-end"}, Limit: 100}.normalized()
+329: 	got, err := scanLokiWindow(context.Background(), raw, scanStart, scanEnd, true, time.Minute,
+330: 		func(ctx context.Context, from, to time.Time) ([]LogEntry, error) {
+331: 			page, err := rangeLoki(data, 100, false, &calls)(ctx, from, to)
+332: 			return slices.DeleteFunc(page, func(e LogEntry) bool { return !raw.matchesText(e.Message) }), err
+333: 		})
+334: 	if err != nil || len(got) != 0 {
+335: 		t.Fatalf("raw scan = %v, %v; want the existing empty answer", got, err)
+336: 	}
+337: }
+338:
+339: // When the budget runs out mid-scan, coverage stops at the raw lines actually
+340: // read — never at the slice start — so the page continues instead of
+
+rg -n NewLokiSource\( lego/backend --glob !**/*_test.go
+lego/backend/cmd/api/main.go:564:		deps.LogHistory = logs.NewLokiSource(lokiURL, nil)
+lego/backend/internal/logs/loki.go:52:func NewLokiSource(base string, hc *http.Client) LogHistorySource {
+
+rg -n s\.History\(|s\.queryLogPage\( lego/backend/internal/logs --glob !**/*_test.go
+lego/backend/internal/logs/mcp.go:159:		page, err := s.queryLogPage(ctx, resources, q)
+lego/backend/internal/logs/rest.go:113:	page, err := s.queryLogPage(r.Context(), resources, q)
+lego/backend/internal/logs/service.go:536:		entries, err := s.History(ctx, app.Namespace, LogQuery{App: app.Name, Limit: tail}.normalized())
+lego/backend/internal/logs/service.go:601:		entries, err := s.History(ctx, appNS, q)
+lego/backend/internal/logs/service.go:658:		entries, err := s.History(ctx, database.Namespace, q)
+lego/backend/internal/logs/service.go:726:		entries, err := s.History(ctx, kv.Namespace, q)
+lego/backend/internal/logs/graphql.go:113:				page, err := s.queryLogPage(p.Context, []string{q.App}, q)
+
+git log -4 --format=%h %s -- lego/backend/internal/logs/loki.go
+3f4f01efe fix(logs): durable history applies the live 64 KiB message cap (w4/256)
+c7567af44 fix(logs): match Loki history text locally
+8a60d3cff feat(logs): search the displayed log message across ANSI styling (w4/m189)
+df294ac76 fix(logs): classify tenant log lines by source, with one CNPG allow-list and one shared fixture (w5/m122)
+
+git log -3 -S localTextSearch() && !q.displaySearch() --format=%h %s -- lego/backend/internal/logs/loki.go
+c7567af44 fix(logs): match Loki history text locally

@@ -1,0 +1,41 @@
+import pathlib,json,datetime,secrets,subprocess,shutil,sys,time
+p=pathlib.Path(__file__).parent;root=pathlib.Path('<REPO>');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(cp.read_text());ws='tea-daif693dqjvc73e7as3g';mode,client,history=sys.argv[1:];assert client in ('bex','render') and history in ('built','direct');role=client+'-'+history;idfile=p/('sweep180-'+role+'-id.txt')
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+def cli(args):
+ cfg=p/'render-config/cli.yaml'
+ try:
+  if client=='render':shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  return json.loads(subprocess.check_output(['python3',str(p/'run-render.py'),*args] if client=='render' else ['python3',str(p/'run.py'),'--release',*args],text=True))
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True))
+if mode=='create':
+ assert c['sync180_result']==0 and not idfile.exists();q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';limits=json.loads(q['response']);assert limits['services']['used']+limits['services']['terminating']<limits['services']['limit']
+ nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-'+history;marker='QA180_'+nonce;command="mkdir -p dist; printf '%s' '"+marker+"' > dist/index.html; printf '%s' '"+marker+"_asset' > dist/version.txt";args=['services','create','--name',name,'--type','static_site','--repo','https://github.com/bex-co/bex','--branch','main','--auto-deploy=false','--root-directory','examples/static-site','--publish-directory','dist' if history=='built' else '.']
+ if history=='built':args+=['--build-command',command]
+ args+=['--confirm','-o','json'];x={'sweep':180,'workspace':ws,'source_head':c['head'],'name':name,'nonce':nonce,'type':'static_site','role':role,'time':now(),'dependency_ids':[],'state':'create intent persisted','command':[client,*args],'capacity_proof':q,'marker':marker,'build_command':command,'cost_proof':'native static default Free, verify before later mutations'};c['resources'].append(x);save();r=cli(args);x['create_result']=r;x['state']='create result received, reconcile before retry';save()
+ if r['exit']==0:
+  v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v);assert v['serviceDetails']['plan']=='free';x.update(id=v['id'],create_response=v,state='created: own Free static publication pending');idfile.write_text(v['id']);save()
+ print(json.dumps({'role':role,'id':x.get('id'),'create_exit':r['exit'],'elapsed':r['elapsed'],'stderr':r['stderr']}),flush=True);raise SystemExit(0 if r['exit']==0 else 1)
+sid=idfile.read_text();x=next(z for z in c['resources'] if z.get('id')==sid);base={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']};assert x['workspace']==ws and sid not in base and x['create_result']['exit']==0 and x['create_response']['id']==sid and not x['state'].startswith('deleted:')
+if mode=='poll':
+ for attempt in range(4):
+  r=cli(['deploys','list',sid,'--confirm','-o','json'])
+  if r['exit']!=0:
+   x.setdefault('excluded_poll_reads',[]).append({'at':now(),'native_history':r,'qualification':'Read failed before runtime assertion; no mutation replay and no product classification from this alone'});x['latest_acceptance']=False;save();print(json.dumps({'role':role,'read_exit':r['exit'],'stderr':r['stderr']}),flush=True);break
+  rows=json.loads(r['stdout']);latest=rows[0];detail=wire('/v1/services/'+sid+'/deploys/'+latest['id']);assert detail['status']=='200';dv=json.loads(detail['response']);built=history=='built' or 'build_update' in x;direct=not built or 'clear_update' in x
+  if direct:
+   commit=dv['commit']['id'];g=subprocess.run(['git','show',commit+':examples/static-site/index.html'],cwd=root,text=True,capture_output=True);assert g.returncode==0,g.stderr;expected=g.stdout
+  else:expected=x['marker']
+  obs={'at':now(),'native_history':r,'deploy_detail':detail,'expected_stage':'direct' if direct else 'built','expected_index':expected,'requests':{}}
+  for path in ('/','/version.txt'):
+   f=p/('sweep180-body-'+role);curl=subprocess.run(['curl','-sS','--max-time','8','-o',str(f),'-w','%{http_code}',x['create_response']['serviceDetails']['url']+path],text=True,capture_output=True);body=f.read_text() if f.exists() else '';obs['requests'][path]={'exit':curl.returncode,'http':curl.stdout,'body':body,'stderr':curl.stderr}
+  index=obs['requests']['/'];asset=obs['requests']['/version.txt'];ok=latest['status']=='live' and index['http']=='200' and index['body']==expected and ((direct and asset['http']=='404') or (not direct and asset['http']=='200' and asset['body']==x['marker']+'_asset'));obs['acceptance']=ok;x.setdefault('observations',[]).append(obs);x['latest_acceptance']=ok;x['latest_deploy_status']=latest['status'];save();print(json.dumps({'role':role,'attempt':attempt,'status':latest['status'],'stage':obs['expected_stage'],'index_http':index['http'],'exact_expected_index':index['body']==expected,'asset_http':asset['http'],'acceptance':ok,'failure':dv.get('failureReason')}),flush=True)
+  if ok or latest['status'] in ('build_failed','update_failed','canceled'):break
+  if attempt<3:time.sleep(6)
+elif mode in ('build','clear'):
+ assert x['latest_acceptance'] and x['create_response']['serviceDetails']['plan']=='free';key=mode+'_update';assert key not in x
+ if mode=='build':assert history=='direct'
+ args=['services','update',sid,'--build-command',x['build_command'] if mode=='build' else '', '--publish-directory','dist' if mode=='build' else '.', '--confirm','-o','json'];u={'at':now(),'command':[client,*args],'state':'owned mutation intent persisted'};x[key]=u;save();r=cli(args);u.update(result=r,state='result received, reconcile before retry');save();print(json.dumps({'role':role,'mode':mode,'exit':r['exit'],'elapsed':r['elapsed'],'stderr':r['stderr']}),flush=True)
+else:raise ValueError(mode)

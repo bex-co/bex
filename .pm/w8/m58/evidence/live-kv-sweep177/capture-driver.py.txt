@@ -1,0 +1,30 @@
+import pathlib,json,subprocess,datetime,os,re,time,sys,threading,http.server,http.client,urllib.parse,gzip,shutil
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('<REPO>/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());sid=(p/'sweep177-kv-id.txt').read_text();x=next(z for z in c['resources'] if z.get('id')==sid);client=sys.argv[1];term=sys.argv[2];assert client in ('bex','render');assert x['create_result']['exit']==0 and not x['state'].startswith('deleted:');captures=[]
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,indent=2));cp.chmod(0o600)
+class Handler(http.server.BaseHTTPRequestHandler):
+ def log_message(self,*a):pass
+ def do_POST(self):self.send_error(405)
+ def do_GET(self):
+  route=urllib.parse.urlsplit(self.path);q=urllib.parse.parse_qs(route.query)
+  if route.path!='/v1/logs' or q.get('resource')!=[sid] or q.get('ownerId')!=[x['workspace']]:self.send_error(400,'outside owned historical logs');return
+  headers={k:v for k,v in self.headers.items() if k.lower() not in ('host','connection','content-length')};headers['Host']='api.bex.co';con=http.client.HTTPSConnection('api.bex.co',timeout=25)
+  try:
+   con.request('GET',self.path,headers=headers);r=con.getresponse();body=r.read();hs=r.getheaders();payload=gzip.decompress(body) if r.getheader('Content-Encoding')=='gzip' else body
+   captures.append({'at':now(),'request':{'method':'GET','path':self.path,'query':q,'headers':{k:v for k,v in headers.items() if k.lower() in ('user-agent','x-bex-workspace','x-bex-cli-version')}},'status':r.status,'response_headers':{k:v for k,v in hs if k.lower() in ('content-type','cf-ray','x-request-id')},'response':payload.decode()})
+   self.send_response(r.status)
+   for k,v in hs:
+    if k.lower() not in ('transfer-encoding','connection','content-length','keep-alive'):self.send_header(k,v)
+   self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
+  except Exception as e:
+   captures.append({'transport_error':type(e).__name__});self.send_error(502)
+  finally:con.close()
+server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler);server.daemon_threads=True;origin='http://127.0.0.1:'+str(server.server_port)+'/v1/';thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start();cfgdir=p/('sweep177-kv-capture-'+client+'-'+str(server.server_port));cfgdir.mkdir(mode=0o700);cfg=cfgdir/'cli.yaml';cfgtext,n=re.subn(r'(?m)^(\s+)host:.*$',lambda m:m[1]+'host: '+origin,(p/'config/cli.yaml').read_text());assert n==1;cfg.write_text(cfgtext);cfg.chmod(0o600)
+prefix='BEX' if client=='bex' else 'RENDER';env={k:v for k,v in os.environ.items() if not k.startswith(('RENDER_','BEX_','QA_'))};env.update({prefix+'_HOST':origin,prefix+'_CLI_CONFIG_DIR':str(cfgdir),prefix+'_CLI_CONFIG_PATH':str(cfg),prefix+'_WORKSPACE':x['workspace'],prefix+'_CLI_DISABLE_ANALYTICS':'1','BEX_NO_UPDATE_NOTIFIER':'1','BROWSER':'/usr/bin/true'})
+binary=p/'release/bex' if client=='bex' else p/'render-pin';assert binary.exists();args=['logs','--resources',sid,'--text','"'+term.replace('"','""')+'"','--limit','100','--confirm','-o','json'];o={'at':now(),'client':client,'term':term,'command':[client,*args],'authority_forwarding':'GET-only transparent capture to fixed api.bex.co; no path/query/body rewrites; isolated config copy; auth not journaled'};x.setdefault('captured_searches',[]).append(o);save();started=time.monotonic()
+try:
+ r=subprocess.run([str(binary),*args],env=env,text=True,capture_output=True,timeout=40);o['native_result']={'exit':r.returncode,'elapsed':round(time.monotonic()-started,3),'stdout':r.stdout,'stderr':r.stderr}
+except subprocess.TimeoutExpired as e:o['native_result']={'exit':'harness timeout','elapsed':40,'stdout':(e.stdout or b'').decode() if isinstance(e.stdout,bytes) else e.stdout or '', 'stderr':(e.stderr or b'').decode() if isinstance(e.stderr,bytes) else e.stderr or ''}
+finally:
+ server.shutdown();server.server_close();thread.join(timeout=2);shutil.rmtree(cfgdir);o['captures']=captures;o['capture_cleanup']='child reaped, server closed, temporary copied config removed';save()
+print(client,'term',repr(term),'exit',o['native_result']['exit'],'seconds',o['native_result']['elapsed'],'stderr',o['native_result']['stderr'],'captures',len(captures),'rows',[len(json.loads(v['response']).get('logs',[])) for v in captures if 'response' in v],flush=True)

@@ -1,0 +1,11 @@
+import pathlib,json,subprocess,shutil,datetime
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());sid=(p/'sweep177-kv-id.txt').read_text().strip();x=next(z for z in c['resources'] if z.get('id')==sid);prefix=x['unicode_log_prefix'];prior={(z['client'],z['term']) for z in x.get('captured_searches',[])}
+for client in ('bex','render'):
+ for term in (prefix,prefix+' ι',prefix+' λ'):
+  if (client,term) in prior:continue
+  subprocess.run(['python3',str(p/'sweep177-kv-capture.py'),client,term],check=True)
+# Read-only connection control in the unmodified same-pin client.
+c=json.loads(cp.read_text());x=next(z for z in c['resources'] if z.get('id')==sid);assert not x.get('render_ping');cfg=p/'render-config/cli.yaml';assert not cfg.exists();shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+try:r=json.loads(subprocess.check_output(['python3',str(p/'pty-bounded.py'),'--render','kv-cli',sid,'--','--raw','PING'],text=True));x['render_ping']=r
+finally:cfg.unlink(missing_ok=True)
+c['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600);print(json.dumps({'render_ping_exit':r['exit'],'elapsed':r['elapsed'],'timeout':r['timeout'],'pong':'PONG' in r['output'].splitlines()}),flush=True)

@@ -1,0 +1,175 @@
+lego/cli/internal/bridge/dashboard.go
+1: package bridge
+2: 
+3: import (
+4: 	"github.com/render-oss/cli/pkg/cfg"
+5: 	"github.com/render-oss/cli/pkg/config"
+6: )
+7: 
+8: // DefaultDashboardURL is the dashboard origin of DefaultHost's control plane.
+9: const DefaultDashboardURL = "https://dashboard.bex.co"
+10: 
+11: // EnsureDashboardURL gives a config with no dashboard origin the Bex one
+12: // before a command that opens dashboard pages runs (w8/090): upstream saves
+13: // the origin only at device login, so a config that never logged in (a missing
+14: // or version-only file, an environment credential) had none.
+15: //
+16: // It acts only for the production default API, and never replaces an origin
+17: // already saved, so custom and local control planes and explicit overrides
+18: // keep theirs. Only the non-secret origin is written; an environment bearer is
+19: // never persisted. It is best-effort: an unreadable or unwritable config is
+20: // left for upstream to report as it always has.
+21: func EnsureDashboardURL(use bool) {
+22: 	if !use || cfg.GetHost() != DefaultHost {
+23: 		return
+24: 	}
+25: 	current, err := config.Load()
+26: 	if err != nil || current.DashboardURL != "" || (current.Host != "" && current.Host != DefaultHost) {
+27: 		return
+28: 	}
+29: 	current.DashboardURL = DefaultDashboardURL
+30: 	_ = current.Persist()
+31: }
+
+lego/cli/main.go
+52: 	// commands attach so ungrouped Bex commands keep their help section.
+53: 	branding.Apply(cmd.RootCmd, bexVersion)
+54: 	// Brands the children upstream Execute registers after Apply before any
+55: 	// command, including __complete, runs (w2/043). The BEX_WORKSPACE name
+56: 	// resolves here too, once the complete tree can name the invoked command:
+57: 	// cobra skips initializers for --help/--version, and workspaceUse spares
+58: 	// the commands that never read the active workspace (w8/064).
+59: 	cobra.OnInitialize(func() {
+60: 		branding.Refresh(cmd.RootCmd)
+61: 		if err := bridge.ResolveWorkspaceName(workspaceUse(cmd.RootCmd, os.Args[1:])); err != nil {
+62: 			fmt.Fprintf(os.Stderr, "bex: %v\n", err)
+63: 			os.Exit(1)
+64: 		}
+65: 		bridge.EnsureDashboardURL(opensDashboard(cmd.RootCmd, os.Args[1:]))
+66: 	})
+67: 
+
+lego/cli/main.go
+245: // opensDashboard reports whether args invoke a hosting command with a
+246: // Dashboard action: the services list (alias service) and deploys list.
+247: // cobra's own lookup resolves aliases, so no second parser can disagree.
+248: func opensDashboard(root *cobra.Command, args []string) bool {
+249: 	target, _, err := root.Find(args)
+250: 	if err != nil || target == nil || !target.Runnable() {
+251: 		return false
+252: 	}
+253: 	switch strings.TrimPrefix(target.CommandPath(), root.Name()+" ") {
+254: 	case "services", "deploys list":
+255: 		return true
+256: 	}
+257: 	return false
+258: }
+259: 
+260: // workspaceUse classifies the invoked command for ResolveWorkspaceName (w8/064).
+261: // A group command that only prints help, a nonempty --workspace/-w selection
+
+lego/cli/internal/bridge/dashboard_test.go
+14: func TestEnsureDashboardURL(t *testing.T) {
+15: 	for _, tc := range []struct {
+16: 		name     string
+17: 		file     *string // nil: no config file at all
+18: 		host     string  // RENDER_HOST; empty means the Bex default
+19: 		use      bool
+20: 		wantURL  string
+21: 		wantSame bool // the file is left byte-identical
+22: 	}{
+23: 		{name: "missing file", use: true, wantURL: DefaultDashboardURL},
+24: 		{name: "version-only file", file: new("version: 1\n"), use: true, wantURL: DefaultDashboardURL},
+25: 		{name: "unrelated fields kept", file: new("version: 1\nworkspace: tea-x\nworkspace_name: canary\n"), use: true, wantURL: DefaultDashboardURL},
+26: 		{name: "saved origin kept", file: new("version: 1\ndashboard_url: https://oauth.bex.co\n"), use: true, wantSame: true},
+27: 		{name: "custom API host", file: new("version: 1\n"), host: "https://api.bex.local/v1/", use: true, wantSame: true},
+28: 		{name: "custom stored host", file: new("version: 1\napi:\n  host: https://api.bex.local/v1/\n"), use: true, wantSame: true},
+29: 		{name: "malformed config", file: new("version: [\n"), use: true, wantSame: true},
+30: 		{name: "command without a Dashboard action", file: new("version: 1\n"), use: false, wantSame: true},
+31: 	} {
+32: 		t.Run(tc.name, func(t *testing.T) {
+33: 			path := filepath.Join(t.TempDir(), "cli.yaml")
+34: 			t.Setenv("RENDER_CLI_CONFIG_PATH", path)
+35: 			t.Setenv("RENDER_API_KEY", "rnd_secret_bearer")
+36: 			host := tc.host
+37: 			if host == "" {
+38: 				host = DefaultHost
+
+pinned/pkg/cfg/cfg.go
+20: func GetHost() string {
+21: 	if host := os.Getenv("RENDER_HOST"); host != "" {
+22: 		return host
+23: 	}
+24: 
+25: 	return "https://api.render.com/v1/"
+26: }
+27: 
+
+pinned/pkg/config/config.go
+49: func DefaultAPIConfig() (APIConfig, error) {
+50: 	apiCfg := APIConfig{
+51: 		Key:  cfg.GetAPIKey(),
+52: 		Host: cfg.GetHost(),
+53: 	}
+54: 
+55: 	var err error
+56: 	if apiCfg.Key == "" {
+57: 		apiCfg, err = getAPIConfig()
+58: 		if err != nil || apiCfg.Key == "" {
+59: 			return APIConfig{}, ErrLogin
+60: 		}
+61: 	}
+62: 
+63: 	if apiCfg.Host == "" {
+64: 		apiCfg.Host = cfg.GetHost()
+65: 	}
+66: 
+67: 	return apiCfg, nil
+68: }
+69: 
+
+pinned/pkg/client/client_gen.go
+68: func NewClient(server string, opts ...ClientOption) (*Client, error) {
+69: 	// create a client with sane default values
+70: 	client := Client{
+71: 		Server: server,
+72: 	}
+73: 	// mutate client and add all optional params
+74: 	for _, o := range opts {
+75: 		if err := o(&client); err != nil {
+76: 			return nil, err
+77: 		}
+78: 	}
+79: 	// ensure the server URL always has a trailing slash
+80: 	if !strings.HasSuffix(client.Server, "/") {
+81: 		client.Server += "/"
+82: 	}
+83: 	// create httpClient, if not already present
+84: 	if client.Client == nil {
+85: 		client.Client = &http.Client{}
+86: 	}
+
+pinned/pkg/dashboard/dashboard.go
+28: func OpenResource(id, resourceType string) error {
+29: 	return Open(resourceURL(id, resourceType))
+30: }
+31: 
+32: func resourceURL(id string, resourceType string) string {
+33: 	dashURL := config.DashboardURL()
+34: 
+35: 	resourceTypePathSegment := pathSegmentFromResourceType(resourceType)
+36: 
+37: 	dashURL += fmt.Sprintf("/%s/%s", resourceTypePathSegment, id)
+38: 	return dashURL
+39: }
+40: 
+41: func OpenDeploy(resourceID, resourceType, deployID string) error {
+42: 	dashURL := resourceURL(resourceID, resourceType)
+43: 
+44: 	dashURL = fmt.Sprintf("%s/deploys/%s", dashURL, deployID)
+45: 
+46: 	return Open(dashURL)
+47: }
+48: 
+49: func OpenVersion(workflowID, versionID string) error {
+50: 	// TODO TBD on path naming/visibility down the line

@@ -1,0 +1,177 @@
+{
+  "exit": 0,
+  "elapsed": 7.724,
+  "command": [
+    "go",
+    "test",
+    "-json",
+    "-overlay",
+    "<QA_TMP>/sweep195-location-overlay.json",
+    "./internal/apps",
+    "-run",
+    "^TestQAReferenceLocation195$",
+    "-count=1"
+  ],
+  "events": [
+    {
+      "action": "pass",
+      "test": "TestQAReferenceLocation195/root-missing-image"
+    },
+    {
+      "action": "pass",
+      "test": "TestQAReferenceLocation195/root-missing-plan"
+    },
+    {
+      "action": "pass",
+      "test": "TestQAReferenceLocation195/root-missing-type"
+    },
+    {
+      "action": "pass",
+      "test": "TestQAReferenceLocation195/root-missing-poolword"
+    },
+    {
+      "action": "pass",
+      "test": "TestQAReferenceLocation195/project-missing-image"
+    },
+    {
+      "action": "pass",
+      "test": "TestQAReferenceLocation195/project-missing-plan"
+    },
+    {
+      "action": "pass",
+      "test": "TestQAReferenceLocation195/project-missing-type"
+    },
+    {
+      "action": "pass",
+      "test": "TestQAReferenceLocation195/project-missing-poolword"
+    },
+    {
+      "action": "pass",
+      "test": "TestQAReferenceLocation195"
+    }
+  ],
+  "records": [
+    {
+      "actual": {
+        "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"IMAGE\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+        "line": 7,
+        "column": 16,
+        "path": "services[0].image"
+      },
+      "expected_env_location": {
+        "Line": 16,
+        "Column": 9
+      },
+      "expected_env_pointer": "#/services/0/envVars/1",
+      "label": "root-missing-image",
+      "reported_pointer_exists": true
+    },
+    {
+      "actual": {
+        "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"PLAN\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+        "line": 6,
+        "column": 15,
+        "path": "services[0].plan"
+      },
+      "expected_env_location": {
+        "Line": 16,
+        "Column": 9
+      },
+      "expected_env_pointer": "#/services/0/envVars/1",
+      "label": "root-missing-plan",
+      "reported_pointer_exists": true
+    },
+    {
+      "actual": {
+        "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"TYPE\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+        "line": 4,
+        "column": 15,
+        "path": "services[0].type"
+      },
+      "expected_env_location": {
+        "Line": 16,
+        "Column": 9
+      },
+      "expected_env_pointer": "#/services/0/envVars/1",
+      "label": "root-missing-type",
+      "reported_pointer_exists": true
+    },
+    {
+      "actual": {
+        "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"CONNECTIONPOOL\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+        "line": 3,
+        "column": 5,
+        "path": "services[0].connectionPool"
+      },
+      "expected_env_location": {
+        "Line": 16,
+        "Column": 9
+      },
+      "expected_env_pointer": "#/services/0/envVars/1",
+      "label": "root-missing-poolword",
+      "reported_pointer_exists": false
+    },
+    {
+      "actual": {
+        "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"IMAGE\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+        "line": 13,
+        "column": 24,
+        "path": "projects[0].environments[0].services[0].image"
+      },
+      "expected_env_location": {
+        "Line": 22,
+        "Column": 17
+      },
+      "expected_env_pointer": "#/projects/0/environments/0/services/0/envVars/1",
+      "label": "project-missing-image",
+      "reported_pointer_exists": true
+    },
+    {
+      "actual": {
+        "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"PLAN\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+        "line": 12,
+        "column": 23,
+        "path": "projects[0].environments[0].services[0].plan"
+      },
+      "expected_env_location": {
+        "Line": 22,
+        "Column": 17
+      },
+      "expected_env_pointer": "#/projects/0/environments/0/services/0/envVars/1",
+      "label": "project-missing-plan",
+      "reported_pointer_exists": true
+    },
+    {
+      "actual": {
+        "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"TYPE\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+        "line": 10,
+        "column": 23,
+        "path": "projects[0].environments[0].services[0].type"
+      },
+      "expected_env_location": {
+        "Line": 22,
+        "Column": 17
+      },
+      "expected_env_pointer": "#/projects/0/environments/0/services/0/envVars/1",
+      "label": "project-missing-type",
+      "reported_pointer_exists": true
+    },
+    {
+      "actual": {
+        "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"CONNECTIONPOOL\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+        "line": 9,
+        "column": 13,
+        "path": "projects[0].environments[0].services[0].connectionPool"
+      },
+      "expected_env_location": {
+        "Line": 22,
+        "Column": 17
+      },
+      "expected_env_pointer": "#/projects/0/environments/0/services/0/envVars/1",
+      "label": "project-missing-poolword",
+      "reported_pointer_exists": false
+    }
+  ],
+  "stderr": "",
+  "qualification": "Eight actual current ValidateBlueprint calls through virtual test overlay reproduce wrong locations; assertions expect current bug, not a fixed regression; product files unchanged"
+}

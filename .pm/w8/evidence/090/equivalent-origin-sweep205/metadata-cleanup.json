@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-13T08:34:38.988813+00:00",
+  "source_head": "c5a0eb9dd15f6b417bf586fdf26510706497b032",
+  "current_build": "private bex-head191, c5a0eb9dd15f6b417bf586fdf26510706497b032",
+  "native_current_build_failures": 3,
+  "native_current_build_controls": 2,
+  "pinned_Render_neighbor": 1,
+  "current_helper_diagnostics": 3,
+  "existing_helper_subtests": 8,
+  "HTTP_wire": "not captured",
+  "hosting_mutations": 0,
+  "configs_PTYs_stub_removed": true,
+  "actual_secret_values_absent_from_terminal_bytes": true,
+  "live_server_revision": "unknown",
+  "real_browser_and_deploy_menu": "untested",
+  "implementation_and_ship": false
+}

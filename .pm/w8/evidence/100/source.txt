@@ -1,0 +1,177 @@
+lego/backend/internal/apps/deploy.go
+1748: // poolerRequiredError is the shared wording for a connectionPoolString
+1749: // reference to a database without connectionPool: pgbouncer, so the
+1750: // parse-time and resolve-time checks can't drift.
+1751: func poolerRequiredError(service, database string) error {
+1752: 	return fmt.Errorf("%w: service %q: fromDatabase connectionPoolString requires database %q connectionPool: pgbouncer", core.ErrBadRequest, service, database)
+1753: }
+1754:
+1755: // registerUniqueName checks for duplicate names across services and databases.
+
+lego/backend/internal/apps/deploy.go
+1939: 		return st, problems
+1940: 	}
+1941:
+1942: 	// Pass 2: classify each pending service's deferred references now that
+1943: 	// every name, port, and known-env is available.
+1944: 	for _, p := range pendings {
+1945: 		svc, err := idx.classifyRefs(p.svc, p.refVars)
+1946: 		if err != nil {
+1947: 			// Attributed to its service so validation can locate the env entry.
+1948: 			return parsedStack{}, blueprintResourceErrors{{kind: BlueprintResourceService, name: p.svc.req.Name, err: err}}
+1949: 		}
+
+lego/backend/internal/apps/deploy.go
+2052: // classifyRefs resolves one service's deferred reference env vars now that
+2053: // every name, port, and known-env is available. Database references are
+2054: // validated here but retained until apply: only then do we know the immutable
+2055: // dpg-... id that names the CNPG Secret.
+2056: func (idx *stackIndex) classifyRefs(svc parsedService, refVars []bexEnvVar) (parsedService, error) {
+2057: 	for _, r := range refVars {
+2058: 		if r.FromDatabase != nil {
+2059: 			if idx.databaseNames[r.FromDatabase.Name] && r.FromDatabase.Property == dbPropertyConnectionPoolString && !idx.databasePoolers[r.FromDatabase.Name] {
+2060: 				return parsedService{}, poolerRequiredError(svc.req.Name, r.FromDatabase.Name)
+2061: 			}
+2062: 			svc.databaseRefs = append(svc.databaseRefs, r)
+2063: 			continue
+2064: 		}
+2065: 		if r.FromService != nil && isKeyValueType(r.FromService.Type) {
+2066: 			svc.kvRefs = append(svc.kvRefs, r)
+2067: 			continue
+2068: 		}
+
+lego/backend/internal/apps/blueprint.go
+757: func blueprintResourceValidationErrors(source *BlueprintSource, ir BlueprintIR, refused blueprintResourceErrors) []BlueprintValidationError {
+758: 	out := make([]BlueprintValidationError, 0, len(refused))
+759: 	for _, problem := range refused {
+760: 		msg := blueprintManifestCreateMessage(blueprintValidationMessage(problem.err))
+761: 		var entry BlueprintValidationError
+762: 		if resource, ok := blueprintIRResource(ir, problem.kind, problem.name); ok {
+763: 			pointer := resource.SourcePath + strings.ReplaceAll(blueprintErrorField(msg), ".", "/")
+764: 			if i, ok := blueprintEnvVarIndex(resource, msg); ok {
+765: 				pointer = fmt.Sprintf("%s/envVars/%d", resource.SourcePath, i)
+766: 			} else if i, ok := blueprintDomainIndex(resource, msg); ok {
+767: 				pointer = fmt.Sprintf("%s/domains/%d", resource.SourcePath, i)
+768: 			} else if field, ok := blueprintCodedField(problem.err, resource); ok {
+769: 				pointer = resource.SourcePath + "/" + field
+770: 			}
+771: 			entry = blueprintLocatedError(source, msg, pointer)
+772: 		} else {
+773: 			entry = blueprintValidationError(ir, msg)
+774: 		}
+775: 		entry.Code = blueprintRefusalCode(problem.err)
+776: 		out = append(out, entry)
+777: 	}
+778: 	// Parsing visits resource kinds separately; present refusals in source order.
+779: 	sort.SliceStable(out, func(i, j int) bool {
+780: 		if out[i].Line == nil {
+781: 			return false
+782: 		}
+783: 		if out[j].Line == nil {
+784: 			return true
+785: 		}
+786: 		return *out[i].Line < *out[j].Line
+787: 	})
+788: 	return out
+789: }
+790:
+791: // blueprintCodedField is the declared field a coded refusal names. It locates
+792: // the refusal where the message alone can mislead: a Key Value named
+793: // Plan_Cache is refused for its name, not its plan.
+794: func blueprintCodedField(err error, resource BlueprintResourceIR) (string, bool) {
+795: 	var coded *core.CodedError
+796: 	if !errors.As(err, &coded) {
+797: 		return "", false
+798: 	}
+799: 	field, ok := coded.Params["field"].(string)
+800: 	if !ok {
+801: 		return "", false
+802: 	}
+803: 	_, declared := resource.Fields[field]
+804: 	return field, declared
+805: }
+806:
+807: // blueprintRefusalCode is the code the apply's own refusal carries, so
+808: // preview and apply name a refusal alike (w5/m126).
+
+lego/backend/internal/apps/blueprint.go
+817: var blueprintEnvKeyRE = regexp.MustCompile(`envVars\["([^"]+)"\]`)
+818:
+819: // blueprintEnvVarIndex resolves a message naming envVars["KEY"] to that entry.
+820: func blueprintEnvVarIndex(resource BlueprintResourceIR, msg string) (int, bool) {
+821: 	match := blueprintEnvKeyRE.FindStringSubmatch(msg)
+822: 	if match == nil {
+823: 		return 0, false
+824: 	}
+825: 	envVars, _ := resource.Fields["envVars"].Value.([]any)
+826: 	for i, raw := range envVars {
+827: 		if env, _ := raw.(map[string]any); env["key"] == match[1] {
+828: 			return i, true
+829: 		}
+830: 	}
+831: 	return 0, false
+832: }
+833:
+834: var blueprintQuotedRE = regexp.MustCompile(`"([^"]+)"`)
+835:
+
+lego/backend/internal/apps/blueprint.go
+864: func blueprintLocatedError(source *BlueprintSource, msg, pointer string) BlueprintValidationError {
+865: 	entry := BlueprintValidationError{Error: msg}
+866: 	if path := blueprintDisplayPath(pointer); path != "" {
+867: 		entry.Path = &path
+868: 	}
+869: 	if source == nil {
+870: 		return entry
+871: 	}
+872: 	location := lookupBlueprintLocation(pointer, source.Locations)
+873: 	if location.Line > 0 {
+874: 		line := location.Line
+875: 		entry.Line = &line
+876: 	}
+877: 	if location.Column > 0 {
+878: 		column := location.Column
+879: 		entry.Column = &column
+880: 	}
+881: 	return entry
+882: }
+883:
+
+lego/backend/internal/apps/blueprint.go
+1947: func blueprintErrorField(message string) string {
+1948: 	if strings.Contains(message, "health check path") {
+1949: 		return ".healthCheckPath"
+1950: 	}
+1951: 	// Hostname refusals contain "name"; they belong to domains (w8/055).
+1952: 	for _, marker := range []string{"hostname", "wildcard", "this domain", "custom domains"} {
+1953: 		if strings.Contains(strings.ToLower(message), marker) {
+1954: 			return ".domains"
+1955: 		}
+1956: 	}
+1957: 	for _, field := range []string{"maintenanceMode", "highAvailability", "readReplicas", "diskSizeGB", "storageAutoscalingEnabled", "connectionPool", "plan", "domains", "schedule", "runtime", "type", "image", "databaseName", "name", "ipAllowList", "renderSubdomainPolicy", "scaling", "staticPublishPath", "publishPath"} {
+1958: 		if strings.Contains(strings.ToLower(message), strings.ToLower(field)) {
+1959: 			return "." + field
+1960: 		}
+1961: 	}
+1962: 	if strings.Contains(message, " env ") || strings.Contains(message, "env var") || strings.Contains(message, "envVars[") {
+1963: 		return ".envVars"
+1964: 	}
+1965: 	return ""
+1966: }
+1967:
+1968: // repoName extracts a human-friendly name from a repo URL.
+
+lego/backend/internal/apps/blueprint_compiler.go
+1534: func lookupBlueprintLocation(path string, locations map[string]BlueprintSourceLocation) BlueprintSourceLocation {
+1535: 	for path != "" {
+1536: 		if location, ok := locations[path]; ok {
+1537: 			return location
+1538: 		}
+1539: 		if path == "#" {
+1540: 			break
+1541: 		}
+1542: 		path = path[:strings.LastIndex(path, "/")]
+1543: 	}
+1544: 	return BlueprintSourceLocation{}
+1545: }
+1546:

@@ -1,0 +1,2863 @@
+{
+  "sweep": 194,
+  "nonce": "c4c136",
+  "source_head": "c5a0eb9dd15f6b417bf586fdf26510706497b032",
+  "surface": "Blueprint Free PostgreSQL connection-pool/storage/replica/HA admission and disabled-feature controls at root and nested locations",
+  "mutation": "none: native validation only; paid resource creation/apply not attempted",
+  "native_wire": "not intercepted",
+  "results": [
+    {
+      "at": "2026-10-13T03:42:40.736168+00:00",
+      "client": "bex",
+      "case": "minimal",
+      "layout": "root",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-minimal-db",
+            "plan": "free",
+            "postgresMajorVersion": "18"
+          }
+        ]
+      },
+      "expected_valid": true,
+      "expected_reason_fragment": null,
+      "state": "native validation completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-minimal.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.99,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa194-c4c136-minimal-db\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": [
+            "qa194-c4c136-minimal-db"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:42:42.219927+00:00",
+      "client": "bex",
+      "case": "disabled",
+      "layout": "root",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-disabled-db",
+            "plan": "free",
+            "postgresMajorVersion": "18",
+            "diskSizeGB": 1,
+            "storageAutoscalingEnabled": false,
+            "connectionPool": "none",
+            "highAvailability": {
+              "enabled": false
+            },
+            "readReplicas": []
+          }
+        ]
+      },
+      "expected_valid": true,
+      "expected_reason_fragment": null,
+      "state": "native validation completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-disabled.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.868,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa194-c4c136-disabled-db\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": [
+            "qa194-c4c136-disabled-db"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:42:43.445288+00:00",
+      "client": "bex",
+      "case": "pooler",
+      "layout": "root",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-pooler-db",
+            "plan": "free",
+            "postgresMajorVersion": "18",
+            "connectionPool": "pgbouncer"
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "paid",
+      "state": "native validation completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-pooler.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.642,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 25,\n      \"error\": \"database \\\"qa194-c4c136-pooler-db\\\" connectionPool: connection pooling requires a paid Postgres plan; disable connection pooling before selecting the free plan\",\n      \"line\": 7,\n      \"path\": \"databases[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 25,
+            "error": "database \"qa194-c4c136-pooler-db\" connectionPool: connection pooling requires a paid Postgres plan; disable connection pooling before selecting the free plan",
+            "line": 7,
+            "path": "databases[0].connectionPool"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:42:44.430048+00:00",
+      "client": "bex",
+      "case": "storage",
+      "layout": "root",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-storage-db",
+            "plan": "free",
+            "postgresMajorVersion": "18",
+            "diskSizeGB": 15
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "1 GB",
+      "state": "native validation completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-storage.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.338,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 21,\n      \"error\": \"database \\\"qa194-c4c136-storage-db\\\" diskSizeGB: free Postgres storage is fixed at 1 GB; upgrade to a paid plan for 15 GB of storage\",\n      \"line\": 7,\n      \"path\": \"databases[0].diskSizeGB\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 21,
+            "error": "database \"qa194-c4c136-storage-db\" diskSizeGB: free Postgres storage is fixed at 1 GB; upgrade to a paid plan for 15 GB of storage",
+            "line": 7,
+            "path": "databases[0].diskSizeGB"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:42:45.132470+00:00",
+      "client": "bex",
+      "case": "autoscaling",
+      "layout": "root",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-autoscaling-db",
+            "plan": "free",
+            "postgresMajorVersion": "18",
+            "storageAutoscalingEnabled": true
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "paid",
+      "state": "native validation completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-autoscaling.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.418,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 36,\n      \"error\": \"database \\\"qa194-c4c136-autoscaling-db\\\" storageAutoscalingEnabled: disk autoscaling requires a paid Postgres plan; disable disk autoscaling before selecting the free plan\",\n      \"line\": 7,\n      \"path\": \"databases[0].storageAutoscalingEnabled\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 36,
+            "error": "database \"qa194-c4c136-autoscaling-db\" storageAutoscalingEnabled: disk autoscaling requires a paid Postgres plan; disable disk autoscaling before selecting the free plan",
+            "line": 7,
+            "path": "databases[0].storageAutoscalingEnabled"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:42:45.955514+00:00",
+      "client": "bex",
+      "case": "replicas",
+      "layout": "root",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-replicas-db",
+            "plan": "free",
+            "postgresMajorVersion": "18",
+            "readReplicas": [
+              {
+                "name": "qa194-c4c136-reader"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "0.5 CPU",
+      "state": "native validation completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-replicas.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.299,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 23,\n      \"error\": \"database \\\"qa194-c4c136-replicas-db\\\" readReplicas: read replicas require a Postgres plan with at least 0.5 CPU; plan \\\"free\\\" has 100m CPU; remove read replicas before selecting this plan\",\n      \"line\": 7,\n      \"path\": \"databases[0].readReplicas\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 23,
+            "error": "database \"qa194-c4c136-replicas-db\" readReplicas: read replicas require a Postgres plan with at least 0.5 CPU; plan \"free\" has 100m CPU; remove read replicas before selecting this plan",
+            "line": 7,
+            "path": "databases[0].readReplicas"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:42:46.634347+00:00",
+      "client": "bex",
+      "case": "HA",
+      "layout": "root",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-ha-db",
+            "plan": "free",
+            "postgresMajorVersion": "18",
+            "highAvailability": {
+              "enabled": true
+            }
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "1 CPU",
+      "state": "native validation completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-HA.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.27,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 27,\n      \"error\": \"database \\\"qa194-c4c136-ha-db\\\" highAvailability: high availability requires a Postgres plan with at least 1 CPU; plan \\\"free\\\" has 100m CPU\",\n      \"line\": 7,\n      \"path\": \"databases[0].highAvailability\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 27,
+            "error": "database \"qa194-c4c136-ha-db\" highAvailability: high availability requires a Postgres plan with at least 1 CPU; plan \"free\" has 100m CPU",
+            "line": 7,
+            "path": "databases[0].highAvailability"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:42:47.290021+00:00",
+      "client": "bex",
+      "case": "direct-reference",
+      "layout": "root",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-direct-reference-db",
+            "plan": "free",
+            "postgresMajorVersion": "18"
+          }
+        ],
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa194-c4c136-consumer",
+            "envVars": [
+              {
+                "key": "DB_REFERENCE",
+                "fromDatabase": {
+                  "name": "qa194-c4c136-direct-reference-db",
+                  "property": "connectionString"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "expected_reason_fragment": null,
+      "state": "native validation completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-direct-reference.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.757,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 15,\n      \"error\": \"database \\\"qa194-c4c136-direct-reference-db\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 4,\n      \"path\": \"databases[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 15,
+            "error": "database \"qa194-c4c136-direct-reference-db\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 4,
+            "path": "databases[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "passed": false,
+      "excluded": true,
+      "qualification": "QA fixture name exceeded supported 30-character datastore-name limit; no product admission failure inferred"
+    },
+    {
+      "at": "2026-10-13T03:42:48.410784+00:00",
+      "client": "bex",
+      "case": "pool-reference",
+      "layout": "root",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-pool-reference-db",
+            "plan": "free",
+            "postgresMajorVersion": "18"
+          }
+        ],
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa194-c4c136-consumer",
+            "envVars": [
+              {
+                "key": "DB_REFERENCE",
+                "fromDatabase": {
+                  "name": "qa194-c4c136-pool-reference-db",
+                  "property": "connectionPoolString"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "connectionPool",
+      "state": "native validation completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-pool-reference.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.3,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa194-c4c136-consumer\\\": fromDatabase connectionPoolString requires database \\\"qa194-c4c136-pool-reference-db\\\" connectionPool: pgbouncer\",\n      \"line\": 10,\n      \"path\": \"services[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa194-c4c136-consumer\": fromDatabase connectionPoolString requires database \"qa194-c4c136-pool-reference-db\" connectionPool: pgbouncer",
+            "line": 10,
+            "path": "services[0].connectionPool"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "reported_path_exists": false,
+      "expected_env_index": 0
+    },
+    {
+      "at": "2026-10-13T03:42:49.095428+00:00",
+      "client": "bex",
+      "case": "minimal",
+      "layout": "project",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-minimal-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "expected_reason_fragment": null,
+      "state": "native validation completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-minimal.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.749,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa194-c4c136-minimal-db\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": [
+            "qa194-c4c136-minimal-db"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:42:50.252621+00:00",
+      "client": "bex",
+      "case": "disabled",
+      "layout": "project",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-disabled-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18",
+                    "diskSizeGB": 1,
+                    "storageAutoscalingEnabled": false,
+                    "connectionPool": "none",
+                    "highAvailability": {
+                      "enabled": false
+                    },
+                    "readReplicas": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "expected_reason_fragment": null,
+      "state": "native validation completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-disabled.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.32,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa194-c4c136-disabled-db\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": [
+            "qa194-c4c136-disabled-db"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:42:50.906085+00:00",
+      "client": "bex",
+      "case": "pooler",
+      "layout": "project",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-pooler-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18",
+                    "connectionPool": "pgbouncer"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "paid",
+      "state": "native validation completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-pooler.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.312,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 33,\n      \"error\": \"database \\\"qa194-c4c136-pooler-db\\\" connectionPool: connection pooling requires a paid Postgres plan; disable connection pooling before selecting the free plan\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].databases[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 33,
+            "error": "database \"qa194-c4c136-pooler-db\" connectionPool: connection pooling requires a paid Postgres plan; disable connection pooling before selecting the free plan",
+            "line": 13,
+            "path": "projects[0].environments[0].databases[0].connectionPool"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:42:51.576288+00:00",
+      "client": "bex",
+      "case": "storage",
+      "layout": "project",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-storage-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18",
+                    "diskSizeGB": 15
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "1 GB",
+      "state": "native validation completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-storage.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.291,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 29,\n      \"error\": \"database \\\"qa194-c4c136-storage-db\\\" diskSizeGB: free Postgres storage is fixed at 1 GB; upgrade to a paid plan for 15 GB of storage\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].databases[0].diskSizeGB\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 29,
+            "error": "database \"qa194-c4c136-storage-db\" diskSizeGB: free Postgres storage is fixed at 1 GB; upgrade to a paid plan for 15 GB of storage",
+            "line": 13,
+            "path": "projects[0].environments[0].databases[0].diskSizeGB"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:42:52.203570+00:00",
+      "client": "bex",
+      "case": "autoscaling",
+      "layout": "project",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-autoscaling-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18",
+                    "storageAutoscalingEnabled": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "paid",
+      "state": "native validation completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-autoscaling.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.311,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 44,\n      \"error\": \"database \\\"qa194-c4c136-autoscaling-db\\\" storageAutoscalingEnabled: disk autoscaling requires a paid Postgres plan; disable disk autoscaling before selecting the free plan\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].databases[0].storageAutoscalingEnabled\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 44,
+            "error": "database \"qa194-c4c136-autoscaling-db\" storageAutoscalingEnabled: disk autoscaling requires a paid Postgres plan; disable disk autoscaling before selecting the free plan",
+            "line": 13,
+            "path": "projects[0].environments[0].databases[0].storageAutoscalingEnabled"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:42:52.859637+00:00",
+      "client": "bex",
+      "case": "replicas",
+      "layout": "project",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-replicas-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18",
+                    "readReplicas": [
+                      {
+                        "name": "qa194-c4c136-reader"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "0.5 CPU",
+      "state": "native validation completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-replicas.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.33,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 31,\n      \"error\": \"database \\\"qa194-c4c136-replicas-db\\\" readReplicas: read replicas require a Postgres plan with at least 0.5 CPU; plan \\\"free\\\" has 100m CPU; remove read replicas before selecting this plan\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].databases[0].readReplicas\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 31,
+            "error": "database \"qa194-c4c136-replicas-db\" readReplicas: read replicas require a Postgres plan with at least 0.5 CPU; plan \"free\" has 100m CPU; remove read replicas before selecting this plan",
+            "line": 13,
+            "path": "projects[0].environments[0].databases[0].readReplicas"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:42:53.560168+00:00",
+      "client": "bex",
+      "case": "HA",
+      "layout": "project",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-ha-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18",
+                    "highAvailability": {
+                      "enabled": true
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "1 CPU",
+      "state": "native validation completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-HA.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.278,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 35,\n      \"error\": \"database \\\"qa194-c4c136-ha-db\\\" highAvailability: high availability requires a Postgres plan with at least 1 CPU; plan \\\"free\\\" has 100m CPU\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].databases[0].highAvailability\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 35,
+            "error": "database \"qa194-c4c136-ha-db\" highAvailability: high availability requires a Postgres plan with at least 1 CPU; plan \"free\" has 100m CPU",
+            "line": 13,
+            "path": "projects[0].environments[0].databases[0].highAvailability"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:42:54.207023+00:00",
+      "client": "bex",
+      "case": "direct-reference",
+      "layout": "project",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-direct-reference-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18"
+                  }
+                ],
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa194-c4c136-consumer",
+                    "envVars": [
+                      {
+                        "key": "DB_REFERENCE",
+                        "fromDatabase": {
+                          "name": "qa194-c4c136-direct-reference-db",
+                          "property": "connectionString"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "expected_reason_fragment": null,
+      "state": "native validation completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-direct-reference.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.309,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 23,\n      \"error\": \"database \\\"qa194-c4c136-direct-reference-db\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 10,\n      \"path\": \"projects[0].environments[0].databases[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 23,
+            "error": "database \"qa194-c4c136-direct-reference-db\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 10,
+            "path": "projects[0].environments[0].databases[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "passed": false,
+      "excluded": true,
+      "qualification": "QA fixture name exceeded supported 30-character datastore-name limit; no product admission failure inferred"
+    },
+    {
+      "at": "2026-10-13T03:42:54.886627+00:00",
+      "client": "bex",
+      "case": "pool-reference",
+      "layout": "project",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-pool-reference-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18"
+                  }
+                ],
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa194-c4c136-consumer",
+                    "envVars": [
+                      {
+                        "key": "DB_REFERENCE",
+                        "fromDatabase": {
+                          "name": "qa194-c4c136-pool-reference-db",
+                          "property": "connectionPoolString"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "connectionPool",
+      "state": "native validation completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-pool-reference.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.336,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa194-c4c136-consumer\\\": fromDatabase connectionPoolString requires database \\\"qa194-c4c136-pool-reference-db\\\" connectionPool: pgbouncer\",\n      \"line\": 16,\n      \"path\": \"projects[0].environments[0].services[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa194-c4c136-consumer\": fromDatabase connectionPoolString requires database \"qa194-c4c136-pool-reference-db\" connectionPool: pgbouncer",
+            "line": 16,
+            "path": "projects[0].environments[0].services[0].connectionPool"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "reported_path_exists": false,
+      "expected_env_index": 0
+    },
+    {
+      "at": "2026-10-13T03:42:55.603871+00:00",
+      "client": "render",
+      "case": "minimal",
+      "layout": "root",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-minimal-db",
+            "plan": "free",
+            "postgresMajorVersion": "18"
+          }
+        ]
+      },
+      "expected_valid": true,
+      "expected_reason_fragment": null,
+      "state": "native validation completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-minimal.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.362,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa194-c4c136-minimal-db\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": [
+            "qa194-c4c136-minimal-db"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:42:56.322349+00:00",
+      "client": "render",
+      "case": "disabled",
+      "layout": "root",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-disabled-db",
+            "plan": "free",
+            "postgresMajorVersion": "18",
+            "diskSizeGB": 1,
+            "storageAutoscalingEnabled": false,
+            "connectionPool": "none",
+            "highAvailability": {
+              "enabled": false
+            },
+            "readReplicas": []
+          }
+        ]
+      },
+      "expected_valid": true,
+      "expected_reason_fragment": null,
+      "state": "native validation completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-disabled.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.33,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa194-c4c136-disabled-db\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": [
+            "qa194-c4c136-disabled-db"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:42:56.985087+00:00",
+      "client": "render",
+      "case": "pooler",
+      "layout": "root",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-pooler-db",
+            "plan": "free",
+            "postgresMajorVersion": "18",
+            "connectionPool": "pgbouncer"
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "paid",
+      "state": "native validation completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-pooler.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.356,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 25,\n      \"error\": \"database \\\"qa194-c4c136-pooler-db\\\" connectionPool: connection pooling requires a paid Postgres plan; disable connection pooling before selecting the free plan\",\n      \"line\": 7,\n      \"path\": \"databases[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 25,
+            "error": "database \"qa194-c4c136-pooler-db\" connectionPool: connection pooling requires a paid Postgres plan; disable connection pooling before selecting the free plan",
+            "line": 7,
+            "path": "databases[0].connectionPool"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:42:57.690130+00:00",
+      "client": "render",
+      "case": "storage",
+      "layout": "root",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-storage-db",
+            "plan": "free",
+            "postgresMajorVersion": "18",
+            "diskSizeGB": 15
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "1 GB",
+      "state": "native validation completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-storage.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.297,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 21,\n      \"error\": \"database \\\"qa194-c4c136-storage-db\\\" diskSizeGB: free Postgres storage is fixed at 1 GB; upgrade to a paid plan for 15 GB of storage\",\n      \"line\": 7,\n      \"path\": \"databases[0].diskSizeGB\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 21,
+            "error": "database \"qa194-c4c136-storage-db\" diskSizeGB: free Postgres storage is fixed at 1 GB; upgrade to a paid plan for 15 GB of storage",
+            "line": 7,
+            "path": "databases[0].diskSizeGB"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:42:58.364305+00:00",
+      "client": "render",
+      "case": "autoscaling",
+      "layout": "root",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-autoscaling-db",
+            "plan": "free",
+            "postgresMajorVersion": "18",
+            "storageAutoscalingEnabled": true
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "paid",
+      "state": "native validation completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-autoscaling.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.319,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 36,\n      \"error\": \"database \\\"qa194-c4c136-autoscaling-db\\\" storageAutoscalingEnabled: disk autoscaling requires a paid Postgres plan; disable disk autoscaling before selecting the free plan\",\n      \"line\": 7,\n      \"path\": \"databases[0].storageAutoscalingEnabled\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 36,
+            "error": "database \"qa194-c4c136-autoscaling-db\" storageAutoscalingEnabled: disk autoscaling requires a paid Postgres plan; disable disk autoscaling before selecting the free plan",
+            "line": 7,
+            "path": "databases[0].storageAutoscalingEnabled"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:42:59.071240+00:00",
+      "client": "render",
+      "case": "replicas",
+      "layout": "root",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-replicas-db",
+            "plan": "free",
+            "postgresMajorVersion": "18",
+            "readReplicas": [
+              {
+                "name": "qa194-c4c136-reader"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "0.5 CPU",
+      "state": "native validation completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-replicas.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.307,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 23,\n      \"error\": \"database \\\"qa194-c4c136-replicas-db\\\" readReplicas: read replicas require a Postgres plan with at least 0.5 CPU; plan \\\"free\\\" has 100m CPU; remove read replicas before selecting this plan\",\n      \"line\": 7,\n      \"path\": \"databases[0].readReplicas\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 23,
+            "error": "database \"qa194-c4c136-replicas-db\" readReplicas: read replicas require a Postgres plan with at least 0.5 CPU; plan \"free\" has 100m CPU; remove read replicas before selecting this plan",
+            "line": 7,
+            "path": "databases[0].readReplicas"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:42:59.699615+00:00",
+      "client": "render",
+      "case": "HA",
+      "layout": "root",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-ha-db",
+            "plan": "free",
+            "postgresMajorVersion": "18",
+            "highAvailability": {
+              "enabled": true
+            }
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "1 CPU",
+      "state": "native validation completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-HA.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.284,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 27,\n      \"error\": \"database \\\"qa194-c4c136-ha-db\\\" highAvailability: high availability requires a Postgres plan with at least 1 CPU; plan \\\"free\\\" has 100m CPU\",\n      \"line\": 7,\n      \"path\": \"databases[0].highAvailability\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 27,
+            "error": "database \"qa194-c4c136-ha-db\" highAvailability: high availability requires a Postgres plan with at least 1 CPU; plan \"free\" has 100m CPU",
+            "line": 7,
+            "path": "databases[0].highAvailability"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:43:00.338846+00:00",
+      "client": "render",
+      "case": "direct-reference",
+      "layout": "root",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-direct-reference-db",
+            "plan": "free",
+            "postgresMajorVersion": "18"
+          }
+        ],
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa194-c4c136-consumer",
+            "envVars": [
+              {
+                "key": "DB_REFERENCE",
+                "fromDatabase": {
+                  "name": "qa194-c4c136-direct-reference-db",
+                  "property": "connectionString"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "expected_reason_fragment": null,
+      "state": "native validation completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-direct-reference.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.618,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 15,\n      \"error\": \"database \\\"qa194-c4c136-direct-reference-db\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 4,\n      \"path\": \"databases[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 15,
+            "error": "database \"qa194-c4c136-direct-reference-db\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 4,
+            "path": "databases[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "passed": false,
+      "excluded": true,
+      "qualification": "QA fixture name exceeded supported 30-character datastore-name limit; no product admission failure inferred"
+    },
+    {
+      "at": "2026-10-13T03:43:01.334139+00:00",
+      "client": "render",
+      "case": "pool-reference",
+      "layout": "root",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-pool-reference-db",
+            "plan": "free",
+            "postgresMajorVersion": "18"
+          }
+        ],
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa194-c4c136-consumer",
+            "envVars": [
+              {
+                "key": "DB_REFERENCE",
+                "fromDatabase": {
+                  "name": "qa194-c4c136-pool-reference-db",
+                  "property": "connectionPoolString"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "connectionPool",
+      "state": "native validation completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-pool-reference.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.278,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa194-c4c136-consumer\\\": fromDatabase connectionPoolString requires database \\\"qa194-c4c136-pool-reference-db\\\" connectionPool: pgbouncer\",\n      \"line\": 10,\n      \"path\": \"services[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa194-c4c136-consumer\": fromDatabase connectionPoolString requires database \"qa194-c4c136-pool-reference-db\" connectionPool: pgbouncer",
+            "line": 10,
+            "path": "services[0].connectionPool"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "reported_path_exists": false,
+      "expected_env_index": 0
+    },
+    {
+      "at": "2026-10-13T03:43:02.076637+00:00",
+      "client": "render",
+      "case": "minimal",
+      "layout": "project",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-minimal-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "expected_reason_fragment": null,
+      "state": "native validation completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-minimal.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.326,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa194-c4c136-minimal-db\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": [
+            "qa194-c4c136-minimal-db"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:43:02.815354+00:00",
+      "client": "render",
+      "case": "disabled",
+      "layout": "project",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-disabled-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18",
+                    "diskSizeGB": 1,
+                    "storageAutoscalingEnabled": false,
+                    "connectionPool": "none",
+                    "highAvailability": {
+                      "enabled": false
+                    },
+                    "readReplicas": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "expected_reason_fragment": null,
+      "state": "native validation completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-disabled.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.317,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa194-c4c136-disabled-db\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": [
+            "qa194-c4c136-disabled-db"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:43:03.486651+00:00",
+      "client": "render",
+      "case": "pooler",
+      "layout": "project",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-pooler-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18",
+                    "connectionPool": "pgbouncer"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "paid",
+      "state": "native validation completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-pooler.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.318,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 33,\n      \"error\": \"database \\\"qa194-c4c136-pooler-db\\\" connectionPool: connection pooling requires a paid Postgres plan; disable connection pooling before selecting the free plan\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].databases[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 33,
+            "error": "database \"qa194-c4c136-pooler-db\" connectionPool: connection pooling requires a paid Postgres plan; disable connection pooling before selecting the free plan",
+            "line": 13,
+            "path": "projects[0].environments[0].databases[0].connectionPool"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:43:04.141854+00:00",
+      "client": "render",
+      "case": "storage",
+      "layout": "project",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-storage-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18",
+                    "diskSizeGB": 15
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "1 GB",
+      "state": "native validation completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-storage.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.287,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 29,\n      \"error\": \"database \\\"qa194-c4c136-storage-db\\\" diskSizeGB: free Postgres storage is fixed at 1 GB; upgrade to a paid plan for 15 GB of storage\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].databases[0].diskSizeGB\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 29,
+            "error": "database \"qa194-c4c136-storage-db\" diskSizeGB: free Postgres storage is fixed at 1 GB; upgrade to a paid plan for 15 GB of storage",
+            "line": 13,
+            "path": "projects[0].environments[0].databases[0].diskSizeGB"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:43:04.796299+00:00",
+      "client": "render",
+      "case": "autoscaling",
+      "layout": "project",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-autoscaling-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18",
+                    "storageAutoscalingEnabled": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "paid",
+      "state": "native validation completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-autoscaling.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.322,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 44,\n      \"error\": \"database \\\"qa194-c4c136-autoscaling-db\\\" storageAutoscalingEnabled: disk autoscaling requires a paid Postgres plan; disable disk autoscaling before selecting the free plan\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].databases[0].storageAutoscalingEnabled\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 44,
+            "error": "database \"qa194-c4c136-autoscaling-db\" storageAutoscalingEnabled: disk autoscaling requires a paid Postgres plan; disable disk autoscaling before selecting the free plan",
+            "line": 13,
+            "path": "projects[0].environments[0].databases[0].storageAutoscalingEnabled"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:43:05.454368+00:00",
+      "client": "render",
+      "case": "replicas",
+      "layout": "project",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-replicas-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18",
+                    "readReplicas": [
+                      {
+                        "name": "qa194-c4c136-reader"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "0.5 CPU",
+      "state": "native validation completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-replicas.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.295,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 31,\n      \"error\": \"database \\\"qa194-c4c136-replicas-db\\\" readReplicas: read replicas require a Postgres plan with at least 0.5 CPU; plan \\\"free\\\" has 100m CPU; remove read replicas before selecting this plan\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].databases[0].readReplicas\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 31,
+            "error": "database \"qa194-c4c136-replicas-db\" readReplicas: read replicas require a Postgres plan with at least 0.5 CPU; plan \"free\" has 100m CPU; remove read replicas before selecting this plan",
+            "line": 13,
+            "path": "projects[0].environments[0].databases[0].readReplicas"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:43:06.141167+00:00",
+      "client": "render",
+      "case": "HA",
+      "layout": "project",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-ha-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18",
+                    "highAvailability": {
+                      "enabled": true
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "1 CPU",
+      "state": "native validation completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-HA.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.301,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 35,\n      \"error\": \"database \\\"qa194-c4c136-ha-db\\\" highAvailability: high availability requires a Postgres plan with at least 1 CPU; plan \\\"free\\\" has 100m CPU\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].databases[0].highAvailability\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 35,
+            "error": "database \"qa194-c4c136-ha-db\" highAvailability: high availability requires a Postgres plan with at least 1 CPU; plan \"free\" has 100m CPU",
+            "line": 13,
+            "path": "projects[0].environments[0].databases[0].highAvailability"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:43:06.794536+00:00",
+      "client": "render",
+      "case": "direct-reference",
+      "layout": "project",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-direct-reference-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18"
+                  }
+                ],
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa194-c4c136-consumer",
+                    "envVars": [
+                      {
+                        "key": "DB_REFERENCE",
+                        "fromDatabase": {
+                          "name": "qa194-c4c136-direct-reference-db",
+                          "property": "connectionString"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "expected_reason_fragment": null,
+      "state": "native validation completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-direct-reference.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.289,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 23,\n      \"error\": \"database \\\"qa194-c4c136-direct-reference-db\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 10,\n      \"path\": \"projects[0].environments[0].databases[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 23,
+            "error": "database \"qa194-c4c136-direct-reference-db\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 10,
+            "path": "projects[0].environments[0].databases[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "passed": false,
+      "excluded": true,
+      "qualification": "QA fixture name exceeded supported 30-character datastore-name limit; no product admission failure inferred"
+    },
+    {
+      "at": "2026-10-13T03:43:07.459454+00:00",
+      "client": "render",
+      "case": "pool-reference",
+      "layout": "project",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-pool-reference-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18"
+                  }
+                ],
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa194-c4c136-consumer",
+                    "envVars": [
+                      {
+                        "key": "DB_REFERENCE",
+                        "fromDatabase": {
+                          "name": "qa194-c4c136-pool-reference-db",
+                          "property": "connectionPoolString"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "expected_reason_fragment": "connectionPool",
+      "state": "native validation completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-pool-reference.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.291,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa194-c4c136-consumer\\\": fromDatabase connectionPoolString requires database \\\"qa194-c4c136-pool-reference-db\\\" connectionPool: pgbouncer\",\n      \"line\": 16,\n      \"path\": \"projects[0].environments[0].services[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa194-c4c136-consumer\": fromDatabase connectionPoolString requires database \"qa194-c4c136-pool-reference-db\" connectionPool: pgbouncer",
+            "line": 16,
+            "path": "projects[0].environments[0].services[0].connectionPool"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "reported_path_exists": false,
+      "expected_env_index": 0
+    },
+    {
+      "at": "2026-10-13T03:44:23.692632+00:00",
+      "client": "bex",
+      "case": "direct-reference-corrected",
+      "layout": "root",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-direct-db",
+            "plan": "free",
+            "postgresMajorVersion": "18"
+          }
+        ],
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa194-c4c136-consumer",
+            "envVars": [
+              {
+                "key": "DB_REFERENCE",
+                "fromDatabase": {
+                  "name": "qa194-c4c136-direct-db",
+                  "property": "connectionString"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "expected_reason_fragment": null,
+      "state": "native validation completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-direct-reference.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.585,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa194-c4c136-direct-db\"\n    ],\n    \"services\": [\n      \"qa194-c4c136-consumer\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": [
+            "qa194-c4c136-direct-db"
+          ],
+          "services": [
+            "qa194-c4c136-consumer"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:44:24.640732+00:00",
+      "client": "bex",
+      "case": "direct-reference-corrected",
+      "layout": "project",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-direct-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18"
+                  }
+                ],
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa194-c4c136-consumer",
+                    "envVars": [
+                      {
+                        "key": "DB_REFERENCE",
+                        "fromDatabase": {
+                          "name": "qa194-c4c136-direct-db",
+                          "property": "connectionString"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "expected_reason_fragment": null,
+      "state": "native validation completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-direct-reference.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.422,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa194-c4c136-direct-db\"\n    ],\n    \"services\": [\n      \"qa194-c4c136-consumer\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": [
+            "qa194-c4c136-direct-db"
+          ],
+          "services": [
+            "qa194-c4c136-consumer"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:44:25.445925+00:00",
+      "client": "render",
+      "case": "direct-reference-corrected",
+      "layout": "root",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-direct-db",
+            "plan": "free",
+            "postgresMajorVersion": "18"
+          }
+        ],
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa194-c4c136-consumer",
+            "envVars": [
+              {
+                "key": "DB_REFERENCE",
+                "fromDatabase": {
+                  "name": "qa194-c4c136-direct-db",
+                  "property": "connectionString"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "expected_reason_fragment": null,
+      "state": "native validation completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-direct-reference.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.392,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa194-c4c136-direct-db\"\n    ],\n    \"services\": [\n      \"qa194-c4c136-consumer\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": [
+            "qa194-c4c136-direct-db"
+          ],
+          "services": [
+            "qa194-c4c136-consumer"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:44:26.181131+00:00",
+      "client": "render",
+      "case": "direct-reference-corrected",
+      "layout": "project",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-direct-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18"
+                  }
+                ],
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa194-c4c136-consumer",
+                    "envVars": [
+                      {
+                        "key": "DB_REFERENCE",
+                        "fromDatabase": {
+                          "name": "qa194-c4c136-direct-db",
+                          "property": "connectionString"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "expected_reason_fragment": null,
+      "state": "native validation completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-direct-reference.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.339,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa194-c4c136-direct-db\"\n    ],\n    \"services\": [\n      \"qa194-c4c136-consumer\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": [
+            "qa194-c4c136-direct-db"
+          ],
+          "services": [
+            "qa194-c4c136-consumer"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T03:48:31.160631+00:00",
+      "client": "bex",
+      "layout": "root",
+      "case": "pool-reference-second",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-pool-reference-db",
+            "plan": "free",
+            "postgresMajorVersion": "18"
+          }
+        ],
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa194-c4c136-consumer",
+            "envVars": [
+              {
+                "key": "LITERAL_CONTROL",
+                "value": "qa194 literal"
+              },
+              {
+                "key": "DB_REFERENCE",
+                "fromDatabase": {
+                  "name": "qa194-c4c136-pool-reference-db",
+                  "property": "connectionPoolString"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-second-pool-reference.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.738,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa194-c4c136-consumer\\\": fromDatabase connectionPoolString requires database \\\"qa194-c4c136-pool-reference-db\\\" connectionPool: pgbouncer\",\n      \"line\": 10,\n      \"path\": \"services[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa194-c4c136-consumer\": fromDatabase connectionPoolString requires database \"qa194-c4c136-pool-reference-db\" connectionPool: pgbouncer",
+            "line": 10,
+            "path": "services[0].connectionPool"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "reported_path_exists": false,
+      "expected_env_index": 1
+    },
+    {
+      "at": "2026-10-13T03:48:32.148407+00:00",
+      "client": "bex",
+      "layout": "project",
+      "case": "pool-reference-second",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-pool-reference-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18"
+                  }
+                ],
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa194-c4c136-consumer",
+                    "envVars": [
+                      {
+                        "key": "LITERAL_CONTROL",
+                        "value": "qa194 literal"
+                      },
+                      {
+                        "key": "DB_REFERENCE",
+                        "fromDatabase": {
+                          "name": "qa194-c4c136-pool-reference-db",
+                          "property": "connectionPoolString"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-second-pool-reference.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.339,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa194-c4c136-consumer\\\": fromDatabase connectionPoolString requires database \\\"qa194-c4c136-pool-reference-db\\\" connectionPool: pgbouncer\",\n      \"line\": 16,\n      \"path\": \"projects[0].environments[0].services[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa194-c4c136-consumer\": fromDatabase connectionPoolString requires database \"qa194-c4c136-pool-reference-db\" connectionPool: pgbouncer",
+            "line": 16,
+            "path": "projects[0].environments[0].services[0].connectionPool"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "reported_path_exists": false,
+      "expected_env_index": 1
+    },
+    {
+      "at": "2026-10-13T03:48:32.741754+00:00",
+      "client": "render",
+      "layout": "root",
+      "case": "pool-reference-second",
+      "document": {
+        "databases": [
+          {
+            "name": "qa194-c4c136-pool-reference-db",
+            "plan": "free",
+            "postgresMajorVersion": "18"
+          }
+        ],
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa194-c4c136-consumer",
+            "envVars": [
+              {
+                "key": "LITERAL_CONTROL",
+                "value": "qa194 literal"
+              },
+              {
+                "key": "DB_REFERENCE",
+                "fromDatabase": {
+                  "name": "qa194-c4c136-pool-reference-db",
+                  "property": "connectionPoolString"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-root-second-pool-reference.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.697,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa194-c4c136-consumer\\\": fromDatabase connectionPoolString requires database \\\"qa194-c4c136-pool-reference-db\\\" connectionPool: pgbouncer\",\n      \"line\": 10,\n      \"path\": \"services[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa194-c4c136-consumer\": fromDatabase connectionPoolString requires database \"qa194-c4c136-pool-reference-db\" connectionPool: pgbouncer",
+            "line": 10,
+            "path": "services[0].connectionPool"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "reported_path_exists": false,
+      "expected_env_index": 1
+    },
+    {
+      "at": "2026-10-13T03:48:33.674701+00:00",
+      "client": "render",
+      "layout": "project",
+      "case": "pool-reference-second",
+      "document": {
+        "projects": [
+          {
+            "name": "qa194-c4c136-project",
+            "environments": [
+              {
+                "name": "normal",
+                "databases": [
+                  {
+                    "name": "qa194-c4c136-pool-reference-db",
+                    "plan": "free",
+                    "postgresMajorVersion": "18"
+                  }
+                ],
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa194-c4c136-consumer",
+                    "envVars": [
+                      {
+                        "key": "LITERAL_CONTROL",
+                        "value": "qa194 literal"
+                      },
+                      {
+                        "key": "DB_REFERENCE",
+                        "fromDatabase": {
+                          "name": "qa194-c4c136-pool-reference-db",
+                          "property": "connectionPoolString"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep194-project-second-pool-reference.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.642,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa194-c4c136-consumer\\\": fromDatabase connectionPoolString requires database \\\"qa194-c4c136-pool-reference-db\\\" connectionPool: pgbouncer\",\n      \"line\": 16,\n      \"path\": \"projects[0].environments[0].services[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa194-c4c136-consumer\": fromDatabase connectionPoolString requires database \"qa194-c4c136-pool-reference-db\" connectionPool: pgbouncer",
+            "line": 16,
+            "path": "projects[0].environments[0].services[0].connectionPool"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "reported_path_exists": false,
+      "expected_env_index": 1
+    }
+  ],
+  "copied_render_config_removed": true,
+  "native_captures": [
+    {
+      "at": "2026-10-13T03:50:45.776488+00:00",
+      "client": "bex",
+      "case": "pool-reference",
+      "layout": "root",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep194-root-pool-reference.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 1,
+        "elapsed": 0.799,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa194-c4c136-consumer\\\": fromDatabase connectionPoolString requires database \\\"qa194-c4c136-pool-reference-db\\\" connectionPool: pgbouncer\",\n      \"line\": 10,\n      \"path\": \"services[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T03:50:46.635574+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=5355d3471bbcf62a3f5c3d3a5fd2729175098b85789eda18580ca6696ab5",
+            "body": "--5355d3471bbcf62a3f5c3d3a5fd2729175098b85789eda18580ca6696ab5\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--5355d3471bbcf62a3f5c3d3a5fd2729175098b85789eda18580ca6696ab5\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep194-root-pool-reference.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"databases\": [\n    {\n      \"name\": \"qa194-c4c136-pool-reference-db\",\n      \"plan\": \"free\",\n      \"postgresMajorVersion\": \"18\"\n    }\n  ],\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa194-c4c136-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"DB_REFERENCE\",\n          \"fromDatabase\": {\n            \"name\": \"qa194-c4c136-pool-reference-db\",\n            \"property\": \"connectionPoolString\"\n          }\n        }\n      ]\n    }\n  ]\n}\n\r\n--5355d3471bbcf62a3f5c3d3a5fd2729175098b85789eda18580ca6696ab5--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"databases\": [\n    {\n      \"name\": \"qa194-c4c136-pool-reference-db\",\n      \"plan\": \"free\",\n      \"postgresMajorVersion\": \"18\"\n    }\n  ],\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa194-c4c136-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"DB_REFERENCE\",\n          \"fromDatabase\": {\n            \"name\": \"qa194-c4c136-pool-reference-db\",\n            \"property\": \"connectionPoolString\"\n          }\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49b61cb4a9f7501-BOS"
+          },
+          "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa194-c4c136-consumer\\\": fromDatabase connectionPoolString requires database \\\"qa194-c4c136-pool-reference-db\\\" connectionPool: pgbouncer\",\"line\":10,\"column\":5,\"path\":\"services[0].connectionPool\"}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-13T03:51:57.295455+00:00",
+      "client": "render",
+      "case": "pool-reference-second",
+      "layout": "project",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep194-project-second-pool-reference.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 1,
+        "elapsed": 0.774,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa194-c4c136-consumer\\\": fromDatabase connectionPoolString requires database \\\"qa194-c4c136-pool-reference-db\\\" connectionPool: pgbouncer\",\n      \"line\": 16,\n      \"path\": \"projects[0].environments[0].services[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T03:51:58.121731+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=a48e3e15e0fccd81b9ce931811497881d3ebd82800f589c95e33477912d5",
+            "body": "--a48e3e15e0fccd81b9ce931811497881d3ebd82800f589c95e33477912d5\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--a48e3e15e0fccd81b9ce931811497881d3ebd82800f589c95e33477912d5\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep194-project-second-pool-reference.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa194-c4c136-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"databases\": [\n            {\n              \"name\": \"qa194-c4c136-pool-reference-db\",\n              \"plan\": \"free\",\n              \"postgresMajorVersion\": \"18\"\n            }\n          ],\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa194-c4c136-consumer\",\n              \"envVars\": [\n                {\n                  \"key\": \"LITERAL_CONTROL\",\n                  \"value\": \"qa194 literal\"\n                },\n                {\n                  \"key\": \"DB_REFERENCE\",\n                  \"fromDatabase\": {\n                    \"name\": \"qa194-c4c136-pool-reference-db\",\n                    \"property\": \"connectionPoolString\"\n                  }\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--a48e3e15e0fccd81b9ce931811497881d3ebd82800f589c95e33477912d5--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa194-c4c136-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"databases\": [\n            {\n              \"name\": \"qa194-c4c136-pool-reference-db\",\n              \"plan\": \"free\",\n              \"postgresMajorVersion\": \"18\"\n            }\n          ],\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa194-c4c136-consumer\",\n              \"envVars\": [\n                {\n                  \"key\": \"LITERAL_CONTROL\",\n                  \"value\": \"qa194 literal\"\n                },\n                {\n                  \"key\": \"DB_REFERENCE\",\n                  \"fromDatabase\": {\n                    \"name\": \"qa194-c4c136-pool-reference-db\",\n                    \"property\": \"connectionPoolString\"\n                  }\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49b638adebd6548-LHR"
+          },
+          "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa194-c4c136-consumer\\\": fromDatabase connectionPoolString requires database \\\"qa194-c4c136-pool-reference-db\\\" connectionPool: pgbouncer\",\"line\":16,\"column\":13,\"path\":\"projects[0].environments[0].services[0].connectionPool\"}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-13T03:52:32.150148+00:00",
+      "client": "bex",
+      "case": "direct-reference-corrected",
+      "layout": "root",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep194-root-direct-reference.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 1.035,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa194-c4c136-direct-db\"\n    ],\n    \"services\": [\n      \"qa194-c4c136-consumer\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T03:52:33.243966+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=de108fa3540d9d784886ffa4b0768f2ec77a7b86be51c054fa4726274327",
+            "body": "--de108fa3540d9d784886ffa4b0768f2ec77a7b86be51c054fa4726274327\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--de108fa3540d9d784886ffa4b0768f2ec77a7b86be51c054fa4726274327\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep194-root-direct-reference.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"databases\": [\n    {\n      \"name\": \"qa194-c4c136-direct-db\",\n      \"plan\": \"free\",\n      \"postgresMajorVersion\": \"18\"\n    }\n  ],\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa194-c4c136-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"DB_REFERENCE\",\n          \"fromDatabase\": {\n            \"name\": \"qa194-c4c136-direct-db\",\n            \"property\": \"connectionString\"\n          }\n        }\n      ]\n    }\n  ]\n}\n\r\n--de108fa3540d9d784886ffa4b0768f2ec77a7b86be51c054fa4726274327--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"databases\": [\n    {\n      \"name\": \"qa194-c4c136-direct-db\",\n      \"plan\": \"free\",\n      \"postgresMajorVersion\": \"18\"\n    }\n  ],\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa194-c4c136-consumer\",\n      \"envVars\": [\n        {\n          \"key\": \"DB_REFERENCE\",\n          \"fromDatabase\": {\n            \"name\": \"qa194-c4c136-direct-db\",\n            \"property\": \"connectionString\"\n          }\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49b6465593cea2a-AMS"
+          },
+          "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa194-c4c136-consumer\"],\"databases\":[\"qa194-c4c136-direct-db\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"postgres\",\"name\":\"qa194-c4c136-direct-db\",\"sourcePath\":\"#/databases/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa194-c4c136-consumer\",\"sourcePath\":\"#/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-13T03:53:10.144796+00:00",
+      "client": "render",
+      "case": "direct-reference-corrected",
+      "layout": "project",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep194-project-direct-reference.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 0.744,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa194-c4c136-direct-db\"\n    ],\n    \"services\": [\n      \"qa194-c4c136-consumer\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T03:53:10.941565+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=3e2ef42b84a9db7e5ac5ef249d8c361bf48bb3cd0db64ec5ef69b368784b",
+            "body": "--3e2ef42b84a9db7e5ac5ef249d8c361bf48bb3cd0db64ec5ef69b368784b\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--3e2ef42b84a9db7e5ac5ef249d8c361bf48bb3cd0db64ec5ef69b368784b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep194-project-direct-reference.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa194-c4c136-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"databases\": [\n            {\n              \"name\": \"qa194-c4c136-direct-db\",\n              \"plan\": \"free\",\n              \"postgresMajorVersion\": \"18\"\n            }\n          ],\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa194-c4c136-consumer\",\n              \"envVars\": [\n                {\n                  \"key\": \"DB_REFERENCE\",\n                  \"fromDatabase\": {\n                    \"name\": \"qa194-c4c136-direct-db\",\n                    \"property\": \"connectionString\"\n                  }\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--3e2ef42b84a9db7e5ac5ef249d8c361bf48bb3cd0db64ec5ef69b368784b--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa194-c4c136-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"databases\": [\n            {\n              \"name\": \"qa194-c4c136-direct-db\",\n              \"plan\": \"free\",\n              \"postgresMajorVersion\": \"18\"\n            }\n          ],\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa194-c4c136-consumer\",\n              \"envVars\": [\n                {\n                  \"key\": \"DB_REFERENCE\",\n                  \"fromDatabase\": {\n                    \"name\": \"qa194-c4c136-direct-db\",\n                    \"property\": \"connectionString\"\n                  }\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49b65521ac0bd74-LHR"
+          },
+          "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa194-c4c136-consumer\"],\"databases\":[\"qa194-c4c136-direct-db\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"postgres\",\"name\":\"qa194-c4c136-direct-db\",\"sourcePath\":\"#/projects/0/environments/0/databases/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa194-c4c136-consumer\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    }
+  ]
+}

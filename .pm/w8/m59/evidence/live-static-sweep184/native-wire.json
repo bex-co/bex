@@ -1,0 +1,255 @@
+[
+  {
+    "id": "srv-db6ofs1g8k9s73eehlcg",
+    "role": "bex-built",
+    "clear_update": {
+      "at": "2026-10-13T01:28:57.373498+00:00",
+      "client": "bex",
+      "command": [
+        "bex",
+        "services",
+        "update",
+        "srv-db6ofs1g8k9s73eehlcg",
+        "--build-command",
+        "",
+        "--publish-directory",
+        ".",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "result received; reconciliation pending",
+      "authority_forwarding": "GET and exact clear-command PATCH to fixed owned ID at api.bex.co; unchanged path/body; isolated configuration; auth never journaled",
+      "result": {
+        "exit": 0,
+        "elapsed": 3.571,
+        "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-13T01:22:56Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db6ofs1g8k9s73eehlcg\",\n    \"id\": \"srv-db6ofs1g8k9s73eehlcg\",\n    \"name\": \"qa-20261013-f5fc75-built\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/static-site\",\n    \"serviceDetails\": {\n      \"buildCommand\": \"\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"publishPath\": \".\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"url\": \"https://qa-20261013-f5fc75-built.onbex.co\"\n    },\n    \"slug\": \"qa-20261013-f5fc75-built\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"static_site\",\n    \"updatedAt\": \"2026-10-13T01:28:59.454388836Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T01:28:58.246638+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db6ofs1g8k9s73eehlcg",
+            "body": null,
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2",
+              "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49a9212ced8b65a-LHR"
+          },
+          "response": "{\"id\":\"srv-db6ofs1g8k9s73eehlcg\",\"name\":\"qa-20261013-f5fc75-built\",\"immutableName\":\"qa-20261013-f5fc75-built\",\"slug\":\"qa-20261013-f5fc75-built\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db6ofs1g8k9s73eehlcg\",\"createdAt\":\"2026-10-13T01:22:56Z\",\"updatedAt\":\"2026-10-13T01:25:12Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA VALUE REDACTED]\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"mkdir -p dist; printf '%s' 'QA184_f5fc75' \\u003e dist/index.html; printf '%s' 'QA184_f5fc75_asset' \\u003e dist/version.txt\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\"dist\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261013-f5fc75-built.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261013-f5fc75-built.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n"
+        },
+        {
+          "at": "2026-10-13T01:28:58.804221+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db6ofs1g8k9s73eehlcg",
+            "body": null,
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2",
+              "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49a9216bfb8d9e0-AMS"
+          },
+          "response": "{\"id\":\"srv-db6ofs1g8k9s73eehlcg\",\"name\":\"qa-20261013-f5fc75-built\",\"immutableName\":\"qa-20261013-f5fc75-built\",\"slug\":\"qa-20261013-f5fc75-built\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db6ofs1g8k9s73eehlcg\",\"createdAt\":\"2026-10-13T01:22:56Z\",\"updatedAt\":\"2026-10-13T01:25:12Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA VALUE REDACTED]\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"mkdir -p dist; printf '%s' 'QA184_f5fc75' \\u003e dist/index.html; printf '%s' 'QA184_f5fc75_asset' \\u003e dist/version.txt\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\"dist\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261013-f5fc75-built.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261013-f5fc75-built.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n"
+        },
+        {
+          "at": "2026-10-13T01:28:59.598611+00:00",
+          "request": {
+            "method": "PATCH",
+            "path": "/v1/services/srv-db6ofs1g8k9s73eehlcg",
+            "body": {
+              "serviceDetails": {
+                "buildCommand": "",
+                "publishPath": "."
+              }
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2",
+              "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49a921a38f84f42-LHR"
+          },
+          "response": "{\"id\":\"srv-db6ofs1g8k9s73eehlcg\",\"name\":\"qa-20261013-f5fc75-built\",\"immutableName\":\"qa-20261013-f5fc75-built\",\"slug\":\"qa-20261013-f5fc75-built\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db6ofs1g8k9s73eehlcg\",\"createdAt\":\"2026-10-13T01:22:56Z\",\"updatedAt\":\"2026-10-13T01:28:59.454388836Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA VALUE REDACTED]\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\".\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261013-f5fc75-built.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261013-f5fc75-built.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n"
+        },
+        {
+          "at": "2026-10-13T01:29:00.309217+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db6ofs1g8k9s73eehlcg",
+            "body": null,
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2",
+              "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49a921deb51d8bf-MIA"
+          },
+          "response": "{\"id\":\"srv-db6ofs1g8k9s73eehlcg\",\"name\":\"qa-20261013-f5fc75-built\",\"immutableName\":\"qa-20261013-f5fc75-built\",\"slug\":\"qa-20261013-f5fc75-built\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db6ofs1g8k9s73eehlcg\",\"createdAt\":\"2026-10-13T01:22:56Z\",\"updatedAt\":\"2026-10-13T01:28:59.454388836Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA VALUE REDACTED]\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\".\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261013-f5fc75-built.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Deploying\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261013-f5fc75-built.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n"
+        },
+        {
+          "at": "2026-10-13T01:29:01.030820+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/projects?ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+            "body": null,
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49a9221ddaadab7-PDX"
+          },
+          "response": "[]\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    }
+  },
+  {
+    "id": "srv-db6og4gvrh0s73bstb90",
+    "role": "render-built",
+    "clear_update": {
+      "at": "2026-10-13T01:27:00.710738+00:00",
+      "client": "render",
+      "command": [
+        "render",
+        "services",
+        "update",
+        "srv-db6og4gvrh0s73bstb90",
+        "--build-command",
+        "",
+        "--publish-directory",
+        ".",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "result received; reconciliation pending",
+      "authority_forwarding": "GET and exact clear-command PATCH to fixed owned ID at api.bex.co; unchanged path/body; isolated configuration; auth never journaled",
+      "result": {
+        "exit": 0,
+        "elapsed": 3.161,
+        "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-13T01:23:30Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db6og4gvrh0s73bstb90\",\n    \"id\": \"srv-db6og4gvrh0s73bstb90\",\n    \"name\": \"qa-20261013-b2219b-built\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/static-site\",\n    \"serviceDetails\": {\n      \"buildCommand\": \"\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"publishPath\": \".\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"url\": \"https://qa-20261013-b2219b-built.onbex.co\"\n    },\n    \"slug\": \"qa-20261013-b2219b-built\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"static_site\",\n    \"updatedAt\": \"2026-10-13T01:27:02.644447414Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T01:27:01.517367+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db6og4gvrh0s73bstb90",
+            "body": null,
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49a8f3939a4948c-LHR"
+          },
+          "response": "{\"id\":\"srv-db6og4gvrh0s73bstb90\",\"name\":\"qa-20261013-b2219b-built\",\"immutableName\":\"qa-20261013-b2219b-built\",\"slug\":\"qa-20261013-b2219b-built\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db6og4gvrh0s73bstb90\",\"createdAt\":\"2026-10-13T01:23:30Z\",\"updatedAt\":\"2026-10-13T01:25:11Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA VALUE REDACTED]\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"mkdir -p dist; printf '%s' 'QA184_b2219b' \\u003e dist/index.html; printf '%s' 'QA184_b2219b_asset' \\u003e dist/version.txt\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\"dist\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261013-b2219b-built.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261013-b2219b-built.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n"
+        },
+        {
+          "at": "2026-10-13T01:27:02.070102+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db6og4gvrh0s73bstb90",
+            "body": null,
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49a8f3d0ead94f3-LHR"
+          },
+          "response": "{\"id\":\"srv-db6og4gvrh0s73bstb90\",\"name\":\"qa-20261013-b2219b-built\",\"immutableName\":\"qa-20261013-b2219b-built\",\"slug\":\"qa-20261013-b2219b-built\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db6og4gvrh0s73bstb90\",\"createdAt\":\"2026-10-13T01:23:30Z\",\"updatedAt\":\"2026-10-13T01:25:11Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA VALUE REDACTED]\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"mkdir -p dist; printf '%s' 'QA184_b2219b' \\u003e dist/index.html; printf '%s' 'QA184_b2219b_asset' \\u003e dist/version.txt\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\"dist\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261013-b2219b-built.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261013-b2219b-built.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n"
+        },
+        {
+          "at": "2026-10-13T01:27:02.800796+00:00",
+          "request": {
+            "method": "PATCH",
+            "path": "/v1/services/srv-db6og4gvrh0s73bstb90",
+            "body": {
+              "serviceDetails": {
+                "buildCommand": "",
+                "publishPath": "."
+              }
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49a8f408e66fe94-AMS"
+          },
+          "response": "{\"id\":\"srv-db6og4gvrh0s73bstb90\",\"name\":\"qa-20261013-b2219b-built\",\"immutableName\":\"qa-20261013-b2219b-built\",\"slug\":\"qa-20261013-b2219b-built\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db6og4gvrh0s73bstb90\",\"createdAt\":\"2026-10-13T01:23:30Z\",\"updatedAt\":\"2026-10-13T01:27:02.644447414Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA VALUE REDACTED]\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\".\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261013-b2219b-built.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261013-b2219b-built.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n"
+        },
+        {
+          "at": "2026-10-13T01:27:03.371986+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db6og4gvrh0s73bstb90",
+            "body": null,
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49a8f44fa8dcda6-LHR"
+          },
+          "response": "{\"id\":\"srv-db6og4gvrh0s73bstb90\",\"name\":\"qa-20261013-b2219b-built\",\"immutableName\":\"qa-20261013-b2219b-built\",\"slug\":\"qa-20261013-b2219b-built\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db6og4gvrh0s73bstb90\",\"createdAt\":\"2026-10-13T01:23:30Z\",\"updatedAt\":\"2026-10-13T01:27:02.644447414Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA VALUE REDACTED]\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\".\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261013-b2219b-built.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Deploying\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261013-b2219b-built.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n"
+        },
+        {
+          "at": "2026-10-13T01:27:03.959798+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/projects?ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+            "body": null,
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49a8f47aa2983fb-BOS"
+          },
+          "response": "[]\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    }
+  }
+]

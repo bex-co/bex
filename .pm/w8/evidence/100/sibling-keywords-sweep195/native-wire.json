@@ -1,0 +1,192 @@
+[
+  {
+    "at": "2026-10-13T04:10:33.432427+00:00",
+    "client": "bex",
+    "case": "missing-image",
+    "layout": "root",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "<QA_TMP>/sweep195-root-missing-image.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.425,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 16,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"IMAGE\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 7,\n      \"path\": \"services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T04:10:33.915068+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=4eb10bd771119d07d41dde65997015c81e4b5cf8b4e475a815aac57fc3f7",
+          "body": "--4eb10bd771119d07d41dde65997015c81e4b5cf8b4e475a815aac57fc3f7\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--4eb10bd771119d07d41dde65997015c81e4b5cf8b4e475a815aac57fc3f7\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep195-root-missing-image.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"LITERAL_CONTROL\",\n          \"value\": \"qa195 literal\"\n        },\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa195-2b2db2-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"IMAGE\"\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-source\",\n      \"envVars\": [\n        {\n          \"key\": \"OTHER_VALUE\",\n          \"value\": \"qa195 control\"\n        }\n      ]\n    }\n  ]\n}\n\r\n--4eb10bd771119d07d41dde65997015c81e4b5cf8b4e475a815aac57fc3f7--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"LITERAL_CONTROL\",\n          \"value\": \"qa195 literal\"\n        },\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa195-2b2db2-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"IMAGE\"\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-source\",\n      \"envVars\": [\n        {\n          \"key\": \"OTHER_VALUE\",\n          \"value\": \"qa195 control\"\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49b7ec8bed4cfbc-SJC"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"IMAGE\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\"line\":7,\"column\":16,\"path\":\"services[0].image\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-13T04:11:18.552242+00:00",
+    "client": "render",
+    "case": "missing-poolword",
+    "layout": "project",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "<QA_TMP>/sweep195-project-missing-poolword.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.734,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"CONNECTIONPOOL\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 9,\n      \"path\": \"projects[0].environments[0].services[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T04:11:19.340860+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=4da517488e0a77faf562d3c9c0a8e3b97d60b2cf6e39495e39511a75c443",
+          "body": "--4da517488e0a77faf562d3c9c0a8e3b97d60b2cf6e39495e39511a75c443\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--4da517488e0a77faf562d3c9c0a8e3b97d60b2cf6e39495e39511a75c443\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep195-project-missing-poolword.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa195-2b2db2-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-caller\",\n              \"envVars\": [\n                {\n                  \"key\": \"LITERAL_CONTROL\",\n                  \"value\": \"qa195 literal\"\n                },\n                {\n                  \"key\": \"COPY_VALUE\",\n                  \"fromService\": {\n                    \"name\": \"qa195-2b2db2-source\",\n                    \"type\": \"web\",\n                    \"envVarKey\": \"CONNECTIONPOOL\"\n                  }\n                }\n              ]\n            },\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-source\",\n              \"envVars\": [\n                {\n                  \"key\": \"OTHER_VALUE\",\n                  \"value\": \"qa195 control\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--4da517488e0a77faf562d3c9c0a8e3b97d60b2cf6e39495e39511a75c443--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa195-2b2db2-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-caller\",\n              \"envVars\": [\n                {\n                  \"key\": \"LITERAL_CONTROL\",\n                  \"value\": \"qa195 literal\"\n                },\n                {\n                  \"key\": \"COPY_VALUE\",\n                  \"fromService\": {\n                    \"name\": \"qa195-2b2db2-source\",\n                    \"type\": \"web\",\n                    \"envVarKey\": \"CONNECTIONPOOL\"\n                  }\n                }\n              ]\n            },\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-source\",\n              \"envVars\": [\n                {\n                  \"key\": \"OTHER_VALUE\",\n                  \"value\": \"qa195 control\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49b7fe29e66cf12-SJC"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"CONNECTIONPOOL\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\"line\":9,\"column\":13,\"path\":\"projects[0].environments[0].services[0].connectionPool\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-13T04:12:49.123004+00:00",
+    "client": "bex",
+    "case": "missing-plain",
+    "layout": "root",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "<QA_TMP>/sweep195-root-missing-plain.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.439,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"ABSENT_VALUE\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T04:12:49.635524+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=7d55197159bf4c6a2a3af6aa88315a20afbb454aa238ea2a19279b4aea5f",
+          "body": "--7d55197159bf4c6a2a3af6aa88315a20afbb454aa238ea2a19279b4aea5f\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--7d55197159bf4c6a2a3af6aa88315a20afbb454aa238ea2a19279b4aea5f\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep195-root-missing-plain.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"LITERAL_CONTROL\",\n          \"value\": \"qa195 literal\"\n        },\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa195-2b2db2-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"ABSENT_VALUE\"\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-source\",\n      \"envVars\": [\n        {\n          \"key\": \"OTHER_VALUE\",\n          \"value\": \"qa195 control\"\n        }\n      ]\n    }\n  ]\n}\n\r\n--7d55197159bf4c6a2a3af6aa88315a20afbb454aa238ea2a19279b4aea5f--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"LITERAL_CONTROL\",\n          \"value\": \"qa195 literal\"\n        },\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa195-2b2db2-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"ABSENT_VALUE\"\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-source\",\n      \"envVars\": [\n        {\n          \"key\": \"OTHER_VALUE\",\n          \"value\": \"qa195 control\"\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49b8218ed0a67b8-SJC"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"ABSENT_VALUE\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\"line\":11,\"column\":18,\"path\":\"services[0].envVars\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  },
+  {
+    "at": "2026-10-13T04:13:00.377294+00:00",
+    "client": "render",
+    "case": "known-image",
+    "layout": "project",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "<QA_TMP>/sweep195-project-known-image.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.408,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa195-2b2db2-caller\",\n      \"qa195-2b2db2-source\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-13T04:13:00.842023+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=9a270993374c825164bdc7dfe3232fa3204d1eae41559c5f4b7b86dc8df5",
+          "body": "--9a270993374c825164bdc7dfe3232fa3204d1eae41559c5f4b7b86dc8df5\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--9a270993374c825164bdc7dfe3232fa3204d1eae41559c5f4b7b86dc8df5\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep195-project-known-image.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa195-2b2db2-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-caller\",\n              \"envVars\": [\n                {\n                  \"key\": \"LITERAL_CONTROL\",\n                  \"value\": \"qa195 literal\"\n                },\n                {\n                  \"key\": \"COPY_VALUE\",\n                  \"fromService\": {\n                    \"name\": \"qa195-2b2db2-source\",\n                    \"type\": \"web\",\n                    \"envVarKey\": \"IMAGE\"\n                  }\n                }\n              ]\n            },\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-source\",\n              \"envVars\": [\n                {\n                  \"key\": \"OTHER_VALUE\",\n                  \"value\": \"qa195 control\"\n                },\n                {\n                  \"key\": \"IMAGE\",\n                  \"value\": \"qa195 existing IMAGE value\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--9a270993374c825164bdc7dfe3232fa3204d1eae41559c5f4b7b86dc8df5--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa195-2b2db2-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-caller\",\n              \"envVars\": [\n                {\n                  \"key\": \"LITERAL_CONTROL\",\n                  \"value\": \"qa195 literal\"\n                },\n                {\n                  \"key\": \"COPY_VALUE\",\n                  \"fromService\": {\n                    \"name\": \"qa195-2b2db2-source\",\n                    \"type\": \"web\",\n                    \"envVarKey\": \"IMAGE\"\n                  }\n                }\n              ]\n            },\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-source\",\n              \"envVars\": [\n                {\n                  \"key\": \"OTHER_VALUE\",\n                  \"value\": \"qa195 control\"\n                },\n                {\n                  \"key\": \"IMAGE\",\n                  \"value\": \"qa195 existing IMAGE value\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a49b825f185ceb36-SJC"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa195-2b2db2-caller\",\"qa195-2b2db2-source\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa195-2b2db2-caller\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa195-2b2db2-source\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+  }
+]

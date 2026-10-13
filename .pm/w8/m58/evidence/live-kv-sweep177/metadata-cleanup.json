@@ -1,0 +1,50 @@
+{
+  "at": "2026-10-12T23:28:01.473579+00:00",
+  "source_head_at_filing": "dc1043a16d9c94f1450b6ab07aa7c1b1b0769aa1",
+  "pre_sweep_sync_head": "45339ad77a522fbf167b26da8afae3f6872a8afb",
+  "product_diff_between_heads": "none in lego/dashboard",
+  "deployed_revision": "unknown",
+  "bex_release": "v0.3.2",
+  "render_version": "v2.27.0",
+  "upstream_commit": "a764810a768202704e7206eb7b87a47211fcd98e",
+  "api_origin": "https://api.bex.co/v1/",
+  "auth": "human OAuth",
+  "native_history_queries_passed": 6,
+  "actual_native_request_captures": 6,
+  "native_log_markers": 3,
+  "native_ping_controls_passed": 2,
+  "history_counts_per_client": [
+    3,
+    2,
+    1
+  ],
+  "owned_id_deleted": "red-db6ml7h5i38c73fd5nqg",
+  "native_delete_exit": 0,
+  "native_delete_elapsed": 1.023,
+  "detail_after_delete": "404",
+  "former_endpoint_no_pong": true,
+  "quota": {
+    "services": {
+      "used": 6,
+      "terminating": 0,
+      "limit": 25
+    },
+    "postgres": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    },
+    "keyValues": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    }
+  },
+  "local_containers_created": 0,
+  "copied_render_config_absent": true,
+  "capture_cleanup": "All six finite GET-only proxy servers and config copies removed; no request rewrite or auth journaling.",
+  "excluded_readiness_trial": "First bounded native PING displayed409 credential convergence and was terminated. A subsequent connection-info200, native Bex/Render PONG and three exact EVAL returns establish recovery. Timeout termination returning0 is not counted as native success.",
+  "new_issue": false,
+  "product_fix": false,
+  "shipped": false
+}

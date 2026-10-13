@@ -1,0 +1,17 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-overlay=<QA_TMP>/sweep204-copy-overlay.json",
+    "-run",
+    "^TestQABlueprintCopyConsistency204$",
+    "-count=1",
+    "-json",
+    "./internal/apps"
+  ],
+  "exit": 1,
+  "elapsed": 60.768,
+  "records": [],
+  "stderr": "",
+  "assertions": "Expect current mixed-case copy mismatch and two consistent controls; fake client/recording creation seeder"
+}

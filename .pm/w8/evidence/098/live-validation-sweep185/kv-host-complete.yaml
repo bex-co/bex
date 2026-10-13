@@ -1,0 +1,29 @@
+{
+  "services": [
+    {
+      "name": "qa185-41e2e9-source",
+      "type": "keyvalue",
+      "plan": "free",
+      "ipAllowList": []
+    },
+    {
+      "name": "qa185-41e2e9-target",
+      "type": "web",
+      "runtime": "image",
+      "image": {
+        "url": "nginx:1"
+      },
+      "plan": "free",
+      "envVars": [
+        {
+          "key": "QA_TARGET",
+          "fromService": {
+            "type": "keyvalue",
+            "name": "qa185-41e2e9-source",
+            "property": "host"
+          }
+        }
+      ]
+    }
+  ]
+}

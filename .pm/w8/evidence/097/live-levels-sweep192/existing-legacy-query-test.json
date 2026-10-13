@@ -1,0 +1,33 @@
+{
+  "exit": 0,
+  "elapsed": 4.617,
+  "command": [
+    "go",
+    "test",
+    "-json",
+    "./internal/logs",
+    "-run",
+    "^TestLokiQueryFor$/(multiple_values_for_one_filter_OR_together|Render_level_names_match_the_stored_buckets|notice_and_critical)$",
+    "-count=1"
+  ],
+  "events": [
+    {
+      "action": "pass",
+      "test": "TestLokiQueryFor/multiple_values_for_one_filter_OR_together"
+    },
+    {
+      "action": "pass",
+      "test": "TestLokiQueryFor/Render_level_names_match_the_stored_buckets"
+    },
+    {
+      "action": "pass",
+      "test": "TestLokiQueryFor/notice_and_critical"
+    },
+    {
+      "action": "pass",
+      "test": "TestLokiQueryFor"
+    }
+  ],
+  "stderr": "",
+  "qualification": "Existing targeted query construction tests only; not full backend suite or live legacy stored history"
+}

@@ -1,0 +1,39 @@
+{
+  "at": "2026-10-13T03:34:54.789475+00:00",
+  "source_head": "c5a0eb9dd15f6b417bf586fdf26510706497b032",
+  "checkout_build": "qa191-c5a0eb9dd15f; fresh native build retained from sweep191 and verified same HEAD before replay",
+  "pin": "Render2.27/a764810a768202704e7206eb7b87a47211fcd98e",
+  "deployed_head": "unknown; current-checkout launcher failure does not depend on a server rollout",
+  "native_processes": 7,
+  "current_build_failures": 4,
+  "current_build_controls_passed": 2,
+  "pinned_upstream_neighbor_failure": 1,
+  "native_HTTP_wire": "not intercepted; list successfully loads before local opener invocation",
+  "real_browser": "not launched; native OS-opener argv captured",
+  "baseline_resource_selection": "read-only metadata, Dashboard action only; no hosting mutation",
+  "temporary_config_dirs_removed": 7,
+  "native_PTYs_reaped": true,
+  "own_opener_stub_removed": true,
+  "environment_grant_persisted": false,
+  "quota": {
+    "at": "2026-10-13T03:34:54.783141+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.696,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49b4a8c9f35ed3e-SJC"
+    },
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+  },
+  "product_implementation_changed": false,
+  "ship_performed": false
+}

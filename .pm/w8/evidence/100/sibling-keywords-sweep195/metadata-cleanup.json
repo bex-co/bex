@@ -1,0 +1,41 @@
+{
+  "at": "2026-10-13T04:14:47.019741+00:00",
+  "source_head": "c5a0eb9dd15f6b417bf586fdf26510706497b032",
+  "deployed_head": "unknown",
+  "native_matrix": 24,
+  "all_decisions_correct": true,
+  "wrong_field_diagnostics": 16,
+  "wrong_existing_fields": 12,
+  "phantom_fields": 4,
+  "controls": {
+    "plain_missing_key": 4,
+    "declared_IMAGE_value": 4
+  },
+  "additional_native_captures": 4,
+  "capture_bad_fields": 2,
+  "capture_controls": 2,
+  "current_source_ValidateBlueprint_diagnostics": 8,
+  "resources_created": 0,
+  "configs_servers_threads_removed": true,
+  "quota": {
+    "at": "2026-10-13T04:14:47.012769+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.666,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49b84f46c26cee1-SJC"
+    },
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+  },
+  "product_source_changed": false,
+  "ship_performed": false
+}

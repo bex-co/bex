@@ -1,0 +1,5 @@
+import subprocess,pathlib
+p=pathlib.Path(__file__).parent
+for client in ['bex','render']:
+ for label in ['debug','info','notice','warning','error','critical','alert','emergency','union','duplicates']:
+  r=subprocess.run(['python3',str(p/'sweep192-levels.py'),'levels',client,label],timeout=55);r.check_returncode()

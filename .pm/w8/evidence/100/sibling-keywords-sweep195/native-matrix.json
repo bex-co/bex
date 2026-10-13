@@ -1,0 +1,2271 @@
+{
+  "sweep": 195,
+  "nonce": "2b2db2",
+  "source_head": "c5a0eb9dd15f6b417bf586fdf26510706497b032",
+  "surface": "Same-file missing environment copies whose target env keys contain service-field words, with plain missing/known controls",
+  "mutation": "none: validation only",
+  "native_wire": "not intercepted",
+  "results": [
+    {
+      "at": "2026-10-13T04:07:32.928091+00:00",
+      "client": "bex",
+      "layout": "root",
+      "case": "missing-image",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-caller",
+            "envVars": [
+              {
+                "key": "LITERAL_CONTROL",
+                "value": "qa195 literal"
+              },
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa195-2b2db2-source",
+                  "type": "web",
+                  "envVarKey": "IMAGE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-source",
+            "envVars": [
+              {
+                "key": "OTHER_VALUE",
+                "value": "qa195 control"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "predicted_wrong_field": "image",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-root-missing-image.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.464,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 16,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"IMAGE\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 7,\n      \"path\": \"services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 16,
+            "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"IMAGE\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+            "line": 7,
+            "path": "services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "decision_passed": true,
+      "actual_path": "services[0].image",
+      "wrong_field_reproduced": true
+    },
+    {
+      "at": "2026-10-13T04:07:33.656619+00:00",
+      "client": "bex",
+      "layout": "root",
+      "case": "missing-plan",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-caller",
+            "envVars": [
+              {
+                "key": "LITERAL_CONTROL",
+                "value": "qa195 literal"
+              },
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa195-2b2db2-source",
+                  "type": "web",
+                  "envVarKey": "PLAN"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-source",
+            "envVars": [
+              {
+                "key": "OTHER_VALUE",
+                "value": "qa195 control"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "predicted_wrong_field": "plan",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-root-missing-plan.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.346,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 15,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"PLAN\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 6,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 15,
+            "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"PLAN\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+            "line": 6,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "decision_passed": true,
+      "actual_path": "services[0].plan",
+      "wrong_field_reproduced": true
+    },
+    {
+      "at": "2026-10-13T04:07:34.254127+00:00",
+      "client": "bex",
+      "layout": "root",
+      "case": "missing-type",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-caller",
+            "envVars": [
+              {
+                "key": "LITERAL_CONTROL",
+                "value": "qa195 literal"
+              },
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa195-2b2db2-source",
+                  "type": "web",
+                  "envVarKey": "TYPE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-source",
+            "envVars": [
+              {
+                "key": "OTHER_VALUE",
+                "value": "qa195 control"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "predicted_wrong_field": "type",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-root-missing-type.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.637,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 15,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"TYPE\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 4,\n      \"path\": \"services[0].type\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 15,
+            "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"TYPE\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+            "line": 4,
+            "path": "services[0].type"
+          }
+        ],
+        "valid": false
+      },
+      "decision_passed": true,
+      "actual_path": "services[0].type",
+      "wrong_field_reproduced": true
+    },
+    {
+      "at": "2026-10-13T04:07:35.131605+00:00",
+      "client": "bex",
+      "layout": "root",
+      "case": "missing-poolword",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-caller",
+            "envVars": [
+              {
+                "key": "LITERAL_CONTROL",
+                "value": "qa195 literal"
+              },
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa195-2b2db2-source",
+                  "type": "web",
+                  "envVarKey": "CONNECTIONPOOL"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-source",
+            "envVars": [
+              {
+                "key": "OTHER_VALUE",
+                "value": "qa195 control"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "predicted_wrong_field": "connectionPool",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-root-missing-poolword.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.653,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"CONNECTIONPOOL\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 3,\n      \"path\": \"services[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"CONNECTIONPOOL\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+            "line": 3,
+            "path": "services[0].connectionPool"
+          }
+        ],
+        "valid": false
+      },
+      "decision_passed": true,
+      "actual_path": "services[0].connectionPool",
+      "wrong_field_reproduced": true
+    },
+    {
+      "at": "2026-10-13T04:07:36.056530+00:00",
+      "client": "bex",
+      "layout": "root",
+      "case": "missing-plain",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-caller",
+            "envVars": [
+              {
+                "key": "LITERAL_CONTROL",
+                "value": "qa195 literal"
+              },
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa195-2b2db2-source",
+                  "type": "web",
+                  "envVarKey": "ABSENT_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-source",
+            "envVars": [
+              {
+                "key": "OTHER_VALUE",
+                "value": "qa195 control"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "predicted_wrong_field": null,
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-root-missing-plain.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.295,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"ABSENT_VALUE\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"ABSENT_VALUE\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+            "line": 11,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "decision_passed": true,
+      "actual_path": "services[0].envVars",
+      "wrong_field_reproduced": false
+    },
+    {
+      "at": "2026-10-13T04:07:36.825470+00:00",
+      "client": "bex",
+      "layout": "root",
+      "case": "known-image",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-caller",
+            "envVars": [
+              {
+                "key": "LITERAL_CONTROL",
+                "value": "qa195 literal"
+              },
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa195-2b2db2-source",
+                  "type": "web",
+                  "envVarKey": "IMAGE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-source",
+            "envVars": [
+              {
+                "key": "OTHER_VALUE",
+                "value": "qa195 control"
+              },
+              {
+                "key": "IMAGE",
+                "value": "qa195 existing IMAGE value"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "predicted_wrong_field": null,
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-root-known-image.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.715,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa195-2b2db2-caller\",\n      \"qa195-2b2db2-source\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa195-2b2db2-caller",
+            "qa195-2b2db2-source"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "decision_passed": true
+    },
+    {
+      "at": "2026-10-13T04:07:37.811740+00:00",
+      "client": "bex",
+      "layout": "project",
+      "case": "missing-image",
+      "document": {
+        "projects": [
+          {
+            "name": "qa195-2b2db2-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-caller",
+                    "envVars": [
+                      {
+                        "key": "LITERAL_CONTROL",
+                        "value": "qa195 literal"
+                      },
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa195-2b2db2-source",
+                          "type": "web",
+                          "envVarKey": "IMAGE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-source",
+                    "envVars": [
+                      {
+                        "key": "OTHER_VALUE",
+                        "value": "qa195 control"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "predicted_wrong_field": "image",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-project-missing-image.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.275,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 24,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"IMAGE\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 24,
+            "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"IMAGE\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+            "line": 13,
+            "path": "projects[0].environments[0].services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "decision_passed": true,
+      "actual_path": "projects[0].environments[0].services[0].image",
+      "wrong_field_reproduced": true
+    },
+    {
+      "at": "2026-10-13T04:07:38.352280+00:00",
+      "client": "bex",
+      "layout": "project",
+      "case": "missing-plan",
+      "document": {
+        "projects": [
+          {
+            "name": "qa195-2b2db2-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-caller",
+                    "envVars": [
+                      {
+                        "key": "LITERAL_CONTROL",
+                        "value": "qa195 literal"
+                      },
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa195-2b2db2-source",
+                          "type": "web",
+                          "envVarKey": "PLAN"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-source",
+                    "envVars": [
+                      {
+                        "key": "OTHER_VALUE",
+                        "value": "qa195 control"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "predicted_wrong_field": "plan",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-project-missing-plan.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.287,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 23,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"PLAN\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 12,\n      \"path\": \"projects[0].environments[0].services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 23,
+            "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"PLAN\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+            "line": 12,
+            "path": "projects[0].environments[0].services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "decision_passed": true,
+      "actual_path": "projects[0].environments[0].services[0].plan",
+      "wrong_field_reproduced": true
+    },
+    {
+      "at": "2026-10-13T04:07:38.902075+00:00",
+      "client": "bex",
+      "layout": "project",
+      "case": "missing-type",
+      "document": {
+        "projects": [
+          {
+            "name": "qa195-2b2db2-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-caller",
+                    "envVars": [
+                      {
+                        "key": "LITERAL_CONTROL",
+                        "value": "qa195 literal"
+                      },
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa195-2b2db2-source",
+                          "type": "web",
+                          "envVarKey": "TYPE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-source",
+                    "envVars": [
+                      {
+                        "key": "OTHER_VALUE",
+                        "value": "qa195 control"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "predicted_wrong_field": "type",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-project-missing-type.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.64,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 23,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"TYPE\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 10,\n      \"path\": \"projects[0].environments[0].services[0].type\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 23,
+            "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"TYPE\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+            "line": 10,
+            "path": "projects[0].environments[0].services[0].type"
+          }
+        ],
+        "valid": false
+      },
+      "decision_passed": true,
+      "actual_path": "projects[0].environments[0].services[0].type",
+      "wrong_field_reproduced": true
+    },
+    {
+      "at": "2026-10-13T04:07:39.814748+00:00",
+      "client": "bex",
+      "layout": "project",
+      "case": "missing-poolword",
+      "document": {
+        "projects": [
+          {
+            "name": "qa195-2b2db2-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-caller",
+                    "envVars": [
+                      {
+                        "key": "LITERAL_CONTROL",
+                        "value": "qa195 literal"
+                      },
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa195-2b2db2-source",
+                          "type": "web",
+                          "envVarKey": "CONNECTIONPOOL"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-source",
+                    "envVars": [
+                      {
+                        "key": "OTHER_VALUE",
+                        "value": "qa195 control"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "predicted_wrong_field": "connectionPool",
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-project-missing-poolword.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.286,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"CONNECTIONPOOL\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 9,\n      \"path\": \"projects[0].environments[0].services[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"CONNECTIONPOOL\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+            "line": 9,
+            "path": "projects[0].environments[0].services[0].connectionPool"
+          }
+        ],
+        "valid": false
+      },
+      "decision_passed": true,
+      "actual_path": "projects[0].environments[0].services[0].connectionPool",
+      "wrong_field_reproduced": true
+    },
+    {
+      "at": "2026-10-13T04:07:40.385398+00:00",
+      "client": "bex",
+      "layout": "project",
+      "case": "missing-plain",
+      "document": {
+        "projects": [
+          {
+            "name": "qa195-2b2db2-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-caller",
+                    "envVars": [
+                      {
+                        "key": "LITERAL_CONTROL",
+                        "value": "qa195 literal"
+                      },
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa195-2b2db2-source",
+                          "type": "web",
+                          "envVarKey": "ABSENT_VALUE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-source",
+                    "envVars": [
+                      {
+                        "key": "OTHER_VALUE",
+                        "value": "qa195 control"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "predicted_wrong_field": null,
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-project-missing-plain.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.271,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 26,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"ABSENT_VALUE\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 17,\n      \"path\": \"projects[0].environments[0].services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 26,
+            "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"ABSENT_VALUE\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+            "line": 17,
+            "path": "projects[0].environments[0].services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "decision_passed": true,
+      "actual_path": "projects[0].environments[0].services[0].envVars",
+      "wrong_field_reproduced": false
+    },
+    {
+      "at": "2026-10-13T04:07:40.922004+00:00",
+      "client": "bex",
+      "layout": "project",
+      "case": "known-image",
+      "document": {
+        "projects": [
+          {
+            "name": "qa195-2b2db2-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-caller",
+                    "envVars": [
+                      {
+                        "key": "LITERAL_CONTROL",
+                        "value": "qa195 literal"
+                      },
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa195-2b2db2-source",
+                          "type": "web",
+                          "envVarKey": "IMAGE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-source",
+                    "envVars": [
+                      {
+                        "key": "OTHER_VALUE",
+                        "value": "qa195 control"
+                      },
+                      {
+                        "key": "IMAGE",
+                        "value": "qa195 existing IMAGE value"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "predicted_wrong_field": null,
+      "state": "native completed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-project-known-image.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.371,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa195-2b2db2-caller\",\n      \"qa195-2b2db2-source\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa195-2b2db2-caller",
+            "qa195-2b2db2-source"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "decision_passed": true
+    },
+    {
+      "at": "2026-10-13T04:07:41.541146+00:00",
+      "client": "render",
+      "layout": "root",
+      "case": "missing-image",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-caller",
+            "envVars": [
+              {
+                "key": "LITERAL_CONTROL",
+                "value": "qa195 literal"
+              },
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa195-2b2db2-source",
+                  "type": "web",
+                  "envVarKey": "IMAGE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-source",
+            "envVars": [
+              {
+                "key": "OTHER_VALUE",
+                "value": "qa195 control"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "predicted_wrong_field": "image",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-root-missing-image.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.351,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 16,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"IMAGE\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 7,\n      \"path\": \"services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 16,
+            "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"IMAGE\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+            "line": 7,
+            "path": "services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "decision_passed": true,
+      "actual_path": "services[0].image",
+      "wrong_field_reproduced": true
+    },
+    {
+      "at": "2026-10-13T04:07:42.132128+00:00",
+      "client": "render",
+      "layout": "root",
+      "case": "missing-plan",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-caller",
+            "envVars": [
+              {
+                "key": "LITERAL_CONTROL",
+                "value": "qa195 literal"
+              },
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa195-2b2db2-source",
+                  "type": "web",
+                  "envVarKey": "PLAN"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-source",
+            "envVars": [
+              {
+                "key": "OTHER_VALUE",
+                "value": "qa195 control"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "predicted_wrong_field": "plan",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-root-missing-plan.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.301,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 15,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"PLAN\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 6,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 15,
+            "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"PLAN\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+            "line": 6,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "decision_passed": true,
+      "actual_path": "services[0].plan",
+      "wrong_field_reproduced": true
+    },
+    {
+      "at": "2026-10-13T04:07:42.702705+00:00",
+      "client": "render",
+      "layout": "root",
+      "case": "missing-type",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-caller",
+            "envVars": [
+              {
+                "key": "LITERAL_CONTROL",
+                "value": "qa195 literal"
+              },
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa195-2b2db2-source",
+                  "type": "web",
+                  "envVarKey": "TYPE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-source",
+            "envVars": [
+              {
+                "key": "OTHER_VALUE",
+                "value": "qa195 control"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "predicted_wrong_field": "type",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-root-missing-type.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.3,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 15,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"TYPE\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 4,\n      \"path\": \"services[0].type\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 15,
+            "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"TYPE\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+            "line": 4,
+            "path": "services[0].type"
+          }
+        ],
+        "valid": false
+      },
+      "decision_passed": true,
+      "actual_path": "services[0].type",
+      "wrong_field_reproduced": true
+    },
+    {
+      "at": "2026-10-13T04:07:43.260970+00:00",
+      "client": "render",
+      "layout": "root",
+      "case": "missing-poolword",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-caller",
+            "envVars": [
+              {
+                "key": "LITERAL_CONTROL",
+                "value": "qa195 literal"
+              },
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa195-2b2db2-source",
+                  "type": "web",
+                  "envVarKey": "CONNECTIONPOOL"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-source",
+            "envVars": [
+              {
+                "key": "OTHER_VALUE",
+                "value": "qa195 control"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "predicted_wrong_field": "connectionPool",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-root-missing-poolword.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.313,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"CONNECTIONPOOL\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 3,\n      \"path\": \"services[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"CONNECTIONPOOL\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+            "line": 3,
+            "path": "services[0].connectionPool"
+          }
+        ],
+        "valid": false
+      },
+      "decision_passed": true,
+      "actual_path": "services[0].connectionPool",
+      "wrong_field_reproduced": true
+    },
+    {
+      "at": "2026-10-13T04:07:43.829162+00:00",
+      "client": "render",
+      "layout": "root",
+      "case": "missing-plain",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-caller",
+            "envVars": [
+              {
+                "key": "LITERAL_CONTROL",
+                "value": "qa195 literal"
+              },
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa195-2b2db2-source",
+                  "type": "web",
+                  "envVarKey": "ABSENT_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-source",
+            "envVars": [
+              {
+                "key": "OTHER_VALUE",
+                "value": "qa195 control"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "predicted_wrong_field": null,
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-root-missing-plain.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.288,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"ABSENT_VALUE\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"ABSENT_VALUE\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+            "line": 11,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "decision_passed": true,
+      "actual_path": "services[0].envVars",
+      "wrong_field_reproduced": false
+    },
+    {
+      "at": "2026-10-13T04:07:44.387816+00:00",
+      "client": "render",
+      "layout": "root",
+      "case": "known-image",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-caller",
+            "envVars": [
+              {
+                "key": "LITERAL_CONTROL",
+                "value": "qa195 literal"
+              },
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa195-2b2db2-source",
+                  "type": "web",
+                  "envVarKey": "IMAGE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa195-2b2db2-source",
+            "envVars": [
+              {
+                "key": "OTHER_VALUE",
+                "value": "qa195 control"
+              },
+              {
+                "key": "IMAGE",
+                "value": "qa195 existing IMAGE value"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "predicted_wrong_field": null,
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-root-known-image.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.414,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa195-2b2db2-caller\",\n      \"qa195-2b2db2-source\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa195-2b2db2-caller",
+            "qa195-2b2db2-source"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "decision_passed": true
+    },
+    {
+      "at": "2026-10-13T04:07:45.078639+00:00",
+      "client": "render",
+      "layout": "project",
+      "case": "missing-image",
+      "document": {
+        "projects": [
+          {
+            "name": "qa195-2b2db2-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-caller",
+                    "envVars": [
+                      {
+                        "key": "LITERAL_CONTROL",
+                        "value": "qa195 literal"
+                      },
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa195-2b2db2-source",
+                          "type": "web",
+                          "envVarKey": "IMAGE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-source",
+                    "envVars": [
+                      {
+                        "key": "OTHER_VALUE",
+                        "value": "qa195 control"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "predicted_wrong_field": "image",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-project-missing-image.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.275,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 24,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"IMAGE\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 24,
+            "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"IMAGE\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+            "line": 13,
+            "path": "projects[0].environments[0].services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "decision_passed": true,
+      "actual_path": "projects[0].environments[0].services[0].image",
+      "wrong_field_reproduced": true
+    },
+    {
+      "at": "2026-10-13T04:07:45.602135+00:00",
+      "client": "render",
+      "layout": "project",
+      "case": "missing-plan",
+      "document": {
+        "projects": [
+          {
+            "name": "qa195-2b2db2-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-caller",
+                    "envVars": [
+                      {
+                        "key": "LITERAL_CONTROL",
+                        "value": "qa195 literal"
+                      },
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa195-2b2db2-source",
+                          "type": "web",
+                          "envVarKey": "PLAN"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-source",
+                    "envVars": [
+                      {
+                        "key": "OTHER_VALUE",
+                        "value": "qa195 control"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "predicted_wrong_field": "plan",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-project-missing-plan.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.273,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 23,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"PLAN\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 12,\n      \"path\": \"projects[0].environments[0].services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 23,
+            "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"PLAN\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+            "line": 12,
+            "path": "projects[0].environments[0].services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "decision_passed": true,
+      "actual_path": "projects[0].environments[0].services[0].plan",
+      "wrong_field_reproduced": true
+    },
+    {
+      "at": "2026-10-13T04:07:46.129548+00:00",
+      "client": "render",
+      "layout": "project",
+      "case": "missing-type",
+      "document": {
+        "projects": [
+          {
+            "name": "qa195-2b2db2-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-caller",
+                    "envVars": [
+                      {
+                        "key": "LITERAL_CONTROL",
+                        "value": "qa195 literal"
+                      },
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa195-2b2db2-source",
+                          "type": "web",
+                          "envVarKey": "TYPE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-source",
+                    "envVars": [
+                      {
+                        "key": "OTHER_VALUE",
+                        "value": "qa195 control"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "predicted_wrong_field": "type",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-project-missing-type.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.278,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 23,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"TYPE\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 10,\n      \"path\": \"projects[0].environments[0].services[0].type\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 23,
+            "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"TYPE\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+            "line": 10,
+            "path": "projects[0].environments[0].services[0].type"
+          }
+        ],
+        "valid": false
+      },
+      "decision_passed": true,
+      "actual_path": "projects[0].environments[0].services[0].type",
+      "wrong_field_reproduced": true
+    },
+    {
+      "at": "2026-10-13T04:07:46.696669+00:00",
+      "client": "render",
+      "layout": "project",
+      "case": "missing-poolword",
+      "document": {
+        "projects": [
+          {
+            "name": "qa195-2b2db2-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-caller",
+                    "envVars": [
+                      {
+                        "key": "LITERAL_CONTROL",
+                        "value": "qa195 literal"
+                      },
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa195-2b2db2-source",
+                          "type": "web",
+                          "envVarKey": "CONNECTIONPOOL"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-source",
+                    "envVars": [
+                      {
+                        "key": "OTHER_VALUE",
+                        "value": "qa195 control"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "predicted_wrong_field": "connectionPool",
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-project-missing-poolword.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.296,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"CONNECTIONPOOL\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 9,\n      \"path\": \"projects[0].environments[0].services[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"CONNECTIONPOOL\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+            "line": 9,
+            "path": "projects[0].environments[0].services[0].connectionPool"
+          }
+        ],
+        "valid": false
+      },
+      "decision_passed": true,
+      "actual_path": "projects[0].environments[0].services[0].connectionPool",
+      "wrong_field_reproduced": true
+    },
+    {
+      "at": "2026-10-13T04:07:47.267859+00:00",
+      "client": "render",
+      "layout": "project",
+      "case": "missing-plain",
+      "document": {
+        "projects": [
+          {
+            "name": "qa195-2b2db2-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-caller",
+                    "envVars": [
+                      {
+                        "key": "LITERAL_CONTROL",
+                        "value": "qa195 literal"
+                      },
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa195-2b2db2-source",
+                          "type": "web",
+                          "envVarKey": "ABSENT_VALUE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-source",
+                    "envVars": [
+                      {
+                        "key": "OTHER_VALUE",
+                        "value": "qa195 control"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "predicted_wrong_field": null,
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-project-missing-plain.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.284,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 26,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"ABSENT_VALUE\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 17,\n      \"path\": \"projects[0].environments[0].services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 26,
+            "error": "service \"qa195-2b2db2-caller\": fromService.envVarKey references env \"ABSENT_VALUE\" on service \"qa195-2b2db2-source\", which has no such plainly-defined variable",
+            "line": 17,
+            "path": "projects[0].environments[0].services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "decision_passed": true,
+      "actual_path": "projects[0].environments[0].services[0].envVars",
+      "wrong_field_reproduced": false
+    },
+    {
+      "at": "2026-10-13T04:07:47.784004+00:00",
+      "client": "render",
+      "layout": "project",
+      "case": "known-image",
+      "document": {
+        "projects": [
+          {
+            "name": "qa195-2b2db2-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-caller",
+                    "envVars": [
+                      {
+                        "key": "LITERAL_CONTROL",
+                        "value": "qa195 literal"
+                      },
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa195-2b2db2-source",
+                          "type": "web",
+                          "envVarKey": "IMAGE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa195-2b2db2-source",
+                    "envVars": [
+                      {
+                        "key": "OTHER_VALUE",
+                        "value": "qa195 control"
+                      },
+                      {
+                        "key": "IMAGE",
+                        "value": "qa195 existing IMAGE value"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "predicted_wrong_field": null,
+      "state": "native completed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep195-project-known-image.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.353,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa195-2b2db2-caller\",\n      \"qa195-2b2db2-source\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa195-2b2db2-caller",
+            "qa195-2b2db2-source"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "decision_passed": true
+    }
+  ],
+  "copied_render_config_removed": true,
+  "native_captures": [
+    {
+      "at": "2026-10-13T04:10:33.432427+00:00",
+      "client": "bex",
+      "case": "missing-image",
+      "layout": "root",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep195-root-missing-image.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 1,
+        "elapsed": 0.425,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 16,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"IMAGE\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 7,\n      \"path\": \"services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T04:10:33.915068+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=4eb10bd771119d07d41dde65997015c81e4b5cf8b4e475a815aac57fc3f7",
+            "body": "--4eb10bd771119d07d41dde65997015c81e4b5cf8b4e475a815aac57fc3f7\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--4eb10bd771119d07d41dde65997015c81e4b5cf8b4e475a815aac57fc3f7\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep195-root-missing-image.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"LITERAL_CONTROL\",\n          \"value\": \"qa195 literal\"\n        },\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa195-2b2db2-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"IMAGE\"\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-source\",\n      \"envVars\": [\n        {\n          \"key\": \"OTHER_VALUE\",\n          \"value\": \"qa195 control\"\n        }\n      ]\n    }\n  ]\n}\n\r\n--4eb10bd771119d07d41dde65997015c81e4b5cf8b4e475a815aac57fc3f7--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"LITERAL_CONTROL\",\n          \"value\": \"qa195 literal\"\n        },\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa195-2b2db2-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"IMAGE\"\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-source\",\n      \"envVars\": [\n        {\n          \"key\": \"OTHER_VALUE\",\n          \"value\": \"qa195 control\"\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49b7ec8bed4cfbc-SJC"
+          },
+          "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"IMAGE\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\"line\":7,\"column\":16,\"path\":\"services[0].image\"}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-13T04:11:18.552242+00:00",
+      "client": "render",
+      "case": "missing-poolword",
+      "layout": "project",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep195-project-missing-poolword.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 1,
+        "elapsed": 0.734,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"CONNECTIONPOOL\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 9,\n      \"path\": \"projects[0].environments[0].services[0].connectionPool\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T04:11:19.340860+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=4da517488e0a77faf562d3c9c0a8e3b97d60b2cf6e39495e39511a75c443",
+            "body": "--4da517488e0a77faf562d3c9c0a8e3b97d60b2cf6e39495e39511a75c443\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--4da517488e0a77faf562d3c9c0a8e3b97d60b2cf6e39495e39511a75c443\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep195-project-missing-poolword.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa195-2b2db2-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-caller\",\n              \"envVars\": [\n                {\n                  \"key\": \"LITERAL_CONTROL\",\n                  \"value\": \"qa195 literal\"\n                },\n                {\n                  \"key\": \"COPY_VALUE\",\n                  \"fromService\": {\n                    \"name\": \"qa195-2b2db2-source\",\n                    \"type\": \"web\",\n                    \"envVarKey\": \"CONNECTIONPOOL\"\n                  }\n                }\n              ]\n            },\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-source\",\n              \"envVars\": [\n                {\n                  \"key\": \"OTHER_VALUE\",\n                  \"value\": \"qa195 control\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--4da517488e0a77faf562d3c9c0a8e3b97d60b2cf6e39495e39511a75c443--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa195-2b2db2-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-caller\",\n              \"envVars\": [\n                {\n                  \"key\": \"LITERAL_CONTROL\",\n                  \"value\": \"qa195 literal\"\n                },\n                {\n                  \"key\": \"COPY_VALUE\",\n                  \"fromService\": {\n                    \"name\": \"qa195-2b2db2-source\",\n                    \"type\": \"web\",\n                    \"envVarKey\": \"CONNECTIONPOOL\"\n                  }\n                }\n              ]\n            },\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-source\",\n              \"envVars\": [\n                {\n                  \"key\": \"OTHER_VALUE\",\n                  \"value\": \"qa195 control\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49b7fe29e66cf12-SJC"
+          },
+          "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"CONNECTIONPOOL\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\"line\":9,\"column\":13,\"path\":\"projects[0].environments[0].services[0].connectionPool\"}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-13T04:12:49.123004+00:00",
+      "client": "bex",
+      "case": "missing-plain",
+      "layout": "root",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep195-root-missing-plain.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 1,
+        "elapsed": 0.439,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"ABSENT_VALUE\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T04:12:49.635524+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=7d55197159bf4c6a2a3af6aa88315a20afbb454aa238ea2a19279b4aea5f",
+            "body": "--7d55197159bf4c6a2a3af6aa88315a20afbb454aa238ea2a19279b4aea5f\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--7d55197159bf4c6a2a3af6aa88315a20afbb454aa238ea2a19279b4aea5f\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep195-root-missing-plain.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"LITERAL_CONTROL\",\n          \"value\": \"qa195 literal\"\n        },\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa195-2b2db2-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"ABSENT_VALUE\"\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-source\",\n      \"envVars\": [\n        {\n          \"key\": \"OTHER_VALUE\",\n          \"value\": \"qa195 control\"\n        }\n      ]\n    }\n  ]\n}\n\r\n--7d55197159bf4c6a2a3af6aa88315a20afbb454aa238ea2a19279b4aea5f--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"LITERAL_CONTROL\",\n          \"value\": \"qa195 literal\"\n        },\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa195-2b2db2-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"ABSENT_VALUE\"\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-source\",\n      \"envVars\": [\n        {\n          \"key\": \"OTHER_VALUE\",\n          \"value\": \"qa195 control\"\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49b8218ed0a67b8-SJC"
+          },
+          "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa195-2b2db2-caller\\\": fromService.envVarKey references env \\\"ABSENT_VALUE\\\" on service \\\"qa195-2b2db2-source\\\", which has no such plainly-defined variable\",\"line\":11,\"column\":18,\"path\":\"services[0].envVars\"}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-13T04:13:00.377294+00:00",
+      "client": "render",
+      "case": "known-image",
+      "layout": "project",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep195-project-known-image.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 0.408,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa195-2b2db2-caller\",\n      \"qa195-2b2db2-source\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T04:13:00.842023+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=9a270993374c825164bdc7dfe3232fa3204d1eae41559c5f4b7b86dc8df5",
+            "body": "--9a270993374c825164bdc7dfe3232fa3204d1eae41559c5f4b7b86dc8df5\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--9a270993374c825164bdc7dfe3232fa3204d1eae41559c5f4b7b86dc8df5\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep195-project-known-image.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa195-2b2db2-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-caller\",\n              \"envVars\": [\n                {\n                  \"key\": \"LITERAL_CONTROL\",\n                  \"value\": \"qa195 literal\"\n                },\n                {\n                  \"key\": \"COPY_VALUE\",\n                  \"fromService\": {\n                    \"name\": \"qa195-2b2db2-source\",\n                    \"type\": \"web\",\n                    \"envVarKey\": \"IMAGE\"\n                  }\n                }\n              ]\n            },\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-source\",\n              \"envVars\": [\n                {\n                  \"key\": \"OTHER_VALUE\",\n                  \"value\": \"qa195 control\"\n                },\n                {\n                  \"key\": \"IMAGE\",\n                  \"value\": \"qa195 existing IMAGE value\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--9a270993374c825164bdc7dfe3232fa3204d1eae41559c5f4b7b86dc8df5--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa195-2b2db2-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-caller\",\n              \"envVars\": [\n                {\n                  \"key\": \"LITERAL_CONTROL\",\n                  \"value\": \"qa195 literal\"\n                },\n                {\n                  \"key\": \"COPY_VALUE\",\n                  \"fromService\": {\n                    \"name\": \"qa195-2b2db2-source\",\n                    \"type\": \"web\",\n                    \"envVarKey\": \"IMAGE\"\n                  }\n                }\n              ]\n            },\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-source\",\n              \"envVars\": [\n                {\n                  \"key\": \"OTHER_VALUE\",\n                  \"value\": \"qa195 control\"\n                },\n                {\n                  \"key\": \"IMAGE\",\n                  \"value\": \"qa195 existing IMAGE value\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49b825f185ceb36-SJC"
+          },
+          "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa195-2b2db2-caller\",\"qa195-2b2db2-source\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa195-2b2db2-caller\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa195-2b2db2-source\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    }
+  ]
+}

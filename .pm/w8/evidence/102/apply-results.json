@@ -1,0 +1,258 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-overlay=<QA_TMP>/sweep204-copy-overlay.json",
+    "-run",
+    "^(TestQABlueprintCopyConsistency204|TestValidateBlueprintAcceptsAllFiveForms|TestParseStackClassifiesEnvGroupsAndSeeds|TestDeployStackAppliesEnvGroupsLinksAndSeeds|TestBlueprintFromServiceTypeMustMatchItsTarget)$",
+    "-count=1",
+    "-timeout=60s",
+    "-json",
+    "./internal/apps"
+  ],
+  "exit": 0,
+  "elapsed": 5.162,
+  "records": [
+    {
+      "create_seed_maps": {
+        "qa204-ee47c6-caller": null,
+        "qa204-ee47c6-consumer": null,
+        "qa204-ee47c6-source": null
+      },
+      "label": "literal-then-reference",
+      "mismatch": true,
+      "native_equivalent_validation_valid": true,
+      "persisted_App_env_arrays": {
+        "qa204-ee47c6-caller": [
+          {
+            "name": "VALUE",
+            "value": "literal value"
+          },
+          {
+            "name": "VALUE",
+            "value": "source value"
+          }
+        ],
+        "qa204-ee47c6-consumer": [
+          {
+            "name": "COPY_VALUE",
+            "value": "literal value"
+          }
+        ],
+        "qa204-ee47c6-source": [
+          {
+            "name": "SOURCE_VALUE",
+            "value": "source value"
+          }
+        ]
+      },
+      "persisted_consumer_copy": "literal value",
+      "persisted_source_env_last_value": "source value",
+      "public_DeployStack_services_created_in_fake_client": 3,
+      "qualification": "Actual current public apply persisted App env arrays; last-entry interpretation recorded for investigation, no live apply/runtime/secret storage"
+    },
+    {
+      "create_seed_maps": {
+        "qa204-ee47c6-caller": null,
+        "qa204-ee47c6-consumer": null,
+        "qa204-ee47c6-source": null
+      },
+      "label": "reference-then-literal",
+      "mismatch": true,
+      "native_equivalent_validation_valid": true,
+      "persisted_App_env_arrays": {
+        "qa204-ee47c6-caller": [
+          {
+            "name": "VALUE",
+            "value": "literal value"
+          },
+          {
+            "name": "VALUE",
+            "value": "source value"
+          }
+        ],
+        "qa204-ee47c6-consumer": [
+          {
+            "name": "COPY_VALUE",
+            "value": "literal value"
+          }
+        ],
+        "qa204-ee47c6-source": [
+          {
+            "name": "SOURCE_VALUE",
+            "value": "source value"
+          }
+        ]
+      },
+      "persisted_consumer_copy": "literal value",
+      "persisted_source_env_last_value": "source value",
+      "public_DeployStack_services_created_in_fake_client": 3,
+      "qualification": "Actual current public apply persisted App env arrays; last-entry interpretation recorded for investigation, no live apply/runtime/secret storage"
+    },
+    {
+      "create_seed_maps": {
+        "qa204-ee47c6-caller": null,
+        "qa204-ee47c6-consumer": null,
+        "qa204-ee47c6-source": null
+      },
+      "label": "literals-only",
+      "mismatch": false,
+      "native_equivalent_validation_valid": true,
+      "persisted_App_env_arrays": {
+        "qa204-ee47c6-caller": [
+          {
+            "name": "VALUE",
+            "value": "first value"
+          },
+          {
+            "name": "VALUE",
+            "value": "last value"
+          }
+        ],
+        "qa204-ee47c6-consumer": [
+          {
+            "name": "COPY_VALUE",
+            "value": "last value"
+          }
+        ],
+        "qa204-ee47c6-source": [
+          {
+            "name": "SOURCE_VALUE",
+            "value": "source value"
+          }
+        ]
+      },
+      "persisted_consumer_copy": "last value",
+      "persisted_source_env_last_value": "last value",
+      "public_DeployStack_services_created_in_fake_client": 3,
+      "qualification": "Actual current public apply persisted App env arrays; last-entry interpretation recorded for investigation, no live apply/runtime/secret storage"
+    },
+    {
+      "create_seed_maps": {
+        "qa204-ee47c6-caller": null,
+        "qa204-ee47c6-consumer": null,
+        "qa204-ee47c6-source": null
+      },
+      "label": "unique-control",
+      "mismatch": false,
+      "native_equivalent_validation_valid": true,
+      "persisted_App_env_arrays": {
+        "qa204-ee47c6-caller": [
+          {
+            "name": "LOCAL_VALUE",
+            "value": "literal value"
+          },
+          {
+            "name": "VALUE",
+            "value": "source value"
+          }
+        ],
+        "qa204-ee47c6-consumer": [
+          {
+            "name": "COPY_VALUE",
+            "value": "literal value"
+          }
+        ],
+        "qa204-ee47c6-source": [
+          {
+            "name": "SOURCE_VALUE",
+            "value": "source value"
+          }
+        ]
+      },
+      "persisted_consumer_copy": "literal value",
+      "persisted_source_env_last_value": "literal value",
+      "public_DeployStack_services_created_in_fake_client": 3,
+      "qualification": "Actual current public apply persisted App env arrays; last-entry interpretation recorded for investigation, no live apply/runtime/secret storage"
+    },
+    {
+      "create_seed_maps": {
+        "qa204-ee47c6-caller": null,
+        "qa204-ee47c6-consumer": null,
+        "qa204-ee47c6-source": null
+      },
+      "label": "consumer-first",
+      "mismatch": true,
+      "native_equivalent_validation_valid": true,
+      "persisted_App_env_arrays": {
+        "qa204-ee47c6-caller": [
+          {
+            "name": "VALUE",
+            "value": "literal value"
+          },
+          {
+            "name": "VALUE",
+            "value": "source value"
+          }
+        ],
+        "qa204-ee47c6-consumer": [
+          {
+            "name": "COPY_VALUE",
+            "value": "literal value"
+          }
+        ],
+        "qa204-ee47c6-source": [
+          {
+            "name": "SOURCE_VALUE",
+            "value": "source value"
+          }
+        ]
+      },
+      "persisted_consumer_copy": "literal value",
+      "persisted_source_env_last_value": "source value",
+      "public_DeployStack_services_created_in_fake_client": 3,
+      "qualification": "Actual current public apply persisted App env arrays; last-entry interpretation recorded for investigation, no live apply/runtime/secret storage"
+    },
+    {
+      "create_seed_maps": {
+        "qa204-ee47c6-caller": null,
+        "qa204-ee47c6-consumer": null,
+        "qa204-ee47c6-source": null
+      },
+      "label": "empty-shadowed-literal",
+      "mismatch": true,
+      "native_equivalent_validation_valid": true,
+      "persisted_App_env_arrays": {
+        "qa204-ee47c6-caller": [
+          {
+            "name": "VALUE"
+          },
+          {
+            "name": "VALUE",
+            "value": "source value"
+          }
+        ],
+        "qa204-ee47c6-consumer": [
+          {
+            "name": "COPY_VALUE"
+          }
+        ],
+        "qa204-ee47c6-source": [
+          {
+            "name": "SOURCE_VALUE",
+            "value": "source value"
+          }
+        ]
+      },
+      "persisted_consumer_copy": "",
+      "persisted_source_env_last_value": "source value",
+      "public_DeployStack_services_created_in_fake_client": 3,
+      "qualification": "Actual current public apply persisted App env arrays; last-entry interpretation recorded for investigation, no live apply/runtime/secret storage"
+    }
+  ],
+  "passes": [
+    "TestValidateBlueprintAcceptsAllFiveForms",
+    "TestParseStackClassifiesEnvGroupsAndSeeds",
+    "TestDeployStackAppliesEnvGroupsLinksAndSeeds",
+    "TestBlueprintFromServiceTypeMustMatchItsTarget",
+    "TestQABlueprintCopyConsistency204/literal-then-reference",
+    "TestQABlueprintCopyConsistency204/reference-then-literal",
+    "TestQABlueprintCopyConsistency204/literals-only",
+    "TestQABlueprintCopyConsistency204/unique-control",
+    "TestQABlueprintCopyConsistency204/consumer-first",
+    "TestQABlueprintCopyConsistency204/empty-shadowed-literal",
+    "TestQABlueprintCopyConsistency204"
+  ],
+  "stderr": "",
+  "assertions": "Expect four persisted mixed-reference copy mismatches and two consistent controls through current public ValidateBlueprint/DeployStack; local fake Kubernetes client, no hosted apply/runtime"
+}

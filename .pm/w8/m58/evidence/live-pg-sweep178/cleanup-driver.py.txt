@@ -1,0 +1,26 @@
+import pathlib,json,subprocess,os,urllib.parse,datetime,time
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('<REPO>/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());sid=(p/'sweep178-id.txt').read_text();x=next(z for z in c['resources'] if z.get('id')==sid);assert x['workspace']=='tea-daif693dqjvc73e7as3g' and x['create_result']['exit']==0 and x['create_response']['id']==sid and x['dependency_ids']==[] and not x['state'].startswith('deleted:');assert x['last_readback']['id']==sid and x['last_readback']['plan']=='free' and not (c['baseline']['postgres'].get('data',c['baseline']['postgres']) if isinstance(c['baseline']['postgres'],dict) else c['baseline']['postgres'])
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+def cli(a):return json.loads(subprocess.check_output(['python3',str(p/'run.py'),'--release',*a],text=True))
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True))
+assert (p/'sweep178-private-connection-info.json').exists();v=json.loads((p/'sweep178-private-connection-info.json').read_text());v=v.get('data',v);u=urllib.parse.urlparse(v['externalConnectionString']);env={k:v for k,v in os.environ.items() if not k.startswith('PG')};mode=urllib.parse.parse_qs(u.query).get('sslmode',['verify-full'])[0];assert mode=='verify-full';env.update(PGHOST=u.hostname,PGPORT=str(u.port or 5432),PGDATABASE=urllib.parse.unquote(u.path.lstrip('/')),PGUSER=urllib.parse.unquote(u.username),PGPASSWORD=urllib.parse.unquote(u.password),PGSSLMODE=mode,PGSSLROOTCERT=str(p/'sweep178-ca.pem'),PGCONNECT_TIMEOUT='5',PGHOSTADDR=(p/'sweep178-ipv4.txt').read_text().strip());assert env['PGDATABASE']==x['expected_database'] and env['PGUSER']==x['expected_user']
+def direct():
+ r=subprocess.run(['psql','-X','-At','-c','SELECT 1;'],env=env,text=True,capture_output=True,timeout=12)
+ return {'exit':r.returncode,'returns_1':r.stdout.strip()=='1','stderr_present':bool(r.stderr),'at':now()}
+r=direct();x['cached_connection_before_delete']=r;save();print('Own cached connection positive control',r,flush=True);x['predelete_positive_control_passed']=r['exit']==0 and r['returns_1'];save()
+inv=wire('/v1/postgres/'+sid);assert inv['status']=='200';details=json.loads(inv['response']);assert details['readReplicas']==[] and details['connectionPool']=='none';x['dependent_inventory_before_delete']=inv;save()
+x['state']='exact owned PG delete pending; no replicas/pooler/dependencies';x['delete_intent']={'at':now(),'id':sid,'workspace':x['workspace']};save();r=cli(['postgres','delete',sid,'--confirm','-o','json']);x['delete_result']=r;save();print('Native PG delete',r['exit'],r['elapsed'],r['stderr'],flush=True)
+r=wire('/v1/postgres/'+sid);x['detail_after_delete']=r;save();print('Detail after delete',r['status'],flush=True)
+r=cli(['postgres','list','--confirm','-o','json']);x['list_after_delete']=r;save();assert r['exit']==0;v=json.loads(r['stdout']);v=v.get('data',v) if isinstance(v,dict) else v;assert not v;print('PG native list empty',flush=True)
+r=cli(['services','--confirm','-o','json']);assert r['exit']==0;ids={z.get('service',z)['id'] for z in json.loads(r['stdout']) or []};base={z if isinstance(z,str) else z.get('service',z)['id'] for z in c['baseline']['services']};assert base<=ids;x['baseline_service_ids_after_pg_delete']=sorted(ids);save();print('All baseline services present',len(base),flush=True)
+for attempt in range(3):
+ try:r=direct()
+ except subprocess.TimeoutExpired:r={'exit':'timeout','returns_1':False,'at':now()}
+ x.setdefault('cached_connection_after_delete',[]).append(r);save();print('Former own connection',r,flush=True)
+ q=wire('/v1/owners/'+x['workspace']+'/limits');x['quota_after_delete']=q;save();assert q['status']=='200';quota=json.loads(q['response']);print('Quota',quota,flush=True)
+ if r['exit'] not in [0,'timeout'] and quota['postgres']['used']==0 and quota['postgres']['terminating']==0:break
+ if attempt<2:time.sleep(20)
+x['state']='deleted: CLIack/detail404/listempty/baseline present/former SQL connection refused/quota0 termination0' if x['detail_after_delete']['status']=='404' and r['exit'] not in [0,'timeout'] and quota['postgres']['used']==0 and quota['postgres']['terminating']==0 else 'delete acknowledged: bounded detail/connection/quota reconciliation pending';save()
+for name in ['sweep178-ca.pem','sweep178-ipv4.txt']:(p/name).unlink(missing_ok=True)
+x['connection_preparation']['state']='own CA/IPv4 files removed after cached SQL and connection teardown controls';save();print('Cleanup state',x['state'],'; own CA/query files removed; no Render comparison config was created this sweep',flush=True)

@@ -1,0 +1,30 @@
+[
+  {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "projects",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.511,
+    "stdout": "null",
+    "stderr": ""
+  },
+  {
+    "binary": "unmodified Render pin a764810a7682",
+    "command": [
+      "render",
+      "projects",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.449,
+    "stdout": "null",
+    "stderr": ""
+  }
+]

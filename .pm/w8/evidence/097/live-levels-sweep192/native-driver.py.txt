@@ -1,0 +1,69 @@
+import csv,datetime,io,json,os,pathlib,secrets,shlex,shutil,subprocess,sys,time
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('<REPO>/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());ws='tea-daif693dqjvc73e7as3g';mode=sys.argv[1]
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+def cli(a,render=False):
+ cfg=p/'render-config/cli.yaml'
+ try:
+  if render:shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  return json.loads(subprocess.check_output(['python3',str(p/('run-render.py' if render else 'run.py')),*a] if render else ['python3',str(p/'run.py'),'--release',*a],text=True))
+ finally:
+  if render:cfg.unlink(missing_ok=True)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True))
+def objects(raw):
+ result=[];dec=json.JSONDecoder();at=0
+ while at<len(raw):
+  while at<len(raw) and raw[at].isspace():at+=1
+  if at>=len(raw):break
+  v,at=dec.raw_decode(raw,at);result.append(v)
+ return result
+if mode=='create':
+ assert c['sync192_result']==0;assert not (p/'sweep192-id.txt').exists();q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';limits=json.loads(q['response']);assert limits['services']['used']+limits['services']['terminating']<limits['services']['limit']
+ nonce=secrets.token_hex(3);tag='QA192_'+nonce;name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-loglevels'
+ descriptions=[];lines=[];buckets={}
+ for level in ['debug','info','notice','warning','error','critical','alert','emergency']:
+  line=json.dumps({'level':level,'message':tag+' JSON_'+level.upper()},separators=(',',':'));lines.append(line);bucket='debug' if level=='debug' else 'info' if level in ('info','notice') else 'warning' if level=='warning' else 'error';buckets[line]=bucket;descriptions.append({'style':'json-level','level':level,'line':line,'expected_bucket':bucket})
+ for level in ['ALERT','EMERGENCY']:
+  line=json.dumps({'severity':level,'message':tag+' JSON_SEVERITY_'+level},separators=(',',':'));lines.append(line);buckets[line]='error';descriptions.append({'style':'json-severity','level':level,'line':line,'expected_bucket':'error'})
+ for field,level in [('level','alert'),('severity','EMERGENCY')]:
+  line=field+'='+level+' msg='+tag+'_FMT_'+level;lines.append(line);buckets[line]='error';descriptions.append({'style':'logfmt','level':level,'line':line,'expected_bucket':'error'})
+ for field,level in [('level','fatal'),('severity','WARNING'),('level','warn')]:
+  line=json.dumps({field:level,'message':tag+' EXTRA_'+field+'_'+level},separators=(',',':'));lines.append(line);bucket='error' if level=='fatal' else 'warning';buckets[line]=bucket;descriptions.append({'style':'json-extra','level':level,'line':line,'expected_bucket':bucket})
+ line=tag+' CONTROL plain';lines.append(line);buckets[line]='unknown'
+
+ program='const lines='+json.dumps(lines)+';for(const line of lines)console.log(line);require("http").createServer((req,res)=>{const b=JSON.stringify({marker:'+json.dumps(tag)+',instance:require("os").hostname()});res.writeHead(200,{"Content-Type":"application/json","Content-Length":Buffer.byteLength(b)});res.end(b);}).listen(Number(process.env.PORT||3000),"0.0.0.0");'
+ image='docker.io/library/node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0'
+ args=['services','create','--name',name,'--type','web_service','--runtime','node','--repo','https://github.com/bex-co/bex','--branch','main','--root-directory','examples/hello-go','--build-command','/usr/local/bin/node --version','--start-command','/usr/local/bin/node -e '+shlex.quote(program),'--health-check-path','/','--plan','free','--region','frankfurt','--auto-deploy=false','--confirm','-o','json']
+ x={'sweep':192,'workspace':ws,'type':'web_service','name':name,'nonce':nonce,'marker':tag,'time':now(),'source_head':c['head'],'dependency_ids':[],'state':'create intent persisted','capacity_proof':q,'command':['bex',*args],'programme':program,'expected_message_bytes':lines,'role':'Historical native level aliases over explicit JSON/logfmt severity, with plain unknown control','level_inputs':descriptions,'expected_level_buckets':buckets};c['resources'].append(x);save();r=cli(args);x['create_result']=r;x['state']='create result received; reconcile before another create';save()
+ if r['exit']==0:
+  v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v);x.update(id=v['id'],create_response=v,state='created: raw JSON/native text fixture; runtime pending');(p/'sweep192-id.txt').write_text(v['id']);save()
+ print(json.dumps({'id':x.get('id'),'name':name,'exit':r['exit'],'elapsed':r['elapsed'],'stderr':r['stderr']}),flush=True);raise SystemExit(0 if r['exit']==0 else 1)
+sid=(p/'sweep192-id.txt').read_text().strip();x=next(z for z in c['resources'] if z.get('id')==sid);base={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']};assert x['workspace']==ws and x['create_result']['exit']==0 and x['create_response']['id']==sid and sid not in base and not x['state'].startswith('deleted:')
+def public():
+ f=p/'sweep192-runtime.json';r=subprocess.run(['curl','--disable','-sS','--max-time','8','-o',str(f),'-w','%{http_code}',x['create_response']['serviceDetails']['url']+'/'],text=True,capture_output=True);raw=f.read_text() if f.exists() else ''
+ try:b=json.loads(raw)
+ except ValueError:b=None
+ return {'at':now(),'exit':r.returncode,'http':r.stdout,'body':b,'stderr':r.stderr}
+def csv_terms(values):
+ out=io.StringIO();csv.writer(out,lineterminator='',quoting=csv.QUOTE_ALL).writerow(values);return out.getvalue()
+if mode=='ready':
+ for attempt in range(5):
+  r=cli(['deploys','list',sid,'--confirm','-o','json']);assert r['exit']==0;ds=json.loads(r['stdout']);o=public();x.setdefault('runtime_observations',[]).append({'native_history':r,'runtime':o});save();ok=ds[0]['status']=='live' and o['http']=='200' and isinstance(o['body'],dict) and o['body'].get('marker')==x['marker'];print(json.dumps({'attempt':attempt,'status':ds[0]['status'],'http':o['http'],'exact_marker':ok}),flush=True)
+  if ok:x['runtime_pass']=True;save();break
+  if ds[0]['status'] in ('build_failed','update_failed','canceled'):break
+  if attempt<4:time.sleep(8)
+elif mode=='records':
+ assert x['runtime_pass'];render=len(sys.argv)>2 and sys.argv[2]=='render';args=['logs','--resources',sid,'--type','app','--text',x['marker'],'--limit','100','--confirm','-o','json']
+ for attempt in range(4):
+  r=cli(args,render);assert r['exit']==0;rows=objects(r['stdout']);exact={z['message'] for z in rows}==set(x['expected_message_bytes']);x.setdefault('marker_history_observations',[]).append({'at':now(),'client':'render' if render else 'bex','result':r,'rows':rows,'exact_message_set':exact});save();print(json.dumps({'attempt':attempt,'native_rows':len(rows),'exact_message_set':exact}),flush=True)
+  if exact:
+   if render:
+    previous={z['id']:z['message'] for z in x['baseline_log_rows']};assert previous=={z['id']:z['message'] for z in rows};x['pinned_baseline_rows']=rows
+   else:x['baseline_log_rows']=rows;x['baseline_log_ids']=[z['id'] for z in rows]
+   save();break
+  if attempt<3:time.sleep(8)
+elif mode=='levels':
+ assert x.get('baseline_log_rows');render=sys.argv[2]=='render';label=sys.argv[3];key=('render' if render else 'bex')+'-'+label;x.setdefault('level_checks',{});assert key not in x['level_checks']
+ requested={'debug':['debug'],'info':['info'],'notice':['notice'],'warning':['warning'],'error':['error'],'critical':['critical'],'alert':['alert'],'emergency':['emergency'],'union':['debug','warning','emergency'],'duplicates':['warning','warning']}[label]
+ desired={'debug':'debug','info':'info','notice':'info','warning':'warning','error':'error','critical':'error','alert':'error','emergency':'error'};expected={z['id'] for z in x['baseline_log_rows'] if x['expected_level_buckets'][z['message']] in {desired[v] for v in requested}};args=['logs','--resources',sid,'--type','app','--text',x['marker'],'--level',','.join(requested),'--limit','100','--confirm','-o','json'];z={'at':now(),'intent':['render' if render else 'bex',*args],'requested':requested,'expected_ids':sorted(expected),'contract':'Recognized Render string severity normalized to shipper bucket; same existing storedLevels query alias mapping'};x['level_checks'][key]=z;save();r=cli(args,render);rows=objects(r['stdout']) if r['exit']==0 else [];actual={v['id'] for v in rows};byid={v['id']:v for v in x['baseline_log_rows']};ok=r['exit']==0 and actual==expected and len(rows)==len(actual) and all(v['message']==byid[v['id']]['message'] for v in rows if v['id'] in byid);z.update(result=r,rows=rows,missing_ids=sorted(expected-actual),unexpected_ids=sorted(actual-expected),passed=ok);save();print(json.dumps({'key':key,'exit':r['exit'],'elapsed':r['elapsed'],'expected_rows':len(expected),'actual_rows':len(rows),'missing_rows':len(expected-actual),'unexpected_rows':len(actual-expected),'passed':ok,'stderr':r['stderr']}),flush=True)
+else:raise ValueError(mode)

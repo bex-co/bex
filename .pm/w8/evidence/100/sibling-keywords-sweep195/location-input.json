@@ -1,0 +1,68 @@
+{
+  "cases": [
+    {
+      "label": "root-missing-image",
+      "manifest": "{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"LITERAL_CONTROL\",\n          \"value\": \"qa195 literal\"\n        },\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa195-2b2db2-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"IMAGE\"\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-source\",\n      \"envVars\": [\n        {\n          \"key\": \"OTHER_VALUE\",\n          \"value\": \"qa195 control\"\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedEnvPointer": "#/services/0/envVars/1",
+      "wrongPointer": "#/services/0/image",
+      "wrongField": "image",
+      "wrongFieldExists": true
+    },
+    {
+      "label": "root-missing-plan",
+      "manifest": "{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"LITERAL_CONTROL\",\n          \"value\": \"qa195 literal\"\n        },\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa195-2b2db2-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"PLAN\"\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-source\",\n      \"envVars\": [\n        {\n          \"key\": \"OTHER_VALUE\",\n          \"value\": \"qa195 control\"\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedEnvPointer": "#/services/0/envVars/1",
+      "wrongPointer": "#/services/0/plan",
+      "wrongField": "plan",
+      "wrongFieldExists": true
+    },
+    {
+      "label": "root-missing-type",
+      "manifest": "{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"LITERAL_CONTROL\",\n          \"value\": \"qa195 literal\"\n        },\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa195-2b2db2-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"TYPE\"\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-source\",\n      \"envVars\": [\n        {\n          \"key\": \"OTHER_VALUE\",\n          \"value\": \"qa195 control\"\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedEnvPointer": "#/services/0/envVars/1",
+      "wrongPointer": "#/services/0/type",
+      "wrongField": "type",
+      "wrongFieldExists": true
+    },
+    {
+      "label": "root-missing-poolword",
+      "manifest": "{\n  \"services\": [\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-caller\",\n      \"envVars\": [\n        {\n          \"key\": \"LITERAL_CONTROL\",\n          \"value\": \"qa195 literal\"\n        },\n        {\n          \"key\": \"COPY_VALUE\",\n          \"fromService\": {\n            \"name\": \"qa195-2b2db2-source\",\n            \"type\": \"web\",\n            \"envVarKey\": \"CONNECTIONPOOL\"\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"name\": \"qa195-2b2db2-source\",\n      \"envVars\": [\n        {\n          \"key\": \"OTHER_VALUE\",\n          \"value\": \"qa195 control\"\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedEnvPointer": "#/services/0/envVars/1",
+      "wrongPointer": "#/services/0/connectionPool",
+      "wrongField": "connectionPool",
+      "wrongFieldExists": false
+    },
+    {
+      "label": "project-missing-image",
+      "manifest": "{\n  \"projects\": [\n    {\n      \"name\": \"qa195-2b2db2-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-caller\",\n              \"envVars\": [\n                {\n                  \"key\": \"LITERAL_CONTROL\",\n                  \"value\": \"qa195 literal\"\n                },\n                {\n                  \"key\": \"COPY_VALUE\",\n                  \"fromService\": {\n                    \"name\": \"qa195-2b2db2-source\",\n                    \"type\": \"web\",\n                    \"envVarKey\": \"IMAGE\"\n                  }\n                }\n              ]\n            },\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-source\",\n              \"envVars\": [\n                {\n                  \"key\": \"OTHER_VALUE\",\n                  \"value\": \"qa195 control\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedEnvPointer": "#/projects/0/environments/0/services/0/envVars/1",
+      "wrongPointer": "#/projects/0/environments/0/services/0/image",
+      "wrongField": "image",
+      "wrongFieldExists": true
+    },
+    {
+      "label": "project-missing-plan",
+      "manifest": "{\n  \"projects\": [\n    {\n      \"name\": \"qa195-2b2db2-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-caller\",\n              \"envVars\": [\n                {\n                  \"key\": \"LITERAL_CONTROL\",\n                  \"value\": \"qa195 literal\"\n                },\n                {\n                  \"key\": \"COPY_VALUE\",\n                  \"fromService\": {\n                    \"name\": \"qa195-2b2db2-source\",\n                    \"type\": \"web\",\n                    \"envVarKey\": \"PLAN\"\n                  }\n                }\n              ]\n            },\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-source\",\n              \"envVars\": [\n                {\n                  \"key\": \"OTHER_VALUE\",\n                  \"value\": \"qa195 control\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedEnvPointer": "#/projects/0/environments/0/services/0/envVars/1",
+      "wrongPointer": "#/projects/0/environments/0/services/0/plan",
+      "wrongField": "plan",
+      "wrongFieldExists": true
+    },
+    {
+      "label": "project-missing-type",
+      "manifest": "{\n  \"projects\": [\n    {\n      \"name\": \"qa195-2b2db2-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-caller\",\n              \"envVars\": [\n                {\n                  \"key\": \"LITERAL_CONTROL\",\n                  \"value\": \"qa195 literal\"\n                },\n                {\n                  \"key\": \"COPY_VALUE\",\n                  \"fromService\": {\n                    \"name\": \"qa195-2b2db2-source\",\n                    \"type\": \"web\",\n                    \"envVarKey\": \"TYPE\"\n                  }\n                }\n              ]\n            },\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-source\",\n              \"envVars\": [\n                {\n                  \"key\": \"OTHER_VALUE\",\n                  \"value\": \"qa195 control\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedEnvPointer": "#/projects/0/environments/0/services/0/envVars/1",
+      "wrongPointer": "#/projects/0/environments/0/services/0/type",
+      "wrongField": "type",
+      "wrongFieldExists": true
+    },
+    {
+      "label": "project-missing-poolword",
+      "manifest": "{\n  \"projects\": [\n    {\n      \"name\": \"qa195-2b2db2-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"services\": [\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-caller\",\n              \"envVars\": [\n                {\n                  \"key\": \"LITERAL_CONTROL\",\n                  \"value\": \"qa195 literal\"\n                },\n                {\n                  \"key\": \"COPY_VALUE\",\n                  \"fromService\": {\n                    \"name\": \"qa195-2b2db2-source\",\n                    \"type\": \"web\",\n                    \"envVarKey\": \"CONNECTIONPOOL\"\n                  }\n                }\n              ]\n            },\n            {\n              \"type\": \"web\",\n              \"runtime\": \"image\",\n              \"plan\": \"free\",\n              \"image\": {\n                \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n              },\n              \"name\": \"qa195-2b2db2-source\",\n              \"envVars\": [\n                {\n                  \"key\": \"OTHER_VALUE\",\n                  \"value\": \"qa195 control\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedEnvPointer": "#/projects/0/environments/0/services/0/envVars/1",
+      "wrongPointer": "#/projects/0/environments/0/services/0/connectionPool",
+      "wrongField": "connectionPool",
+      "wrongFieldExists": false
+    }
+  ]
+}

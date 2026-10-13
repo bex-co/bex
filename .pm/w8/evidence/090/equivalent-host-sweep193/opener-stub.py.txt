@@ -1,0 +1,4 @@
+#!/usr/bin/python3
+import os,json,pathlib
+p=pathlib.Path(os.environ["QA_DASHBOARD_CAPTURE"])
+p.write_text(json.dumps({"argv":os.sys.argv[1:]})+"\n");p.chmod(0o600)

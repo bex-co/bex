@@ -17,12 +17,12 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m62** — [Reject unlaunchable environment values](blocked/m62/README.md) — **BLOCKED (2026-10-12: t001/t002/t004/t005 done — every environment writer and Blueprint validation refuse newly supplied NUL values before any effect; needs the fix deployed to production plus fresh native Bex/Render validation receipts and surface checks before t003/t006 can close)**
 
-- [ ] **m61** — [Honor application PATH during native builds](blocked/m61/README.md) — **BLOCKED (2026-10-12: t001/t004/t005 done — native builds hand the command the exact configured PATH while the decoder and preparer keep platform tool lookup; needs the fix deployed to production plus fresh native Bex/Render Python/Node acceptance receipts and cleanup before t002/t003/t006 can close)**
+- [ ] **m61** — [Honor application PATH during native builds](blocked/m61/README.md) — **BLOCKED (2026-10-13 UTC: sweep183 repeats both narrow-PATH Python failures; both same-commit PATH-only recovery controls pass Live and exact build/runtime bytes. Source fix and seven targeted tests pass, deployed SHA unknown; two fixtures cleaned, baseline 6/termination0. Full DoD remains.)**
 
 - [ ] **m60** — [Preserve accepted arguments when copying CLI commands](blocked/m60/README.md) — **BLOCKED (2026-10-12: t001/t002 prepared and tested with `blocked/m60/evidence/upstream-copy-command-formatter.patch` + caller audit; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release, and native Bex/Render receipts; no fork/backend workaround per scope/DO_NOT_DO)**
 
-- [ ] **m58** — [Preserve Unicode matches in log history](blocked/m58/README.md) — **BLOCKED (2026-10-12: backend fix/tests complete; sweep176 partial App live acceptance passes 40 native checks and six raw/display API controls with cleanup; full App matrix, GraphQL and managed Postgres/Key Value native acceptance still needed before t003/t006 close)**
-- [ ] **m59** — [Return static sites to direct publication after clearing their build command](blocked/m59/README.md) — **BLOCKED (2026-10-12: t001/t002/t004 done — clearing a static build command now drops the implicit native builder, legacy records publish directly; needs the fix deployed to production plus fresh native Bex/Render acceptance receipts and cleanup before t003/t005/t006 can close)**
+- [ ] **m58** — [Preserve Unicode matches in log history](m58/README.md) (7 tasks) — **TODO (reopened 2026-10-12: sweep179 confirms raw pagination skips stored matches; t007 (45m) is next. Four failing native searches, four passing bounds controls, eight native wire captures; full DoD remains. Nonsaturated App/KV/PG controls and exact cleanup pass.)**
+- [ ] **m59** — [Return static sites to direct publication after clearing their build command](m59/README.md) — **TODO (2026-10-13 UTC: sweep184 now passes both build-created native clears, with ten actual HTTP captures and Live/source index/asset404. Source work complete; remaining cross-surface/legacy/neighbor DoD is actionable. Two fixtures cleaned, baseline 6/termination0; live SHA unknown.)**
 
 - [ ] **m57** — [Preserve literal string lists in interactive CLI forms](blocked/m57/README.md) — **BLOCKED (2026-10-12: t001/t002 prepared and tested with `blocked/m57/evidence/upstream-lossless-string-list.patch` + caller audit; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release, and native Bex/Render receipts; no fork/backend workaround per scope/DO_NOT_DO)**
 
@@ -103,9 +103,17 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **098** — [Blueprint validation accepts Key Value envVarKey refs that resolve to an empty key](blocked/098.md) — **BLOCKED (2026-10-12: fix shipped — a Key Value `fromService` needs a supported property and cannot resolve to an empty Secret key; needs the fix deployed to production plus fresh native Bex/Render validation receipts)**
+- [ ] **102** — [Blueprint environment copies use a literal shadowed by a reference](102.md) (major; 55m) ← functional CLI sweep204: eight native accepted masked-reference cases, eight controls and six native captures; current public apply persists four copy mismatches, hosted apply untested; no resources created.
 
-- [ ] **097** — [Literal alert/emergency severities become unknown and disappear from CLI level filters](blocked/097.md) — **BLOCKED (2026-10-12: fix shipped — the App and platform collectors label literal alert/emergency as error; needs the collector rollout observed in production plus fresh native Bex/Render level-filter receipts and cleanup)**
+- [ ] **101** — [Blueprint static rule errors point to the service instead of the invalid rule](101.md) (minor; 35m) ← functional CLI sweep202: 16 native wrong locations with 16 valid controls, four native captures and eight current-source diagnostics; validation only, no resources created.
+
+- [ ] **100** — [Blueprint reference errors point to unrelated or nonexistent fields](100.md) (minor; 55m) ← functional CLI sweeps194–195: pooled references and missing IMAGE/PLAN/TYPE/CONNECTIONPOOL copies choose wrong settings; native/API/current-source proof, validity decisions correct; validation only, no resources created.
+
+- [ ] **099** — [Blueprint envVarKey copies omit declared linked-group literals](099.md) (minor; 55m) ← functional CLI sweep182: eight false refusals across both clients, eight controls, four exact native captures and actual group/provider/parser proof; validation only, no resources created.
+
+- [ ] **098** — [Blueprint validation accepts Key Value envVarKey refs that resolve to an empty key](098.md) — **TODO (reopened 2026-10-13 UTC: core source guard shipped/tests pass, but public guidance still recommends an unsupported property; 10m correction. Fresh 20-case native matrix still reproduces four false-valid cases in production, 16 controls pass; two advertised-property schema refusals. No resources created; deployed SHA unknown.)**
+
+- [ ] **097** — [Literal alert/emergency severities become unknown and disappear from CLI level filters](097.md) — **TODO (20m remaining acceptance review; 2026-10-13 UTC: live App severity labels and all 20 Bex/Render filters now pass, fatal/WARNING/warn controls pass, fixture cleaned; remaining platform/cross-surface/retained-history boundaries need review)**
 
 - [ ] **096** — [Blueprint validation ignores a supplied service-reference type](blocked/096.md) — **BLOCKED (2026-10-12: fix shipped — a same-file `fromService` whose type does not describe its target is refused with a located error; needs the fix deployed to production plus fresh native Bex/Render validation receipts)**
 
@@ -114,11 +122,11 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **093** — [CLI scope selectors cannot resolve accepted ID-shaped project and environment names](blocked/093.md) — **BLOCKED (2026-10-12: upstream patch prepared and tested — [`093-upstream.patch`](blocked/093-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
 
-- [ ] **092** — [Blueprint parser loses explicit empty env-value presence](blocked/092.md) — **BLOCKED (2026-10-12: fix shipped — an explicitly declared empty Blueprint value is a literal for seeding, sibling copies and the generateValue conflict; needs the fix deployed to production plus fresh native Bex/Render validation receipts)**
+- [ ] **092** — [Blueprint parser loses explicit empty env-value presence](blocked/092.md) — **BLOCKED (2026-10-13 UTC: source presence fix and ten named tests pass; sweep188 still reproduces eight false seeded-copy refusals plus four false generation acceptances through both native clients, 32 controls pass. Validation only; no resources created; deployed SHA unknown.)**
 
 - [ ] **091** — [SSH project filters start connection preparation before choosing a service](blocked/091.md) — **BLOCKED (2026-10-12: upstream patch prepared and tested — [`091-upstream.patch`](blocked/091-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
 
-- [ ] **090** — [Fresh CLI configs open dashboard resources as filesystem paths](blocked/090.md) — **BLOCKED (2026-10-12: launcher fix shipped — `bex services`/`deploys list` seed the Bex dashboard origin into a config that has none; needs a Bex CLI release (`/release cli`, user-authorized) plus the fresh-config native replay)**
+- [ ] **090** — [Fresh CLI configs open dashboard resources as filesystem paths](090.md) (minor; 35m remaining) ← sweeps193/205 current-build: slashless production API, explicit :443, hostname case and saved equivalent host skip the default; native/helper proof and passing controls, no hosting mutation; release and full acceptance still follow.
 
 - [ ] **089** — [CLI dashboard actions open the OAuth host and return 404](blocked/089.md) — **BLOCKED (2026-10-12: routing shipped — a Traefik redirect on the hydra Ingress sends `oauth.bex.co/<dashboard-alias>/…` to `dashboard.bex.co`; needs the production Argo sync plus live 302, native Dashboard-action and device-login receipts)**
 

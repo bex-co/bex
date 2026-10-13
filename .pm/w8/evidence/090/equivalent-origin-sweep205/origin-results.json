@@ -1,0 +1,54 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-overlay=<QA_TMP>/sweep205-origin-overlay.json",
+    "-run",
+    "^(TestQAEquivalentOrigin205|TestEnsureDashboardURL)$",
+    "-count=1",
+    "-timeout=45s",
+    "-json",
+    "./internal/bridge"
+  ],
+  "exit": 0,
+  "elapsed": 1.781,
+  "records": [
+    {
+      "assertion": "Existing equivalent-origin guard bug, no network request or real credential",
+      "case": "explicit-default-port",
+      "dashboard_origin": "",
+      "effective_host": "https://api.bex.co:443/v1/",
+      "stored_host": ""
+    },
+    {
+      "assertion": "Existing equivalent-origin guard bug, no network request or real credential",
+      "case": "hostname-case",
+      "dashboard_origin": "",
+      "effective_host": "https://API.BEX.CO/v1/",
+      "stored_host": ""
+    },
+    {
+      "assertion": "Existing equivalent-origin guard bug, no network request or real credential",
+      "case": "stored-default-port",
+      "dashboard_origin": "",
+      "effective_host": "https://api.bex.co/v1/",
+      "stored_host": "https://api.bex.co:443/v1/"
+    }
+  ],
+  "passes": [
+    "TestEnsureDashboardURL/missing_file",
+    "TestEnsureDashboardURL/version-only_file",
+    "TestEnsureDashboardURL/unrelated_fields_kept",
+    "TestEnsureDashboardURL/saved_origin_kept",
+    "TestEnsureDashboardURL/custom_API_host",
+    "TestEnsureDashboardURL/custom_stored_host",
+    "TestEnsureDashboardURL/malformed_config",
+    "TestEnsureDashboardURL/command_without_a_Dashboard_action",
+    "TestEnsureDashboardURL",
+    "TestQAEquivalentOrigin205/explicit-default-port",
+    "TestQAEquivalentOrigin205/hostname-case",
+    "TestQAEquivalentOrigin205/stored-default-port",
+    "TestQAEquivalentOrigin205"
+  ],
+  "stderr": ""
+}

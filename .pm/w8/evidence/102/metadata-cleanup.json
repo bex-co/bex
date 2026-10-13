@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-13T08:26:26.005909+00:00",
+  "source_head": "c5a0eb9dd15f6b417bf586fdf26510706497b032",
+  "deployed_head": "unknown",
+  "native_matrix": 16,
+  "accepted_masked_reference_cases": 8,
+  "positive_controls": 4,
+  "pure_reference_negative_controls": 4,
+  "native_captures": 6,
+  "current_source_public_apply_diagnostics": 6,
+  "current_source_persisted_copy_mismatches": 4,
+  "existing_test_parents": 4,
+  "resources_created_in_production": 0,
+  "qualification": "Hosted apply/runtime untested; local public DeployStack writes actual App specs into fake Kubernetes client. Initial seeder-assumption attempt excluded. No CLI apply command claimed.",
+  "configs_servers_threads_removed": true,
+  "quota": {
+    "at": "2026-10-13T08:26:25.957229+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.363,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49cf596ce8915c6-SJC"
+    },
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+  },
+  "implementation_changed": false,
+  "ship_performed": false
+}

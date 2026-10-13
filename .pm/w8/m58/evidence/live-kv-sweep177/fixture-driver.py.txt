@@ -1,0 +1,19 @@
+import json,pathlib,subprocess,secrets,datetime,sys,ipaddress
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('<REPO>/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());ws='tea-daif693dqjvc73e7as3g';mode=sys.argv[1]
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+def cli(a):return json.loads(subprocess.check_output(['python3',str(p/'run.py'),'--release',*a],text=True))
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True))
+def data(r):v=json.loads(r['stdout']);v=v.get('data',v);return v.get('keyValue',v)
+if mode=='create':
+ assert c['sync177_result']==0;assert not (p/'sweep177-kv-id.txt').exists();q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';v=json.loads(q['response']);assert v['keyValues']['used']+v['keyValues']['terminating']<v['keyValues']['limit'];nonce=secrets.token_hex(3);name='qa-20261012-'+nonce+'-kvlogs';args=['keyvalues','create','--name',name,'--plan','free','--region','frankfurt','--memory-policy','queue','--persistence-mode','off','--confirm','-o','json'];x={'sweep':177,'workspace':ws,'type':'keyvalue','name':name,'nonce':nonce,'role':'native Key Value connection and Unicode history acceptance after the text-filter change','time':now(),'dependency_ids':[],'state':'create intent persisted','command':['bex',*args],'capacity_proof':q,'expected_policy':'noeviction'};c['resources'].append(x);save();r=cli(args);x['create_result']=r;x['state']='create result received; reconciliation pending';save()
+ if r['exit']==0:
+  v=data(r);x['id']=v['id'];x['create_response']=v;x['state']='created CLIexit0; runtime pending';(p/'sweep177-kv-id.txt').write_text(v['id']);save()
+ print(json.dumps({'id':x.get('id'),'name':name,'exit':r['exit'],'elapsed':r['elapsed'],'stderr':r['stderr']}),flush=True);raise SystemExit(0 if r['exit']==0 else 1)
+sid=(p/'sweep177-kv-id.txt').read_text();x=next(z for z in c['resources'] if z.get('id')==sid);base=c['baseline'].get('keyvalues',[]);base=base.get('data',base) if isinstance(base,dict) else base;assert not base and x['workspace']==ws and x['create_result']['exit']==0 and x['create_response']['id']==sid and not x['state'].startswith('deleted:')
+if mode=='observe':
+ r=cli(['keyvalues','get',sid,'--confirm','-o','json']);obs={'at':now(),'result':r};x.setdefault('kv_observations',[]).append(obs);save();assert r['exit']==0;v=data(r);x['last_readback']=v;save();print('KV readback',{k:v.get(k) for k in ['id','name','status','maxmemoryPolicy','memoryPolicy','persistenceMode','plan']},flush=True)
+elif mode=='enable':
+ assert not x.get('connection_setup'), 'Reconcile prior setup result before another mutation'
+ ip=subprocess.check_output(['curl','-4','--fail','--silent','--show-error','--max-time','10','https://api.ipify.org'],text=True).strip();assert ipaddress.ip_address(ip).version==4;rule='cidr='+ip+'/32,description=own-cli-qa';args=['keyvalues','update',sid,'--ip-allow-list',rule,'--confirm','-o','json'];a={'at':now(),'command':['bex',*args],'state':'own-source connection setup intent persisted'};x['connection_setup']=a;save();r=cli(args);a['result']=r;save();print(json.dumps({'setup':'own runner IPv4 only','exit':r['exit'],'stderr':r['stderr']}),flush=True)
+else:raise ValueError(mode)

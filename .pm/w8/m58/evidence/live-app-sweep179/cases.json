@@ -1,0 +1,82 @@
+{
+  "all-raw": {
+    "terms": [
+      "QA179_317383"
+    ],
+    "labels": [
+      "table-0",
+      "table-1",
+      "table-2",
+      "table-3",
+      "table-4",
+      "table-5",
+      "table-6",
+      "table-7",
+      "table-8",
+      "table-9",
+      "table-10",
+      "table-11",
+      "cafe-upper",
+      "cafe-lower",
+      "literal-punct",
+      "literal-quote",
+      "literal-space",
+      "literal-no-space",
+      "literal-tab",
+      "literal-comma",
+      "hidden"
+    ]
+  },
+  "all-end-control": {
+    "terms": [
+      "QA179_317383"
+    ],
+    "labels": [
+      "table-0",
+      "table-1",
+      "table-2",
+      "table-3",
+      "table-4",
+      "table-5",
+      "table-6",
+      "table-7",
+      "table-8",
+      "table-9",
+      "table-10",
+      "table-11",
+      "cafe-upper",
+      "cafe-lower",
+      "literal-punct",
+      "literal-quote",
+      "literal-space",
+      "literal-no-space",
+      "literal-tab",
+      "literal-comma",
+      "hidden"
+    ],
+    "extra_flags": [
+      "--end",
+      "2026-10-12T23:57:28.747309428Z"
+    ]
+  },
+  "hidden-raw": {
+    "terms": [
+      "QA179_317383_HIDDEN BEHIND_RAW_PAGE"
+    ],
+    "labels": [
+      "hidden"
+    ]
+  },
+  "hidden-end-control": {
+    "terms": [
+      "QA179_317383_HIDDEN BEHIND_RAW_PAGE"
+    ],
+    "labels": [
+      "hidden"
+    ],
+    "extra_flags": [
+      "--end",
+      "2026-10-12T23:57:28.747309428Z"
+    ]
+  }
+}

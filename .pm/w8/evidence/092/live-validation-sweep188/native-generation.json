@@ -1,0 +1,1163 @@
+{
+  "sweep": 188,
+  "source_head": "c5a0eb9dd15f6b417bf586fdf26510706497b032",
+  "nonce": "19ddda",
+  "mutation": "validation only; no generated runtime values or resources",
+  "results": [
+    {
+      "client": "bex",
+      "container": "service",
+      "variant": "literal-empty",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa188-19ddda-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-service-literal-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.626,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-19ddda-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-19ddda-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "service",
+      "variant": "generated-only",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa188-19ddda-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "VALUE",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-service-generated-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.773,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-19ddda-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-19ddda-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "service",
+      "variant": "generated-plus-empty",
+      "expected_by_existing_semantic_checks": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa188-19ddda-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-service-generated-plus-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.491,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-19ddda-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-19ddda-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": false
+    },
+    {
+      "client": "bex",
+      "container": "service",
+      "variant": "generated-plus-space",
+      "expected_by_existing_semantic_checks": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa188-19ddda-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": " ",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-service-generated-plus-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.928,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa188-19ddda-web env \\\"VALUE\\\": sets both value and generateValue — pick one\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa188-19ddda-web env \"VALUE\": sets both value and generateValue — pick one",
+            "line": 11,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "service",
+      "variant": "disabled-generation-empty",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa188-19ddda-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "",
+                "generateValue": false
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-service-disabled-generation-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.622,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-19ddda-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-19ddda-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "environment-group",
+      "variant": "literal-empty",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa188-19ddda-group",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": ""
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa188-19ddda-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-environment-group-literal-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.447,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa188-19ddda-group\"\n    ],\n    \"services\": [\n      \"qa188-19ddda-web\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa188-19ddda-group"
+          ],
+          "services": [
+            "qa188-19ddda-web"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "environment-group",
+      "variant": "generated-only",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa188-19ddda-group",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa188-19ddda-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-environment-group-generated-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.988,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa188-19ddda-group\"\n    ],\n    \"services\": [\n      \"qa188-19ddda-web\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa188-19ddda-group"
+          ],
+          "services": [
+            "qa188-19ddda-web"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "environment-group",
+      "variant": "generated-plus-empty",
+      "expected_by_existing_semantic_checks": false,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa188-19ddda-group",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa188-19ddda-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-environment-group-generated-plus-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.462,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa188-19ddda-group\"\n    ],\n    \"services\": [\n      \"qa188-19ddda-web\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa188-19ddda-group"
+          ],
+          "services": [
+            "qa188-19ddda-web"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": false
+    },
+    {
+      "client": "bex",
+      "container": "environment-group",
+      "variant": "generated-plus-space",
+      "expected_by_existing_semantic_checks": false,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa188-19ddda-group",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": " ",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa188-19ddda-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-environment-group-generated-plus-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.708,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"env group \\\"qa188-19ddda-group\\\" var \\\"VALUE\\\" sets both value and generateValue\",\n      \"line\": 3,\n      \"path\": \"envVarGroups[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "env group \"qa188-19ddda-group\" var \"VALUE\" sets both value and generateValue",
+            "line": 3,
+            "path": "envVarGroups[0]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "bex",
+      "container": "environment-group",
+      "variant": "disabled-generation-empty",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa188-19ddda-group",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "",
+                "generateValue": false
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa188-19ddda-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-environment-group-disabled-generation-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.641,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa188-19ddda-group\"\n    ],\n    \"services\": [\n      \"qa188-19ddda-web\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa188-19ddda-group"
+          ],
+          "services": [
+            "qa188-19ddda-web"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "service",
+      "variant": "literal-empty",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa188-19ddda-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-service-literal-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.44,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-19ddda-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-19ddda-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "service",
+      "variant": "generated-only",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa188-19ddda-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "VALUE",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-service-generated-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.095,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-19ddda-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-19ddda-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "service",
+      "variant": "generated-plus-empty",
+      "expected_by_existing_semantic_checks": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa188-19ddda-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-service-generated-plus-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.448,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-19ddda-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-19ddda-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": false
+    },
+    {
+      "client": "render",
+      "container": "service",
+      "variant": "generated-plus-space",
+      "expected_by_existing_semantic_checks": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa188-19ddda-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": " ",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-service-generated-plus-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.74,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 18,\n      \"error\": \"qa188-19ddda-web env \\\"VALUE\\\": sets both value and generateValue — pick one\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 18,
+            "error": "qa188-19ddda-web env \"VALUE\": sets both value and generateValue — pick one",
+            "line": 11,
+            "path": "services[0].envVars"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "service",
+      "variant": "disabled-generation-empty",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa188-19ddda-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "",
+                "generateValue": false
+              }
+            ]
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-service-disabled-generation-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.621,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa188-19ddda-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa188-19ddda-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "environment-group",
+      "variant": "literal-empty",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa188-19ddda-group",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": ""
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa188-19ddda-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-environment-group-literal-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.179,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa188-19ddda-group\"\n    ],\n    \"services\": [\n      \"qa188-19ddda-web\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa188-19ddda-group"
+          ],
+          "services": [
+            "qa188-19ddda-web"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "environment-group",
+      "variant": "generated-only",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa188-19ddda-group",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa188-19ddda-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-environment-group-generated-only.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.81,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa188-19ddda-group\"\n    ],\n    \"services\": [\n      \"qa188-19ddda-web\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa188-19ddda-group"
+          ],
+          "services": [
+            "qa188-19ddda-web"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "environment-group",
+      "variant": "generated-plus-empty",
+      "expected_by_existing_semantic_checks": false,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa188-19ddda-group",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa188-19ddda-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-environment-group-generated-plus-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.24,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa188-19ddda-group\"\n    ],\n    \"services\": [\n      \"qa188-19ddda-web\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa188-19ddda-group"
+          ],
+          "services": [
+            "qa188-19ddda-web"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": false
+    },
+    {
+      "client": "render",
+      "container": "environment-group",
+      "variant": "generated-plus-space",
+      "expected_by_existing_semantic_checks": false,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa188-19ddda-group",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": " ",
+                "generateValue": true
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa188-19ddda-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-environment-group-generated-plus-space.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.839,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"env group \\\"qa188-19ddda-group\\\" var \\\"VALUE\\\" sets both value and generateValue\",\n      \"line\": 3,\n      \"path\": \"envVarGroups[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "env group \"qa188-19ddda-group\" var \"VALUE\" sets both value and generateValue",
+            "line": 3,
+            "path": "envVarGroups[0]"
+          }
+        ],
+        "valid": false
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    },
+    {
+      "client": "render",
+      "container": "environment-group",
+      "variant": "disabled-generation-empty",
+      "expected_by_existing_semantic_checks": true,
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa188-19ddda-group",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "",
+                "generateValue": false
+              }
+            ]
+          }
+        ],
+        "services": [
+          {
+            "name": "qa188-19ddda-web",
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            }
+          }
+        ]
+      },
+      "state": "native validation intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep188-environment-group-disabled-generation-empty.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.036,
+        "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa188-19ddda-group\"\n    ],\n    \"services\": [\n      \"qa188-19ddda-web\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "envGroups": [
+            "qa188-19ddda-group"
+          ],
+          "services": [
+            "qa188-19ddda-web"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "consumer_consistent": true,
+      "semantic_match": true
+    }
+  ],
+  "copied_render_config_removed": true
+}

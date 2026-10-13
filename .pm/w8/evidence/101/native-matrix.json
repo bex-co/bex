@@ -1,0 +1,2242 @@
+{
+  "sweep": 202,
+  "nonce": "b7aca1",
+  "source_head": "c5a0eb9dd15f6b417bf586fdf26510706497b032",
+  "surface": "Native static Blueprint route/header configuration, second-item refusals and empty-value controls",
+  "mutation": "none: validation only",
+  "results": [
+    {
+      "at": "2026-10-13T05:57:18.463122+00:00",
+      "client": "bex",
+      "layout": "root",
+      "case": "combined-valid",
+      "document": {
+        "services": [
+          {
+            "name": "qa202-b7aca1-static",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "rootDir": "examples/static-site",
+            "buildCommand": "",
+            "staticPublishPath": ".",
+            "routes": [
+              {
+                "type": "rewrite",
+                "source": "/app/*",
+                "destination": "/index.html"
+              }
+            ],
+            "headers": [
+              {
+                "path": "/*",
+                "name": "X-QA-Marker",
+                "value": "ordinary marker"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native result checked",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-root-combined-valid.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.49,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa202-b7aca1-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa202-b7aca1-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:19.190232+00:00",
+      "client": "bex",
+      "layout": "root",
+      "case": "splat-redirect",
+      "document": {
+        "services": [
+          {
+            "name": "qa202-b7aca1-static",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "rootDir": "examples/static-site",
+            "buildCommand": "",
+            "staticPublishPath": ".",
+            "routes": [
+              {
+                "type": "redirect",
+                "source": "/old/*",
+                "destination": "/new/:splat"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native result checked",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-root-splat-redirect.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.352,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa202-b7aca1-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa202-b7aca1-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:19.920036+00:00",
+      "client": "bex",
+      "layout": "root",
+      "case": "empty-header-value",
+      "document": {
+        "services": [
+          {
+            "name": "qa202-b7aca1-static",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "rootDir": "examples/static-site",
+            "buildCommand": "",
+            "staticPublishPath": ".",
+            "headers": [
+              {
+                "path": "/*",
+                "name": "X-QA-Marker",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native result checked",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-root-empty-header-value.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.309,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa202-b7aca1-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa202-b7aca1-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:20.522268+00:00",
+      "client": "bex",
+      "layout": "root",
+      "case": "empty-lists",
+      "document": {
+        "services": [
+          {
+            "name": "qa202-b7aca1-static",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "rootDir": "examples/static-site",
+            "buildCommand": "",
+            "staticPublishPath": ".",
+            "routes": [],
+            "headers": []
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native result checked",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-root-empty-lists.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.658,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa202-b7aca1-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa202-b7aca1-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:21.437226+00:00",
+      "client": "bex",
+      "layout": "root",
+      "case": "second-route-source",
+      "document": {
+        "services": [
+          {
+            "name": "qa202-b7aca1-static",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "rootDir": "examples/static-site",
+            "buildCommand": "",
+            "staticPublishPath": ".",
+            "routes": [
+              {
+                "type": "rewrite",
+                "source": "/app/*",
+                "destination": "/index.html"
+              },
+              {
+                "type": "rewrite",
+                "source": "missing-slash",
+                "destination": "/index.html"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native result checked",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-root-second-route-source.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.667,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa202-b7aca1-static\\\": routes[1].source must be a path starting with /\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa202-b7aca1-static\": routes[1].source must be a path starting with /",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:22.349483+00:00",
+      "client": "bex",
+      "layout": "root",
+      "case": "second-route-destination",
+      "document": {
+        "services": [
+          {
+            "name": "qa202-b7aca1-static",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "rootDir": "examples/static-site",
+            "buildCommand": "",
+            "staticPublishPath": ".",
+            "routes": [
+              {
+                "type": "rewrite",
+                "source": "/app/*",
+                "destination": "/index.html"
+              },
+              {
+                "type": "rewrite",
+                "source": "/app/*",
+                "destination": "missing-slash"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native result checked",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-root-second-route-destination.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.295,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa202-b7aca1-static\\\": routes[1].destination must be a path starting with /\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa202-b7aca1-static\": routes[1].destination must be a path starting with /",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:22.917386+00:00",
+      "client": "bex",
+      "layout": "root",
+      "case": "second-header-path",
+      "document": {
+        "services": [
+          {
+            "name": "qa202-b7aca1-static",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "rootDir": "examples/static-site",
+            "buildCommand": "",
+            "staticPublishPath": ".",
+            "headers": [
+              {
+                "path": "/*",
+                "name": "X-QA-Marker",
+                "value": "ordinary marker"
+              },
+              {
+                "path": "missing-slash",
+                "name": "X-QA-Marker",
+                "value": "ordinary marker"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native result checked",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-root-second-header-path.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.293,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa202-b7aca1-static\\\": headers[1].path must be a path starting with /\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa202-b7aca1-static\": headers[1].path must be a path starting with /",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:23.444197+00:00",
+      "client": "bex",
+      "layout": "root",
+      "case": "second-header-name",
+      "document": {
+        "services": [
+          {
+            "name": "qa202-b7aca1-static",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "rootDir": "examples/static-site",
+            "buildCommand": "",
+            "staticPublishPath": ".",
+            "headers": [
+              {
+                "path": "/*",
+                "name": "X-QA-Marker",
+                "value": "ordinary marker"
+              },
+              {
+                "path": "/*",
+                "name": "",
+                "value": "ordinary marker"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native result checked",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-root-second-header-name.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.292,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 15,\n      \"error\": \"service \\\"qa202-b7aca1-static\\\": headers[1].name is required\",\n      \"line\": 4,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 15,
+            "error": "service \"qa202-b7aca1-static\": headers[1].name is required",
+            "line": 4,
+            "path": "services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:23.980739+00:00",
+      "client": "bex",
+      "layout": "project",
+      "case": "combined-valid",
+      "document": {
+        "projects": [
+          {
+            "name": "qa202-b7aca1-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "name": "qa202-b7aca1-static",
+                    "type": "web",
+                    "runtime": "static",
+                    "repo": "https://github.com/bex-co/bex",
+                    "branch": "main",
+                    "rootDir": "examples/static-site",
+                    "buildCommand": "",
+                    "staticPublishPath": ".",
+                    "routes": [
+                      {
+                        "type": "rewrite",
+                        "source": "/app/*",
+                        "destination": "/index.html"
+                      }
+                    ],
+                    "headers": [
+                      {
+                        "path": "/*",
+                        "name": "X-QA-Marker",
+                        "value": "ordinary marker"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native result checked",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-project-combined-valid.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.305,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa202-b7aca1-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa202-b7aca1-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:24.516982+00:00",
+      "client": "bex",
+      "layout": "project",
+      "case": "splat-redirect",
+      "document": {
+        "projects": [
+          {
+            "name": "qa202-b7aca1-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "name": "qa202-b7aca1-static",
+                    "type": "web",
+                    "runtime": "static",
+                    "repo": "https://github.com/bex-co/bex",
+                    "branch": "main",
+                    "rootDir": "examples/static-site",
+                    "buildCommand": "",
+                    "staticPublishPath": ".",
+                    "routes": [
+                      {
+                        "type": "redirect",
+                        "source": "/old/*",
+                        "destination": "/new/:splat"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native result checked",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-project-splat-redirect.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.326,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa202-b7aca1-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa202-b7aca1-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:25.101093+00:00",
+      "client": "bex",
+      "layout": "project",
+      "case": "empty-header-value",
+      "document": {
+        "projects": [
+          {
+            "name": "qa202-b7aca1-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "name": "qa202-b7aca1-static",
+                    "type": "web",
+                    "runtime": "static",
+                    "repo": "https://github.com/bex-co/bex",
+                    "branch": "main",
+                    "rootDir": "examples/static-site",
+                    "buildCommand": "",
+                    "staticPublishPath": ".",
+                    "headers": [
+                      {
+                        "path": "/*",
+                        "name": "X-QA-Marker",
+                        "value": ""
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native result checked",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-project-empty-header-value.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.328,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa202-b7aca1-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa202-b7aca1-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:25.664501+00:00",
+      "client": "bex",
+      "layout": "project",
+      "case": "empty-lists",
+      "document": {
+        "projects": [
+          {
+            "name": "qa202-b7aca1-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "name": "qa202-b7aca1-static",
+                    "type": "web",
+                    "runtime": "static",
+                    "repo": "https://github.com/bex-co/bex",
+                    "branch": "main",
+                    "rootDir": "examples/static-site",
+                    "buildCommand": "",
+                    "staticPublishPath": ".",
+                    "routes": [],
+                    "headers": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native result checked",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-project-empty-lists.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.317,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa202-b7aca1-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa202-b7aca1-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:26.236873+00:00",
+      "client": "bex",
+      "layout": "project",
+      "case": "second-route-source",
+      "document": {
+        "projects": [
+          {
+            "name": "qa202-b7aca1-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "name": "qa202-b7aca1-static",
+                    "type": "web",
+                    "runtime": "static",
+                    "repo": "https://github.com/bex-co/bex",
+                    "branch": "main",
+                    "rootDir": "examples/static-site",
+                    "buildCommand": "",
+                    "staticPublishPath": ".",
+                    "routes": [
+                      {
+                        "type": "rewrite",
+                        "source": "/app/*",
+                        "destination": "/index.html"
+                      },
+                      {
+                        "type": "rewrite",
+                        "source": "missing-slash",
+                        "destination": "/index.html"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native result checked",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-project-second-route-source.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.295,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa202-b7aca1-static\\\": routes[1].source must be a path starting with /\",\n      \"line\": 9,\n      \"path\": \"projects[0].environments[0].services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa202-b7aca1-static\": routes[1].source must be a path starting with /",
+            "line": 9,
+            "path": "projects[0].environments[0].services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:26.776608+00:00",
+      "client": "bex",
+      "layout": "project",
+      "case": "second-route-destination",
+      "document": {
+        "projects": [
+          {
+            "name": "qa202-b7aca1-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "name": "qa202-b7aca1-static",
+                    "type": "web",
+                    "runtime": "static",
+                    "repo": "https://github.com/bex-co/bex",
+                    "branch": "main",
+                    "rootDir": "examples/static-site",
+                    "buildCommand": "",
+                    "staticPublishPath": ".",
+                    "routes": [
+                      {
+                        "type": "rewrite",
+                        "source": "/app/*",
+                        "destination": "/index.html"
+                      },
+                      {
+                        "type": "rewrite",
+                        "source": "/app/*",
+                        "destination": "missing-slash"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native result checked",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-project-second-route-destination.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.302,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa202-b7aca1-static\\\": routes[1].destination must be a path starting with /\",\n      \"line\": 9,\n      \"path\": \"projects[0].environments[0].services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa202-b7aca1-static\": routes[1].destination must be a path starting with /",
+            "line": 9,
+            "path": "projects[0].environments[0].services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:27.339851+00:00",
+      "client": "bex",
+      "layout": "project",
+      "case": "second-header-path",
+      "document": {
+        "projects": [
+          {
+            "name": "qa202-b7aca1-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "name": "qa202-b7aca1-static",
+                    "type": "web",
+                    "runtime": "static",
+                    "repo": "https://github.com/bex-co/bex",
+                    "branch": "main",
+                    "rootDir": "examples/static-site",
+                    "buildCommand": "",
+                    "staticPublishPath": ".",
+                    "headers": [
+                      {
+                        "path": "/*",
+                        "name": "X-QA-Marker",
+                        "value": "ordinary marker"
+                      },
+                      {
+                        "path": "missing-slash",
+                        "name": "X-QA-Marker",
+                        "value": "ordinary marker"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native result checked",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-project-second-header-path.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.287,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa202-b7aca1-static\\\": headers[1].path must be a path starting with /\",\n      \"line\": 9,\n      \"path\": \"projects[0].environments[0].services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa202-b7aca1-static\": headers[1].path must be a path starting with /",
+            "line": 9,
+            "path": "projects[0].environments[0].services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:27.864307+00:00",
+      "client": "bex",
+      "layout": "project",
+      "case": "second-header-name",
+      "document": {
+        "projects": [
+          {
+            "name": "qa202-b7aca1-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "name": "qa202-b7aca1-static",
+                    "type": "web",
+                    "runtime": "static",
+                    "repo": "https://github.com/bex-co/bex",
+                    "branch": "main",
+                    "rootDir": "examples/static-site",
+                    "buildCommand": "",
+                    "staticPublishPath": ".",
+                    "headers": [
+                      {
+                        "path": "/*",
+                        "name": "X-QA-Marker",
+                        "value": "ordinary marker"
+                      },
+                      {
+                        "path": "/*",
+                        "name": "",
+                        "value": "ordinary marker"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native result checked",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-project-second-header-name.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.289,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 23,\n      \"error\": \"service \\\"qa202-b7aca1-static\\\": headers[1].name is required\",\n      \"line\": 10,\n      \"path\": \"projects[0].environments[0].services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 23,
+            "error": "service \"qa202-b7aca1-static\": headers[1].name is required",
+            "line": 10,
+            "path": "projects[0].environments[0].services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:28.409231+00:00",
+      "client": "render",
+      "layout": "root",
+      "case": "combined-valid",
+      "document": {
+        "services": [
+          {
+            "name": "qa202-b7aca1-static",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "rootDir": "examples/static-site",
+            "buildCommand": "",
+            "staticPublishPath": ".",
+            "routes": [
+              {
+                "type": "rewrite",
+                "source": "/app/*",
+                "destination": "/index.html"
+              }
+            ],
+            "headers": [
+              {
+                "path": "/*",
+                "name": "X-QA-Marker",
+                "value": "ordinary marker"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native result checked",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-root-combined-valid.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.362,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa202-b7aca1-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa202-b7aca1-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:29.009854+00:00",
+      "client": "render",
+      "layout": "root",
+      "case": "splat-redirect",
+      "document": {
+        "services": [
+          {
+            "name": "qa202-b7aca1-static",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "rootDir": "examples/static-site",
+            "buildCommand": "",
+            "staticPublishPath": ".",
+            "routes": [
+              {
+                "type": "redirect",
+                "source": "/old/*",
+                "destination": "/new/:splat"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native result checked",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-root-splat-redirect.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.341,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa202-b7aca1-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa202-b7aca1-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:29.598093+00:00",
+      "client": "render",
+      "layout": "root",
+      "case": "empty-header-value",
+      "document": {
+        "services": [
+          {
+            "name": "qa202-b7aca1-static",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "rootDir": "examples/static-site",
+            "buildCommand": "",
+            "staticPublishPath": ".",
+            "headers": [
+              {
+                "path": "/*",
+                "name": "X-QA-Marker",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native result checked",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-root-empty-header-value.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.303,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa202-b7aca1-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa202-b7aca1-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:30.129531+00:00",
+      "client": "render",
+      "layout": "root",
+      "case": "empty-lists",
+      "document": {
+        "services": [
+          {
+            "name": "qa202-b7aca1-static",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "rootDir": "examples/static-site",
+            "buildCommand": "",
+            "staticPublishPath": ".",
+            "routes": [],
+            "headers": []
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native result checked",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-root-empty-lists.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.351,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa202-b7aca1-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa202-b7aca1-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:30.730657+00:00",
+      "client": "render",
+      "layout": "root",
+      "case": "second-route-source",
+      "document": {
+        "services": [
+          {
+            "name": "qa202-b7aca1-static",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "rootDir": "examples/static-site",
+            "buildCommand": "",
+            "staticPublishPath": ".",
+            "routes": [
+              {
+                "type": "rewrite",
+                "source": "/app/*",
+                "destination": "/index.html"
+              },
+              {
+                "type": "rewrite",
+                "source": "missing-slash",
+                "destination": "/index.html"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native result checked",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-root-second-route-source.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.313,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa202-b7aca1-static\\\": routes[1].source must be a path starting with /\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa202-b7aca1-static\": routes[1].source must be a path starting with /",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:31.283624+00:00",
+      "client": "render",
+      "layout": "root",
+      "case": "second-route-destination",
+      "document": {
+        "services": [
+          {
+            "name": "qa202-b7aca1-static",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "rootDir": "examples/static-site",
+            "buildCommand": "",
+            "staticPublishPath": ".",
+            "routes": [
+              {
+                "type": "rewrite",
+                "source": "/app/*",
+                "destination": "/index.html"
+              },
+              {
+                "type": "rewrite",
+                "source": "/app/*",
+                "destination": "missing-slash"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native result checked",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-root-second-route-destination.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.288,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa202-b7aca1-static\\\": routes[1].destination must be a path starting with /\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa202-b7aca1-static\": routes[1].destination must be a path starting with /",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:31.824865+00:00",
+      "client": "render",
+      "layout": "root",
+      "case": "second-header-path",
+      "document": {
+        "services": [
+          {
+            "name": "qa202-b7aca1-static",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "rootDir": "examples/static-site",
+            "buildCommand": "",
+            "staticPublishPath": ".",
+            "headers": [
+              {
+                "path": "/*",
+                "name": "X-QA-Marker",
+                "value": "ordinary marker"
+              },
+              {
+                "path": "missing-slash",
+                "name": "X-QA-Marker",
+                "value": "ordinary marker"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native result checked",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-root-second-header-path.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.275,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa202-b7aca1-static\\\": headers[1].path must be a path starting with /\",\n      \"line\": 3,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa202-b7aca1-static\": headers[1].path must be a path starting with /",
+            "line": 3,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:32.346871+00:00",
+      "client": "render",
+      "layout": "root",
+      "case": "second-header-name",
+      "document": {
+        "services": [
+          {
+            "name": "qa202-b7aca1-static",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "rootDir": "examples/static-site",
+            "buildCommand": "",
+            "staticPublishPath": ".",
+            "headers": [
+              {
+                "path": "/*",
+                "name": "X-QA-Marker",
+                "value": "ordinary marker"
+              },
+              {
+                "path": "/*",
+                "name": "",
+                "value": "ordinary marker"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native result checked",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-root-second-header-name.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.288,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 15,\n      \"error\": \"service \\\"qa202-b7aca1-static\\\": headers[1].name is required\",\n      \"line\": 4,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 15,
+            "error": "service \"qa202-b7aca1-static\": headers[1].name is required",
+            "line": 4,
+            "path": "services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:32.906900+00:00",
+      "client": "render",
+      "layout": "project",
+      "case": "combined-valid",
+      "document": {
+        "projects": [
+          {
+            "name": "qa202-b7aca1-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "name": "qa202-b7aca1-static",
+                    "type": "web",
+                    "runtime": "static",
+                    "repo": "https://github.com/bex-co/bex",
+                    "branch": "main",
+                    "rootDir": "examples/static-site",
+                    "buildCommand": "",
+                    "staticPublishPath": ".",
+                    "routes": [
+                      {
+                        "type": "rewrite",
+                        "source": "/app/*",
+                        "destination": "/index.html"
+                      }
+                    ],
+                    "headers": [
+                      {
+                        "path": "/*",
+                        "name": "X-QA-Marker",
+                        "value": "ordinary marker"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native result checked",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-project-combined-valid.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.308,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa202-b7aca1-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa202-b7aca1-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:33.457075+00:00",
+      "client": "render",
+      "layout": "project",
+      "case": "splat-redirect",
+      "document": {
+        "projects": [
+          {
+            "name": "qa202-b7aca1-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "name": "qa202-b7aca1-static",
+                    "type": "web",
+                    "runtime": "static",
+                    "repo": "https://github.com/bex-co/bex",
+                    "branch": "main",
+                    "rootDir": "examples/static-site",
+                    "buildCommand": "",
+                    "staticPublishPath": ".",
+                    "routes": [
+                      {
+                        "type": "redirect",
+                        "source": "/old/*",
+                        "destination": "/new/:splat"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native result checked",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-project-splat-redirect.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.328,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa202-b7aca1-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa202-b7aca1-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:34.050851+00:00",
+      "client": "render",
+      "layout": "project",
+      "case": "empty-header-value",
+      "document": {
+        "projects": [
+          {
+            "name": "qa202-b7aca1-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "name": "qa202-b7aca1-static",
+                    "type": "web",
+                    "runtime": "static",
+                    "repo": "https://github.com/bex-co/bex",
+                    "branch": "main",
+                    "rootDir": "examples/static-site",
+                    "buildCommand": "",
+                    "staticPublishPath": ".",
+                    "headers": [
+                      {
+                        "path": "/*",
+                        "name": "X-QA-Marker",
+                        "value": ""
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native result checked",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-project-empty-header-value.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.303,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa202-b7aca1-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa202-b7aca1-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:34.599436+00:00",
+      "client": "render",
+      "layout": "project",
+      "case": "empty-lists",
+      "document": {
+        "projects": [
+          {
+            "name": "qa202-b7aca1-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "name": "qa202-b7aca1-static",
+                    "type": "web",
+                    "runtime": "static",
+                    "repo": "https://github.com/bex-co/bex",
+                    "branch": "main",
+                    "rootDir": "examples/static-site",
+                    "buildCommand": "",
+                    "staticPublishPath": ".",
+                    "routes": [],
+                    "headers": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native result checked",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-project-empty-lists.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.358,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa202-b7aca1-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa202-b7aca1-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:35.199001+00:00",
+      "client": "render",
+      "layout": "project",
+      "case": "second-route-source",
+      "document": {
+        "projects": [
+          {
+            "name": "qa202-b7aca1-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "name": "qa202-b7aca1-static",
+                    "type": "web",
+                    "runtime": "static",
+                    "repo": "https://github.com/bex-co/bex",
+                    "branch": "main",
+                    "rootDir": "examples/static-site",
+                    "buildCommand": "",
+                    "staticPublishPath": ".",
+                    "routes": [
+                      {
+                        "type": "rewrite",
+                        "source": "/app/*",
+                        "destination": "/index.html"
+                      },
+                      {
+                        "type": "rewrite",
+                        "source": "missing-slash",
+                        "destination": "/index.html"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native result checked",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-project-second-route-source.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.313,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa202-b7aca1-static\\\": routes[1].source must be a path starting with /\",\n      \"line\": 9,\n      \"path\": \"projects[0].environments[0].services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa202-b7aca1-static\": routes[1].source must be a path starting with /",
+            "line": 9,
+            "path": "projects[0].environments[0].services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:35.746186+00:00",
+      "client": "render",
+      "layout": "project",
+      "case": "second-route-destination",
+      "document": {
+        "projects": [
+          {
+            "name": "qa202-b7aca1-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "name": "qa202-b7aca1-static",
+                    "type": "web",
+                    "runtime": "static",
+                    "repo": "https://github.com/bex-co/bex",
+                    "branch": "main",
+                    "rootDir": "examples/static-site",
+                    "buildCommand": "",
+                    "staticPublishPath": ".",
+                    "routes": [
+                      {
+                        "type": "rewrite",
+                        "source": "/app/*",
+                        "destination": "/index.html"
+                      },
+                      {
+                        "type": "rewrite",
+                        "source": "/app/*",
+                        "destination": "missing-slash"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native result checked",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-project-second-route-destination.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.289,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa202-b7aca1-static\\\": routes[1].destination must be a path starting with /\",\n      \"line\": 9,\n      \"path\": \"projects[0].environments[0].services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa202-b7aca1-static\": routes[1].destination must be a path starting with /",
+            "line": 9,
+            "path": "projects[0].environments[0].services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:36.282046+00:00",
+      "client": "render",
+      "layout": "project",
+      "case": "second-header-path",
+      "document": {
+        "projects": [
+          {
+            "name": "qa202-b7aca1-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "name": "qa202-b7aca1-static",
+                    "type": "web",
+                    "runtime": "static",
+                    "repo": "https://github.com/bex-co/bex",
+                    "branch": "main",
+                    "rootDir": "examples/static-site",
+                    "buildCommand": "",
+                    "staticPublishPath": ".",
+                    "headers": [
+                      {
+                        "path": "/*",
+                        "name": "X-QA-Marker",
+                        "value": "ordinary marker"
+                      },
+                      {
+                        "path": "missing-slash",
+                        "name": "X-QA-Marker",
+                        "value": "ordinary marker"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native result checked",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-project-second-header-path.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.287,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa202-b7aca1-static\\\": headers[1].path must be a path starting with /\",\n      \"line\": 9,\n      \"path\": \"projects[0].environments[0].services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa202-b7aca1-static\": headers[1].path must be a path starting with /",
+            "line": 9,
+            "path": "projects[0].environments[0].services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    },
+    {
+      "at": "2026-10-13T05:57:36.795022+00:00",
+      "client": "render",
+      "layout": "project",
+      "case": "second-header-name",
+      "document": {
+        "projects": [
+          {
+            "name": "qa202-b7aca1-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "name": "qa202-b7aca1-static",
+                    "type": "web",
+                    "runtime": "static",
+                    "repo": "https://github.com/bex-co/bex",
+                    "branch": "main",
+                    "rootDir": "examples/static-site",
+                    "buildCommand": "",
+                    "staticPublishPath": ".",
+                    "headers": [
+                      {
+                        "path": "/*",
+                        "name": "X-QA-Marker",
+                        "value": "ordinary marker"
+                      },
+                      {
+                        "path": "/*",
+                        "name": "",
+                        "value": "ordinary marker"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native result checked",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep202-project-second-header-name.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.303,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 23,\n      \"error\": \"service \\\"qa202-b7aca1-static\\\": headers[1].name is required\",\n      \"line\": 10,\n      \"path\": \"projects[0].environments[0].services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 23,
+            "error": "service \"qa202-b7aca1-static\": headers[1].name is required",
+            "line": 10,
+            "path": "projects[0].environments[0].services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true
+    }
+  ],
+  "copied_Render_config_removed": true,
+  "native_captures": [
+    {
+      "at": "2026-10-13T05:58:50.400344+00:00",
+      "client": "bex",
+      "case": "second-header-name",
+      "layout": "root",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep202-root-second-header-name.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 1,
+        "elapsed": 0.446,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 15,\n      \"error\": \"service \\\"qa202-b7aca1-static\\\": headers[1].name is required\",\n      \"line\": 4,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T05:58:50.906853+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=dd0a2f3b475f1e5bd80d78cd62b97d87fc4a2227e2ea82f9a9e9d05629c1",
+            "body": "--dd0a2f3b475f1e5bd80d78cd62b97d87fc4a2227e2ea82f9a9e9d05629c1\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--dd0a2f3b475f1e5bd80d78cd62b97d87fc4a2227e2ea82f9a9e9d05629c1\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep202-root-second-header-name.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa202-b7aca1-static\",\n      \"type\": \"web\",\n      \"runtime\": \"static\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"branch\": \"main\",\n      \"rootDir\": \"examples/static-site\",\n      \"buildCommand\": \"\",\n      \"staticPublishPath\": \".\",\n      \"headers\": [\n        {\n          \"path\": \"/*\",\n          \"name\": \"X-QA-Marker\",\n          \"value\": \"ordinary marker\"\n        },\n        {\n          \"path\": \"/*\",\n          \"name\": \"\",\n          \"value\": \"ordinary marker\"\n        }\n      ]\n    }\n  ]\n}\n\r\n--dd0a2f3b475f1e5bd80d78cd62b97d87fc4a2227e2ea82f9a9e9d05629c1--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"services\": [\n    {\n      \"name\": \"qa202-b7aca1-static\",\n      \"type\": \"web\",\n      \"runtime\": \"static\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"branch\": \"main\",\n      \"rootDir\": \"examples/static-site\",\n      \"buildCommand\": \"\",\n      \"staticPublishPath\": \".\",\n      \"headers\": [\n        {\n          \"path\": \"/*\",\n          \"name\": \"X-QA-Marker\",\n          \"value\": \"ordinary marker\"\n        },\n        {\n          \"path\": \"/*\",\n          \"name\": \"\",\n          \"value\": \"ordinary marker\"\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49c1d667c74810a-SJC"
+          },
+          "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa202-b7aca1-static\\\": headers[1].name is required\",\"line\":4,\"column\":15,\"path\":\"services[0].name\"}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-13T05:59:19.887099+00:00",
+      "client": "render",
+      "case": "second-route-destination",
+      "layout": "project",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep202-project-second-route-destination.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 1,
+        "elapsed": 0.378,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa202-b7aca1-static\\\": routes[1].destination must be a path starting with /\",\n      \"line\": 9,\n      \"path\": \"projects[0].environments[0].services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T05:59:20.324056+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=c9c62089d6655a0ed8e41cf3660cf25fa07463e22c642639c08b709c20ce",
+            "body": "--c9c62089d6655a0ed8e41cf3660cf25fa07463e22c642639c08b709c20ce\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--c9c62089d6655a0ed8e41cf3660cf25fa07463e22c642639c08b709c20ce\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep202-project-second-route-destination.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa202-b7aca1-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"services\": [\n            {\n              \"name\": \"qa202-b7aca1-static\",\n              \"type\": \"web\",\n              \"runtime\": \"static\",\n              \"repo\": \"https://github.com/bex-co/bex\",\n              \"branch\": \"main\",\n              \"rootDir\": \"examples/static-site\",\n              \"buildCommand\": \"\",\n              \"staticPublishPath\": \".\",\n              \"routes\": [\n                {\n                  \"type\": \"rewrite\",\n                  \"source\": \"/app/*\",\n                  \"destination\": \"/index.html\"\n                },\n                {\n                  \"type\": \"rewrite\",\n                  \"source\": \"/app/*\",\n                  \"destination\": \"missing-slash\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--c9c62089d6655a0ed8e41cf3660cf25fa07463e22c642639c08b709c20ce--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa202-b7aca1-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"services\": [\n            {\n              \"name\": \"qa202-b7aca1-static\",\n              \"type\": \"web\",\n              \"runtime\": \"static\",\n              \"repo\": \"https://github.com/bex-co/bex\",\n              \"branch\": \"main\",\n              \"rootDir\": \"examples/static-site\",\n              \"buildCommand\": \"\",\n              \"staticPublishPath\": \".\",\n              \"routes\": [\n                {\n                  \"type\": \"rewrite\",\n                  \"source\": \"/app/*\",\n                  \"destination\": \"/index.html\"\n                },\n                {\n                  \"type\": \"rewrite\",\n                  \"source\": \"/app/*\",\n                  \"destination\": \"missing-slash\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49c1e1ebb91d81b-SJC"
+          },
+          "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa202-b7aca1-static\\\": routes[1].destination must be a path starting with /\",\"line\":9,\"column\":13,\"path\":\"projects[0].environments[0].services[0]\"}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-13T05:59:20.880359+00:00",
+      "client": "bex",
+      "case": "combined-valid",
+      "layout": "root",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep202-root-combined-valid.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 0.613,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa202-b7aca1-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T05:59:21.556903+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=3dddb37013549e1a11aca4217dc8fc55d30c56ea8e7b42026c34b110a87d",
+            "body": "--3dddb37013549e1a11aca4217dc8fc55d30c56ea8e7b42026c34b110a87d\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--3dddb37013549e1a11aca4217dc8fc55d30c56ea8e7b42026c34b110a87d\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep202-root-combined-valid.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa202-b7aca1-static\",\n      \"type\": \"web\",\n      \"runtime\": \"static\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"branch\": \"main\",\n      \"rootDir\": \"examples/static-site\",\n      \"buildCommand\": \"\",\n      \"staticPublishPath\": \".\",\n      \"routes\": [\n        {\n          \"type\": \"rewrite\",\n          \"source\": \"/app/*\",\n          \"destination\": \"/index.html\"\n        }\n      ],\n      \"headers\": [\n        {\n          \"path\": \"/*\",\n          \"name\": \"X-QA-Marker\",\n          \"value\": \"ordinary marker\"\n        }\n      ]\n    }\n  ]\n}\n\r\n--3dddb37013549e1a11aca4217dc8fc55d30c56ea8e7b42026c34b110a87d--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"services\": [\n    {\n      \"name\": \"qa202-b7aca1-static\",\n      \"type\": \"web\",\n      \"runtime\": \"static\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"branch\": \"main\",\n      \"rootDir\": \"examples/static-site\",\n      \"buildCommand\": \"\",\n      \"staticPublishPath\": \".\",\n      \"routes\": [\n        {\n          \"type\": \"rewrite\",\n          \"source\": \"/app/*\",\n          \"destination\": \"/index.html\"\n        }\n      ],\n      \"headers\": [\n        {\n          \"path\": \"/*\",\n          \"name\": \"X-QA-Marker\",\n          \"value\": \"ordinary marker\"\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "X-Bex-Cli-Version": "0.3.2"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49c1e253f4d405d-SJC"
+          },
+          "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa202-b7aca1-static\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa202-b7aca1-static\",\"sourcePath\":\"#/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    },
+    {
+      "at": "2026-10-13T05:59:21.817526+00:00",
+      "client": "render",
+      "case": "empty-header-value",
+      "layout": "project",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep202-project-empty-header-value.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 0,
+        "elapsed": 0.408,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa202-b7aca1-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T05:59:22.410984+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=e8bf51b1d454b97e33ffae24f7aa580392f7d951aacbc6efbe857239179d",
+            "body": "--e8bf51b1d454b97e33ffae24f7aa580392f7d951aacbc6efbe857239179d\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--e8bf51b1d454b97e33ffae24f7aa580392f7d951aacbc6efbe857239179d\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep202-project-empty-header-value.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa202-b7aca1-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"services\": [\n            {\n              \"name\": \"qa202-b7aca1-static\",\n              \"type\": \"web\",\n              \"runtime\": \"static\",\n              \"repo\": \"https://github.com/bex-co/bex\",\n              \"branch\": \"main\",\n              \"rootDir\": \"examples/static-site\",\n              \"buildCommand\": \"\",\n              \"staticPublishPath\": \".\",\n              \"headers\": [\n                {\n                  \"path\": \"/*\",\n                  \"name\": \"X-QA-Marker\",\n                  \"value\": \"\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--e8bf51b1d454b97e33ffae24f7aa580392f7d951aacbc6efbe857239179d--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa202-b7aca1-project\",\n      \"environments\": [\n        {\n          \"name\": \"normal\",\n          \"services\": [\n            {\n              \"name\": \"qa202-b7aca1-static\",\n              \"type\": \"web\",\n              \"runtime\": \"static\",\n              \"repo\": \"https://github.com/bex-co/bex\",\n              \"branch\": \"main\",\n              \"rootDir\": \"examples/static-site\",\n              \"buildCommand\": \"\",\n              \"staticPublishPath\": \".\",\n              \"headers\": [\n                {\n                  \"path\": \"/*\",\n                  \"name\": \"X-QA-Marker\",\n                  \"value\": \"\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49c1e2b788a7ab8-SJC"
+          },
+          "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa202-b7aca1-static\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa202-b7aca1-static\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    }
+  ]
+}
