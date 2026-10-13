@@ -118,7 +118,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **091** — [SSH project filters start connection preparation before choosing a service](blocked/091.md) — **BLOCKED (2026-10-12: upstream patch prepared and tested — [`091-upstream.patch`](blocked/091-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
 
-- [ ] **090** — [Fresh CLI configs open dashboard resources as filesystem paths](090.md) (minor; 55m) ← functional CLI sweep127: both native clients emit relative opener paths; explicit-origin controls pass; launcher default researched, read-only metadata.
+- [ ] **090** — [Fresh CLI configs open dashboard resources as filesystem paths](blocked/090.md) — **BLOCKED (2026-10-12: launcher fix shipped — `bex services`/`deploys list` seed the Bex dashboard origin into a config that has none; needs a Bex CLI release (`/release cli`, user-authorized) plus the fresh-config native replay)**
 
 - [ ] **089** — [CLI dashboard actions open the OAuth host and return 404](blocked/089.md) — **BLOCKED (2026-10-12: routing shipped — a Traefik redirect on the hydra Ingress sends `oauth.bex.co/<dashboard-alias>/…` to `dashboard.bex.co`; needs the production Argo sync plus live 302, native Dashboard-action and device-login receipts)**
 

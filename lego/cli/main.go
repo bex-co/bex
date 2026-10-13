@@ -62,6 +62,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "bex: %v\n", err)
 			os.Exit(1)
 		}
+		bridge.EnsureDashboardURL(opensDashboard(cmd.RootCmd, os.Args[1:]))
 	})
 
 	// Own the version path: upstream's handler compares against
@@ -240,6 +241,21 @@ var workspaceIndependent = []string{
 // typedResourceID matches Render's typed ids (srv-…, dpg-…, red-…); it mirrors
 // upstream pkg/validate/id.go's per-prefix ^<prefix>-[a-z0-9]{20}$.
 var typedResourceID = regexp.MustCompile(`^[a-z]{3}-[0-9a-z]{20}$`)
+
+// opensDashboard reports whether args invoke a hosting command with a
+// Dashboard action: the services list (alias service) and deploys list.
+// cobra's own lookup resolves aliases, so no second parser can disagree.
+func opensDashboard(root *cobra.Command, args []string) bool {
+	target, _, err := root.Find(args)
+	if err != nil || target == nil || !target.Runnable() {
+		return false
+	}
+	switch strings.TrimPrefix(target.CommandPath(), root.Name()+" ") {
+	case "services", "deploys list":
+		return true
+	}
+	return false
+}
 
 // workspaceUse classifies the invoked command for ResolveWorkspaceName (w8/064).
 // A group command that only prints help, a nonempty --workspace/-w selection
