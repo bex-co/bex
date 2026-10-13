@@ -761,7 +761,7 @@ func blueprintResourceValidationErrors(source *BlueprintSource, ir BlueprintIR, 
 		var entry BlueprintValidationError
 		if resource, ok := blueprintIRResource(ir, problem.kind, problem.name); ok {
 			pointer := resource.SourcePath + strings.ReplaceAll(blueprintErrorField(msg), ".", "/")
-			if i, ok := blueprintEnvVarIndex(resource, msg); ok {
+			if i, ok := blueprintEnvEntryIndex(resource, problem.err, msg); ok {
 				pointer = fmt.Sprintf("%s/envVars/%d", resource.SourcePath, i) + blueprintEnvRefField(resource, i, msg)
 			} else if i, ok := blueprintDomainIndex(resource, msg); ok {
 				pointer = fmt.Sprintf("%s/domains/%d", resource.SourcePath, i)
@@ -814,6 +814,19 @@ func blueprintRefusalCode(err error) string {
 		return coded.Code
 	}
 	return ""
+}
+
+// blueprintEnvEntryIndex is the envVars entry a refusal belongs to: the index
+// the parser recorded (exact, even for a repeated key, w8/100), else the first
+// entry with the key the message names.
+func blueprintEnvEntryIndex(resource BlueprintResourceIR, err error, msg string) (int, bool) {
+	var entry *envEntryError
+	if errors.As(err, &entry) {
+		if envVars, _ := resource.Fields["envVars"].Value.([]any); entry.index < len(envVars) {
+			return entry.index, true
+		}
+	}
+	return blueprintEnvVarIndex(resource, msg)
 }
 
 var blueprintEnvKeyRE = regexp.MustCompile(`envVars\["([^"]+)"\]`)
