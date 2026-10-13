@@ -16,19 +16,34 @@ import {
  *
  * A custom absolute range (w5/m56) is fixed, not relative: its start/end pass
  * straight through and the timer never arms, so the window stays put.
+ *
+ * Selecting a relative window samples the clock again during that same render
+ * (w4/m203), so the first query after the selection ends at the selection time
+ * rather than at the mount or the last tick. Leaving for a custom range and
+ * coming back to the same preset is a new selection too.
  */
 export function useLiveRange(range: RangeWindow | CustomRange) {
   const custom = "startTime" in range;
-  const [now, setNow] = useState(() => new Date());
+  const selection = custom
+    ? "custom"
+    : `${range.spanSeconds}:${range.resolutionSeconds}`;
+  const [clock, setClock] = useState(() => ({ selection, now: new Date() }));
+  let now = clock.now;
+  if (clock.selection !== selection) {
+    now = new Date();
+    setClock({ selection, now });
+  }
 
   useEffect(() => {
     if (custom) return; // absolute window — nothing to slide
     const id = setInterval(
-      () => setNow(new Date()),
+      () => setClock((previous) => ({ ...previous, now: new Date() })),
       range.resolutionSeconds * 1000,
     );
     return () => clearInterval(id);
-  }, [custom, range.resolutionSeconds]);
+    // `selection` restarts the cadence on a span-only change too: a tick left
+    // pending would refetch again right after the fresh sample.
+  }, [custom, selection, range.resolutionSeconds]);
 
   if (custom) {
     return {
