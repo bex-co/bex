@@ -1,0 +1,598 @@
+{
+  "pass": "a398",
+  "researchHead": "c3d6aa86b",
+  "scope": "Read-only functional global-search keyboard QA. No hosting resource creation or mutation.",
+  "nativeFocusReproCode": "async(page)=>{await page.goto('https://dashboard.bex.co/');await page.waitForTimeout(500);const trigger=page.getByRole('button',{name:'Search',exact:true});await trigger.focus();const before={focused:await trigger.evaluate(el=>el===document.activeElement),label:await trigger.getAttribute('aria-label')};await page.keyboard.press('Enter');const d=page.getByRole('dialog',{name:'Search',exact:true});await d.getByRole('combobox',{name:'Search',exact:true}).waitFor({timeout:20000});await d.getByRole('combobox',{name:'Search',exact:true}).fill('bex.co');await page.keyboard.press('Escape');await d.waitFor({state:'detached',timeout:10000});await page.waitForTimeout(500);const after={focused:await trigger.evaluate(el=>el===document.activeElement),active:await page.evaluate(()=>({tag:document.activeElement?.tagName,label:document.activeElement?.getAttribute('aria-label'),role:document.activeElement?.getAttribute('role')})),dialogCount:await d.count()};await page.keyboard.press('Enter');await page.waitForTimeout(500);const enterReopened=await d.count();await trigger.click();await d.getByRole('combobox',{name:'Search',exact:true}).waitFor();return{at:new Date().toISOString(),before,after,enterReopened,buttonClickReopened:await d.count(),viewport:page.viewportSize()};}",
+  "focusContract": "Button-open dismissal returns focus to the still-mounted Search button. The full exit animation must finish before measuring focus.",
+  "limits": [
+    "Desktop Tab-only repro uses ordinary Tab navigation. Separate desktop/mobile receipts focus the same visible native button before Enter.",
+    "Shortcut opener return, Close/outside dismissal, destination navigation focus and screen-reader output were not independently reproduced as failures.",
+    "Screenshot is supplementary; active DOM focus and native Enter outcome in JSON prove the failure.",
+    "No authentication or authorization behavior was tested beyond this run's login/logout."
+  ],
+  "controls": {
+    "pass": "a397",
+    "outcome": "Search ID/name filtering, keyboard/pointer project navigation, arrow selection and query reset pass. Closing focus candidate reproduced separately in a398.",
+    "receipts": {
+      "Baseline": {
+        "at": "2026-10-13T23:36:05.405Z",
+        "request": {
+          "operationName": "QaA397Inventory",
+          "query": "query QaA397Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+          "variables": {
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "blueprints": [
+              {
+                "id": "blp-d9nqg95cavls73fp8m10",
+                "name": "discourse_docker"
+              }
+            ],
+            "databases": [
+              {
+                "id": "dpg-d9nqg95cavls73fp8m20",
+                "name": "beancount-forum-db"
+              },
+              {
+                "id": "dpg-d9rrkoc4h4mc73edurp0",
+                "name": "tianpan-forum-db"
+              },
+              {
+                "id": "dpg-d9rs3ee0ccis738kc7c0",
+                "name": "blockeden-forum-db"
+              },
+              {
+                "id": "dpg-db34l9bor55s73cqpq9g",
+                "name": "qa-20261007-r16-owner-f208ab"
+              }
+            ],
+            "envGroups": [
+              {
+                "id": "evg-db0s94c48ccs739jikr0",
+                "name": "qa-20261003-keys-r85"
+              }
+            ],
+            "keyValues": [
+              {
+                "id": "red-d9p49kdrtmes73c34ovg",
+                "name": "beancount-forum-redis"
+              },
+              {
+                "id": "red-da4086iii7bs73drbqh0",
+                "name": "blockeden-forum-redis"
+              }
+            ],
+            "projects": [
+              {
+                "id": "prj-d9dgeo0bd9nc73a0vh1g",
+                "name": "bex.co"
+              },
+              {
+                "id": "prj-d9e5qct5qe4s73b1mjn0",
+                "name": "beancount.io"
+              },
+              {
+                "id": "prj-d9sgfnbjghus73cg6hg0",
+                "name": "forums"
+              }
+            ],
+            "services": [
+              {
+                "id": "srv-d9bkcspg9s7c73d0n8ug",
+                "name": "agentmarketcap-1",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9bj8s3eg85c7390eb9g",
+                "name": "beancount-cms-v2",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9nqg9dcavls73fp8m2g",
+                "name": "beancount-forum",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9ndt8hmcglc739fkp50",
+                "name": "eden-dash-v3",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9e40ei9086p3l1jri30",
+                "name": "eden-cms-v2",
+                "type": "web_service"
+              }
+            ],
+            "webhookEndpoints": []
+          }
+        }
+      },
+      "DesktopKeyboard": {
+        "at": "2026-10-13T23:37:02.907Z",
+        "idMatch": "- dialog \"Search\":\n  - text: Search\n  - heading \"Search\" [level=2]\n  - paragraph: Search dashboard pages and workspace resources.\n  - combobox \"Search\" [expanded]: PRJ-D9DGEO0BD9NC73A0VH1G\n  - listbox \"Suggestions\":\n    - group \"Resources\":\n      - option \"bex.co Project\" [selected]\n  - button \"Close\"",
+        "focusAfterEscape": {
+          "role": "combobox",
+          "label": null,
+          "tag": "INPUT"
+        },
+        "reopened": "",
+        "url": "https://dashboard.bex.co/project/prj-d9dgeo0bd9nc73a0vh1g",
+        "dialogCount": 0,
+        "heading": "bex.co"
+      },
+      "MobileSearch": {
+        "at": "2026-10-13T23:37:11.040Z",
+        "noMatch": "- dialog \"Search\":\n  - text: Search\n  - heading \"Search\" [level=2]\n  - paragraph: Search dashboard pages and workspace resources.\n  - combobox \"Search\" [expanded]: qa-a397-no-such-resource-雪\n  - listbox \"Suggestions\":\n    - status: No matching pages or resources.\n  - button \"Close\"",
+        "afterToggle": "",
+        "mobile": "- dialog \"Search\":\n  - text: Search\n  - heading \"Search\" [level=2]\n  - paragraph: Search dashboard pages and workspace resources.\n  - combobox \"Search\" [expanded]: PRJ-D9DGEO0BD9NC73A0VH1G\n  - listbox \"Suggestions\":\n    - group \"Resources\":\n      - option \"bex.co Project\" [selected]\n  - button \"Close\"",
+        "overflow": false
+      },
+      "ArrowAndReset": {
+        "at": "2026-10-13T23:37:45.952Z",
+        "focusAfterClose": {
+          "tag": "BODY",
+          "label": null,
+          "text": "Toggle Sidebarbex.coSearch⌘ KNewNewPProjectbex.coEnvironment"
+        },
+        "optionsBefore": [
+          {
+            "text": "beancount.ioProject",
+            "selected": "true"
+          },
+          {
+            "text": "beancount-cms-v2Web Service",
+            "selected": "false"
+          },
+          {
+            "text": "beancount-forumWeb Service",
+            "selected": "false"
+          },
+          {
+            "text": "beancount-forum-dbDatabase",
+            "selected": "false"
+          },
+          {
+            "text": "beancount-forum-redisKey Value",
+            "selected": "false"
+          }
+        ],
+        "selectedAfter": ["beancount-cms-v2Web Service"],
+        "afterSelection": "",
+        "url": "https://dashboard.bex.co/project/prj-d9dgeo0bd9nc73a0vh1g?env=unassigned"
+      },
+      "FinalInventory": {
+        "at": "2026-10-13T23:37:58.977Z",
+        "request": {
+          "operationName": "QaA397Inventory",
+          "query": "query QaA397Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+          "variables": {
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "blueprints": [
+              {
+                "id": "blp-d9nqg95cavls73fp8m10",
+                "name": "discourse_docker"
+              }
+            ],
+            "databases": [
+              {
+                "id": "dpg-d9nqg95cavls73fp8m20",
+                "name": "beancount-forum-db"
+              },
+              {
+                "id": "dpg-d9rrkoc4h4mc73edurp0",
+                "name": "tianpan-forum-db"
+              },
+              {
+                "id": "dpg-d9rs3ee0ccis738kc7c0",
+                "name": "blockeden-forum-db"
+              },
+              {
+                "id": "dpg-db34l9bor55s73cqpq9g",
+                "name": "qa-20261007-r16-owner-f208ab"
+              }
+            ],
+            "envGroups": [
+              {
+                "id": "evg-db0s94c48ccs739jikr0",
+                "name": "qa-20261003-keys-r85"
+              }
+            ],
+            "keyValues": [
+              {
+                "id": "red-d9p49kdrtmes73c34ovg",
+                "name": "beancount-forum-redis"
+              },
+              {
+                "id": "red-da4086iii7bs73drbqh0",
+                "name": "blockeden-forum-redis"
+              }
+            ],
+            "projects": [
+              {
+                "id": "prj-d9dgeo0bd9nc73a0vh1g",
+                "name": "bex.co"
+              },
+              {
+                "id": "prj-d9e5qct5qe4s73b1mjn0",
+                "name": "beancount.io"
+              },
+              {
+                "id": "prj-d9sgfnbjghus73cg6hg0",
+                "name": "forums"
+              }
+            ],
+            "services": [
+              {
+                "id": "srv-d9bkcspg9s7c73d0n8ug",
+                "name": "agentmarketcap-1",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9bj8s3eg85c7390eb9g",
+                "name": "beancount-cms-v2",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9nqg9dcavls73fp8m2g",
+                "name": "beancount-forum",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9ndt8hmcglc739fkp50",
+                "name": "eden-dash-v3",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9e40ei9086p3l1jri30",
+                "name": "eden-cms-v2",
+                "type": "web_service"
+              }
+            ],
+            "webhookEndpoints": []
+          }
+        }
+      },
+      "Logout": {
+        "at": "2026-10-13T23:38:46.358Z",
+        "owners": {
+          "status": 401
+        },
+        "url": "about:blank",
+        "cookieCount": 0,
+        "pageCount": 1
+      }
+    }
+  },
+  "receipts": {
+    "Baseline": {
+      "at": "2026-10-13T23:40:26.107Z",
+      "request": {
+        "operationName": "QaA398Inventory",
+        "query": "query QaA398Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      }
+    },
+    "Desktop": {
+      "at": "2026-10-13T23:40:30.865Z",
+      "before": {
+        "focused": true,
+        "label": "Search"
+      },
+      "after": {
+        "focused": false,
+        "active": {
+          "tag": "BODY",
+          "label": null,
+          "role": null
+        },
+        "dialogCount": 0
+      },
+      "enterReopened": 0,
+      "buttonClickReopened": 1,
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    "Mobile": {
+      "at": "2026-10-13T23:40:35.246Z",
+      "before": {
+        "focused": true,
+        "label": "Search"
+      },
+      "after": {
+        "focused": false,
+        "active": {
+          "tag": "BODY",
+          "label": null,
+          "role": null
+        },
+        "dialogCount": 0
+      },
+      "enterReopened": 0,
+      "buttonClickReopened": 1,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    "TabRepro": {
+      "at": "2026-10-13T23:41:16.850Z",
+      "found": true,
+      "tabPath": [
+        {
+          "tag": "A",
+          "label": "Go home",
+          "text": ""
+        },
+        {
+          "tag": "BUTTON",
+          "label": null,
+          "text": "Toggle Sidebar"
+        },
+        {
+          "tag": "A",
+          "label": null,
+          "text": "Projects"
+        },
+        {
+          "tag": "A",
+          "label": null,
+          "text": "Blueprints"
+        },
+        {
+          "tag": "A",
+          "label": null,
+          "text": "Agents"
+        },
+        {
+          "tag": "A",
+          "label": null,
+          "text": "Environment Groups"
+        },
+        {
+          "tag": "A",
+          "label": null,
+          "text": "Webhooks"
+        },
+        {
+          "tag": "A",
+          "label": null,
+          "text": "Notifications"
+        },
+        {
+          "tag": "A",
+          "label": null,
+          "text": "Billing"
+        },
+        {
+          "tag": "A",
+          "label": null,
+          "text": "Settings"
+        },
+        {
+          "tag": "DIV",
+          "label": "Resize sidebar",
+          "text": ""
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Search",
+          "text": "Search⌘ K"
+        }
+      ],
+      "after": {
+        "tag": "BODY",
+        "label": null
+      },
+      "enterReopened": 0,
+      "url": "https://dashboard.bex.co/"
+    },
+    "FinalInventory": {
+      "at": "2026-10-13T23:42:16.545Z",
+      "request": {
+        "operationName": "QaA398Inventory",
+        "query": "query QaA398Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      }
+    },
+    "Logout": {
+      "at": "2026-10-13T23:42:52.978Z",
+      "owners": {
+        "url": "https://api.bex.co/v1/owners",
+        "status": 401,
+        "body": "{\"error\":\"unauthorized\",\"id\":\"unauthorized\",\"message\":\"unauthorized\"}\n"
+      },
+      "url": "about:blank",
+      "cookieCount": 0,
+      "pageCount": 1
+    }
+  }
+}
