@@ -253,7 +253,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **279** — [Cancel leaves old custom-range errors beside restored valid dates](279.md) (35m) ← functional QA a295; fresh desktop/mobile Logs and fresh Metrics keep dismissed order/30-day warnings after valid dates return; Close/Escape, exact windows and filtering pass; owned Free fixture deleted and session revoked.
 
-- [ ] **278** — [Padding an unchanged port starts unnecessary deployments](278.md) (35m) ← functional QA a294; fresh desktop/mobile numeric-equivalent saves send port 3000 and each roll a new Live revision; genuine 3001 change, invalid inputs, Cancel and shutdown numeric control pass; own Free fixture deleted and session revoked.
+- [x] **278** — [Padding an unchanged port starts unnecessary deployments](done/278.md) — **DONE 2026-10-12** (port row dirty-compares the parsed port) (35m) ← functional QA a294; fresh desktop/mobile numeric-equivalent saves send port 3000 and each roll a new Live revision; genuine 3001 change, invalid inputs, Cancel and shutdown numeric control pass; own Free fixture deleted and session revoked.
 
 - [x] **277** — [Valid zero-padded cron schedules display malformed clock times](done/277.md) — **DONE 2026-10-12** (preview normalizes padded numeric tokens; en/zh tests) (35m) ← functional QA a292; Create and fresh saved Settings show 0009:0005 for an accepted 09:05 UTC schedule, with mobile/Chinese repeat and controls; owned Free cron deleted and session revoked.
 
