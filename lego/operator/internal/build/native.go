@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -226,17 +227,26 @@ const (
 	nativeEnvLoaderPrefix = ". " + nativeEnvLoaderPath + "\n"
 )
 
+// nativeLiteralEnvPrefix names the preparer's carrier for literal i; the
+// BEX_NATIVE_ prefix is refused as a user name, so carriers cannot collide.
+const nativeLiteralEnvPrefix = "BEX_NATIVE_LITERAL_"
+
 func nativeDockerfile(o Options) string {
 	var fileMounts strings.Builder
 	for i, name := range o.NativeFiles {
 		fmt.Fprintf(&fileMounts, " --mount=type=secret,id=%s,target=%s/%s,required=true",
 			nativeFileSecretID(i), nativeSecretFilesDir, name)
 	}
-	loader := fmt.Sprintf(": bex-native-env-rev=%s\n", nativeEnvRevision(o)) + `while IFS= read -r record; do
+	// The decoder is resolved once, under the image's PATH, into a function a
+	// decoded variable cannot overwrite: a decoded PATH is exported mid-loop
+	// and must reach the command exactly, not stop the next decode (w8/m61).
+	loader := fmt.Sprintf(": bex-native-env-rev=%s\n", nativeEnvRevision(o)) + `decoder="$(command -v base64)" || exit 1
+eval "bex_decode() { '$decoder' -d; }"
+while IFS= read -r record; do
   [ -n "$record" ] || continue
   key=${record%%=*}
   encoded=${record#*=}
-  value="$(printf '%s' "$encoded" | base64 -d 2>/dev/null && printf '.')" || exit 1
+  value="$(printf '%s' "$encoded" | bex_decode 2>/dev/null && printf '.')" || exit 1
   export "$key=${value%.}"
 done < ` + nativeEnvSecretPath + "\n"
 	run := shellJSON(nativeEnvLoaderPrefix + o.BuildCommand)
@@ -285,16 +295,24 @@ func shellJSON(command string) string {
 // reconcile rewrites the projection mid-build; a declared file that is absent
 // fails the preparer rather than the tenant's command.
 func nativeBuildPreparer(o Options) corev1.Container {
-	keys := make([]string, 0, len(o.BuildEnv))
-	env := make([]corev1.EnvVar, 0, len(o.BuildEnv)+2)
+	// Literals ride private indexed names, never their own: a literal PATH (or
+	// any other name the shell reads) must reach the build command, not become
+	// the preparer's own environment and break its sh and codec lookup
+	// (w8/m61). The stable sort keeps Kubernetes' last-duplicate-wins order.
+	literals := make([]corev1.EnvVar, 0, len(o.BuildEnv))
 	for _, item := range o.BuildEnv {
 		if item.Name == "" || item.ValueFrom != nil || item.Name == "PORT" || strings.HasPrefix(item.Name, "BEX_NATIVE_") {
 			continue
 		}
-		keys = append(keys, item.Name)
-		env = append(env, corev1.EnvVar{Name: item.Name, Value: item.Value})
+		literals = append(literals, item)
 	}
-	sort.Strings(keys)
+	sort.SliceStable(literals, func(i, j int) bool { return literals[i].Name < literals[j].Name })
+	keys := make([]string, 0, len(literals))
+	env := make([]corev1.EnvVar, 0, len(literals)+3)
+	for i, item := range literals {
+		keys = append(keys, item.Name)
+		env = append(env, corev1.EnvVar{Name: nativeLiteralEnvPrefix + strconv.Itoa(i), Value: item.Value})
+	}
 	env = append(env,
 		corev1.EnvVar{Name: "BEX_NATIVE_DOCKERFILE", Value: nativeDockerfile(o)},
 		corev1.EnvVar{Name: "BEX_NATIVE_LITERAL_KEYS", Value: strings.Join(keys, "\n")},
@@ -323,10 +341,12 @@ if [ -d /runtime-env ]; then
     printf '%s=%s\n' "$key" "$encoded" >> /native/render-env
   done
 fi
+i=0
 for key in $BEX_NATIVE_LITERAL_KEYS; do
   # The sentinel guards value newlines through command substitution; %?. then
   # drops it together with printenv's own final terminator, nothing else.
-  value="$(printenv "$key"; printf '.')"
+  value="$(printenv "` + nativeLiteralEnvPrefix + `$i"; printf '.')"
+  i=$((i + 1))
   encoded="$(printf '%s' "${value%?.}" | base64 | tr -d '\n')"
   printf '%s=%s\n' "$key" "$encoded" >> /native/render-env
 done
