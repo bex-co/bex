@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSyncExternalStore } from "react";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { mockCapabilities } from "@/test/mocks/capabilities";
@@ -1071,5 +1078,204 @@ describe("ServiceEnvironmentEditor menus across a capability refresh (w4/260)", 
       { envVars: [{ key: "ALPHA", value: "v2" }], secretFiles: [] },
       "save_only",
     );
+  });
+});
+
+// w4/m205: two file selections can decode at once. Each used to judge names by
+// the draft it started from, so both accepted the same name and the editor
+// built a draft its own Save refuses. Reads are held open here so the tests
+// choose the completion order.
+describe("ServiceEnvironmentEditor overlapping file uploads (w4/m205)", () => {
+  function heldFile(name: string, text: string) {
+    const file = new File([text], name, { type: "text/plain" });
+    let release: (bytes: ArrayBuffer) => void = () => undefined;
+    const read = new Promise<ArrayBuffer>((resolve) => {
+      release = resolve;
+    });
+    Object.defineProperty(file, "arrayBuffer", { value: () => read });
+    return {
+      file,
+      land: () =>
+        act(async () => {
+          release(new TextEncoder().encode(text).buffer as ArrayBuffer);
+          await read;
+        }),
+    };
+  }
+  function select(container: HTMLElement, ...files: File[]) {
+    const input = container.querySelector<HTMLInputElement>(
+      'input[type="file"][multiple]',
+    )!;
+    fireEvent.change(input, { target: { files } });
+  }
+  const rows = (name: string) => screen.queryAllByDisplayValue(name);
+  const skippedNotice = () => screen.queryByText(/upload it base64-encoded/);
+  const saveButton = () =>
+    screen.getByRole("button", { name: "Save and deploy" });
+  async function edit() {
+    const user = userEvent.setup();
+    const view = renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    return { user, ...view };
+  }
+  async function savedFiles(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(saveButton());
+    await waitFor(() => expect(save).toHaveBeenCalled());
+    return save.mock.calls[0][1].secretFiles;
+  }
+
+  it.each([
+    ["first selection lands first", [0, 1]],
+    ["second selection lands first", [1, 0]],
+  ])(
+    "keeps one copy of a name selected twice while decoding (%s)",
+    async (_label, order) => {
+      const { user, container } = await edit();
+      const batches = [
+        [heldFile("dup.txt", "from-first"), heldFile("a.txt", "a")],
+        [heldFile("dup.txt", "from-second"), heldFile("b.txt", "b")],
+      ];
+      select(container, ...batches[0].map((held) => held.file));
+      select(container, ...batches[1].map((held) => held.file));
+      for (const index of order) {
+        for (const held of batches[index]) await held.land();
+      }
+
+      await waitFor(() => expect(rows("b.txt")).toHaveLength(1));
+      expect(rows("a.txt")).toHaveLength(1);
+      expect(rows("dup.txt")).toHaveLength(1);
+      expect(
+        screen.queryByText(/secret file name must be unique/i),
+      ).not.toBeInTheDocument();
+      expect(skippedNotice()).toBeInTheDocument();
+      expect(saveButton()).toBeEnabled();
+      // The copy that reached the draft first keeps its contents.
+      const kept = order[0] === 0 ? "from-first" : "from-second";
+      expect(await savedFiles(user)).toEqual(
+        expect.arrayContaining([
+          { name: "dup.txt", content: kept },
+          { name: "a.txt", content: "a" },
+          { name: "b.txt", content: "b" },
+        ]),
+      );
+    },
+  );
+
+  it("keeps every distinct file from two overlapping selections without a notice", async () => {
+    const { container } = await edit();
+    const first = heldFile("one.txt", "1");
+    const second = heldFile("two.txt", "2");
+    select(container, first.file);
+    select(container, second.file);
+    await second.land();
+    await first.land();
+    await waitFor(() => expect(rows("one.txt")).toHaveLength(1));
+    expect(rows("two.txt")).toHaveLength(1);
+    expect(skippedNotice()).not.toBeInTheDocument();
+    expect(saveButton()).toBeEnabled();
+  });
+
+  it("skips a duplicate selected after the first batch settled, and one repeated inside a batch", async () => {
+    const { container } = await edit();
+    const first = heldFile("cert.pem", "first");
+    select(container, first.file);
+    await first.land();
+    await waitFor(() => expect(rows("cert.pem")).toHaveLength(1));
+    expect(skippedNotice()).not.toBeInTheDocument();
+
+    const again = heldFile("cert.pem", "second");
+    select(container, again.file);
+    await again.land();
+    await waitFor(() => expect(skippedNotice()).toBeInTheDocument());
+    expect(rows("cert.pem")).toHaveLength(1);
+
+    const twin = [heldFile("twin.txt", "x"), heldFile("twin.txt", "y")];
+    select(container, ...twin.map((held) => held.file));
+    for (const held of twin) await held.land();
+    await waitFor(() => expect(rows("twin.txt")).toHaveLength(1));
+    expect(saveButton()).toBeEnabled();
+  });
+
+  it("treats a padded name already in the draft as taken, and a masked saved file too", async () => {
+    const { user, container } = await edit();
+    const first = heldFile("cert.pem", "first");
+    select(container, first.file);
+    await first.land();
+    const name = (await screen.findByDisplayValue(
+      "cert.pem",
+    )) as HTMLInputElement;
+    await user.clear(name);
+    await user.type(name, "  key.pem ");
+
+    const padded = heldFile("key.pem", "second");
+    const masked = heldFile("token.txt", "replacement");
+    select(container, padded.file, masked.file);
+    await padded.land();
+    await masked.land();
+    await waitFor(() => expect(skippedNotice()).toBeInTheDocument());
+    // Only the padded row itself (the matcher trims) — no second key.pem.
+    expect(rows("key.pem")).toHaveLength(1);
+    expect(rows("token.txt")).toHaveLength(1);
+    expect(revealFile).not.toHaveBeenCalled();
+  });
+
+  it("accepts an upload under the name of a file staged for deletion", async () => {
+    const { user, container } = await edit();
+    const saved = screen.getByDisplayValue("token.txt");
+    const row = saved.closest("li, tr, div[data-row], div")!.parentElement!;
+    await user.click(
+      within(row).getAllByRole("button", { name: /delete|remove/i })[0],
+    );
+    const replacement = heldFile("token.txt", "new-token");
+    select(container, replacement.file);
+    await replacement.land();
+    await waitFor(() =>
+      expect(screen.getAllByDisplayValue("token.txt").length).toBeGreaterThan(
+        0,
+      ),
+    );
+    expect(skippedNotice()).not.toBeInTheDocument();
+    expect(await savedFiles(user)).toEqual(
+      expect.arrayContaining([{ name: "token.txt", content: "new-token" }]),
+    );
+  });
+
+  it("drops a read that finishes after Cancel, even once a new Edit is open", async () => {
+    const { user, container } = await edit();
+    const late = heldFile("late.txt", "late");
+    select(container, late.file);
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await late.land();
+    const fresh = heldFile("fresh.txt", "fresh");
+    select(container, fresh.file);
+    await fresh.land();
+    await waitFor(() => expect(rows("fresh.txt")).toHaveLength(1));
+    expect(rows("late.txt")).toHaveLength(0);
+    expect(skippedNotice()).not.toBeInTheDocument();
+  });
+
+  it("ignores a read that finishes after the editor is gone", async () => {
+    const { container, unmount } = await edit();
+    const late = heldFile("late.txt", "late");
+    select(container, late.file);
+    unmount();
+    await late.land();
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("reports an unreadable file beside an accepted one from the same selection", async () => {
+    const { container } = await edit();
+    const good = heldFile("good.txt", "ok");
+    const binary = new File(["x"], "keystore.p12");
+    Object.defineProperty(binary, "arrayBuffer", {
+      value: () =>
+        Promise.resolve(new Uint8Array([0x30, 0x82, 0xff, 0xfe]).buffer),
+    });
+    select(container, binary, good.file);
+    await good.land();
+    await waitFor(() => expect(rows("good.txt")).toHaveLength(1));
+    expect(rows("keystore.p12")).toHaveLength(0);
+    expect(skippedNotice()).toBeInTheDocument();
   });
 });

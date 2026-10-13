@@ -1,16 +1,16 @@
 # w4 · m205 — Keep overlapping file uploads unique
 
-**Worker:** worker4 **Goal:** overlapping secret-file selections produce a saveable draft with unique filenames and an honest skipped-duplicate notice **Status:** todo
+**Worker:** worker4 **Goal:** overlapping secret-file selections produce a saveable draft with unique filenames and an honest skipped-duplicate notice **Status:** blocked (release pipeline deploys the dashboard; then QA replays the DoD for t006). t001–t005 done.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Commit decoded files and duplicate feedback against current editor state | 35m | — |
-| t002 | Preserve shared editor lifecycle and upload neighbors | 20m | t001 |
-| t003 | Render parity | 15m | t002 |
-| t004 | Simplify | 10m | t003 |
-| t005 | Test coverage | 35m | t003 |
+| t001 | Commit decoded files and duplicate feedback against current editor state — **DONE** | 35m | — |
+| t002 | Preserve shared editor lifecycle and upload neighbors — **DONE** | 20m | t001 |
+| t003 | Render parity — **DONE** | 15m | t002 |
+| t004 | Simplify — **DONE** | 10m | t003 |
+| t005 | Test coverage — **DONE** | 35m | t003 |
 | t006 | Closeout | 15m | t004, t005 |
 
 ## Definition of done
