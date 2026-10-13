@@ -1,0 +1,1005 @@
+{
+  "pass": "a334",
+  "researchHead": "043a21562",
+  "captured": "2026-10-13",
+  "receipts": {
+    "a334Baseline": {
+      "at": "2026-10-13T08:35:34.465Z",
+      "request": {
+        "operationName": "QaA334Inventory",
+        "query": "query QaA334Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      },
+      "main": "- main:\n  - navigation \"Breadcrumbs\": Blueprints\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - heading \"New Blueprint Instance\" [level=1]\n  - text: Connect a repository containing a render.yaml Blueprint to create and sync a full stack of services. Connect a repository\n  - tablist:\n    - tab \"GitHub\"\n    - tab \"Public Git URL\" [selected]\n  - tabpanel \"Public Git URL\":\n    - text: Repository URL\n    - textbox \"Repository URL\":\n      - /placeholder: https://github.com/you/your-repo\n  - text: Blueprint Name\n  - textbox \"Blueprint Name\":\n    - /placeholder: my-stack\n  - text: Branch\n  - combobox \"Branch\"\n  - paragraph: The repository branch with the render.yaml file.\n  - text: Blueprint path\n  - textbox \"Blueprint path\":\n    - /placeholder: render.yaml\n    - text: render.yaml\n  - paragraph: The path to the Blueprint file in your repo — any .yaml/.yml file works (e.g. infra/bex/stack.yaml). Defaults to render.yaml at the root of your repository.\n  - paragraph: Review Blueprint configuration\n  - paragraph: Select a repository and branch to review its Blueprint file before deploying.\n  - button \"Cancel\"\n  - button \"Deploy Blueprint\" [disabled]"
+    },
+    "a334Create": {
+      "at": "2026-10-13T08:37:43.767Z",
+      "request": [
+        {
+          "operationName": "CreateService",
+          "variables": {
+            "image": "docker.io/library/python:3.12-alpine",
+            "name": "qa-20261013-a334-filters",
+            "type": "web_service",
+            "registryCredentialId": "",
+            "runtime": "image",
+            "startCommand": "python -u -c 'import http.server,os,json class H(http.server.BaseHTTPRequestHandler):  def do_GET(self):   print('\\''qa-a334 '\\''+self.path,flush=True);self.send_response(200);self.end_headers();self.wfile.write(b'\\''qa-a334-ready\\n'\\'')  def log_message(self,*a):pass http.server.HTTPServer(('\\''0.0.0.0'\\'',int(os.environ['\\''PORT'\\''])),H).serve_forever()'",
+            "plan": "free",
+            "port": 3000,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "createService": {
+              "__typename": "Service",
+              "environmentId": null,
+              "id": "srv-db6urlovrh0s73bstfo0",
+              "latestDeployId": "dep-db6urlovrh0s73bstfog",
+              "name": "qa-20261013-a334-filters",
+              "phase": "",
+              "projectId": null,
+              "registryCredentialId": "",
+              "type": "web_service"
+            }
+          }
+        }
+      ]
+    },
+    "a334CommandRepair": {
+      "at": "2026-10-13T08:38:45.453Z",
+      "request": [
+        {
+          "operationName": "SetStartCommand",
+          "variables": {
+            "id": "srv-db6urlovrh0s73bstfo0",
+            "command": "python -u -c 'exec(\"import http.server,os\\nclass H(http.server.BaseHTTPRequestHandler):\\n def do_GET(self):\\n  print('\\''qa-a334 '\\''+self.path,flush=True);self.send_response(200);self.end_headers();self.wfile.write(b'\\''qa-a334-ready\\\\n'\\'')\\n def log_message(self,*a):pass\\nhttp.server.HTTPServer(('\\''0.0.0.0'\\'',int(os.environ['\\''PORT'\\''])),H).serve_forever()\")'"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation SetStartCommand($id: String!, $command: String!, $confirm: String) {\n  setStartCommand(id: $id, command: $command, confirm: $confirm) {\n    id\n    startCommand\n    phase\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "setStartCommand": {
+              "__typename": "Service",
+              "id": "srv-db6urlovrh0s73bstfo0",
+              "phase": "Deploying",
+              "startCommand": "python -u -c 'exec(\"import http.server,os\\nclass H(http.server.BaseHTTPRequestHandler):\\n def do_GET(self):\\n  print('\\''qa-a334 '\\''+self.path,flush=True);self.send_response(200);self.end_headers();self.wfile.write(b'\\''qa-a334-ready\\\\n'\\'')\\n def log_message(self,*a):pass\\nhttp.server.HTTPServer(('\\''0.0.0.0'\\'',int(os.environ['\\''PORT'\\''])),H).serve_forever()\")'"
+            }
+          }
+        }
+      ]
+    },
+    "a334LiveCheck": {
+      "at": "2026-10-13T08:39:16.896Z",
+      "deploys": [
+        {
+          "deploy": {
+            "id": "dep-db6us59g8k9s73eehpk0",
+            "serviceId": "srv-db6urlovrh0s73bstfo0",
+            "status": "live",
+            "trigger": "service_updated",
+            "bexTrigger": "config_change",
+            "image": {
+              "ref": "docker.io/library/python:3.12-alpine"
+            },
+            "createdAt": "2026-10-13T08:38:45.353896Z",
+            "updatedAt": "2026-10-13T08:38:57.323387Z",
+            "finishedAt": "2026-10-13T08:38:57.323385Z"
+          },
+          "cursor": "dep-db6us59g8k9s73eehpk0"
+        },
+        {
+          "deploy": {
+            "id": "dep-db6urlovrh0s73bstfog",
+            "serviceId": "srv-db6urlovrh0s73bstfo0",
+            "status": "canceled",
+            "trigger": "other",
+            "bexTrigger": "create",
+            "image": {
+              "ref": "docker.io/library/python:3.12-alpine"
+            },
+            "createdAt": "2026-10-13T08:37:43.488126Z",
+            "updatedAt": "2026-10-13T08:38:57.312292Z",
+            "startedAt": "2026-10-13T08:37:57.386193Z",
+            "finishedAt": "2026-10-13T08:38:57.312291Z",
+            "cancelReason": "Superseded by dep-db6us59g8k9s73eehpk0"
+          },
+          "cursor": "dep-db6urlovrh0s73bstfog"
+        }
+      ],
+      "phase": "Running",
+      "plan": "free",
+      "url": "https://qa-20261013-a334-filters.onbex.co"
+    },
+    "a334LiteralSearch": {
+      "at": "2026-10-13T08:40:37.596Z",
+      "request": [
+        {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "srv-db6urlovrh0s73bstfo0",
+            "type": "app",
+            "text": "qa-a334-literal-a.*-b",
+            "textMode": "display",
+            "startTime": "2026-10-13T07:40:31.366Z",
+            "endTime": "2026-10-13T08:40:31.366Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db6urlovrh0s73bstfo0-m0c6o9faitnhp8c09faj",
+                  "level": "unknown",
+                  "message": "qa-a334 /qa-a334-literal-a.*-b",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-13T08:39:29.292261329Z",
+                  "type": "app"
+                }
+              ],
+              "nextEndTime": "2026-10-13T08:39:29.292261328Z",
+              "nextStartTime": "2026-10-13T07:40:31.366Z"
+            }
+          }
+        }
+      ],
+      "url": "https://dashboard.bex.co/services/srv-db6urlovrh0s73bstfo0/logs?type=app&text=qa-a334-literal-a.*-b&live=0",
+      "input": "qa-a334-literal-a.*-b"
+    },
+    "a334LiteralSettled": {
+      "at": "2026-10-13T08:40:58.695Z",
+      "url": "https://dashboard.bex.co/services/srv-db6urlovrh0s73bstfo0/logs?type=app&text=qa-a334-literal-a.*-b&live=0",
+      "links": [
+        {
+          "text": "Logs",
+          "href": "/services/srv-db6urlovrh0s73bstfo0/logs"
+        }
+      ],
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261013-a334-filters\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a334-filters\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db6urlovrh0s73bstfo0/deploys/dep-db6us59g8k9s73eehpk0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db6urlovrh0s73bstfo0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db6urlovrh0s73bstfo0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a334-filters.onbex.co\":\n    - /url: https://qa-20261013-a334-filters.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a334-filters\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-2\n  - term: Created\n  - definition:\n    - time: 2m\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\": qa-a334-literal-a.*-b\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 01:39:29 AM\n  - button \"Filter logs by instance srv-db6urlovrh0s73bstfo0-m0c6o9faitnhp8c09faj\": \"[m0c6o]\"\n  - text: qa-a334 /qa-a334-literal-a.*-b\n  - paragraph: Live tail paused"
+    },
+    "a334LogsNav": {
+      "at": "2026-10-13T08:41:13.125Z",
+      "before": {
+        "url": "https://dashboard.bex.co/services/srv-db6urlovrh0s73bstfo0/logs?type=app&text=qa-a334-literal-a.*-b&live=0",
+        "text": "qa-a334-literal-a.*-b",
+        "live": false
+      },
+      "after": {
+        "url": "https://dashboard.bex.co/services/srv-db6urlovrh0s73bstfo0/logs",
+        "text": "qa-a334-literal-a.*-b",
+        "live": false
+      },
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261013-a334-filters\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a334-filters\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db6urlovrh0s73bstfo0/deploys/dep-db6us59g8k9s73eehpk0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db6urlovrh0s73bstfo0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db6urlovrh0s73bstfo0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a334-filters.onbex.co\":\n    - /url: https://qa-20261013-a334-filters.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a334-filters\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-2\n  - term: Created\n  - definition:\n    - time: 2m\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\": qa-a334-literal-a.*-b\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 01:39:29 AM\n  - button \"Filter logs by instance srv-db6urlovrh0s73bstfo0-m0c6o9faitnhp8c09faj\": \"[m0c6o]\"\n  - text: qa-a334 /qa-a334-literal-a.*-b\n  - paragraph: Live tail paused"
+    },
+    "a334FreshBeta": {
+      "at": "2026-10-13T08:41:41.962Z",
+      "request": [
+        {
+          "operationName": "LogLabelValues",
+          "variables": {
+            "resource": "srv-db6urlovrh0s73bstfo0",
+            "label": "level"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+        },
+        {
+          "operationName": "LogLabelValues",
+          "variables": {
+            "resource": "srv-db6urlovrh0s73bstfo0",
+            "label": "method"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+        },
+        {
+          "operationName": "LogLabelValues",
+          "variables": {
+            "resource": "srv-db6urlovrh0s73bstfo0",
+            "label": "statusCode"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+        },
+        {
+          "operationName": "LogLabelValues",
+          "variables": {
+            "resource": "srv-db6urlovrh0s73bstfo0",
+            "label": "instance"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+        },
+        {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "srv-db6urlovrh0s73bstfo0",
+            "type": "app",
+            "text": "qa-a334-beta",
+            "textMode": "display",
+            "startTime": "2026-10-13T07:41:41.253Z",
+            "endTime": "2026-10-13T08:41:41.253Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "logLabelValues": ["unknown"]
+          }
+        },
+        {
+          "data": {
+            "logLabelValues": ["GET"]
+          }
+        },
+        {
+          "data": {
+            "logLabelValues": ["200"]
+          }
+        },
+        {
+          "data": {
+            "logLabelValues": [
+              "srv-db6urlovrh0s73bstfo0-cspncn0dm9mqk5vqf4h5",
+              "srv-db6urlovrh0s73bstfo0-m0c6o9faitnhp8c09faj"
+            ]
+          }
+        },
+        {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db6urlovrh0s73bstfo0-m0c6o9faitnhp8c09faj",
+                  "level": "unknown",
+                  "message": "qa-a334 /qa-a334-beta",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-13T08:39:29.117853622Z",
+                  "type": "app"
+                }
+              ],
+              "nextEndTime": "2026-10-13T08:39:29.117853621Z",
+              "nextStartTime": "2026-10-13T07:41:41.253Z"
+            }
+          }
+        }
+      ],
+      "url": "https://dashboard.bex.co/services/srv-db6urlovrh0s73bstfo0/logs?type=app&live=0&text=qa-a334-beta",
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261013-a334-filters\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a334-filters\" [level=1]\n  - text: Service Running Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db6urlovrh0s73bstfo0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a334-filters.onbex.co\":\n    - /url: https://qa-20261013-a334-filters.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a334-filters\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-2\n  - term: Created\n  - definition:\n    - time: 3m\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\": qa-a334-beta\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 01:39:29 AM\n  - button \"Filter logs by instance srv-db6urlovrh0s73bstfo0-m0c6o9faitnhp8c09faj\": \"[m0c6o]\"\n  - text: qa-a334 /qa-a334-beta\n  - paragraph: Live tail paused"
+    },
+    "a334FreshNavTick": {
+      "at": "2026-10-13T08:42:11.762Z",
+      "url": "https://dashboard.bex.co/services/srv-db6urlovrh0s73bstfo0/logs",
+      "request": [
+        {
+          "operationName": "LogLabelValues",
+          "variables": {
+            "resource": "srv-db6urlovrh0s73bstfo0",
+            "label": "level"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+        },
+        {
+          "operationName": "LogLabelValues",
+          "variables": {
+            "resource": "srv-db6urlovrh0s73bstfo0",
+            "label": "method"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+        },
+        {
+          "operationName": "LogLabelValues",
+          "variables": {
+            "resource": "srv-db6urlovrh0s73bstfo0",
+            "label": "statusCode"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+        },
+        {
+          "operationName": "LogLabelValues",
+          "variables": {
+            "resource": "srv-db6urlovrh0s73bstfo0",
+            "label": "instance"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+        },
+        {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "srv-db6urlovrh0s73bstfo0",
+            "type": "app",
+            "text": "qa-a334-beta",
+            "textMode": "display",
+            "startTime": "2026-10-13T07:42:11.262Z",
+            "endTime": "2026-10-13T08:42:11.262Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "logLabelValues": ["unknown"]
+          }
+        },
+        {
+          "data": {
+            "logLabelValues": ["GET"]
+          }
+        },
+        {
+          "data": {
+            "logLabelValues": ["200"]
+          }
+        },
+        {
+          "data": {
+            "logLabelValues": [
+              "srv-db6urlovrh0s73bstfo0-cspncn0dm9mqk5vqf4h5",
+              "srv-db6urlovrh0s73bstfo0-m0c6o9faitnhp8c09faj"
+            ]
+          }
+        },
+        {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db6urlovrh0s73bstfo0-m0c6o9faitnhp8c09faj",
+                  "level": "unknown",
+                  "message": "qa-a334 /qa-a334-beta",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-13T08:39:29.117853622Z",
+                  "type": "app"
+                }
+              ],
+              "nextEndTime": "2026-10-13T08:39:29.117853621Z",
+              "nextStartTime": "2026-10-13T07:42:11.262Z"
+            }
+          }
+        }
+      ],
+      "input": "qa-a334-beta",
+      "live": false,
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261013-a334-filters\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a334-filters\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db6urlovrh0s73bstfo0/deploys/dep-db6us59g8k9s73eehpk0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db6urlovrh0s73bstfo0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db6urlovrh0s73bstfo0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a334-filters.onbex.co\":\n    - /url: https://qa-20261013-a334-filters.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a334-filters\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-2\n  - term: Created\n  - definition:\n    - time: 3m\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\": qa-a334-beta\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 01:39:29 AM\n  - button \"Filter logs by instance srv-db6urlovrh0s73bstfo0-m0c6o9faitnhp8c09faj\": \"[m0c6o]\"\n  - text: qa-a334 /qa-a334-beta\n  - paragraph: Live tail paused"
+    },
+    "a334CleanReload": {
+      "at": "2026-10-13T08:42:32.724Z",
+      "url": "https://dashboard.bex.co/services/srv-db6urlovrh0s73bstfo0/logs",
+      "request": [
+        {
+          "operationName": "LogLabelValues",
+          "variables": {
+            "resource": "srv-db6urlovrh0s73bstfo0",
+            "label": "level"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+        },
+        {
+          "operationName": "LogLabelValues",
+          "variables": {
+            "resource": "srv-db6urlovrh0s73bstfo0",
+            "label": "method"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+        },
+        {
+          "operationName": "LogLabelValues",
+          "variables": {
+            "resource": "srv-db6urlovrh0s73bstfo0",
+            "label": "statusCode"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+        },
+        {
+          "operationName": "LogLabelValues",
+          "variables": {
+            "resource": "srv-db6urlovrh0s73bstfo0",
+            "label": "instance"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+        },
+        {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "srv-db6urlovrh0s73bstfo0",
+            "startTime": "2026-10-13T07:42:32.192Z",
+            "endTime": "2026-10-13T08:42:32.192Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "logLabelValues": ["unknown"]
+          }
+        },
+        {
+          "data": {
+            "logLabelValues": ["GET"]
+          }
+        },
+        {
+          "data": {
+            "logLabelValues": ["200"]
+          }
+        },
+        {
+          "data": {
+            "logLabelValues": [
+              "srv-db6urlovrh0s73bstfo0-cspncn0dm9mqk5vqf4h5",
+              "srv-db6urlovrh0s73bstfo0-m0c6o9faitnhp8c09faj"
+            ]
+          }
+        },
+        {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db6urlovrh0s73bstfo0-cspncn0dm9mqk5vqf4h5",
+                  "level": "unknown",
+                  "message": "  File \"<string>\", line 1",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-13T08:37:53.964846559Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db6urlovrh0s73bstfo0-cspncn0dm9mqk5vqf4h5",
+                  "level": "unknown",
+                  "message": "    import http.server,os,json class H(http.server.BaseHTTPRequestHandler):  def do_GET(self):   print('qa-a334 '+self.path,flush=True);self.send_response(200);self.end_headers();self.wfile.write(b'qa-a334-ready\\n')  def log_message(self,*a):pass http.server.HTTPServer(('0.0.0.0',int(os.environ['PORT'])),H).serve_forever()",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-13T08:37:53.964925825Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db6urlovrh0s73bstfo0-cspncn0dm9mqk5vqf4h5",
+                  "level": "unknown",
+                  "message": "                               ^^^^^",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-13T08:37:53.966528306Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db6urlovrh0s73bstfo0-cspncn0dm9mqk5vqf4h5",
+                  "level": "unknown",
+                  "message": "SyntaxError: invalid syntax",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-13T08:37:53.966584547Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db6urlovrh0s73bstfo0-cspncn0dm9mqk5vqf4h5",
+                  "level": "unknown",
+                  "message": "  File \"<string>\", line 1",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-13T08:38:16.968010549Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db6urlovrh0s73bstfo0-cspncn0dm9mqk5vqf4h5",
+                  "level": "unknown",
+                  "message": "    import http.server,os,json class H(http.server.BaseHTTPRequestHandler):  def do_GET(self):   print('qa-a334 '+self.path,flush=True);self.send_response(200);self.end_headers();self.wfile.write(b'qa-a334-ready\\n')  def log_message(self,*a):pass http.server.HTTPServer(('0.0.0.0',int(os.environ['PORT'])),H).serve_forever()",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-13T08:38:16.968192555Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db6urlovrh0s73bstfo0-cspncn0dm9mqk5vqf4h5",
+                  "level": "unknown",
+                  "message": "                               ^^^^^",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-13T08:38:16.968204514Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db6urlovrh0s73bstfo0-cspncn0dm9mqk5vqf4h5",
+                  "level": "unknown",
+                  "message": "SyntaxError: invalid syntax",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-13T08:38:16.968228143Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db6urlovrh0s73bstfo0-cspncn0dm9mqk5vqf4h5",
+                  "level": "unknown",
+                  "message": "  File \"<string>\", line 1",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-13T08:38:42.363643891Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db6urlovrh0s73bstfo0-cspncn0dm9mqk5vqf4h5",
+                  "level": "unknown",
+                  "message": "    import http.server,os,json class H(http.server.BaseHTTPRequestHandler):  def do_GET(self):   print('qa-a334 '+self.path,flush=True);self.send_response(200);self.end_headers();self.wfile.write(b'qa-a334-ready\\n')  def log_message(self,*a):pass http.server.HTTPServer(('0.0.0.0',int(os.environ['PORT'])),H).serve_forever()",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-13T08:38:42.363704686Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db6urlovrh0s73bstfo0-cspncn0dm9mqk5vqf4h5",
+                  "level": "unknown",
+                  "message": "                               ^^^^^",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-13T08:38:42.363711003Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db6urlovrh0s73bstfo0-m0c6o9faitnhp8c09faj",
+                  "level": "unknown",
+                  "message": "qa-a334 /qa-a334-alpha",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-13T08:39:28.940842411Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "",
+                  "level": "",
+                  "message": "{\"ClientAddr\":\"162.224.81.143:64899\",\"ClientHost\":\"162.224.81.143\",\"ClientPort\":\"64899\",\"ClientUsername\":\"-\",\"DownstreamContentSize\":14,\"DownstreamStatus\":200,\"Duration\":3775951,\"KubernetesIngressName\":\"tea-d98210cbbpdc73dcrkvg-qa-20261013-a334-filters\",\"KubernetesIngressNamespace\":\"tea-d98210cbbpdc73dcrkvg\",\"KubernetesServiceName\":\"tea-d98210cbbpdc73dcrkvg-qa-20261013-a334-filters\",\"KubernetesServicePort\":\"3000\",\"OriginContentSize\":14,\"OriginDuration\":3361250,\"OriginStatus\":200,\"Overhead\":414701,\"RequestAddr\":\"qa-20261013-a334-filters.onbex.co\",\"RequestContentSize\":0,\"RequestHost\":\"qa-20261013-a334-filters.onbex.co\",\"RequestMethod\":\"GET\",\"RequestPath\":\"/qa-a334-alpha\",\"RequestPort\":\"-\",\"RequestProtocol\":\"HTTP/1.1\",\"RequestScheme\":\"https\",\"RetryAttempts\":0,\"ServiceName\":\"tea-d98210cbbpdc73dcrkvg-tea-d98210cbbpdc73dcrkvg-qa-20261013-a334-filters-3000@kubernetes\",\"StartLocal\":\"2026-10-13T08:39:28.93769766Z\",\"StartUTC\":\"2026-10-13T08:39:28.93769766Z\",\"TLSCipher\":\"TLS_AES_128_GCM_SHA256\",\"TLSVersion\":\"1.3\",\"entryPointName\":\"websecure\",\"level\":\"info\",\"msg\":\"\",\"time\":\"2026-10-13T08:39:28Z\"}",
+                  "method": "GET",
+                  "statusCode": "200",
+                  "timestamp": "2026-10-13T08:39:28.941738255Z",
+                  "type": "request"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db6urlovrh0s73bstfo0-m0c6o9faitnhp8c09faj",
+                  "level": "unknown",
+                  "message": "qa-a334 /qa-a334-beta",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-13T08:39:29.117853622Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "",
+                  "level": "",
+                  "message": "{\"ClientAddr\":\"162.224.81.143:64899\",\"ClientHost\":\"162.224.81.143\",\"ClientPort\":\"64899\",\"ClientUsername\":\"-\",\"DownstreamContentSize\":14,\"DownstreamStatus\":200,\"Duration\":4720928,\"KubernetesIngressName\":\"tea-d98210cbbpdc73dcrkvg-qa-20261013-a334-filters\",\"KubernetesIngressNamespace\":\"tea-d98210cbbpdc73dcrkvg\",\"KubernetesServiceName\":\"tea-d98210cbbpdc73dcrkvg-qa-20261013-a334-filters\",\"KubernetesServicePort\":\"3000\",\"OriginContentSize\":14,\"OriginDuration\":4411971,\"OriginStatus\":200,\"Overhead\":308957,\"RequestAddr\":\"qa-20261013-a334-filters.onbex.co\",\"RequestContentSize\":0,\"RequestHost\":\"qa-20261013-a334-filters.onbex.co\",\"RequestMethod\":\"GET\",\"RequestPath\":\"/qa-a334-beta\",\"RequestPort\":\"-\",\"RequestProtocol\":\"HTTP/1.1\",\"RequestScheme\":\"https\",\"RetryAttempts\":0,\"ServiceName\":\"tea-d98210cbbpdc73dcrkvg-tea-d98210cbbpdc73dcrkvg-qa-20261013-a334-filters-3000@kubernetes\",\"StartLocal\":\"2026-10-13T08:39:29.11362455Z\",\"StartUTC\":\"2026-10-13T08:39:29.11362455Z\",\"TLSCipher\":\"TLS_AES_128_GCM_SHA256\",\"TLSVersion\":\"1.3\",\"entryPointName\":\"websecure\",\"level\":\"info\",\"msg\":\"\",\"time\":\"2026-10-13T08:39:29Z\"}",
+                  "method": "GET",
+                  "statusCode": "200",
+                  "timestamp": "2026-10-13T08:39:29.118700327Z",
+                  "type": "request"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db6urlovrh0s73bstfo0-m0c6o9faitnhp8c09faj",
+                  "level": "unknown",
+                  "message": "qa-a334 /qa-a334-literal-a.*-b",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-13T08:39:29.292261329Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "",
+                  "level": "",
+                  "message": "{\"ClientAddr\":\"162.224.81.143:64899\",\"ClientHost\":\"162.224.81.143\",\"ClientPort\":\"64899\",\"ClientUsername\":\"-\",\"DownstreamContentSize\":14,\"DownstreamStatus\":200,\"Duration\":4284833,\"KubernetesIngressName\":\"tea-d98210cbbpdc73dcrkvg-qa-20261013-a334-filters\",\"KubernetesIngressNamespace\":\"tea-d98210cbbpdc73dcrkvg\",\"KubernetesServiceName\":\"tea-d98210cbbpdc73dcrkvg-qa-20261013-a334-filters\",\"KubernetesServicePort\":\"3000\",\"OriginContentSize\":14,\"OriginDuration\":3953001,\"OriginStatus\":200,\"Overhead\":331832,\"RequestAddr\":\"qa-20261013-a334-filters.onbex.co\",\"RequestContentSize\":0,\"RequestHost\":\"qa-20261013-a334-filters.onbex.co\",\"RequestMethod\":\"GET\",\"RequestPath\":\"/qa-a334-literal-a.*-b\",\"RequestPort\":\"-\",\"RequestProtocol\":\"HTTP/1.1\",\"RequestScheme\":\"https\",\"RetryAttempts\":0,\"ServiceName\":\"tea-d98210cbbpdc73dcrkvg-tea-d98210cbbpdc73dcrkvg-qa-20261013-a334-filters-3000@kubernetes\",\"StartLocal\":\"2026-10-13T08:39:29.28900021Z\",\"StartUTC\":\"2026-10-13T08:39:29.28900021Z\",\"TLSCipher\":\"TLS_AES_128_GCM_SHA256\",\"TLSVersion\":\"1.3\",\"entryPointName\":\"websecure\",\"level\":\"info\",\"msg\":\"\",\"time\":\"2026-10-13T08:39:29Z\"}",
+                  "method": "GET",
+                  "statusCode": "200",
+                  "timestamp": "2026-10-13T08:39:29.293700444Z",
+                  "type": "request"
+                }
+              ],
+              "nextEndTime": "2026-10-13T08:37:53.964846558Z",
+              "nextStartTime": "2026-10-13T07:42:32.192Z"
+            }
+          }
+        }
+      ],
+      "input": "",
+      "live": true
+    },
+    "a334MobileNavSettled": {
+      "at": "2026-10-13T08:44:38.684Z",
+      "url": "https://dashboard.bex.co/services/srv-db6urlovrh0s73bstfo0/logs",
+      "text": "qa-a334-alpha",
+      "type": "Application logs",
+      "live": false,
+      "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261013-a334-filters\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a334-filters\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db6urlovrh0s73bstfo0/deploys/dep-db6us59g8k9s73eehpk0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db6urlovrh0s73bstfo0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db6urlovrh0s73bstfo0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a334-filters.onbex.co\":\n    - /url: https://qa-20261013-a334-filters.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a334-filters\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-2\n  - term: Created\n  - definition:\n    - time: 6m\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\": qa-a334-alpha\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 01:39:28 AM\n  - button \"Filter logs by instance srv-db6urlovrh0s73bstfo0-m0c6o9faitnhp8c09faj\": \"[m0c6o]\"\n  - text: qa-a334 /qa-a334-alpha\n  - paragraph: Live tail paused",
+      "width": {
+        "viewport": 390,
+        "body": 390
+      }
+    },
+    "a334Delete": {
+      "at": "2026-10-13T08:45:37.774Z",
+      "request": [
+        {
+          "operationName": "DeleteService",
+          "variables": {
+            "id": "srv-db6urlovrh0s73bstfo0"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "deleteService": true
+          }
+        }
+      ]
+    },
+    "a334Cleanup": {
+      "at": "2026-10-13T08:46:03.742Z",
+      "request": {
+        "operationName": "QaA334Cleanup",
+        "query": "query QaA334Cleanup($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      },
+      "ownStatus": 404,
+      "publicStatus": 404
+    },
+    "a334Logout": {
+      "at": "2026-10-13T08:46:27.845Z",
+      "ownersStatus": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "a334InventoryExact": true
+  },
+  "limits": [
+    "Back/Forward attempt returned no receipt; no Back/Forward live result claimed.",
+    "Mobile sidebar was dismissed manually after clicking the Logs link; sidebar closing behavior is outside this finding.",
+    "Initial multiline synthetic command was flattened by a single-line input, produced SyntaxError, and was repaired; not filed as a product bug.",
+    "Exact first post-navigation request and absence of all intermediate stale requests were not continuously observed. The captured settled next tick still queries the old text/type."
+  ],
+  "screenshot": {
+    "path": ".playwright-mcp/qa-log-url-nav-a334-mobile-settled.png",
+    "bytes": 57805,
+    "viewed": true
+  }
+}
