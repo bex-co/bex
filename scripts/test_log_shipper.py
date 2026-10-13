@@ -204,6 +204,8 @@ class AppLogLevelsTest(unittest.TestCase):
             '{"level":"error","msg":"truncated json"': "unknown",
             '  {"msg":"indented json without a severity"}': "unknown",
             'ts=2026-09-28T06:09:24Z level=warn msg="spaced \\"escaped\\" quotes"': "warning",
+            '{"level":"alert","message":"json alert"}': "error",
+            '{"severity":"EMERGENCY","message":"json severity emergency"}': "error",
         }
         # Render's level names (w8/031): warnings ship as `warning`, the value
         # the pinned CLI's --level sends.
@@ -212,6 +214,8 @@ class AppLogLevelsTest(unittest.TestCase):
             "critical": "error", "crit": "error", "warn": "warning",
             "WARNING": "warning", "info": "info", "notice": "info",
             "DEBUG": "debug", "trace": "debug",
+            # The pinned CLI's --level alert/emergency (w8/097).
+            "alert": "error", "emergency": "error", "ALERT": "error", "EMERGENCY": "error",
         }.items():
             for key in ("level", "severity"):
                 cases[f'{key}={value} msg="normalization"'] = expected
@@ -362,6 +366,8 @@ class PlatformLogsTest(unittest.TestCase):
             (pod("bex-system", "bex-static-server-1", "static-server", app_bex_co_component="static-server"),
              '{"level":"warn","msg":"m157-static-marker"}'),
             (pod("dashboard", "dashboard-1", "dashboard"), "m157-dashboard-marker"),
+            (pod("bex-system", "bex-static-server-2", "static-server", app_bex_co_component="static-server"),
+             '{"level":"emergency","msg":"w8-097-platform-emergency"}'),
             (pod("bex-system", "bex-activator-1", "activator", app_bex_co_component="activator"),
              "m157-activator-must-not-ship"),
             (pod("bex-system", "bex-ssh-gateway-1", "ssh-gateway", app_kubernetes_io_name="bex-ssh-gateway"),
@@ -370,12 +376,13 @@ class PlatformLogsTest(unittest.TestCase):
              "m157-foreign-operator-must-not-ship"),
         ]
         actual, output = run_pipeline(self, "platform_logs", [line for _, line in pods], "platform",
-                                      relabel=("platform_pods", [meta for meta, _ in pods]), expect=4)
+                                      relabel=("platform_pods", [meta for meta, _ in pods]), expect=5)
         want = {
             pods[0][1]: ("bex-api", "bex-system", "bex-api-1", "api", "unknown"),
             pods[1][1]: ("operator", "bex-system", "bex-controller-manager-1", "manager", "error"),
             pods[2][1]: ("static-server", "bex-system", "bex-static-server-1", "static-server", "warning"),
             pods[3][1]: ("dashboard", "dashboard", "dashboard-1", "dashboard", "unknown"),
+            pods[4][1]: ("static-server", "bex-system", "bex-static-server-2", "static-server", "error"),
         }
         self.assertEqual(set(actual), set(want), f"unexpected platform lines:\n{output}")
         for line, (service, ns, pod_name, container, level) in want.items():

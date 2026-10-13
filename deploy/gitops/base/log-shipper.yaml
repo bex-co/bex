@@ -329,7 +329,7 @@ spec:
                   source   = "level"
                   // Escaped for Helm's tpl pass — see the HELM TPL ESCAPING
                   // note at the top of this file for why.
-                  template = "{{ "{{" }} $l := ToLower (or .Value .severity) {{ "}}" }}{{ "{{" }} if or (eq $l \"error\") (eq $l \"err\") (eq $l \"fatal\") (eq $l \"panic\") (eq $l \"critical\") (eq $l \"crit\") {{ "}}" }}error{{ "{{" }} else if or (eq $l \"warn\") (eq $l \"warning\") {{ "}}" }}warning{{ "{{" }} else if or (eq $l \"info\") (eq $l \"notice\") {{ "}}" }}info{{ "{{" }} else if or (eq $l \"debug\") (eq $l \"trace\") {{ "}}" }}debug{{ "{{" }} else {{ "}}" }}unknown{{ "{{" }} end {{ "}}" }}"
+                  template = "{{ "{{" }} $l := ToLower (or .Value .severity) {{ "}}" }}{{ "{{" }} if or (eq $l \"error\") (eq $l \"err\") (eq $l \"fatal\") (eq $l \"panic\") (eq $l \"critical\") (eq $l \"crit\") (eq $l \"alert\") (eq $l \"emergency\") {{ "}}" }}error{{ "{{" }} else if or (eq $l \"warn\") (eq $l \"warning\") {{ "}}" }}warning{{ "{{" }} else if or (eq $l \"info\") (eq $l \"notice\") {{ "}}" }}info{{ "{{" }} else if or (eq $l \"debug\") (eq $l \"trace\") {{ "}}" }}debug{{ "{{" }} else {{ "}}" }}unknown{{ "{{" }} end {{ "}}" }}"
                 }
 
                 // The `unknown` bucket, and Render's type vocabulary (app | request
@@ -502,7 +502,7 @@ spec:
 
                 stage.template {
                   source   = "level"
-                  template = "{{ "{{" }} $l := ToLower (or .Value .severity .zap_level) {{ "}}" }}{{ "{{" }} if or (eq $l \"error\") (eq $l \"err\") (eq $l \"fatal\") (eq $l \"panic\") (eq $l \"critical\") (eq $l \"crit\") {{ "}}" }}error{{ "{{" }} else if or (eq $l \"warn\") (eq $l \"warning\") {{ "}}" }}warning{{ "{{" }} else if or (eq $l \"info\") (eq $l \"notice\") {{ "}}" }}info{{ "{{" }} else if or (eq $l \"debug\") (eq $l \"trace\") {{ "}}" }}debug{{ "{{" }} else {{ "}}" }}unknown{{ "{{" }} end {{ "}}" }}"
+                  template = "{{ "{{" }} $l := ToLower (or .Value .severity .zap_level) {{ "}}" }}{{ "{{" }} if or (eq $l \"error\") (eq $l \"err\") (eq $l \"fatal\") (eq $l \"panic\") (eq $l \"critical\") (eq $l \"crit\") (eq $l \"alert\") (eq $l \"emergency\") {{ "}}" }}error{{ "{{" }} else if or (eq $l \"warn\") (eq $l \"warning\") {{ "}}" }}warning{{ "{{" }} else if or (eq $l \"info\") (eq $l \"notice\") {{ "}}" }}info{{ "{{" }} else if or (eq $l \"debug\") (eq $l \"trace\") {{ "}}" }}debug{{ "{{" }} else {{ "}}" }}unknown{{ "{{" }} end {{ "}}" }}"
                 }
 
                 stage.static_labels {
