@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 )
 
 // BlueprintResourceKind is the resource family a normalized declaration
@@ -262,6 +263,12 @@ func blueprintResourceFromMap(source *BlueprintSource, kind BlueprintResourceKin
 		fields[name] = BlueprintField{Null: value == nil, Value: value, Location: source.Locations[fieldPath]}
 	}
 	name, _ := entry["name"].(string)
+	// An env group's identity is its trimmed name, as parseEnvGroup and apply
+	// read it, or a padded declaration plans a create beside the existing
+	// group (w8/094). A whitespace-only name keeps reaching the parser's error.
+	if trimmed := strings.TrimSpace(name); kind == BlueprintResourceEnvVarGroup && trimmed != "" {
+		name = trimmed
+	}
 	return BlueprintResourceIR{Kind: kind, Name: name, SourcePath: resourcePath, Project: project, Environment: environment, Ungrouped: ungrouped, Fields: fields}
 }
 
