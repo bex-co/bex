@@ -3184,25 +3184,30 @@ func (s *Service) recordBlueprintRedeploy(ctx context.Context, existing *appv1al
 	return nil
 }
 
-// initialDeployHookState is the initialDeployHook ran-once gate (w2/m45) for an
-// existing service: once the ran-once annotation is set, desired.PreDeployCommand
-// stays the regular one from req. markHookRan reports the first pre-deploy just
-// succeeded (mark ran, revert to the regular command); a still-pending hook is
-// kept as desired.PreDeployCommand instead. hookChanged reports a not-yet-ran
+// initialDeployHookState reconciles a re-applied initialDeployHook with an
+// existing service (w2/m45, w8/m63). The operator owns completion
+// (status.initialDeployHookCompleted) and runs spec.initialDeployHook until
+// then. A service created before that split carried the hook injected as its
+// preDeployCommand: if that hook already succeeded, it is never reintroduced,
+// and desired keeps the regular command either way. markHookRan reports the
+// ran-once annotation should be set now; hookChanged reports a not-yet-run
 // hook whose command differs from the recorded annotation.
 func initialDeployHookState(req CreateRequest, existing *appv1alpha1.App, desired *appv1alpha1.AppSpec) (markHookRan, hookChanged bool) {
-	if req.InitialDeployHook != "" && existing.Annotations[initialDeployHookRanAnnotation] == "" {
+	if req.InitialDeployHook == "" {
+		return false, false
+	}
+	legacy := existing.Spec.InitialDeployHook == ""
+	ran := existing.Annotations[initialDeployHookRanAnnotation] != "" || existing.Status.InitialDeployHookCompleted
+	if !ran && legacy {
 		if pd := existing.Status.PreDeploy; pd != nil && pd.Status == appv1alpha1.PreDeploySucceeded {
-			// First pre-deploy just succeeded: mark ran, revert to regular command.
-			markHookRan = true
-		} else {
-			// Hook still pending: keep it as the preDeployCommand.
-			desired.PreDeployCommand = req.InitialDeployHook
+			ran = true // the injected hook already succeeded
 		}
 	}
-	hookChanged = req.InitialDeployHook != "" &&
-		existing.Annotations[initialDeployHookRanAnnotation] == "" &&
-		existing.Annotations[initialDeployHookAnnotation] != req.InitialDeployHook
+	if ran && legacy {
+		desired.InitialDeployHook = ""
+	}
+	markHookRan = ran && existing.Annotations[initialDeployHookRanAnnotation] == ""
+	hookChanged = !ran && existing.Annotations[initialDeployHookAnnotation] != req.InitialDeployHook
 	return markHookRan, hookChanged
 }
 

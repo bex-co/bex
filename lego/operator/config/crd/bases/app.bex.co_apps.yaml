@@ -554,6 +554,15 @@ spec:
                 maxLength: 512
                 pattern: ^[A-Za-z0-9][A-Za-z0-9._/:@-]*$
                 type: string
+              initialDeployHook:
+                description: |-
+                  InitialDeployHook is Render's Blueprint initialDeployHook: a one-time
+                  command the operator runs in place of preDeployCommand for releases until
+                  one has run it to success (status.initialDeployHookCompleted), after which
+                  every release runs preDeployCommand alone (w8/m63). Keeping it separate
+                  leaves the regular command recoverable, even when the two are equal.
+                maxLength: 4096
+                type: string
               ipAllowList:
                 description: |-
                   IPAllowList is the legacy flat-CIDR service allowlist written before
@@ -1176,6 +1185,11 @@ spec:
                 - primaryPort
                 - revision
                 type: object
+              initialDeployHookCompleted:
+                description: |-
+                  InitialDeployHookCompleted records that spec.initialDeployHook ran to
+                  success, so no later release selects it again. Set only by the operator.
+                type: boolean
               manualRunHandledAt:
                 description: |-
                   ManualRunHandledAt is the exact spec.runAt token whose Job has been

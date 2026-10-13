@@ -2252,11 +2252,6 @@ func (s *Service) planStackApp(ctx context.Context, req CreateRequest, desired a
 	if err := s.validateNewSpecMaintenanceMode(ctx, req.Name, desired); err != nil {
 		return stackAppPlan{}, err
 	}
-	// initialDeployHook: use the one-time command as preDeployCommand on first
-	// create so the operator runs it on the first deploy (w2/m45).
-	if req.InitialDeployHook != "" {
-		desired.PreDeployCommand = req.InitialDeployHook
-	}
 	if err := s.configureNewImageCompatibility(ctx, &desired, req.Port > 0); err != nil {
 		return stackAppPlan{}, err
 	}
@@ -2923,6 +2918,9 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		NotifyOnFail:     notifyOnFail,
 		SubdomainPolicy:  subdomainPolicy,
 		PreDeployCommand: strings.TrimSpace(req.PreDeployCommand),
+		// The one-time hook keeps its own role; the operator runs it in place of
+		// preDeployCommand until it succeeds (w8/m63).
+		InitialDeployHook: strings.TrimSpace(req.InitialDeployHook),
 		// A web service and a static site are public: expose them at
 		// <name>.<BEX_BASE_DOMAIN> so the caller gets a live URL with no custom
 		// domain. Every other type opts out (private has no platform host;
@@ -3325,6 +3323,7 @@ func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	dst.NotificationsToSend = want.NotificationsToSend
 	dst.SubdomainPolicy = want.SubdomainPolicy
 	dst.PreDeployCommand = want.PreDeployCommand
+	dst.InitialDeployHook = want.InitialDeployHook
 	if want.MaintenanceMode != nil {
 		dst.MaintenanceMode = want.MaintenanceMode.DeepCopy()
 	}

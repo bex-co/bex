@@ -688,6 +688,15 @@ type AppSpec struct {
 	// +kubebuilder:validation:MaxLength=4096
 	PreDeployCommand string `json:"preDeployCommand,omitempty"`
 
+	// InitialDeployHook is Render's Blueprint initialDeployHook: a one-time
+	// command the operator runs in place of preDeployCommand for releases until
+	// one has run it to success (status.initialDeployHookCompleted), after which
+	// every release runs preDeployCommand alone (w8/m63). Keeping it separate
+	// leaves the regular command recoverable, even when the two are equal.
+	// +optional
+	// +kubebuilder:validation:MaxLength=4096
+	InitialDeployHook string `json:"initialDeployHook,omitempty"`
+
 	// IdleTTLSeconds a free web service may go without traffic (HTTP requests it
 	// served, or WebSocket frames it sent) before it auto-hibernates
 	// ("sleep = free"). 0 or unset means the platform default idle window (15
@@ -1412,6 +1421,11 @@ type AppStatus struct {
 	// yet). See spec.preDeployCommand.
 	// +optional
 	PreDeploy *PreDeployStatus `json:"preDeploy,omitempty"`
+
+	// InitialDeployHookCompleted records that spec.initialDeployHook ran to
+	// success, so no later release selects it again. Set only by the operator.
+	// +optional
+	InitialDeployHookCompleted bool `json:"initialDeployHookCompleted,omitempty"`
 
 	// BuildRun is the execution window of the most recent terminal source
 	// build, read off the build Job's own status timestamps (w6/m123). It is
