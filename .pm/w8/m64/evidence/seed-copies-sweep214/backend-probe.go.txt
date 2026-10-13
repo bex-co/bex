@@ -1,0 +1,123 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package apps
+
+import (
+	"context"
+	"encoding/json"
+	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/secrets"
+	appv1 "github.com/bex-co/bex/lego/types/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"testing"
+)
+
+func TestQASeedCopyCurrentState214(t *testing.T) {
+	for _, tc := range []struct {
+		name, initial, desired string
+		edit                   *string
+		seed, mismatch         bool
+	}{
+		{name: "edited seed literal", initial: "seed A", desired: "seed A", edit: qa213String("edited B"), seed: true, mismatch: true},
+		{name: "edited empty seed", initial: "", desired: "", edit: qa213String("edited B"), seed: true, mismatch: true},
+		{name: "changed declaration cannot reset seed", initial: "seed A", desired: "declared C", edit: qa213String("edited B"), seed: true, mismatch: true},
+		{name: "unchanged seed control", initial: "seed A", desired: "seed A", seed: true},
+		{name: "immutable manifest literal control", initial: "literal A", desired: "literal A"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			cl := fakeClient()
+			base := &core.Base{Client: cl, Namespace: "default"}
+			kv := &qa213KV{data: map[string]map[string]string{}, versions: map[string]uint64{}}
+			env := &secrets.Service{Base: base, Store: kv}
+			svc := &Service{Base: base, EnvSeeder: env}
+			manifest := func(value string) string {
+				v := map[string]any{"key": "VALUE", "value": value}
+				if tc.seed {
+					v["sync"] = false
+				}
+				doc := map[string]any{"services": []any{map[string]any{"name": "consumer", "type": "web", "runtime": "image", "image": map[string]any{"url": "nginx:1"}, "envVars": []any{map[string]any{"key": "COPY", "fromService": map[string]any{"type": "web", "name": "source", "envVarKey": "VALUE"}}}}, map[string]any{"name": "source", "type": "web", "runtime": "image", "image": map[string]any{"url": "nginx:1"}, "envVars": []any{v}}}}
+				raw, _ := json.Marshal(doc)
+				return string(raw)
+			}
+			first := manifest(tc.initial)
+			initial, err := svc.DeployStack(ctx, DeployRequest{Manifest: first})
+			if err != nil {
+				t.Fatalf("initial apply: %v", err)
+			}
+			var sourceID string
+			for _, a := range initial.Services {
+				if a.Name == "source" {
+					sourceID = a.ID
+				}
+			}
+			if sourceID == "" {
+				t.Fatal("source view missing")
+			}
+			// CR-only Apps use stackServiceRef's object-name secret key.
+			sourceID = "source"
+			if tc.edit != nil {
+				if _, err := env.SetEnvVar(ctx, sourceID, "VALUE", secrets.EnvVarWrite{Value: *tc.edit}); err != nil {
+					t.Fatalf("normal own-fake value edit: %v", err)
+				}
+			}
+			second := manifest(tc.desired)
+			validation, err := svc.ValidateBlueprint(ctx, "", second, "")
+			if err != nil || !validation.Valid {
+				t.Fatalf("shared validation: %+v %v", validation, err)
+			}
+			if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: second}); err != nil {
+				t.Fatalf("reapply: %v", err)
+			}
+			value, err := env.GetEnvVar(ctx, sourceID, "VALUE")
+			if err != nil {
+				t.Fatalf("own-fake source read: %v", err)
+			}
+			list := &appv1.AppList{}
+			if err := cl.List(ctx, list, client.InNamespace("default")); err != nil {
+				t.Fatal(err)
+			}
+			var source, consumer *appv1.App
+			for i := range list.Items {
+				a := &list.Items[i]
+				switch a.Name {
+				case "source":
+					source = a
+				case "consumer":
+					consumer = a
+				}
+			}
+			if source == nil || consumer == nil {
+				t.Fatal("missing known CR-only objects")
+			}
+			copied := ""
+			present := false
+			for _, e := range consumer.Spec.Env {
+				if e.Name == "COPY" {
+					copied = e.Value
+					present = true
+				}
+			}
+			if !present || (value.Value != copied) != tc.mismatch {
+				t.Fatalf("source=%q COPY=%q wanted mismatch=%v", value.Value, copied, tc.mismatch)
+			}
+			record := map[string]any{"case": tc.name, "initial_manifest": first, "reapplied_manifest": second, "shared_local_validation_valid": validation.Valid, "edit": tc.edit, "source_value_after_edit_and_reapply": value.Value, "consumer_COPY": copied, "mismatch": value.Value != copied, "persisted_source": source, "persisted_consumer": consumer, "qualification": "actual apps/secrets feature services over fake Kubernetes/versioned storage; own harmless values only; no hosted apply/auth/runtime claimed"}
+			raw, _ := json.Marshal(record)
+			t.Log("QA214_SEEDCOPY " + string(raw))
+		})
+	}
+}

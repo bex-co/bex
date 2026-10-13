@@ -1,0 +1,182 @@
+{
+  "cases": [
+    {
+      "label": "bex-without-resync",
+      "app": {
+        "metadata": {
+          "name": "qa206-hook",
+          "namespace": "default",
+          "resourceVersion": "3",
+          "generation": 1,
+          "labels": {
+            "bex.co/app-id": "srv-db6vevpjg4rffmoso3l0"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "2",
+            "app.bex.co/updated-at": "2023-11-14T22:13:20Z",
+            "bex.co/initial-deploy-hook": "echo qa206-initial-once"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "notifyOnFail": "default",
+          "preDeployCommand": "echo qa206-initial-once",
+          "restartedAt": "2023-11-14T22:13:20Z",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        },
+        "status": {
+          "phase": "Running",
+          "preDeploy": {
+            "job": "",
+            "generation": 1,
+            "status": "Succeeded"
+          },
+          "activeRevision": "rev-1",
+          "image": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+        }
+      },
+      "wanted_command": "echo qa206-initial-once"
+    },
+    {
+      "label": "bex-resync-control",
+      "app": {
+        "metadata": {
+          "name": "qa206-hook",
+          "namespace": "default",
+          "resourceVersion": "4",
+          "generation": 1,
+          "labels": {
+            "bex.co/app-id": "srv-db6vevpjg4rffmoso3mg"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "2",
+            "app.bex.co/updated-at": "2023-11-14T22:13:20Z",
+            "bex.co/initial-deploy-hook": "echo qa206-initial-once",
+            "bex.co/initial-deploy-hook-ran": "true"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "notifyOnFail": "default",
+          "preDeployCommand": "echo qa206-regular",
+          "restartedAt": "2023-11-14T22:13:20Z",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        },
+        "status": {
+          "phase": "Running",
+          "preDeploy": {
+            "job": "",
+            "generation": 1,
+            "status": "Succeeded"
+          },
+          "activeRevision": "rev-1",
+          "image": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+        }
+      },
+      "wanted_command": "echo qa206-regular"
+    },
+    {
+      "label": "render-without-resync",
+      "app": {
+        "metadata": {
+          "name": "qa206-hook",
+          "namespace": "default",
+          "resourceVersion": "3",
+          "generation": 1,
+          "labels": {
+            "bex.co/app-id": "srv-db6vf01jg4rffmoso3o0"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "2",
+            "app.bex.co/updated-at": "2023-11-14T22:13:20Z",
+            "bex.co/initial-deploy-hook": "echo qa206-initial-once"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "notifyOnFail": "default",
+          "preDeployCommand": "echo qa206-initial-once",
+          "restartedAt": "2023-11-14T22:13:20Z",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        },
+        "status": {
+          "phase": "Running",
+          "preDeploy": {
+            "job": "",
+            "generation": 1,
+            "status": "Succeeded"
+          },
+          "activeRevision": "rev-1",
+          "image": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+        }
+      },
+      "wanted_command": "echo qa206-initial-once"
+    },
+    {
+      "label": "render-resync-control",
+      "app": {
+        "metadata": {
+          "name": "qa206-hook",
+          "namespace": "default",
+          "resourceVersion": "4",
+          "generation": 1,
+          "labels": {
+            "bex.co/app-id": "srv-db6vf01jg4rffmoso3pg"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "2",
+            "app.bex.co/updated-at": "2023-11-14T22:13:20Z",
+            "bex.co/initial-deploy-hook": "echo qa206-initial-once",
+            "bex.co/initial-deploy-hook-ran": "true"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "notifyOnFail": "default",
+          "preDeployCommand": "echo qa206-regular",
+          "restartedAt": "2023-11-14T22:13:20Z",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        },
+        "status": {
+          "phase": "Running",
+          "preDeploy": {
+            "job": "",
+            "generation": 1,
+            "status": "Succeeded"
+          },
+          "activeRevision": "rev-1",
+          "image": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+        }
+      },
+      "wanted_command": "echo qa206-regular"
+    }
+  ]
+}

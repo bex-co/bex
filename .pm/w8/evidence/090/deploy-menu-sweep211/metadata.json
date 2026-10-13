@@ -1,0 +1,15 @@
+{
+  "native_cases": 3,
+  "checkout_passes": 2,
+  "published_release_relative_control": 1,
+  "resource": "srv-db70r2va4m3s73d9i2lg",
+  "deploy": "dep-db70r2va4m3s73d9i2m0",
+  "action": "read-only exact-owned Live deploy; Dashboard explicitly selected, opener captured locally",
+  "excluded_QA_attempt": "initial QA driver assumed service palette order; deployment palette lists logs before dashboard, entered Logs, timeout. Read-only; not a product failure.",
+  "excluded_count": 1,
+  "cleanup": "all PTYs/configs/stub removed; reused Node fixture now deleted",
+  "environment_grant_persisted": false,
+  "real_browser_arrival": "untested",
+  "deployed_revision": "unknown",
+  "QA_product_edits_commit_push_release": false
+}

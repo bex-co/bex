@@ -1,0 +1,64 @@
+{
+  "envVarGroups": [
+    {
+      "envVars": [
+        {
+          "key": "VALUE",
+          "value": "group A"
+        }
+      ],
+      "name": "qa213-4e6c19-a"
+    },
+    {
+      "envVars": [
+        {
+          "key": "VALUE",
+          "value": "group B"
+        }
+      ],
+      "name": "qa213-4e6c19-b"
+    }
+  ],
+  "services": [
+    {
+      "envVars": [
+        {
+          "fromService": {
+            "envVarKey": "VALUE",
+            "name": "qa213-4e6c19-source",
+            "type": "web"
+          },
+          "key": "COPY"
+        }
+      ],
+      "image": {
+        "url": "nginx:1"
+      },
+      "name": "qa213-4e6c19-consumer",
+      "runtime": "image",
+      "type": "web",
+      "plan": "free"
+    },
+    {
+      "envVars": [
+        {
+          "fromGroup": "qa213-4e6c19-b"
+        },
+        {
+          "fromGroup": "qa213-4e6c19-a"
+        },
+        {
+          "key": "VALUE",
+          "value": ""
+        }
+      ],
+      "image": {
+        "url": "nginx:1"
+      },
+      "name": "qa213-4e6c19-source",
+      "runtime": "image",
+      "type": "web",
+      "plan": "free"
+    }
+  ]
+}

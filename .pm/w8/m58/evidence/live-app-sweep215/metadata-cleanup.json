@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-13T13:36:01.251119+00:00",
+  "source_head_at_fixture_creation": "4f03e81f1ea4a36e758f846820e8d3794c49461c",
+  "head_at_archiving": "4f03e81f1ea4a36e758f846820e8d3794c49461c",
+  "desired_API_image": "c1dab29d39c9",
+  "deployed_API_operator_revision": "unknown",
+  "published_Bex": "0.3.2",
+  "Render_pin": "2.27.0/a764810a768202704e7206eb7b87a47211fcd98e",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "auth": "isolated human grant",
+  "native_matrix_checks": 34,
+  "native_exact_wire": 8,
+  "matched_original_records": 21,
+  "observed_stored_nonmatching_padding": 1005,
+  "padding_API_diagnostic_pages": 11,
+  "padding_cursor_overlap": 0,
+  "saturated_raw_false_empty": "corrected in both native clients",
+  "controls": "Unicode table, café, ASCII/metacharacter/quote/tab/trailing-space, OR, forward direction and inclusive end controls retain messages/IDs",
+  "limits": "no new GraphQL/MCP/dashboard/pod fallback/live-tail or saturated managed-data proof; earlier acceptance retained, latest gaps explicit",
+  "excluded_setup": "first padding proof requested unsupported public limit1000 and correctly got400/exit1; diagnostic cursor pages use supported100; no product bug claimed",
+  "cleanup": "one exact-owned service/initial child deployment enumerated; native ack/API404/list absence/public404/baseline6/quota6 term0 PG/KV0",
+  "QA_product_fix_commit_push_release": false
+}

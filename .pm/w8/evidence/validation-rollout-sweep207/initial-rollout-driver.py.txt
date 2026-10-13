@@ -1,0 +1,20 @@
+import pathlib,json,datetime,secrets,subprocess,shutil
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('<REPO>/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());assert c['sync207_result']==0 and 'sweep207_validation_rollout' not in c
+nonce=secrets.token_hex(3);prefix='qa207-'+nonce;g={'sweep':207,'source_head':c['head'],'surface':'Native production acceptance of Key Value reference-property, supplied target-type and explicit empty seed fixes after desired API image pin changed','desired_image':'6ead1ae86285','deployed_revision':'unknown','mutation':'validation only; no resources applied','results':[]};c['sweep207_validation_rollout']=g
+def save():c['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+base={'type':'web','runtime':'image','plan':'free','image':{'url':'docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592'}}
+variants=[]
+for label,kind,ref,wanted in [('kv-env-only','keyvalue',{'envVarKey':'VALUE'},False),('redis-env-only','redis',{'envVarKey':'VALUE'},False),('kv-connection-control','keyvalue',{'property':'connectionString'},True),('kv-host-control','keyvalue',{'property':'host'},True)]:
+ source={'name':prefix+'-kv','type':'keyvalue','plan':'free'};caller={**base,'name':prefix+'-caller','envVars':[{'key':'COPY_VALUE','fromService':{'name':source['name'],'type':kind,**ref}}]};variants.append((label,{'services':[source,caller]},wanted))
+for label,typ,wanted in [('source-type-mismatch','pserv',False),('source-type-match','web',True)]:
+ source={**base,'name':prefix+'-source','envVars':[{'key':'VALUE','value':'ordinary literal'}]};caller={**base,'name':prefix+'-caller','envVars':[{'key':'COPY_VALUE','fromService':{'name':source['name'],'type':typ,'envVarKey':'VALUE'}}]};variants.append((label,{'services':[source,caller]},wanted))
+for label,value in [('seeded-empty-copy',''),('seeded-space-copy',' ')]:
+ source={**base,'name':prefix+'-source','envVars':[{'key':'VALUE','value':value,'sync':False}]};caller={**base,'name':prefix+'-caller','envVars':[{'key':'COPY_VALUE','fromService':{'name':source['name'],'type':'web','envVarKey':'VALUE'}}]};variants.append((label,{'services':[source,caller]},True))
+for label,extra,wanted in [('generated-plus-empty',{'value':''},False),('generated-only',{},True)]:
+ source={**base,'name':prefix+'-source','envVars':[{'key':'VALUE','generateValue':True,**extra}]};variants.append((label,{'services':[source]},wanted))
+cfg=p/'render-config/cli.yaml';assert not cfg.exists();shutil.copy2(p/'config/cli.yaml',cfg);cfg.chmod(0o600);save()
+try:
+ for client in ['bex','render']:
+  for label,doc,wanted in variants:
+   f=p/('sweep207-'+label+'.yaml');f.write_text(json.dumps(doc,ensure_ascii=False,indent=2)+'\n');f.chmod(0o600);z={'client':client,'case':label,'document':doc,'expected_valid':wanted,'state':'native validation intent persisted'};g['results'].append(z);save();r=json.loads(subprocess.check_output(['python3',str(p/('run.py' if client=='bex' else 'run-render.py')),*(['--release'] if client=='bex' else []),'blueprints','validate',str(f),'--confirm','-o','json'],text=True));v=json.loads(r['stdout']);z.update(result=r,decoded=v,passed=r['exit']==(0 if wanted else 1) and v['valid']==wanted);save();print(json.dumps({'client':client,'case':label,'exit':r['exit'],'valid':v['valid'],'expected_valid':wanted,'passed':z['passed'],'errors':v.get('errors')},ensure_ascii=False),flush=True)
+finally:cfg.unlink(missing_ok=True);g['copied_render_config_removed']=not cfg.exists();save()

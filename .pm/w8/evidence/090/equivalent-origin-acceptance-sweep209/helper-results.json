@@ -1,0 +1,35 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-run",
+    "^TestEnsureDashboardURL$",
+    "-count=1",
+    "-timeout=60s",
+    "-json",
+    "./internal/bridge"
+  ],
+  "head_before": "cb16919ab75d1a72663109b06707fb3663fc33cb",
+  "head_after": "cb16919ab75d1a72663109b06707fb3663fc33cb",
+  "exit": 0,
+  "elapsed": 1.44,
+  "passes": [
+    "TestEnsureDashboardURL/missing_file",
+    "TestEnsureDashboardURL/version-only_file",
+    "TestEnsureDashboardURL/unrelated_fields_kept",
+    "TestEnsureDashboardURL/saved_origin_kept",
+    "TestEnsureDashboardURL/slashless_default_host",
+    "TestEnsureDashboardURL/default_host_with_:443",
+    "TestEnsureDashboardURL/default_host_in_another_case",
+    "TestEnsureDashboardURL/saved_equivalent_host",
+    "TestEnsureDashboardURL/plain_http",
+    "TestEnsureDashboardURL/other_port",
+    "TestEnsureDashboardURL/other_path",
+    "TestEnsureDashboardURL/custom_API_host",
+    "TestEnsureDashboardURL/custom_stored_host",
+    "TestEnsureDashboardURL/malformed_config",
+    "TestEnsureDashboardURL/command_without_a_Dashboard_action",
+    "TestEnsureDashboardURL"
+  ],
+  "stderr": ""
+}

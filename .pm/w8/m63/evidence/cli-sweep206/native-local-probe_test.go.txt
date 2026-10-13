@@ -1,0 +1,75 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package deploys
+
+import (
+ "bytes"
+ "context"
+ "encoding/json"
+ "io"
+ "net/http"
+ "net/http/httptest"
+ "os"
+ "os/exec"
+ "path/filepath"
+ "strings"
+ "sync"
+ "testing"
+ "time"
+
+ "github.com/bex-co/bex/lego/backend/internal/apps"
+ "github.com/bex-co/bex/lego/backend/internal/id"
+ "github.com/bex-co/bex/lego/backend/internal/store"
+ appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+)
+
+func TestQANativeInitialHook206(t *testing.T) {
+ for _, client := range []string{"bex", "render"} {
+  for _, resync := range []bool{false, true} {
+   label:=client+"-without-resync";if resync{label=client+"-resync-control"}
+   t.Run(label,func(t *testing.T){
+    ds:=newFakeStore();svc,cl:=newService(ds);appsvc:=&apps.Service{Base:svc.Base}
+    manifest:=`services:
+  - name: qa206-hook
+    type: web
+    runtime: image
+    plan: free
+    image:
+      url: docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592
+    initialDeployHook: echo qa206-initial-once
+    preDeployCommand: echo qa206-regular
+`
+    ctx:=context.Background();created,err:=appsvc.DeployStack(ctx,apps.DeployRequest{Manifest:manifest});if err!=nil||len(created.Services)!=1{t.Fatalf("current initial apply:%+v %v",created,err)}
+    a:=getApp(t,cl,"qa206-hook");appID:=a.Labels[store.LabelAppID];if appID==""{t.Fatal("actual initial apply omitted ID")};a.Generation=1;a.Status.PreDeploy=&appv1alpha1.PreDeployStatus{Generation:1,Status:appv1alpha1.PreDeploySucceeded};a.Status.Phase=appv1alpha1.PhaseRunning;a.Status.ActiveRevision="rev-1";a.Status.Image=a.Spec.Image
+    if err=cl.Update(ctx,a);err!=nil{t.Fatal(err)}
+    first,err:=ds.CreateDeploy(ctx,appID,"create",a.Spec.Image,1,store.CommitInfo{},"");if err!=nil{t.Fatal(err)};ds.byApp[appID][0].Status=store.DeployLive
+    if resync{if _,err=appsvc.DeployStack(ctx,apps.DeployRequest{Manifest:manifest});err!=nil{t.Fatalf("current resync control:%v",err)}}
+    before:=getApp(t,cl,"qa206-hook").DeepCopy();mux:=http.NewServeMux();appsvc.RegisterREST(mux);svc.RegisterREST(mux);var mu sync.Mutex;var wire []map[string]any
+    server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){body,_:=io.ReadAll(io.LimitReader(r.Body,8192));r.Body=io.NopCloser(bytes.NewReader(body));rec:=httptest.NewRecorder();mux.ServeHTTP(rec,r);mu.Lock();wire=append(wire,map[string]any{"method":r.Method,"path":r.URL.Path,"query":r.URL.RawQuery,"body":string(body),"status":rec.Code,"response":rec.Body.String(),"user_agent":r.UserAgent()});mu.Unlock();for k,vs:=range rec.Header(){for _,v:=range vs{w.Header().Add(k,v)}};w.WriteHeader(rec.Code);_,_=w.Write(rec.Body.Bytes())}));defer server.Close()
+    configdir:=t.TempDir();configpath:=filepath.Join(configdir,"cli.yaml");if err=os.WriteFile(configpath,[]byte("version: 1\n"),0600);err!=nil{t.Fatal(err)}
+    binary:=os.Getenv("BEX_QA_206_BEX");prefix:="BEX";if client=="render"{binary=os.Getenv("BEX_QA_206_RENDER");prefix="RENDER"};if binary==""{t.Fatal("native fixture binary missing")}
+    childctx,cancel:=context.WithTimeout(ctx,15*time.Second);defer cancel();cmd:=exec.CommandContext(childctx,binary,"deploys","create",appID,"--confirm","-o","json")
+    env:=[]string{};for _,value:=range os.Environ(){name,_,_:=strings.Cut(value,"=");if strings.HasPrefix(name,"BEX_")||strings.HasPrefix(name,"RENDER_")||strings.HasPrefix(name,"QA_"){continue};env=append(env,value)}
+    env=append(env,prefix+"_HOST="+server.URL+"/v1/",prefix+"_CLI_CONFIG_DIR="+configdir,prefix+"_CLI_CONFIG_PATH="+configpath,prefix+"_WORKSPACE="+id.New(id.Workspace),"BEX_NO_UPDATE_NOTIFIER=1","DO_NOT_TRACK=1","RENDER_CLI_DISABLE_ANALYTICS=1","BEX_CLI_DISABLE_ANALYTICS=1");if client=="bex"{env=append(env,"BEX_ACCESS_TOKEN=qa206_local_dummy_env_key")}else{env=append(env,"RENDER_API_KEY=qa206_local_dummy_env_key")};cmd.Env=env
+    var out,stderr bytes.Buffer;cmd.Stdout=&out;cmd.Stderr=&stderr;start:=time.Now();err=cmd.Run();if err!=nil{t.Fatalf("native local command:%v stdout%s stderr%s wire%+v",err,out.String(),stderr.String(),wire)}
+    after:=getApp(t,cl,"qa206-hook");want:="echo qa206-initial-once";if resync{want="echo qa206-regular"};if after.Spec.PreDeployCommand!=want||after.Annotations[appv1alpha1.AnnotationReleaseGeneration]==""{t.Fatalf("unexpected current selection:%+v",after)}
+    posts:=0;for _,r:=range wire{if r["method"]=="POST"&&strings.HasSuffix(r["path"].(string),"/deploys"){posts++}};if posts!=1{t.Fatalf("native creates:%d wire%+v",posts,wire)}
+    record:=map[string]any{"label":label,"native_command":[]string{client,"deploys","create",appID,"--confirm","-o","json"},"exit":0,"elapsed":time.Since(start).Seconds(),"stdout":out.String(),"stderr":stderr.String(),"actual_native_wire_to_current_local_API":wire,"first_deploy_id":first.ID,"old_predeploy_success_generation":before.Status.PreDeploy.Generation,"new_release_generation":after.Annotations[appv1alpha1.AnnotationReleaseGeneration],"selected_predeploy_command":after.Spec.PreDeployCommand,"modeled_first_live_revision":before.Status.ActiveRevision,"persisted_app_after_native":after,"ran_marker":after.Annotations["bex.co/initial-deploy-hook-ran"],"qualification":"Native released Bex/pinned Render against real current handlers over loopback, fake client/store; first operator completion simulated, no hosted hook/job/runtime or real auth tested"};b,_:=json.Marshal(record);t.Log("QA206_HOOK "+string(b))
+   })
+  }
+ }
+}

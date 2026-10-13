@@ -1,0 +1,971 @@
+{
+  "sweep": 211,
+  "source_head": "b85ec5718276fbd780c661015b46950d293f5a5a",
+  "client": "bex",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "type": "web_service",
+  "name": "qa-20261013-35785c-nodepath",
+  "nonce": "35785c",
+  "marker": "QA211_35785c",
+  "time": "2026-10-13T10:52:58.503463+00:00",
+  "dependency_ids": [],
+  "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+  "role": "Node PATH alone then additive marker at same source commit",
+  "command": [
+    "bex",
+    "services",
+    "create",
+    "--name",
+    "qa-20261013-35785c-nodepath",
+    "--type",
+    "web_service",
+    "--runtime",
+    "node",
+    "--repo",
+    "https://github.com/bex-co/bex",
+    "--branch",
+    "main",
+    "--root-directory",
+    "examples/hello-go",
+    "--build-command",
+    "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');\nfunction hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}\nfunction snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}\nfs.writeFileSync(\"qa-built.json\",JSON.stringify({marker:\"QA211_35785c\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'",
+    "--start-command",
+    "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');\nfunction hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}\nfunction snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}\nconst http=require('\"'\"'http'\"'\"'),os=require('\"'\"'os'\"'\"');const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"','\"'\"'utf8'\"'\"'));http.createServer((req,res)=>{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"','\"'\"'Content-Length'\"'\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'",
+    "--health-check-path",
+    "/",
+    "--plan",
+    "free",
+    "--region",
+    "frankfurt",
+    "--auto-deploy=false",
+    "--env-var",
+    "PATH=/usr/local/bin",
+    "--secret-file",
+    "qa-note.txt:<QA_TMP>/sweep211-35785c-note.txt",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "capacity_proof": {
+    "at": "2026-10-13T10:52:58.495710+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.72,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49dcc3daf34de51-SJC"
+    },
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+  },
+  "initial_expected_bytes": {
+    "env_length": 8,
+    "env_sha256": "a4d0f0eb87fed960b9f1819efda1cd7935b4f665fdd3872149260986d11e96da",
+    "file_present": true,
+    "file_length": 24,
+    "file_sha256": "a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3"
+  },
+  "additive_expected_bytes": {
+    "env_length": 30,
+    "env_sha256": "10c9f62743db1ef14e3316c72825147a4b444c6d43dd28252ac0375b96cb5f14",
+    "file_present": true,
+    "file_length": 24,
+    "file_sha256": "a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3"
+  },
+  "additive_env_value": "QA211_35785c\n☃=second\n内側",
+  "program": "const fs=require('fs'),crypto=require('crypto');\nfunction hash(b){return crypto.createHash('sha256').update(b).digest('hex');}\nfunction snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'<absent>':process.env.QA_COMPLEX,'utf8');const f='/etc/secrets/qa-note.txt';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}\nconst http=require('http'),os=require('os');const built=JSON.parse(fs.readFileSync('qa-built.json','utf8'));http.createServer((req,res)=>{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'Content-Type':'application/json','Content-Length':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'0.0.0.0');",
+  "build_program": "const fs=require('fs'),crypto=require('crypto');\nfunction hash(b){return crypto.createHash('sha256').update(b).digest('hex');}\nfunction snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'<absent>':process.env.QA_COMPLEX,'utf8');const f='/etc/secrets/qa-note.txt';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}\nfs.writeFileSync(\"qa-built.json\",JSON.stringify({marker:\"QA211_35785c\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));",
+  "local_note": "<QA_TMP>/sweep211-35785c-note.txt",
+  "create_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261013-35785c-nodepath",
+      "--type",
+      "web_service",
+      "--runtime",
+      "node",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/hello-go",
+      "--build-command",
+      "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');\nfunction hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}\nfunction snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}\nfs.writeFileSync(\"qa-built.json\",JSON.stringify({marker:\"QA211_35785c\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'",
+      "--start-command",
+      "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');\nfunction hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}\nfunction snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}\nconst http=require('\"'\"'http'\"'\"'),os=require('\"'\"'os'\"'\"');const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"','\"'\"'utf8'\"'\"'));http.createServer((req,res)=>{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"','\"'\"'Content-Length'\"'\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'",
+      "--health-check-path",
+      "/",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--env-var",
+      "PATH=/usr/local/bin",
+      "--secret-file",
+      "qa-note.txt:<QA_TMP>/sweep211-35785c-note.txt",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.677,
+    "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-13T10:53:00Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db70r2va4m3s73d9i2lg\",\n  \"id\": \"srv-db70r2va4m3s73d9i2lg\",\n  \"name\": \"qa-20261013-35785c-nodepath\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-go\",\n  \"serviceDetails\": {\n    \"env\": \"node\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');\\nfunction hash(b){return crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');}\\nfunction snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\\\"'\\\"'\\u003cabsent\\u003e'\\\"'\\\"':process.env.QA_COMPLEX,'\\\"'\\\"'utf8'\\\"'\\\"');const f='\\\"'\\\"'/etc/secrets/qa-note.txt'\\\"'\\\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}\\nfs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify({marker:\\\"QA211_35785c\\\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');\\nfunction hash(b){return crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');}\\nfunction snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\\\"'\\\"'\\u003cabsent\\u003e'\\\"'\\\"':process.env.QA_COMPLEX,'\\\"'\\\"'utf8'\\\"'\\\"');const f='\\\"'\\\"'/etc/secrets/qa-note.txt'\\\"'\\\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}\\nconst http=require('\\\"'\\\"'http'\\\"'\\\"'),os=require('\\\"'\\\"'os'\\\"'\\\"');const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));http.createServer((req,res)=\\u003e{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"\n    },\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261013-35785c-nodepath:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"node\",\n    \"url\": \"https://qa-20261013-35785c-nodepath.onbex.co\"\n  },\n  \"slug\": \"qa-20261013-35785c-nodepath\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-13T10:53:00Z\"\n}",
+    "stderr": ""
+  },
+  "id": "srv-db70r2va4m3s73d9i2lg",
+  "create_response": {
+    "autoDeploy": "no",
+    "autoDeployTrigger": "off",
+    "branch": "main",
+    "createdAt": "2026-10-13T10:53:00Z",
+    "dashboardUrl": "https://dashboard.bex.co/web/srv-db70r2va4m3s73d9i2lg",
+    "id": "srv-db70r2va4m3s73d9i2lg",
+    "name": "qa-20261013-35785c-nodepath",
+    "notifyOnFail": "default",
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "repo": "https://github.com/bex-co/bex",
+    "rootDir": "examples/hello-go",
+    "serviceDetails": {
+      "env": "node",
+      "envSpecificDetails": {
+        "buildCommand": "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');\nfunction hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}\nfunction snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}\nfs.writeFileSync(\"qa-built.json\",JSON.stringify({marker:\"QA211_35785c\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'",
+        "preDeployCommand": "",
+        "startCommand": "/usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),crypto=require('\"'\"'crypto'\"'\"');\nfunction hash(b){return crypto.createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');}\nfunction snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\"'\"'<absent>'\"'\"':process.env.QA_COMPLEX,'\"'\"'utf8'\"'\"');const f='\"'\"'/etc/secrets/qa-note.txt'\"'\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}\nconst http=require('\"'\"'http'\"'\"'),os=require('\"'\"'os'\"'\"');const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"','\"'\"'utf8'\"'\"'));http.createServer((req,res)=>{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"','\"'\"'Content-Length'\"'\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'"
+      },
+      "healthCheckPath": "/",
+      "internalAddress": "qa-20261013-35785c-nodepath:3000",
+      "maintenanceMode": {
+        "enabled": false,
+        "uri": ""
+      },
+      "maxShutdownDelaySeconds": 30,
+      "numInstances": 1,
+      "plan": "free",
+      "port": 3000,
+      "region": "fsn1",
+      "renderSubdomainPolicy": "enabled",
+      "runtime": "node",
+      "url": "https://qa-20261013-35785c-nodepath.onbex.co"
+    },
+    "slug": "qa-20261013-35785c-nodepath",
+    "suspended": "not_suspended",
+    "suspenders": [],
+    "type": "web_service",
+    "updatedAt": "2026-10-13T10:53:00Z"
+  },
+  "initial_observations": [
+    {
+      "at": "2026-10-13T10:53:28.356939+00:00",
+      "native_list": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db70r2va4m3s73d9i2lg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.949,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:52:59.596509Z\",\n    \"id\": \"dep-db70r2va4m3s73d9i2m0\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:53:06.961628Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "target": {
+        "commit": {
+          "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+          "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+        },
+        "createdAt": "2026-10-13T10:52:59.596509Z",
+        "id": "dep-db70r2va4m3s73d9i2m0",
+        "status": "queued",
+        "trigger": "other",
+        "updatedAt": "2026-10-13T10:53:06.961628Z"
+      },
+      "runtime": {
+        "exit": 0,
+        "http": "404",
+        "body": null,
+        "raw": "404 page not found\n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-13T10:53:35.726677+00:00",
+      "native_list": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db70r2va4m3s73d9i2lg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.673,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:52:59.596509Z\",\n    \"id\": \"dep-db70r2va4m3s73d9i2m0\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:53:06.961628Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "target": {
+        "commit": {
+          "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+          "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+        },
+        "createdAt": "2026-10-13T10:52:59.596509Z",
+        "id": "dep-db70r2va4m3s73d9i2m0",
+        "status": "queued",
+        "trigger": "other",
+        "updatedAt": "2026-10-13T10:53:06.961628Z"
+      },
+      "runtime": {
+        "exit": 0,
+        "http": "404",
+        "body": null,
+        "raw": "404 page not found\n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-13T10:53:42.708239+00:00",
+      "native_list": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db70r2va4m3s73d9i2lg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.291,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:52:59.596509Z\",\n    \"id\": \"dep-db70r2va4m3s73d9i2m0\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:53:06.961628Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "target": {
+        "commit": {
+          "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+          "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+        },
+        "createdAt": "2026-10-13T10:52:59.596509Z",
+        "id": "dep-db70r2va4m3s73d9i2m0",
+        "status": "queued",
+        "trigger": "other",
+        "updatedAt": "2026-10-13T10:53:06.961628Z"
+      },
+      "runtime": {
+        "exit": 0,
+        "http": "404",
+        "body": null,
+        "raw": "404 page not found\n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-13T10:54:44.447273+00:00",
+      "native_list": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db70r2va4m3s73d9i2lg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.587,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:52:59.596509Z\",\n    \"id\": \"dep-db70r2va4m3s73d9i2m0\",\n    \"startedAt\": \"2026-10-13T10:54:06.855158Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:54:06.855159Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "target": {
+        "commit": {
+          "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+          "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+        },
+        "createdAt": "2026-10-13T10:52:59.596509Z",
+        "id": "dep-db70r2va4m3s73d9i2m0",
+        "startedAt": "2026-10-13T10:54:06.855158Z",
+        "status": "build_in_progress",
+        "trigger": "other",
+        "updatedAt": "2026-10-13T10:54:06.855159Z"
+      },
+      "runtime": {
+        "exit": 0,
+        "http": "404",
+        "body": null,
+        "raw": "404 page not found\n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-13T10:54:51.625569+00:00",
+      "native_list": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db70r2va4m3s73d9i2lg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.496,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:52:59.596509Z\",\n    \"id\": \"dep-db70r2va4m3s73d9i2m0\",\n    \"startedAt\": \"2026-10-13T10:54:06.855158Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:54:06.855159Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "target": {
+        "commit": {
+          "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+          "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+        },
+        "createdAt": "2026-10-13T10:52:59.596509Z",
+        "id": "dep-db70r2va4m3s73d9i2m0",
+        "startedAt": "2026-10-13T10:54:06.855158Z",
+        "status": "build_in_progress",
+        "trigger": "other",
+        "updatedAt": "2026-10-13T10:54:06.855159Z"
+      },
+      "runtime": {
+        "exit": 0,
+        "http": "404",
+        "body": null,
+        "raw": "404 page not found\n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-13T10:54:58.623303+00:00",
+      "native_list": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db70r2va4m3s73d9i2lg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.289,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:52:59.596509Z\",\n    \"id\": \"dep-db70r2va4m3s73d9i2m0\",\n    \"startedAt\": \"2026-10-13T10:54:06.855158Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:54:06.855159Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "target": {
+        "commit": {
+          "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+          "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+        },
+        "createdAt": "2026-10-13T10:52:59.596509Z",
+        "id": "dep-db70r2va4m3s73d9i2m0",
+        "startedAt": "2026-10-13T10:54:06.855158Z",
+        "status": "build_in_progress",
+        "trigger": "other",
+        "updatedAt": "2026-10-13T10:54:06.855159Z"
+      },
+      "runtime": {
+        "exit": 0,
+        "http": "503",
+        "body": null,
+        "raw": "service unavailable\n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-13T10:55:54.481095+00:00",
+      "native_list": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db70r2va4m3s73d9i2lg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.437,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:52:59.596509Z\",\n    \"finishedAt\": \"2026-10-13T10:55:23.027393Z\",\n    \"id\": \"dep-db70r2va4m3s73d9i2m0\",\n    \"startedAt\": \"2026-10-13T10:54:06.855158Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:55:23.027401Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "target": {
+        "commit": {
+          "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+          "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+        },
+        "createdAt": "2026-10-13T10:52:59.596509Z",
+        "finishedAt": "2026-10-13T10:55:23.027393Z",
+        "id": "dep-db70r2va4m3s73d9i2m0",
+        "startedAt": "2026-10-13T10:54:06.855158Z",
+        "status": "live",
+        "trigger": "other",
+        "updatedAt": "2026-10-13T10:55:23.027401Z"
+      },
+      "runtime": {
+        "exit": 0,
+        "http": "200",
+        "body": {
+          "marker": "QA211_35785c",
+          "built": {
+            "marker": "QA211_35785c",
+            "snapshot": {
+              "env_length": 8,
+              "env_sha256": "a4d0f0eb87fed960b9f1819efda1cd7935b4f665fdd3872149260986d11e96da",
+              "file_present": true,
+              "file_length": 24,
+              "file_sha256": "a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3"
+            },
+            "build_path": "/usr/local/bin",
+            "built_at": 1791888872061
+          },
+          "runtime": {
+            "env_length": 8,
+            "env_sha256": "a4d0f0eb87fed960b9f1819efda1cd7935b4f665fdd3872149260986d11e96da",
+            "file_present": true,
+            "file_length": 24,
+            "file_sha256": "a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3"
+          },
+          "runtime_path": "/usr/local/bin",
+          "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-35785c-nodepath-7fdbdhvwsk"
+        },
+        "raw": "{\"marker\":\"QA211_35785c\",\"built\":{\"marker\":\"QA211_35785c\",\"snapshot\":{\"env_length\":8,\"env_sha256\":\"a4d0f0eb87fed960b9f1819efda1cd7935b4f665fdd3872149260986d11e96da\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3\"},\"build_path\":\"/usr/local/bin\",\"built_at\":1791888872061},\"runtime\":{\"env_length\":8,\"env_sha256\":\"a4d0f0eb87fed960b9f1819efda1cd7935b4f665fdd3872149260986d11e96da\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3\"},\"runtime_path\":\"/usr/local/bin\",\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261013-35785c-nodepath-7fdbdhvwsk\"}",
+        "stderr": ""
+      }
+    }
+  ],
+  "initial_settled": true,
+  "initial_pass": true,
+  "initial_deploy": {
+    "commit": {
+      "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+      "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+    },
+    "createdAt": "2026-10-13T10:52:59.596509Z",
+    "finishedAt": "2026-10-13T10:55:23.027393Z",
+    "id": "dep-db70r2va4m3s73d9i2m0",
+    "startedAt": "2026-10-13T10:54:06.855158Z",
+    "status": "live",
+    "trigger": "other",
+    "updatedAt": "2026-10-13T10:55:23.027401Z"
+  },
+  "initial_runtime": {
+    "exit": 0,
+    "http": "200",
+    "body": {
+      "marker": "QA211_35785c",
+      "built": {
+        "marker": "QA211_35785c",
+        "snapshot": {
+          "env_length": 8,
+          "env_sha256": "a4d0f0eb87fed960b9f1819efda1cd7935b4f665fdd3872149260986d11e96da",
+          "file_present": true,
+          "file_length": 24,
+          "file_sha256": "a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3"
+        },
+        "build_path": "/usr/local/bin",
+        "built_at": 1791888872061
+      },
+      "runtime": {
+        "env_length": 8,
+        "env_sha256": "a4d0f0eb87fed960b9f1819efda1cd7935b4f665fdd3872149260986d11e96da",
+        "file_present": true,
+        "file_length": 24,
+        "file_sha256": "a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3"
+      },
+      "runtime_path": "/usr/local/bin",
+      "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-35785c-nodepath-7fdbdhvwsk"
+    },
+    "raw": "{\"marker\":\"QA211_35785c\",\"built\":{\"marker\":\"QA211_35785c\",\"snapshot\":{\"env_length\":8,\"env_sha256\":\"a4d0f0eb87fed960b9f1819efda1cd7935b4f665fdd3872149260986d11e96da\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3\"},\"build_path\":\"/usr/local/bin\",\"built_at\":1791888872061},\"runtime\":{\"env_length\":8,\"env_sha256\":\"a4d0f0eb87fed960b9f1819efda1cd7935b4f665fdd3872149260986d11e96da\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3\"},\"runtime_path\":\"/usr/local/bin\",\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261013-35785c-nodepath-7fdbdhvwsk\"}",
+    "stderr": ""
+  },
+  "additive_intent": {
+    "at": "2026-10-13T10:59:23.592569+00:00",
+    "api_only_setup": true,
+    "method": "PATCH",
+    "path": "/v1/services/srv-db70r2va4m3s73d9i2lg/environment",
+    "body": {
+      "envVars": [
+        {
+          "key": "QA_COMPLEX",
+          "value": "QA211_35785c\n☃=second\n内側"
+        }
+      ],
+      "saveMode": "save_only"
+    },
+    "qualification": "Exact-owned additive marker only; custom PATH/files/commands unchanged; native same-commit deploy follows"
+  },
+  "additive_setup": {
+    "status": "200",
+    "curl_exit": 0,
+    "response": "{\"envVarKeys\":[\"PATH\",\"QA_COMPLEX\"],\"secretFileNames\":[\"qa-note.txt\"],\"rolledOut\":false,\"revision\":null}\n",
+    "stderr": ""
+  },
+  "additive_native_intent": {
+    "at": "2026-10-13T10:59:24.538964+00:00",
+    "command": [
+      "bex",
+      "deploys",
+      "create",
+      "srv-db70r2va4m3s73d9i2lg",
+      "--commit",
+      "b85ec5718276fbd780c661015b46950d293f5a5a",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "same_initial_commit": true,
+    "state": "intent recorded"
+  },
+  "additive_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "deploys",
+      "create",
+      "srv-db70r2va4m3s73d9i2lg",
+      "--commit",
+      "b85ec5718276fbd780c661015b46950d293f5a5a",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.763,
+    "stdout": "{\n  \"commit\": {\n    \"createdAt\": \"2026-10-13T10:38:03Z\",\n    \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n    \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n  },\n  \"createdAt\": \"2026-10-13T10:59:25.363709Z\",\n  \"id\": \"dep-db70u3fa4m3s73d9i2n0\",\n  \"status\": \"created\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-13T10:59:25.363709Z\"\n}",
+    "stderr": ""
+  },
+  "additive_deploy_id": "dep-db70u3fa4m3s73d9i2n0",
+  "additive_observations": [
+    {
+      "at": "2026-10-13T11:00:03.101178+00:00",
+      "native_list": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db70r2va4m3s73d9i2lg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.52,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-13T10:38:03Z\",\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:59:25.363709Z\",\n    \"id\": \"dep-db70u3fa4m3s73d9i2n0\",\n    \"startedAt\": \"2026-10-13T10:59:36.876197Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-13T10:59:36.876198Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:52:59.596509Z\",\n    \"finishedAt\": \"2026-10-13T10:55:23.027393Z\",\n    \"id\": \"dep-db70r2va4m3s73d9i2m0\",\n    \"startedAt\": \"2026-10-13T10:54:06.855158Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:55:23.027401Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "target": {
+        "commit": {
+          "createdAt": "2026-10-13T10:38:03Z",
+          "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+          "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+        },
+        "createdAt": "2026-10-13T10:59:25.363709Z",
+        "id": "dep-db70u3fa4m3s73d9i2n0",
+        "startedAt": "2026-10-13T10:59:36.876197Z",
+        "status": "build_in_progress",
+        "trigger": "api",
+        "updatedAt": "2026-10-13T10:59:36.876198Z"
+      },
+      "runtime": {
+        "exit": 0,
+        "http": "200",
+        "body": {
+          "marker": "QA211_35785c",
+          "built": {
+            "marker": "QA211_35785c",
+            "snapshot": {
+              "env_length": 8,
+              "env_sha256": "a4d0f0eb87fed960b9f1819efda1cd7935b4f665fdd3872149260986d11e96da",
+              "file_present": true,
+              "file_length": 24,
+              "file_sha256": "a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3"
+            },
+            "build_path": "/usr/local/bin",
+            "built_at": 1791888872061
+          },
+          "runtime": {
+            "env_length": 8,
+            "env_sha256": "a4d0f0eb87fed960b9f1819efda1cd7935b4f665fdd3872149260986d11e96da",
+            "file_present": true,
+            "file_length": 24,
+            "file_sha256": "a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3"
+          },
+          "runtime_path": "/usr/local/bin",
+          "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-35785c-nodepath-7fdbdhvwsk"
+        },
+        "raw": "{\"marker\":\"QA211_35785c\",\"built\":{\"marker\":\"QA211_35785c\",\"snapshot\":{\"env_length\":8,\"env_sha256\":\"a4d0f0eb87fed960b9f1819efda1cd7935b4f665fdd3872149260986d11e96da\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3\"},\"build_path\":\"/usr/local/bin\",\"built_at\":1791888872061},\"runtime\":{\"env_length\":8,\"env_sha256\":\"a4d0f0eb87fed960b9f1819efda1cd7935b4f665fdd3872149260986d11e96da\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3\"},\"runtime_path\":\"/usr/local/bin\",\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261013-35785c-nodepath-7fdbdhvwsk\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-13T11:00:10.080993+00:00",
+      "native_list": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db70r2va4m3s73d9i2lg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.293,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-13T10:38:03Z\",\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:59:25.363709Z\",\n    \"id\": \"dep-db70u3fa4m3s73d9i2n0\",\n    \"startedAt\": \"2026-10-13T10:59:36.876197Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-13T10:59:36.876198Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:52:59.596509Z\",\n    \"finishedAt\": \"2026-10-13T10:55:23.027393Z\",\n    \"id\": \"dep-db70r2va4m3s73d9i2m0\",\n    \"startedAt\": \"2026-10-13T10:54:06.855158Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:55:23.027401Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "target": {
+        "commit": {
+          "createdAt": "2026-10-13T10:38:03Z",
+          "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+          "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+        },
+        "createdAt": "2026-10-13T10:59:25.363709Z",
+        "id": "dep-db70u3fa4m3s73d9i2n0",
+        "startedAt": "2026-10-13T10:59:36.876197Z",
+        "status": "build_in_progress",
+        "trigger": "api",
+        "updatedAt": "2026-10-13T10:59:36.876198Z"
+      },
+      "runtime": {
+        "exit": 0,
+        "http": "200",
+        "body": {
+          "marker": "QA211_35785c",
+          "built": {
+            "marker": "QA211_35785c",
+            "snapshot": {
+              "env_length": 8,
+              "env_sha256": "a4d0f0eb87fed960b9f1819efda1cd7935b4f665fdd3872149260986d11e96da",
+              "file_present": true,
+              "file_length": 24,
+              "file_sha256": "a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3"
+            },
+            "build_path": "/usr/local/bin",
+            "built_at": 1791888872061
+          },
+          "runtime": {
+            "env_length": 8,
+            "env_sha256": "a4d0f0eb87fed960b9f1819efda1cd7935b4f665fdd3872149260986d11e96da",
+            "file_present": true,
+            "file_length": 24,
+            "file_sha256": "a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3"
+          },
+          "runtime_path": "/usr/local/bin",
+          "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-35785c-nodepath-7fdbdhvwsk"
+        },
+        "raw": "{\"marker\":\"QA211_35785c\",\"built\":{\"marker\":\"QA211_35785c\",\"snapshot\":{\"env_length\":8,\"env_sha256\":\"a4d0f0eb87fed960b9f1819efda1cd7935b4f665fdd3872149260986d11e96da\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3\"},\"build_path\":\"/usr/local/bin\",\"built_at\":1791888872061},\"runtime\":{\"env_length\":8,\"env_sha256\":\"a4d0f0eb87fed960b9f1819efda1cd7935b4f665fdd3872149260986d11e96da\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3\"},\"runtime_path\":\"/usr/local/bin\",\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261013-35785c-nodepath-7fdbdhvwsk\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-13T11:00:17.096335+00:00",
+      "native_list": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db70r2va4m3s73d9i2lg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.293,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-13T10:38:03Z\",\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:59:25.363709Z\",\n    \"id\": \"dep-db70u3fa4m3s73d9i2n0\",\n    \"startedAt\": \"2026-10-13T10:59:36.876197Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-13T10:59:36.876198Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:52:59.596509Z\",\n    \"finishedAt\": \"2026-10-13T10:55:23.027393Z\",\n    \"id\": \"dep-db70r2va4m3s73d9i2m0\",\n    \"startedAt\": \"2026-10-13T10:54:06.855158Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T10:55:23.027401Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "target": {
+        "commit": {
+          "createdAt": "2026-10-13T10:38:03Z",
+          "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+          "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+        },
+        "createdAt": "2026-10-13T10:59:25.363709Z",
+        "id": "dep-db70u3fa4m3s73d9i2n0",
+        "startedAt": "2026-10-13T10:59:36.876197Z",
+        "status": "build_in_progress",
+        "trigger": "api",
+        "updatedAt": "2026-10-13T10:59:36.876198Z"
+      },
+      "runtime": {
+        "exit": 0,
+        "http": "200",
+        "body": {
+          "marker": "QA211_35785c",
+          "built": {
+            "marker": "QA211_35785c",
+            "snapshot": {
+              "env_length": 8,
+              "env_sha256": "a4d0f0eb87fed960b9f1819efda1cd7935b4f665fdd3872149260986d11e96da",
+              "file_present": true,
+              "file_length": 24,
+              "file_sha256": "a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3"
+            },
+            "build_path": "/usr/local/bin",
+            "built_at": 1791888872061
+          },
+          "runtime": {
+            "env_length": 8,
+            "env_sha256": "a4d0f0eb87fed960b9f1819efda1cd7935b4f665fdd3872149260986d11e96da",
+            "file_present": true,
+            "file_length": 24,
+            "file_sha256": "a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3"
+          },
+          "runtime_path": "/usr/local/bin",
+          "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-35785c-nodepath-7fdbdhvwsk"
+        },
+        "raw": "{\"marker\":\"QA211_35785c\",\"built\":{\"marker\":\"QA211_35785c\",\"snapshot\":{\"env_length\":8,\"env_sha256\":\"a4d0f0eb87fed960b9f1819efda1cd7935b4f665fdd3872149260986d11e96da\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3\"},\"build_path\":\"/usr/local/bin\",\"built_at\":1791888872061},\"runtime\":{\"env_length\":8,\"env_sha256\":\"a4d0f0eb87fed960b9f1819efda1cd7935b4f665fdd3872149260986d11e96da\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3\"},\"runtime_path\":\"/usr/local/bin\",\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261013-35785c-nodepath-7fdbdhvwsk\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-13T11:01:49.999794+00:00",
+      "native_list": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db70r2va4m3s73d9i2lg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.861,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-13T10:38:03Z\",\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:59:25.363709Z\",\n    \"finishedAt\": \"2026-10-13T11:00:53.021022Z\",\n    \"id\": \"dep-db70u3fa4m3s73d9i2n0\",\n    \"startedAt\": \"2026-10-13T10:59:36.876197Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-13T11:00:53.021023Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:52:59.596509Z\",\n    \"finishedAt\": \"2026-10-13T10:55:23.027393Z\",\n    \"id\": \"dep-db70r2va4m3s73d9i2m0\",\n    \"startedAt\": \"2026-10-13T10:54:06.855158Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T11:00:53.024986Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "target": {
+        "commit": {
+          "createdAt": "2026-10-13T10:38:03Z",
+          "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+          "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+        },
+        "createdAt": "2026-10-13T10:59:25.363709Z",
+        "finishedAt": "2026-10-13T11:00:53.021022Z",
+        "id": "dep-db70u3fa4m3s73d9i2n0",
+        "startedAt": "2026-10-13T10:59:36.876197Z",
+        "status": "live",
+        "trigger": "api",
+        "updatedAt": "2026-10-13T11:00:53.021023Z"
+      },
+      "runtime": {
+        "exit": 0,
+        "http": "200",
+        "body": {
+          "marker": "QA211_35785c",
+          "built": {
+            "marker": "QA211_35785c",
+            "snapshot": {
+              "env_length": 30,
+              "env_sha256": "10c9f62743db1ef14e3316c72825147a4b444c6d43dd28252ac0375b96cb5f14",
+              "file_present": true,
+              "file_length": 24,
+              "file_sha256": "a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3"
+            },
+            "build_path": "/usr/local/bin",
+            "built_at": 1791889211599
+          },
+          "runtime": {
+            "env_length": 30,
+            "env_sha256": "10c9f62743db1ef14e3316c72825147a4b444c6d43dd28252ac0375b96cb5f14",
+            "file_present": true,
+            "file_length": 24,
+            "file_sha256": "a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3"
+          },
+          "runtime_path": "/usr/local/bin",
+          "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-35785c-nodepath-6f8bb28lzd"
+        },
+        "raw": "{\"marker\":\"QA211_35785c\",\"built\":{\"marker\":\"QA211_35785c\",\"snapshot\":{\"env_length\":30,\"env_sha256\":\"10c9f62743db1ef14e3316c72825147a4b444c6d43dd28252ac0375b96cb5f14\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3\"},\"build_path\":\"/usr/local/bin\",\"built_at\":1791889211599},\"runtime\":{\"env_length\":30,\"env_sha256\":\"10c9f62743db1ef14e3316c72825147a4b444c6d43dd28252ac0375b96cb5f14\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3\"},\"runtime_path\":\"/usr/local/bin\",\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261013-35785c-nodepath-6f8bb28lzd\"}",
+        "stderr": ""
+      }
+    }
+  ],
+  "additive_settled": true,
+  "additive_pass": true,
+  "additive_deploy": {
+    "commit": {
+      "createdAt": "2026-10-13T10:38:03Z",
+      "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+      "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+    },
+    "createdAt": "2026-10-13T10:59:25.363709Z",
+    "finishedAt": "2026-10-13T11:00:53.021022Z",
+    "id": "dep-db70u3fa4m3s73d9i2n0",
+    "startedAt": "2026-10-13T10:59:36.876197Z",
+    "status": "live",
+    "trigger": "api",
+    "updatedAt": "2026-10-13T11:00:53.021023Z"
+  },
+  "additive_runtime": {
+    "exit": 0,
+    "http": "200",
+    "body": {
+      "marker": "QA211_35785c",
+      "built": {
+        "marker": "QA211_35785c",
+        "snapshot": {
+          "env_length": 30,
+          "env_sha256": "10c9f62743db1ef14e3316c72825147a4b444c6d43dd28252ac0375b96cb5f14",
+          "file_present": true,
+          "file_length": 24,
+          "file_sha256": "a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3"
+        },
+        "build_path": "/usr/local/bin",
+        "built_at": 1791889211599
+      },
+      "runtime": {
+        "env_length": 30,
+        "env_sha256": "10c9f62743db1ef14e3316c72825147a4b444c6d43dd28252ac0375b96cb5f14",
+        "file_present": true,
+        "file_length": 24,
+        "file_sha256": "a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3"
+      },
+      "runtime_path": "/usr/local/bin",
+      "instance": "tea-daif693dqjvc73e7as3g-qa-20261013-35785c-nodepath-6f8bb28lzd"
+    },
+    "raw": "{\"marker\":\"QA211_35785c\",\"built\":{\"marker\":\"QA211_35785c\",\"snapshot\":{\"env_length\":30,\"env_sha256\":\"10c9f62743db1ef14e3316c72825147a4b444c6d43dd28252ac0375b96cb5f14\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3\"},\"build_path\":\"/usr/local/bin\",\"built_at\":1791889211599},\"runtime\":{\"env_length\":30,\"env_sha256\":\"10c9f62743db1ef14e3316c72825147a4b444c6d43dd28252ac0375b96cb5f14\",\"file_present\":true,\"file_length\":24,\"file_sha256\":\"a36819ba7a06f6d9c4b2bfbdf603fa8c9bda1a66b11e3fb2e56d41752d680fa3\"},\"runtime_path\":\"/usr/local/bin\",\"instance\":\"tea-daif693dqjvc73e7as3g-qa-20261013-35785c-nodepath-6f8bb28lzd\"}",
+    "stderr": ""
+  },
+  "deploy_children": [
+    {
+      "commit": {
+        "createdAt": "2026-10-13T10:38:03Z",
+        "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+        "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+      },
+      "createdAt": "2026-10-13T10:59:25.363709Z",
+      "finishedAt": "2026-10-13T11:00:53.021022Z",
+      "id": "dep-db70u3fa4m3s73d9i2n0",
+      "startedAt": "2026-10-13T10:59:36.876197Z",
+      "status": "live",
+      "trigger": "api",
+      "updatedAt": "2026-10-13T11:00:53.021023Z"
+    },
+    {
+      "commit": {
+        "id": "b85ec5718276fbd780c661015b46950d293f5a5a",
+        "message": "chore(deploy): pin platform images to c1dab29d39c9 [skip ci]"
+      },
+      "createdAt": "2026-10-13T10:52:59.596509Z",
+      "finishedAt": "2026-10-13T10:55:23.027393Z",
+      "id": "dep-db70r2va4m3s73d9i2m0",
+      "startedAt": "2026-10-13T10:54:06.855158Z",
+      "status": "deactivated",
+      "trigger": "other",
+      "updatedAt": "2026-10-13T11:00:53.024986Z"
+    }
+  ],
+  "children_enumeration_evidence": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "deploys",
+      "list",
+      "srv-db70r2va4m3s73d9i2lg",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.744,
+    "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-13T10:38:03Z\",\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:59:25.363709Z\",\n    \"finishedAt\": \"2026-10-13T11:00:53.021022Z\",\n    \"id\": \"dep-db70u3fa4m3s73d9i2n0\",\n    \"startedAt\": \"2026-10-13T10:59:36.876197Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-13T11:00:53.021023Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"b85ec5718276fbd780c661015b46950d293f5a5a\",\n      \"message\": \"chore(deploy): pin platform images to c1dab29d39c9 [skip ci]\"\n    },\n    \"createdAt\": \"2026-10-13T10:52:59.596509Z\",\n    \"finishedAt\": \"2026-10-13T10:55:23.027393Z\",\n    \"id\": \"dep-db70r2va4m3s73d9i2m0\",\n    \"startedAt\": \"2026-10-13T10:54:06.855158Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-13T11:00:53.024986Z\"\n  }\n]",
+    "stderr": ""
+  },
+  "delete_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "delete",
+      "srv-db70r2va4m3s73d9i2lg",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.778,
+    "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-13T10:53:00Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db70r2va4m3s73d9i2lg\",\n    \"id\": \"srv-db70r2va4m3s73d9i2lg\",\n    \"name\": \"qa-20261013-35785c-nodepath\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-go\",\n    \"serviceDetails\": {\n      \"env\": \"node\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');\\nfunction hash(b){return crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');}\\nfunction snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\\\"'\\\"'\\u003cabsent\\u003e'\\\"'\\\"':process.env.QA_COMPLEX,'\\\"'\\\"'utf8'\\\"'\\\"');const f='\\\"'\\\"'/etc/secrets/qa-note.txt'\\\"'\\\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}\\nfs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify({marker:\\\"QA211_35785c\\\",snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),crypto=require('\\\"'\\\"'crypto'\\\"'\\\"');\\nfunction hash(b){return crypto.createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');}\\nfunction snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'\\\"'\\\"'\\u003cabsent\\u003e'\\\"'\\\"':process.env.QA_COMPLEX,'\\\"'\\\"'utf8'\\\"'\\\"');const f='\\\"'\\\"'/etc/secrets/qa-note.txt'\\\"'\\\"';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}\\nconst http=require('\\\"'\\\"'http'\\\"'\\\"'),os=require('\\\"'\\\"'os'\\\"'\\\"');const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"','\\\"'\\\"'utf8'\\\"'\\\"'));http.createServer((req,res)=\\u003e{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"','\\\"'\\\"'Content-Length'\\\"'\\\"':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261013-35785c-nodepath:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"node\",\n      \"url\": \"https://qa-20261013-35785c-nodepath.onbex.co\"\n    },\n    \"slug\": \"qa-20261013-35785c-nodepath\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-13T11:00:37Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+    "stderr": ""
+  },
+  "detail_after_delete": {
+    "at": "2026-10-13T11:03:05.996167+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/services/srv-db70r2va4m3s73d9i2lg",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "404",
+    "elapsed": 0.239,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49ddb1579cf168e-SJC"
+    },
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+  },
+  "workspace_after_delete_ids": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3v694dm7c7390q930",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0"
+  ],
+  "runtime_after_delete_checks": [
+    {
+      "exit": 0,
+      "stdout": "404 page not found\n\n404",
+      "stderr": ""
+    }
+  ],
+  "quota_after_delete": {
+    "at": "2026-10-13T11:03:08.016343+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.69,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49ddb1f4cdced3a-SJC"
+    },
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+  }
+}

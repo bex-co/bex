@@ -1,0 +1,3000 @@
+{
+  "sweep": 207,
+  "nonce": "de5e17",
+  "source_head": "3c6809182c0886e6bb537dfbba156df2baff7983",
+  "surface": "Full previous native supplied-reference-type mismatch/control matrix after API image pin advancement",
+  "mutation": "validation only; eligible worker-plan declarations not applied",
+  "results": [
+    {
+      "client": "bex",
+      "case": "copy-web",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa207-de5e17-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-copy-web.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.51,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-de5e17-source\",\n      \"qa207-de5e17-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-de5e17-source",
+            "qa207-de5e17-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "port-web",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa207-de5e17-source",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-port-web.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.379,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-de5e17-source\",\n      \"qa207-de5e17-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-de5e17-source",
+            "qa207-de5e17-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "copy-pserv",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "pserv",
+                  "name": "qa207-de5e17-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-copy-pserv.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.298,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService.type \\\"pserv\\\" does not match \\\"qa207-de5e17-source\\\" (want type web)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-de5e17-target\": envVars[\"QA_TARGET\"] fromService.type \"pserv\" does not match \"qa207-de5e17-source\" (want type web)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "port-pserv",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "pserv",
+                  "name": "qa207-de5e17-source",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-port-pserv.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.301,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService.type \\\"pserv\\\" does not match \\\"qa207-de5e17-source\\\" (want type web)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-de5e17-target\": envVars[\"QA_TARGET\"] fromService.type \"pserv\" does not match \"qa207-de5e17-source\" (want type web)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "copy-worker",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "worker",
+                  "name": "qa207-de5e17-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-copy-worker.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.297,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService.type \\\"worker\\\" does not match \\\"qa207-de5e17-source\\\" (want type web)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-de5e17-target\": envVars[\"QA_TARGET\"] fromService.type \"worker\" does not match \"qa207-de5e17-source\" (want type web)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "port-worker",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "worker",
+                  "name": "qa207-de5e17-source",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-port-worker.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.282,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService.type \\\"worker\\\" does not match \\\"qa207-de5e17-source\\\" (want type web)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-de5e17-target\": envVars[\"QA_TARGET\"] fromService.type \"worker\" does not match \"qa207-de5e17-source\" (want type web)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "copy-cron",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "cron",
+                  "name": "qa207-de5e17-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-copy-cron.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.283,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService.type \\\"cron\\\" does not match \\\"qa207-de5e17-source\\\" (want type web)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-de5e17-target\": envVars[\"QA_TARGET\"] fromService.type \"cron\" does not match \"qa207-de5e17-source\" (want type web)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "port-cron",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "cron",
+                  "name": "qa207-de5e17-source",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-port-cron.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.285,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService.type \\\"cron\\\" does not match \\\"qa207-de5e17-source\\\" (want type web)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-de5e17-target\": envVars[\"QA_TARGET\"] fromService.type \"cron\" does not match \"qa207-de5e17-source\" (want type web)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "copy-extra-empty-value",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "value": "",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa207-de5e17-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-copy-extra-empty-value.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.277,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"at '/services/1/envVars/0': additional properties 'value' not allowed\",\n      \"line\": 29,\n      \"path\": \"services[1].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 20,
+            "error": "at '/services/1/envVars/0': additional properties 'value' not allowed",
+            "line": 29,
+            "path": "services[1].envVars[0].value"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "copy-extra-value",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "value": "literal-173",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa207-de5e17-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-copy-extra-value.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.285,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"at '/services/1/envVars/0': additional properties 'value' not allowed\",\n      \"line\": 29,\n      \"path\": \"services[1].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 20,
+            "error": "at '/services/1/envVars/0': additional properties 'value' not allowed",
+            "line": 29,
+            "path": "services[1].envVars[0].value"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "copy-wrong-keyvalue",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa207-de5e17-source",
+                  "property": "host"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-copy-wrong-keyvalue.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.313,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"fromService references unknown Key Value \\\"qa207-de5e17-source\\\" in this workspace\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "fromService references unknown Key Value \"qa207-de5e17-source\" in this workspace",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "port-worker-target-as-web",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa207-de5e17-source",
+                  "type": "web",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-port-worker-target-as-web.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.276,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService.type \\\"web\\\" does not match \\\"qa207-de5e17-source\\\" (want type worker)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-de5e17-target\": envVars[\"QA_TARGET\"] fromService.type \"web\" does not match \"qa207-de5e17-source\" (want type worker)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "copy-matching-cron",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "cron",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ],
+            "schedule": "0 0 1 1 *"
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa207-de5e17-source",
+                  "type": "cron",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-copy-matching-cron.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.367,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-de5e17-source\",\n      \"qa207-de5e17-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-de5e17-source",
+            "qa207-de5e17-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "copy-matching-worker-plan-control",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "starter",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa207-de5e17-source",
+                  "type": "worker",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-copy-matching-worker-plan-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.35,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-de5e17-source\",\n      \"qa207-de5e17-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-de5e17-source",
+            "qa207-de5e17-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "copy-worker-target-misdeclared-web-plan-control",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "starter",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa207-de5e17-source",
+                  "type": "web",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-copy-worker-target-misdeclared-web-plan-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.318,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService.type \\\"web\\\" does not match \\\"qa207-de5e17-source\\\" (want type worker)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-de5e17-target\": envVars[\"QA_TARGET\"] fromService.type \"web\" does not match \"qa207-de5e17-source\" (want type worker)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "port-worker-target-as-web-plan-control",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "starter",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa207-de5e17-source",
+                  "type": "web",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-port-worker-target-as-web-plan-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.361,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService.type \\\"web\\\" does not match \\\"qa207-de5e17-source\\\" (want type worker)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-de5e17-target\": envVars[\"QA_TARGET\"] fromService.type \"web\" does not match \"qa207-de5e17-source\" (want type worker)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "copy-web",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa207-de5e17-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-copy-web.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.452,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-de5e17-source\",\n      \"qa207-de5e17-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-de5e17-source",
+            "qa207-de5e17-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "port-web",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa207-de5e17-source",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-port-web.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.36,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-de5e17-source\",\n      \"qa207-de5e17-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-de5e17-source",
+            "qa207-de5e17-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "copy-pserv",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "pserv",
+                  "name": "qa207-de5e17-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-copy-pserv.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.299,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService.type \\\"pserv\\\" does not match \\\"qa207-de5e17-source\\\" (want type web)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-de5e17-target\": envVars[\"QA_TARGET\"] fromService.type \"pserv\" does not match \"qa207-de5e17-source\" (want type web)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "port-pserv",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "pserv",
+                  "name": "qa207-de5e17-source",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-port-pserv.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.319,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService.type \\\"pserv\\\" does not match \\\"qa207-de5e17-source\\\" (want type web)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-de5e17-target\": envVars[\"QA_TARGET\"] fromService.type \"pserv\" does not match \"qa207-de5e17-source\" (want type web)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "copy-worker",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "worker",
+                  "name": "qa207-de5e17-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-copy-worker.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.296,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService.type \\\"worker\\\" does not match \\\"qa207-de5e17-source\\\" (want type web)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-de5e17-target\": envVars[\"QA_TARGET\"] fromService.type \"worker\" does not match \"qa207-de5e17-source\" (want type web)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "port-worker",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "worker",
+                  "name": "qa207-de5e17-source",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-port-worker.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.282,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService.type \\\"worker\\\" does not match \\\"qa207-de5e17-source\\\" (want type web)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-de5e17-target\": envVars[\"QA_TARGET\"] fromService.type \"worker\" does not match \"qa207-de5e17-source\" (want type web)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "copy-cron",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "cron",
+                  "name": "qa207-de5e17-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-copy-cron.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.307,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService.type \\\"cron\\\" does not match \\\"qa207-de5e17-source\\\" (want type web)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-de5e17-target\": envVars[\"QA_TARGET\"] fromService.type \"cron\" does not match \"qa207-de5e17-source\" (want type web)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "port-cron",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "cron",
+                  "name": "qa207-de5e17-source",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-port-cron.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.291,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService.type \\\"cron\\\" does not match \\\"qa207-de5e17-source\\\" (want type web)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-de5e17-target\": envVars[\"QA_TARGET\"] fromService.type \"cron\" does not match \"qa207-de5e17-source\" (want type web)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "copy-extra-empty-value",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "value": "",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa207-de5e17-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-copy-extra-empty-value.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.284,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"at '/services/1/envVars/0': additional properties 'value' not allowed\",\n      \"line\": 29,\n      \"path\": \"services[1].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 20,
+            "error": "at '/services/1/envVars/0': additional properties 'value' not allowed",
+            "line": 29,
+            "path": "services[1].envVars[0].value"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "copy-extra-value",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "value": "literal-173",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa207-de5e17-source",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-copy-extra-value.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.296,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"at '/services/1/envVars/0': additional properties 'value' not allowed\",\n      \"line\": 29,\n      \"path\": \"services[1].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 20,
+            "error": "at '/services/1/envVars/0': additional properties 'value' not allowed",
+            "line": 29,
+            "path": "services[1].envVars[0].value"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "copy-wrong-keyvalue",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "type": "keyvalue",
+                  "name": "qa207-de5e17-source",
+                  "property": "host"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-copy-wrong-keyvalue.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.302,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"fromService references unknown Key Value \\\"qa207-de5e17-source\\\" in this workspace\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "fromService references unknown Key Value \"qa207-de5e17-source\" in this workspace",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "port-worker-target-as-web",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa207-de5e17-source",
+                  "type": "web",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-port-worker-target-as-web.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.285,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService.type \\\"web\\\" does not match \\\"qa207-de5e17-source\\\" (want type worker)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-de5e17-target\": envVars[\"QA_TARGET\"] fromService.type \"web\" does not match \"qa207-de5e17-source\" (want type worker)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "copy-matching-cron",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "cron",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ],
+            "schedule": "0 0 1 1 *"
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa207-de5e17-source",
+                  "type": "cron",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-copy-matching-cron.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.341,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-de5e17-source\",\n      \"qa207-de5e17-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-de5e17-source",
+            "qa207-de5e17-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "copy-matching-worker-plan-control",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "starter",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa207-de5e17-source",
+                  "type": "worker",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-copy-matching-worker-plan-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.556,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-de5e17-source\",\n      \"qa207-de5e17-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-de5e17-source",
+            "qa207-de5e17-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "copy-worker-target-misdeclared-web-plan-control",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "starter",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa207-de5e17-source",
+                  "type": "web",
+                  "envVarKey": "QA_SOURCE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-copy-worker-target-misdeclared-web-plan-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.28,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService.type \\\"web\\\" does not match \\\"qa207-de5e17-source\\\" (want type worker)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-de5e17-target\": envVars[\"QA_TARGET\"] fromService.type \"web\" does not match \"qa207-de5e17-source\" (want type worker)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "port-worker-target-as-web-plan-control",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "starter",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa207-de5e17-source",
+                  "type": "web",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native full type-matrix intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-port-worker-target-as-web-plan-control.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.287,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService.type \\\"web\\\" does not match \\\"qa207-de5e17-source\\\" (want type worker)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-de5e17-target\": envVars[\"QA_TARGET\"] fromService.type \"web\" does not match \"qa207-de5e17-source\" (want type worker)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "actual-worker-addressability",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "starter",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa207-de5e17-source",
+                  "type": "worker",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native additional alias/addressability/container intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-actual-worker-addressability.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.427,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService port references \\\"qa207-de5e17-source\\\" which has no network address (only web/private services are addressable)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-de5e17-target\": envVars[\"QA_TARGET\"] fromService port references \"qa207-de5e17-source\" which has no network address (only web/private services are addressable)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "static-web-alias",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-de5e17-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-de5e17-static",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-static",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "rootDir": "examples/static-site",
+            "buildCommand": "",
+            "staticPublishPath": ".",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "ordinary literal"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native additional alias/addressability/container intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-static-web-alias.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.339,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-de5e17-caller\",\n      \"qa207-de5e17-static\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-de5e17-caller",
+            "qa207-de5e17-static"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "static-static-alias",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-de5e17-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-de5e17-static",
+                  "type": "static",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-static",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "rootDir": "examples/static-site",
+            "buildCommand": "",
+            "staticPublishPath": ".",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "ordinary literal"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native additional alias/addressability/container intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-static-static-alias.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.488,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-de5e17-caller\",\n      \"qa207-de5e17-static\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-de5e17-caller",
+            "qa207-de5e17-static"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "bex",
+      "case": "project-forward-reference",
+      "document": {
+        "projects": [
+          {
+            "name": "qa207-de5e17-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa207-de5e17-caller",
+                    "envVars": [
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa207-de5e17-source",
+                          "type": "web",
+                          "envVarKey": "VALUE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa207-de5e17-source",
+                    "envVars": [
+                      {
+                        "key": "VALUE",
+                        "value": "ordinary literal"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native additional alias/addressability/container intent persisted",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-project-forward-reference.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.352,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-de5e17-caller\",\n      \"qa207-de5e17-source\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-de5e17-caller",
+            "qa207-de5e17-source"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "actual-worker-addressability",
+      "document": {
+        "services": [
+          {
+            "name": "qa207-de5e17-source",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "starter",
+            "envVars": [
+              {
+                "key": "QA_SOURCE",
+                "value": "source-173"
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_TARGET",
+                "fromService": {
+                  "name": "qa207-de5e17-source",
+                  "type": "worker",
+                  "property": "port"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "state": "native additional alias/addressability/container intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-actual-worker-addressability.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.354,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService port references \\\"qa207-de5e17-source\\\" which has no network address (only web/private services are addressable)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa207-de5e17-target\": envVars[\"QA_TARGET\"] fromService port references \"qa207-de5e17-source\" which has no network address (only web/private services are addressable)",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "static-web-alias",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-de5e17-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-de5e17-static",
+                  "type": "web",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-static",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "rootDir": "examples/static-site",
+            "buildCommand": "",
+            "staticPublishPath": ".",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "ordinary literal"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native additional alias/addressability/container intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-static-web-alias.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.356,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-de5e17-caller\",\n      \"qa207-de5e17-static\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-de5e17-caller",
+            "qa207-de5e17-static"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "static-static-alias",
+      "document": {
+        "services": [
+          {
+            "type": "web",
+            "runtime": "image",
+            "plan": "free",
+            "image": {
+              "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+            },
+            "name": "qa207-de5e17-caller",
+            "envVars": [
+              {
+                "key": "COPY_VALUE",
+                "fromService": {
+                  "name": "qa207-de5e17-static",
+                  "type": "static",
+                  "envVarKey": "VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa207-de5e17-static",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "rootDir": "examples/static-site",
+            "buildCommand": "",
+            "staticPublishPath": ".",
+            "envVars": [
+              {
+                "key": "VALUE",
+                "value": "ordinary literal"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native additional alias/addressability/container intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-static-static-alias.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.354,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-de5e17-caller\",\n      \"qa207-de5e17-static\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-de5e17-caller",
+            "qa207-de5e17-static"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    },
+    {
+      "client": "render",
+      "case": "project-forward-reference",
+      "document": {
+        "projects": [
+          {
+            "name": "qa207-de5e17-project",
+            "environments": [
+              {
+                "name": "normal",
+                "services": [
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa207-de5e17-caller",
+                    "envVars": [
+                      {
+                        "key": "COPY_VALUE",
+                        "fromService": {
+                          "name": "qa207-de5e17-source",
+                          "type": "web",
+                          "envVarKey": "VALUE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "web",
+                    "runtime": "image",
+                    "plan": "free",
+                    "image": {
+                      "url": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+                    },
+                    "name": "qa207-de5e17-source",
+                    "envVars": [
+                      {
+                        "key": "VALUE",
+                        "value": "ordinary literal"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "state": "native additional alias/addressability/container intent persisted",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<QA_TMP>/sweep207-type-project-forward-reference.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.36,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa207-de5e17-caller\",\n      \"qa207-de5e17-source\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa207-de5e17-caller",
+            "qa207-de5e17-source"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "passed": true,
+      "layout": "root"
+    }
+  ],
+  "excluded_original_labels": [
+    "copy-matching-worker",
+    "copy-worker-target-misdeclared-web"
+  ],
+  "qualification": "Original Free-worker controls excluded as prior fixture errors; eligible-plan corrected equivalents retained. Negative controls may now be refused earlier by type guard; exact reason retained.",
+  "copied_render_config_removed": true,
+  "native_captures": [
+    {
+      "at": "2026-10-13T10:03:26.001657+00:00",
+      "client": "render",
+      "case": "port-pserv",
+      "layout": "root",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<QA_TMP>/sweep207-root-port-pserv.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+      "native_result": {
+        "exit": 1,
+        "elapsed": 0.897,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService.type \\\"pserv\\\" does not match \\\"qa207-de5e17-source\\\" (want type web)\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "captures": [
+        {
+          "at": "2026-10-13T10:03:26.958029+00:00",
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/validate",
+            "content_type": "multipart/form-data; boundary=e7e03c2fa9794631cadbdab9bc0235fc2b9c3b4b7cc61d03154db3b17ae1",
+            "body": "--e7e03c2fa9794631cadbdab9bc0235fc2b9c3b4b7cc61d03154db3b17ae1\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--e7e03c2fa9794631cadbdab9bc0235fc2b9c3b4b7cc61d03154db3b17ae1\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep207-root-port-pserv.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa207-de5e17-source\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_SOURCE\",\n          \"value\": \"source-173\"\n        }\n      ]\n    },\n    {\n      \"name\": \"qa207-de5e17-target\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_TARGET\",\n          \"fromService\": {\n            \"type\": \"pserv\",\n            \"name\": \"qa207-de5e17-source\",\n            \"property\": \"port\"\n          }\n        }\n      ]\n    }\n  ]\n}\n\r\n--e7e03c2fa9794631cadbdab9bc0235fc2b9c3b4b7cc61d03154db3b17ae1--\r\n",
+            "decoded_multipart": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "file": "{\n  \"services\": [\n    {\n      \"name\": \"qa207-de5e17-source\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_SOURCE\",\n          \"value\": \"source-173\"\n        }\n      ]\n    },\n    {\n      \"name\": \"qa207-de5e17-target\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_TARGET\",\n          \"fromService\": {\n            \"type\": \"pserv\",\n            \"name\": \"qa207-de5e17-source\",\n            \"property\": \"port\"\n          }\n        }\n      ]\n    }\n  ]\n}\n"
+            },
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+            }
+          },
+          "status": 200,
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a49d83b08ee8cf1f-SJC"
+          },
+          "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa207-de5e17-target\\\": envVars[\\\"QA_TARGET\\\"] fromService.type \\\"pserv\\\" does not match \\\"qa207-de5e17-source\\\" (want type web)\",\"line\":27,\"column\":9,\"path\":\"services[1].envVars[0]\"}]}\n"
+        }
+      ],
+      "capture_cleanup": "child reaped, server closed, temporary copied config removed"
+    }
+  ]
+}

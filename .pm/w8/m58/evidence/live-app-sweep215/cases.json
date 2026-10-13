@@ -1,0 +1,222 @@
+{
+  "all-raw": {
+    "terms": [
+      "QA215_1854e7"
+    ],
+    "labels": [
+      "table-0",
+      "table-1",
+      "table-2",
+      "table-3",
+      "table-4",
+      "table-5",
+      "table-6",
+      "table-7",
+      "table-8",
+      "table-9",
+      "table-10",
+      "table-11",
+      "cafe-upper",
+      "cafe-lower",
+      "literal-punct",
+      "literal-quote",
+      "literal-space",
+      "literal-no-space",
+      "literal-tab",
+      "literal-comma",
+      "hidden"
+    ]
+  },
+  "hidden-raw": {
+    "terms": [
+      "QA215_1854e7_HIDDEN BEHIND_RAW_PAGE"
+    ],
+    "labels": [
+      "hidden"
+    ]
+  },
+  "russian": {
+    "terms": [
+      "QA215_1854e7_TABLE рус"
+    ],
+    "labels": [
+      "table-0",
+      "table-1"
+    ]
+  },
+  "rho": {
+    "terms": [
+      "QA215_1854e7_TABLE ροδ"
+    ],
+    "labels": [
+      "table-2",
+      "table-3"
+    ]
+  },
+  "kelvin": {
+    "terms": [
+      "QA215_1854e7_TABLE kelvin"
+    ],
+    "labels": [
+      "table-4",
+      "table-5",
+      "table-6"
+    ]
+  },
+  "istanbul": {
+    "terms": [
+      "QA215_1854e7_TABLE istanbul"
+    ],
+    "labels": [
+      "table-7",
+      "table-8",
+      "table-9"
+    ]
+  },
+  "iota": {
+    "terms": [
+      "QA215_1854e7_TABLE ι"
+    ],
+    "labels": [
+      "table-10",
+      "table-11"
+    ]
+  },
+  "cafe": {
+    "terms": [
+      "QA215_1854e7_CAFE café ελληνικά"
+    ],
+    "labels": [
+      "cafe-upper",
+      "cafe-lower"
+    ]
+  },
+  "literal-punct": {
+    "terms": [
+      "QA215_1854e7_LIT literal * . | \\ tail"
+    ],
+    "labels": [
+      "literal-punct"
+    ]
+  },
+  "literal-quote": {
+    "terms": [
+      "QA215_1854e7_LIT say \"quoted\""
+    ],
+    "labels": [
+      "literal-quote"
+    ]
+  },
+  "trailing-space": {
+    "terms": [
+      "QA215_1854e7_LIT space core "
+    ],
+    "labels": [
+      "literal-space"
+    ]
+  },
+  "space-core": {
+    "terms": [
+      "QA215_1854e7_LIT space core"
+    ],
+    "labels": [
+      "literal-space",
+      "literal-no-space"
+    ]
+  },
+  "tabs": {
+    "terms": [
+      "QA215_1854e7_LIT \ttab\tend\t"
+    ],
+    "labels": [
+      "literal-tab"
+    ]
+  },
+  "OR": {
+    "terms": [
+      "QA215_1854e7_HIDDEN BEHIND_RAW_PAGE",
+      "QA215_1854e7_TABLE рус"
+    ],
+    "labels": [
+      "hidden",
+      "table-0",
+      "table-1"
+    ]
+  },
+  "all-forward": {
+    "terms": [
+      "QA215_1854e7"
+    ],
+    "labels": [
+      "table-0",
+      "table-1",
+      "table-2",
+      "table-3",
+      "table-4",
+      "table-5",
+      "table-6",
+      "table-7",
+      "table-8",
+      "table-9",
+      "table-10",
+      "table-11",
+      "cafe-upper",
+      "cafe-lower",
+      "literal-punct",
+      "literal-quote",
+      "literal-space",
+      "literal-no-space",
+      "literal-tab",
+      "literal-comma",
+      "hidden"
+    ],
+    "extra_flags": [
+      "--direction",
+      "forward"
+    ]
+  },
+  "all-end-control": {
+    "terms": [
+      "QA215_1854e7"
+    ],
+    "labels": [
+      "table-0",
+      "table-1",
+      "table-2",
+      "table-3",
+      "table-4",
+      "table-5",
+      "table-6",
+      "table-7",
+      "table-8",
+      "table-9",
+      "table-10",
+      "table-11",
+      "cafe-upper",
+      "cafe-lower",
+      "literal-punct",
+      "literal-quote",
+      "literal-space",
+      "literal-no-space",
+      "literal-tab",
+      "literal-comma",
+      "hidden"
+    ],
+    "extra_flags": [
+      "--end",
+      "2026-10-13T12:52:29.346394116Z"
+    ]
+  },
+  "hidden-end-control": {
+    "terms": [
+      "QA215_1854e7_HIDDEN BEHIND_RAW_PAGE"
+    ],
+    "labels": [
+      "hidden"
+    ],
+    "extra_flags": [
+      "--end",
+      "2026-10-13T12:52:29.346394116Z"
+    ]
+  }
+}

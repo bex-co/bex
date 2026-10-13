@@ -1,0 +1,102 @@
+import pathlib,json,subprocess,datetime,secrets,copy,shutil,re,time,yaml
+
+p=pathlib.Path(__file__).parent;repo=pathlib.Path('<REPO>');cp=repo/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(cp.read_text());assert c['sync212_result']==0 and not c.get('active_sync_stash')
+nonce=secrets.token_hex(3);names={};cases=[]
+def renamed(v):
+    if isinstance(v,dict):return {k:renamed(z) for k,z in v.items()}
+    if isinstance(v,list):return [renamed(z) for z in v]
+    if isinstance(v,str) and re.match(r'qa\d{2,3}-[0-9a-f]{6}-',v):
+        if v not in names:names[v]='qa212-'+nonce+'-r'+str(len(names)).zfill(2)
+        return names[v]
+    return v
+def resources(doc):
+    for i,s in enumerate(doc.get('services',[])):yield 'services['+str(i)+']',s
+    for i,pj in enumerate(doc.get('projects',[])):
+        for j,env in enumerate(pj.get('environments',[])):
+            for k,s in enumerate(env.get('services',[])):yield f'projects[{i}].environments[{j}].services[{k}]',s
+def add(family,label,doc,valid,path=None,guidance=False,known_remaining=False):
+    cases.append({'family':family,'case':label,'document':renamed(copy.deepcopy(doc)),'expected_valid':valid,'expected_error_path':path,'accurate_KV_guidance':guidance,'known_remaining_w8_100':known_remaining})
+for z in c['sweep202_static_validation']['results']:
+    if z['client']!='bex':continue
+    path=None
+    if not z['expected_valid']:
+        prefix=next(resources(z['document']))[0]
+        suffix={'second-route-source':'.routes[1].source','second-route-destination':'.routes[1].destination','second-header-path':'.headers[1].path','second-header-name':'.headers[1].name'}[z['case']]
+        path=prefix+suffix
+    add('101-static',z['layout']+'-'+z['case'],z['document'],z['expected_valid'],path)
+for z in c['sweep204_copy_consistency']['results']:
+    if z['client']=='bex':add('102-shadowed-copy',z['case'],z['document'],z['case'] in ['literals-only','unique-control'])
+for z in c['sweep182_groupcopy']['results']:
+    if z['client']=='bex':add('099-group-copy',z['case'],z['document'],z['expected_valid_candidate'])
+for z in c['sweep195_reference_fields']['results']:
+    if z['client']!='bex':continue
+    path=None
+    if not z['expected_valid']:
+        for prefix,s in resources(z['document']):
+            for index,entry in enumerate(s.get('envVars',[])):
+                if entry.get('fromService',{}).get('envVarKey'):path=prefix+'.envVars['+str(index)+']'
+    add('100-reference',z['layout']+'-'+z['case'],z['document'],z['expected_valid'],path)
+for layout in ['root','project']:
+    for second in [False,True]:
+        filename=layout+('-second' if second else '')+'-pool-reference.yaml';doc=yaml.safe_load((repo/'.pm/w8/evidence/100'/filename).read_text());path=None
+        for prefix,s in resources(doc):
+            for index,e in enumerate(s.get('envVars',[])):
+                if e.get('fromDatabase',{}).get('property')=='connectionPoolString':path=prefix+'.envVars['+str(index)+']'
+        assert path;add('100-reference',filename.removesuffix('.yaml'),doc,False,path)
+    doc=yaml.safe_load((repo/'.pm/w8/evidence/100'/(layout+'-direct-reference.yaml')).read_text());add('100-reference',layout+'-direct-control',doc,True)
+for label in ['service-IMAGE','group-PLAN','service-ORDINARY_VALUE','control-IMAGE']:
+    doc=json.loads((p/('sweep208-'+label+'.yaml')).read_text());path=('envVarGroups[0]' if label.startswith('group') else 'services[0]')+'.envVars[0]' if label in ['service-IMAGE','group-PLAN'] else None
+    add('100-generic-neighbor',label,doc,label=='control-IMAGE',path,known_remaining=bool(path))
+base=json.loads((repo/'.pm/w8/evidence/validation-rollout-sweep207/kv-env-only.yaml').read_text())
+def kvdoc(kind):
+    doc=copy.deepcopy(base)
+    for _,s in resources(doc):
+        for e in s.get('envVars',[]):
+            ref=e.get('fromService')
+            if ref and ref.get('type')=='keyvalue':
+                if kind=='env-only':pass
+                elif kind=='missing-property':ref.pop('envVarKey',None);ref.pop('property',None)
+                else:ref.pop('envVarKey',None);ref['property']='hostport' if kind=='unsupported-hostport' else kind
+    return doc
+for kind in ['env-only','missing-property','unsupported-hostport','connectionString','host','port','password']:
+    add('098-KV-guidance',kind,kvdoc(kind),kind in ['connectionString','host','port'],guidance=kind in ['env-only','missing-property','unsupported-hostport'])
+assert len(cases)==61,len(cases)
+def yaml_locations(text):
+    out={}
+    def visit(n,path):
+        out[path]=(n.start_mark.line+1,n.start_mark.column+1)
+        if isinstance(n,yaml.MappingNode):
+            for key,value in n.value:visit(value,path+('.' if path else '')+key.value)
+        elif isinstance(n,yaml.SequenceNode):
+            for i,value in enumerate(n.value):visit(value,path+'['+str(i)+']')
+    visit(yaml.compose(text),'');return out
+for case in cases:
+    text=json.dumps(case['document'],ensure_ascii=False,indent=2)+'\n';case['fixture']=str(p/('sweep212-'+case['family']+'-'+case['case']+'.yaml'));pathlib.Path(case['fixture']).write_text(text)
+    if case['expected_error_path']:
+        locations=yaml_locations(text);assert case['expected_error_path'] in locations;case['expected_line_column']=locations[case['expected_error_path']]
+g={'sweep':212,'source_head':c['head'],'nonce':nonce,'desired_API_image':'c1dab29d39c9','deployed_revision':'unknown','surface':'native replay of recent Blueprint fixes plus known generic location neighbor','mutation':'validation only; no hosted resource or paid feature','results':[],'cases':cases};assert 'sweep212_blueprints' not in c;c['sweep212_blueprints']=g
+def save():c['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(c,indent=2));cp.chmod(0o600)
+def cli(client,file):
+    args=['blueprints','validate',file,'--confirm','-o','json']
+    if client=='bex':return json.loads(subprocess.check_output(['python3',str(p/'run.py'),'--release',*args],text=True))
+    cfg=p/'render-config/cli.yaml';assert not cfg.exists();cfg.parent.mkdir(mode=0o700,exist_ok=True);shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+    try:return json.loads(subprocess.check_output(['python3',str(p/'run-render.py'),*args],text=True))
+    finally:cfg.unlink(missing_ok=True)
+save()
+try:
+    for client in ['bex','render']:
+        for case in cases:
+            result=cli(client,case['fixture'])
+            try:decoded=json.loads(result['stdout'])
+            except ValueError:decoded=None
+            outcome={'client':client,'family':case['family'],'case':case['case'],'document':case['document'],'expected_valid':case['expected_valid'],'result':result,'decoded':decoded,'validity_and_exit_match':isinstance(decoded,dict) and decoded.get('valid')==case['expected_valid'] and result['exit']==(0 if case['expected_valid'] else 1)}
+            if case['expected_error_path']:
+                errors=decoded.get('errors',[]) if isinstance(decoded,dict) else [];expected=case['expected_line_column'];outcome.update(expected_error_path=case['expected_error_path'],expected_line_column=expected,known_remaining_w8_100=case['known_remaining_w8_100'],located_authored_entry=any(e.get('path')==case['expected_error_path'] and (e.get('line'),e.get('column'))==tuple(expected) for e in errors))
+            if case['accurate_KV_guidance']:
+                errors=decoded.get('errors',[]) if isinstance(decoded,dict) else [];message=' '.join(e.get('error','') for e in errors);outcome['guidance_accurate']=all(word in message for word in ['connectionString','host','port']) and 'password' not in message
+            g['results'].append(outcome);save()
+            print(json.dumps({'client':client,'family':case['family'],'case':case['case'],'validity_match':outcome['validity_and_exit_match'],'located':outcome.get('located_authored_entry'),'known_remaining':outcome.get('known_remaining_w8_100'),'guidance':outcome.get('guidance_accurate')}),flush=True)
+            if result['exit']==124 or not isinstance(decoded,dict):raise RuntimeError('bounded/unparseable native result; inspect privately before continuing')
+            time.sleep(.25)
+finally:
+    g['copied_render_config_removed']=not (p/'render-config/cli.yaml').exists();g['native_checks_completed']=len(g['results']);save()

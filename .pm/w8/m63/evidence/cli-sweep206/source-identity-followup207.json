@@ -1,0 +1,48 @@
+{
+  "checked_at": "2026-10-13T09:54:45.780751+00:00",
+  "recorded_base_head": "c5a0eb9dd15f6b417bf586fdf26510706497b032",
+  "verified_current_head": "3c6809182c0886e6bb537dfbba156df2baff7983",
+  "relevant_source_trees": [
+    {
+      "path": "lego/backend/internal/apps",
+      "base_tree": "6a221e0b6998ec842a1ba9a956c1e2a985393ef6",
+      "verified_tree": "6a221e0b6998ec842a1ba9a956c1e2a985393ef6",
+      "identical": true
+    },
+    {
+      "path": "lego/backend/internal/deploys",
+      "base_tree": "c21d60b1b495f201fc4a5781a0d0076b7ca006d9",
+      "verified_tree": "c21d60b1b495f201fc4a5781a0d0076b7ca006d9",
+      "identical": true
+    },
+    {
+      "path": "lego/backend/internal/core",
+      "base_tree": "aecfef3a66cf0fa8f4b64aacbe97812088cc841f",
+      "verified_tree": "aecfef3a66cf0fa8f4b64aacbe97812088cc841f",
+      "identical": true
+    },
+    {
+      "path": "lego/operator/internal/controller",
+      "base_tree": "3dd5b54890b9859813724532d66fc2a4ae71a9ff",
+      "verified_tree": "3dd5b54890b9859813724532d66fc2a4ae71a9ff",
+      "identical": true
+    },
+    {
+      "path": "lego/types",
+      "base_tree": "c6991c186d6afb23f0d0e30b24bdda9de139ea37",
+      "verified_tree": "c6991c186d6afb23f0d0e30b24bdda9de139ea37",
+      "identical": true
+    },
+    {
+      "path": "lego/cli",
+      "base_tree": "ee4d6b4bfca5a92cd4cac4e2e873d5daa954fc90",
+      "verified_tree": "ee4d6b4bfca5a92cd4cac4e2e873d5daa954fc90",
+      "identical": true
+    }
+  ],
+  "qualification": "Exact HEAD during each earlier diagnostic process was not separately captured; all relevant source trees remain byte-identical from recorded base through this verified head. Published native binaries remain immutable. Concurrent shared actor committed earlier PM filings; this QA process performed no commit/push.",
+  "changed_implementation_outside_these_trees": [
+    "backend metrics Loki source/tests",
+    "testenv and dependency harness"
+  ]
+}

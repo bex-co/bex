@@ -1,0 +1,164 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-overlay=<QA_TMP>/sweep208-location-overlay.json",
+    "-run",
+    "^(TestQAEnvConflictLocation208|TestBlueprintReferenceErrorsLocateTheEnvEntry|TestBlueprintStaticRuleErrorsLocateTheAuthoredField)$",
+    "-count=1",
+    "-timeout=60s",
+    "-json",
+    "./internal/apps"
+  ],
+  "exit": 0,
+  "elapsed": 8.715,
+  "records": [
+    {
+      "actual": {
+        "error": "qa208-51785b-web env \"IMAGE\": sets both value and generateValue — pick one",
+        "line": 8,
+        "column": 16,
+        "path": "services[0].image"
+      },
+      "expected_authored_pointer_exists": true,
+      "expected_location": {
+        "Line": 12,
+        "Column": 9
+      },
+      "expected_pointer": "#/services/0/envVars/0",
+      "label": "service-IMAGE"
+    },
+    {
+      "actual": {
+        "error": "qa208-51785b-web env \"PLAN\": sets both value and generateValue — pick one",
+        "line": 7,
+        "column": 15,
+        "path": "services[0].plan"
+      },
+      "expected_authored_pointer_exists": true,
+      "expected_location": {
+        "Line": 12,
+        "Column": 9
+      },
+      "expected_pointer": "#/services/0/envVars/0",
+      "label": "service-PLAN"
+    },
+    {
+      "actual": {
+        "error": "qa208-51785b-web env \"TYPE\": sets both value and generateValue — pick one",
+        "line": 5,
+        "column": 15,
+        "path": "services[0].type"
+      },
+      "expected_authored_pointer_exists": true,
+      "expected_location": {
+        "Line": 12,
+        "Column": 9
+      },
+      "expected_pointer": "#/services/0/envVars/0",
+      "label": "service-TYPE"
+    },
+    {
+      "actual": {
+        "error": "qa208-51785b-web env \"CONNECTIONPOOL\": sets both value and generateValue — pick one",
+        "line": 3,
+        "column": 5,
+        "path": "services[0].connectionPool"
+      },
+      "expected_authored_pointer_exists": true,
+      "expected_location": {
+        "Line": 12,
+        "Column": 9
+      },
+      "expected_pointer": "#/services/0/envVars/0",
+      "label": "service-CONNECTIONPOOL"
+    },
+    {
+      "actual": {
+        "error": "env group \"qa208-51785b-group\" var \"IMAGE\" sets both value and generateValue",
+        "line": 3,
+        "column": 5,
+        "path": "envVarGroups[0].image"
+      },
+      "expected_authored_pointer_exists": true,
+      "expected_location": {
+        "Line": 6,
+        "Column": 9
+      },
+      "expected_pointer": "#/envVarGroups/0/envVars/0",
+      "label": "group-IMAGE"
+    },
+    {
+      "actual": {
+        "error": "env group \"qa208-51785b-group\" var \"PLAN\" sets both value and generateValue",
+        "line": 3,
+        "column": 5,
+        "path": "envVarGroups[0].plan"
+      },
+      "expected_authored_pointer_exists": true,
+      "expected_location": {
+        "Line": 6,
+        "Column": 9
+      },
+      "expected_pointer": "#/envVarGroups/0/envVars/0",
+      "label": "group-PLAN"
+    },
+    {
+      "actual": {
+        "error": "env group \"qa208-51785b-group\" var \"TYPE\" sets both value and generateValue",
+        "line": 3,
+        "column": 5,
+        "path": "envVarGroups[0].type"
+      },
+      "expected_authored_pointer_exists": true,
+      "expected_location": {
+        "Line": 6,
+        "Column": 9
+      },
+      "expected_pointer": "#/envVarGroups/0/envVars/0",
+      "label": "group-TYPE"
+    },
+    {
+      "actual": {
+        "error": "env group \"qa208-51785b-group\" var \"CONNECTIONPOOL\" sets both value and generateValue",
+        "line": 3,
+        "column": 5,
+        "path": "envVarGroups[0].connectionPool"
+      },
+      "expected_authored_pointer_exists": true,
+      "expected_location": {
+        "Line": 6,
+        "Column": 9
+      },
+      "expected_pointer": "#/envVarGroups/0/envVars/0",
+      "label": "group-CONNECTIONPOOL"
+    }
+  ],
+  "passes": [
+    "TestBlueprintReferenceErrorsLocateTheEnvEntry/root_pool_first",
+    "TestBlueprintReferenceErrorsLocateTheEnvEntry/root_pool_second",
+    "TestBlueprintReferenceErrorsLocateTheEnvEntry/nested_pool_second",
+    "TestBlueprintReferenceErrorsLocateTheEnvEntry/unknown_target",
+    "TestBlueprintReferenceErrorsLocateTheEnvEntry/root_missing_IMAGE",
+    "TestBlueprintReferenceErrorsLocateTheEnvEntry/nested_missing_IMAGE",
+    "TestBlueprintReferenceErrorsLocateTheEnvEntry/root_missing_PLAN",
+    "TestBlueprintReferenceErrorsLocateTheEnvEntry/nested_missing_PLAN",
+    "TestBlueprintReferenceErrorsLocateTheEnvEntry/root_missing_TYPE",
+    "TestBlueprintReferenceErrorsLocateTheEnvEntry/nested_missing_TYPE",
+    "TestBlueprintReferenceErrorsLocateTheEnvEntry/root_missing_CONNECTIONPOOL",
+    "TestBlueprintReferenceErrorsLocateTheEnvEntry/nested_missing_CONNECTIONPOOL",
+    "TestBlueprintReferenceErrorsLocateTheEnvEntry",
+    "TestQAEnvConflictLocation208/service-IMAGE",
+    "TestQAEnvConflictLocation208/service-PLAN",
+    "TestQAEnvConflictLocation208/service-TYPE",
+    "TestQAEnvConflictLocation208/service-CONNECTIONPOOL",
+    "TestQAEnvConflictLocation208/group-IMAGE",
+    "TestQAEnvConflictLocation208/group-PLAN",
+    "TestQAEnvConflictLocation208/group-TYPE",
+    "TestQAEnvConflictLocation208/group-CONNECTIONPOOL",
+    "TestQAEnvConflictLocation208"
+  ],
+  "stderr": "",
+  "HEAD_before": "cb16919ab75d1a72663109b06707fb3663fc33cb",
+  "HEAD_after": "cb16919ab75d1a72663109b06707fb3663fc33cb"
+}

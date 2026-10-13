@@ -1,0 +1,407 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-overlay=<QA_TMP>/sweep214-seed-copy-overlay.json",
+    "-run",
+    "^(TestQASeedCopyCurrentState214|TestBlueprintEnvVarKeyCopiesALinkedGroupLiteral|TestBlueprintCopyOfAReferenceShadowedLiteralIsRefused)$",
+    "-count=1",
+    "-timeout=60s",
+    "-json",
+    "./internal/apps"
+  ],
+  "exit": 0,
+  "elapsed": 7.573,
+  "head_before": "e2cc474297bac5212e5d64e2e251377e738b2006",
+  "head_after": "e2cc474297bac5212e5d64e2e251377e738b2006",
+  "records": [
+    {
+      "case": "edited seed literal",
+      "consumer_COPY": "seed A",
+      "edit": "edited B",
+      "initial_manifest": "{\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"key\":\"VALUE\",\"sync\":false,\"value\":\"seed A\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "mismatch": true,
+      "persisted_consumer": {
+        "metadata": {
+          "name": "consumer",
+          "namespace": "default",
+          "resourceVersion": "1",
+          "labels": {
+            "bex.co/app-id": "srv-db72a81jg4r4na2do110"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T12:33:36.77412Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "env": [
+            {
+              "name": "COPY",
+              "value": "seed A"
+            }
+          ],
+          "notifyOnFail": "default",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "persisted_source": {
+        "metadata": {
+          "name": "source",
+          "namespace": "default",
+          "resourceVersion": "3",
+          "labels": {
+            "bex.co/app-id": "srv-db72a81jg4r4na2do120"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T12:33:36.775457Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "envFromSecret": "source-env",
+          "notifyOnFail": "default",
+          "restartedAt": "2026-10-13T12:33:36.779878Z",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "qualification": "actual apps/secrets feature services over fake Kubernetes/versioned storage; own harmless values only; no hosted apply/auth/runtime claimed",
+      "reapplied_manifest": "{\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"key\":\"VALUE\",\"sync\":false,\"value\":\"seed A\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "shared_local_validation_valid": true,
+      "source_value_after_edit_and_reapply": "edited B"
+    },
+    {
+      "case": "edited empty seed",
+      "consumer_COPY": "",
+      "edit": "edited B",
+      "initial_manifest": "{\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"key\":\"VALUE\",\"sync\":false,\"value\":\"\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "mismatch": true,
+      "persisted_consumer": {
+        "metadata": {
+          "name": "consumer",
+          "namespace": "default",
+          "resourceVersion": "1",
+          "labels": {
+            "bex.co/app-id": "srv-db72a81jg4r4na2do130"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T12:33:36.783305Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "env": [
+            {
+              "name": "COPY"
+            }
+          ],
+          "notifyOnFail": "default",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "persisted_source": {
+        "metadata": {
+          "name": "source",
+          "namespace": "default",
+          "resourceVersion": "3",
+          "labels": {
+            "bex.co/app-id": "srv-db72a81jg4r4na2do140"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T12:33:36.784539Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "envFromSecret": "source-env",
+          "notifyOnFail": "default",
+          "restartedAt": "2026-10-13T12:33:36.789109Z",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "qualification": "actual apps/secrets feature services over fake Kubernetes/versioned storage; own harmless values only; no hosted apply/auth/runtime claimed",
+      "reapplied_manifest": "{\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"key\":\"VALUE\",\"sync\":false,\"value\":\"\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "shared_local_validation_valid": true,
+      "source_value_after_edit_and_reapply": "edited B"
+    },
+    {
+      "case": "changed declaration cannot reset seed",
+      "consumer_COPY": "declared C",
+      "edit": "edited B",
+      "initial_manifest": "{\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"key\":\"VALUE\",\"sync\":false,\"value\":\"seed A\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "mismatch": true,
+      "persisted_consumer": {
+        "metadata": {
+          "name": "consumer",
+          "namespace": "default",
+          "resourceVersion": "2",
+          "labels": {
+            "bex.co/app-id": "srv-db72a81jg4r4na2do150"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T12:33:36.79812Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "env": [
+            {
+              "name": "COPY",
+              "value": "declared C"
+            }
+          ],
+          "notifyOnFail": "default",
+          "restartedAt": "2026-10-13T12:33:36Z",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "persisted_source": {
+        "metadata": {
+          "name": "source",
+          "namespace": "default",
+          "resourceVersion": "3",
+          "labels": {
+            "bex.co/app-id": "srv-db72a81jg4r4na2do160"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T12:33:36.792635Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "envFromSecret": "source-env",
+          "notifyOnFail": "default",
+          "restartedAt": "2026-10-13T12:33:36.796912Z",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "qualification": "actual apps/secrets feature services over fake Kubernetes/versioned storage; own harmless values only; no hosted apply/auth/runtime claimed",
+      "reapplied_manifest": "{\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"key\":\"VALUE\",\"sync\":false,\"value\":\"declared C\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "shared_local_validation_valid": true,
+      "source_value_after_edit_and_reapply": "edited B"
+    },
+    {
+      "case": "unchanged seed control",
+      "consumer_COPY": "seed A",
+      "edit": null,
+      "initial_manifest": "{\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"key\":\"VALUE\",\"sync\":false,\"value\":\"seed A\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "mismatch": false,
+      "persisted_consumer": {
+        "metadata": {
+          "name": "consumer",
+          "namespace": "default",
+          "resourceVersion": "1",
+          "labels": {
+            "bex.co/app-id": "srv-db72a81jg4r4na2do170"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T12:33:36.801359Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "env": [
+            {
+              "name": "COPY",
+              "value": "seed A"
+            }
+          ],
+          "notifyOnFail": "default",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "persisted_source": {
+        "metadata": {
+          "name": "source",
+          "namespace": "default",
+          "resourceVersion": "2",
+          "labels": {
+            "bex.co/app-id": "srv-db72a81jg4r4na2do180"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T12:33:36.802172Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "envFromSecret": "source-env",
+          "notifyOnFail": "default",
+          "restartedAt": "2026-10-13T12:33:36.80457Z",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "qualification": "actual apps/secrets feature services over fake Kubernetes/versioned storage; own harmless values only; no hosted apply/auth/runtime claimed",
+      "reapplied_manifest": "{\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"key\":\"VALUE\",\"sync\":false,\"value\":\"seed A\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "shared_local_validation_valid": true,
+      "source_value_after_edit_and_reapply": "seed A"
+    },
+    {
+      "case": "immutable manifest literal control",
+      "consumer_COPY": "literal A",
+      "edit": null,
+      "initial_manifest": "{\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"literal A\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "mismatch": false,
+      "persisted_consumer": {
+        "metadata": {
+          "name": "consumer",
+          "namespace": "default",
+          "resourceVersion": "1",
+          "labels": {
+            "bex.co/app-id": "srv-db72a81jg4r4na2do190"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T12:33:36.807281Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "env": [
+            {
+              "name": "COPY",
+              "value": "literal A"
+            }
+          ],
+          "notifyOnFail": "default",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "persisted_source": {
+        "metadata": {
+          "name": "source",
+          "namespace": "default",
+          "resourceVersion": "1",
+          "labels": {
+            "bex.co/app-id": "srv-db72a81jg4r4na2do1a0"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "1",
+            "app.bex.co/updated-at": "2026-10-13T12:33:36.808933Z"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "nginx:1",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "env": [
+            {
+              "name": "VALUE",
+              "value": "literal A"
+            }
+          ],
+          "notifyOnFail": "default",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        }
+      },
+      "qualification": "actual apps/secrets feature services over fake Kubernetes/versioned storage; own harmless values only; no hosted apply/auth/runtime claimed",
+      "reapplied_manifest": "{\"services\":[{\"envVars\":[{\"fromService\":{\"envVarKey\":\"VALUE\",\"name\":\"source\",\"type\":\"web\"},\"key\":\"COPY\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"consumer\",\"runtime\":\"image\",\"type\":\"web\"},{\"envVars\":[{\"key\":\"VALUE\",\"value\":\"literal A\"}],\"image\":{\"url\":\"nginx:1\"},\"name\":\"source\",\"runtime\":\"image\",\"type\":\"web\"}]}",
+      "shared_local_validation_valid": true,
+      "source_value_after_edit_and_reapply": "literal A"
+    }
+  ],
+  "passes": [
+    "TestBlueprintEnvVarKeyCopiesALinkedGroupLiteral/linked_literal",
+    "TestBlueprintEnvVarKeyCopiesALinkedGroupLiteral/linked_zero",
+    "TestBlueprintEnvVarKeyCopiesALinkedGroupLiteral/linked_empty",
+    "TestBlueprintEnvVarKeyCopiesALinkedGroupLiteral/local_overrides_group",
+    "TestBlueprintEnvVarKeyCopiesALinkedGroupLiteral/later_group_wins",
+    "TestBlueprintEnvVarKeyCopiesALinkedGroupLiteral/later_generated_group_value_masks",
+    "TestBlueprintEnvVarKeyCopiesALinkedGroupLiteral/local_generated_value_masks",
+    "TestBlueprintEnvVarKeyCopiesALinkedGroupLiteral/local_prompt_masks",
+    "TestBlueprintEnvVarKeyCopiesALinkedGroupLiteral/missing_key",
+    "TestBlueprintEnvVarKeyCopiesALinkedGroupLiteral/unlinked_group",
+    "TestBlueprintEnvVarKeyCopiesALinkedGroupLiteral/undeclared_group_linked",
+    "TestBlueprintEnvVarKeyCopiesALinkedGroupLiteral",
+    "TestBlueprintCopyOfAReferenceShadowedLiteralIsRefused/reference_then_literal",
+    "TestBlueprintCopyOfAReferenceShadowedLiteralIsRefused/consumer_first",
+    "TestBlueprintCopyOfAReferenceShadowedLiteralIsRefused/empty_shadowed_literal",
+    "TestBlueprintCopyOfAReferenceShadowedLiteralIsRefused/pure_reference_chain",
+    "TestBlueprintCopyOfAReferenceShadowedLiteralIsRefused/literal_then_reference",
+    "TestBlueprintCopyOfAReferenceShadowedLiteralIsRefused/duplicate_literals",
+    "TestBlueprintCopyOfAReferenceShadowedLiteralIsRefused/unique_keys",
+    "TestBlueprintCopyOfAReferenceShadowedLiteralIsRefused",
+    "TestQASeedCopyCurrentState214/edited_seed_literal",
+    "TestQASeedCopyCurrentState214/edited_empty_seed",
+    "TestQASeedCopyCurrentState214/changed_declaration_cannot_reset_seed",
+    "TestQASeedCopyCurrentState214/unchanged_seed_control",
+    "TestQASeedCopyCurrentState214/immutable_manifest_literal_control",
+    "TestQASeedCopyCurrentState214"
+  ],
+  "stderr": ""
+}

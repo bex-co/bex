@@ -1,0 +1,218 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-overlay=<QA_TMP>/sweep213-operator-overlay.json",
+    "-run",
+    "^(TestQAGroupCopyProjection213|TestAppEnv|TestEnvFromSources)$",
+    "-count=1",
+    "-timeout=60s",
+    "-json",
+    "./internal/controller"
+  ],
+  "exit": 0,
+  "elapsed": 9.436,
+  "head_before": "d15c1e7fcfe0bc4806f398c9b94535560380e837",
+  "head_after": "d15c1e7fcfe0bc4806f398c9b94535560380e837",
+  "records": [
+    {
+      "actual_operator_env": [
+        {
+          "name": "PORT",
+          "value": "3000"
+        }
+      ],
+      "actual_operator_envFrom": [
+        {
+          "secretRef": {
+            "name": "evg-db71m5hjg4r32f3fte0g-env",
+            "optional": true
+          }
+        },
+        {
+          "secretRef": {
+            "name": "evg-db71m5hjg4r32f3fte10-env",
+            "optional": true
+          }
+        }
+      ],
+      "case": "unchanged order control",
+      "persisted_order_retained": true,
+      "qualification": "actual projection helpers over local backend-persisted fake App; no controller reconciliation, release snapshots or container executed"
+    },
+    {
+      "actual_operator_env": [
+        {
+          "name": "PORT",
+          "value": "3000"
+        }
+      ],
+      "actual_operator_envFrom": [
+        {
+          "secretRef": {
+            "name": "evg-db71m5hjg4r32f3fte3g-env",
+            "optional": true
+          }
+        },
+        {
+          "secretRef": {
+            "name": "evg-db71m5hjg4r32f3fte40-env",
+            "optional": true
+          }
+        }
+      ],
+      "case": "fresh duplicate link",
+      "persisted_order_retained": true,
+      "qualification": "actual projection helpers over local backend-persisted fake App; no controller reconciliation, release snapshots or container executed"
+    },
+    {
+      "actual_operator_env": [
+        {
+          "name": "PORT",
+          "value": "3000"
+        }
+      ],
+      "actual_operator_envFrom": [
+        {
+          "secretRef": {
+            "name": "evg-db71m5hjg4r32f3fte6g-env",
+            "optional": true
+          }
+        },
+        {
+          "secretRef": {
+            "name": "evg-db71m5hjg4r32f3fte70-env",
+            "optional": true
+          }
+        }
+      ],
+      "case": "reversed declared links",
+      "persisted_order_retained": true,
+      "qualification": "actual projection helpers over local backend-persisted fake App; no controller reconciliation, release snapshots or container executed"
+    },
+    {
+      "actual_operator_env": [
+        {
+          "name": "PORT",
+          "value": "3000"
+        }
+      ],
+      "actual_operator_envFrom": [
+        {
+          "secretRef": {
+            "name": "evg-db71m5hjg4r32f3ftea0-env",
+            "optional": true
+          }
+        },
+        {
+          "secretRef": {
+            "name": "evg-db71m5hjg4r32f3fte9g-env",
+            "optional": true
+          }
+        }
+      ],
+      "case": "new earlier declaration appends last",
+      "persisted_order_retained": true,
+      "qualification": "actual projection helpers over local backend-persisted fake App; no controller reconciliation, release snapshots or container executed"
+    },
+    {
+      "actual_operator_env": [
+        {
+          "name": "PORT",
+          "value": "3000"
+        }
+      ],
+      "actual_operator_envFrom": [
+        {
+          "secretRef": {
+            "name": "evg-db71m5hjg4r32f3ftecg-env",
+            "optional": true
+          }
+        },
+        {
+          "secretRef": {
+            "name": "evg-db71m5hjg4r32f3fted0-env",
+            "optional": true
+          }
+        }
+      ],
+      "case": "omitted previous link persists",
+      "persisted_order_retained": true,
+      "qualification": "actual projection helpers over local backend-persisted fake App; no controller reconciliation, release snapshots or container executed"
+    },
+    {
+      "actual_operator_env": [
+        {
+          "name": "VALUE",
+          "value": "own"
+        },
+        {
+          "name": "PORT",
+          "value": "3000"
+        }
+      ],
+      "actual_operator_envFrom": [
+        {
+          "secretRef": {
+            "name": "evg-db71m5hjg4r32f3ftefg-env",
+            "optional": true
+          }
+        },
+        {
+          "secretRef": {
+            "name": "evg-db71m5hjg4r32f3fteg0-env",
+            "optional": true
+          }
+        }
+      ],
+      "case": "own literal overrides both orders",
+      "persisted_order_retained": true,
+      "qualification": "actual projection helpers over local backend-persisted fake App; no controller reconciliation, release snapshots or container executed"
+    },
+    {
+      "actual_operator_env": [
+        {
+          "name": "VALUE"
+        },
+        {
+          "name": "PORT",
+          "value": "3000"
+        }
+      ],
+      "actual_operator_envFrom": [
+        {
+          "secretRef": {
+            "name": "evg-db71m5hjg4r32f3fteig-env",
+            "optional": true
+          }
+        },
+        {
+          "secretRef": {
+            "name": "evg-db71m5hjg4r32f3ftej0-env",
+            "optional": true
+          }
+        }
+      ],
+      "case": "own empty overrides both orders",
+      "persisted_order_retained": true,
+      "qualification": "actual projection helpers over local backend-persisted fake App; no controller reconciliation, release snapshots or container executed"
+    }
+  ],
+  "passes": [
+    "TestAppEnv/empty_env_still_injects_PORT",
+    "TestAppEnv/user_vars_precede_PORT,_in_order",
+    "TestAppEnv/PORT_cannot_be_shadowed",
+    "TestAppEnv/ValueFrom_secretRef_is_materialized_(fromDatabase,_w1/m24)",
+    "TestAppEnv",
+    "TestEnvFromSources",
+    "TestQAGroupCopyProjection213/unchanged_order_control",
+    "TestQAGroupCopyProjection213/fresh_duplicate_link",
+    "TestQAGroupCopyProjection213/reversed_declared_links",
+    "TestQAGroupCopyProjection213/new_earlier_declaration_appends_last",
+    "TestQAGroupCopyProjection213/omitted_previous_link_persists",
+    "TestQAGroupCopyProjection213/own_literal_overrides_both_orders",
+    "TestQAGroupCopyProjection213/own_empty_overrides_both_orders",
+    "TestQAGroupCopyProjection213"
+  ],
+  "stderr": ""
+}

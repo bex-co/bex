@@ -1,0 +1,10 @@
+{
+  "binary_build_HEAD": "cb16919ab75d1a72663109b06707fb3663fc33cb",
+  "replay_diagnosis_HEAD": "b85ec5718276fbd780c661015b46950d293f5a5a",
+  "archive_HEAD": "b85ec5718276fbd780c661015b46950d293f5a5a",
+  "CLI_module_tree_objects": {
+    "cb16919ab75d1a72663109b06707fb3663fc33cb": "b5b411f1486e3af12d6730cb6d1dbde9c1c36fd2",
+    "b85ec5718276fbd780c661015b46950d293f5a5a": "b5b411f1486e3af12d6730cb6d1dbde9c1c36fd2"
+  },
+  "CLI_source_equal": true
+}

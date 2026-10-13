@@ -1,0 +1,52 @@
+{
+  "cases": [
+    {
+      "label": "service-IMAGE",
+      "manifest": "{\n  \"services\": [\n    {\n      \"name\": \"qa208-51785b-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"key\": \"IMAGE\",\n          \"value\": \"\",\n          \"generateValue\": true\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedPointer": "#/services/0/envVars/0",
+      "actualPath": "services[0].image"
+    },
+    {
+      "label": "service-PLAN",
+      "manifest": "{\n  \"services\": [\n    {\n      \"name\": \"qa208-51785b-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"key\": \"PLAN\",\n          \"value\": \"\",\n          \"generateValue\": true\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedPointer": "#/services/0/envVars/0",
+      "actualPath": "services[0].plan"
+    },
+    {
+      "label": "service-TYPE",
+      "manifest": "{\n  \"services\": [\n    {\n      \"name\": \"qa208-51785b-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"key\": \"TYPE\",\n          \"value\": \"\",\n          \"generateValue\": true\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedPointer": "#/services/0/envVars/0",
+      "actualPath": "services[0].type"
+    },
+    {
+      "label": "service-CONNECTIONPOOL",
+      "manifest": "{\n  \"services\": [\n    {\n      \"name\": \"qa208-51785b-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      },\n      \"envVars\": [\n        {\n          \"key\": \"CONNECTIONPOOL\",\n          \"value\": \"\",\n          \"generateValue\": true\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedPointer": "#/services/0/envVars/0",
+      "actualPath": "services[0].connectionPool"
+    },
+    {
+      "label": "group-IMAGE",
+      "manifest": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa208-51785b-group\",\n      \"envVars\": [\n        {\n          \"key\": \"IMAGE\",\n          \"value\": \"\",\n          \"generateValue\": true\n        }\n      ]\n    }\n  ],\n  \"services\": [\n    {\n      \"name\": \"qa208-51785b-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      }\n    }\n  ]\n}\n",
+      "expectedPointer": "#/envVarGroups/0/envVars/0",
+      "actualPath": "envVarGroups[0].image"
+    },
+    {
+      "label": "group-PLAN",
+      "manifest": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa208-51785b-group\",\n      \"envVars\": [\n        {\n          \"key\": \"PLAN\",\n          \"value\": \"\",\n          \"generateValue\": true\n        }\n      ]\n    }\n  ],\n  \"services\": [\n    {\n      \"name\": \"qa208-51785b-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      }\n    }\n  ]\n}\n",
+      "expectedPointer": "#/envVarGroups/0/envVars/0",
+      "actualPath": "envVarGroups[0].plan"
+    },
+    {
+      "label": "group-TYPE",
+      "manifest": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa208-51785b-group\",\n      \"envVars\": [\n        {\n          \"key\": \"TYPE\",\n          \"value\": \"\",\n          \"generateValue\": true\n        }\n      ]\n    }\n  ],\n  \"services\": [\n    {\n      \"name\": \"qa208-51785b-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      }\n    }\n  ]\n}\n",
+      "expectedPointer": "#/envVarGroups/0/envVars/0",
+      "actualPath": "envVarGroups[0].type"
+    },
+    {
+      "label": "group-CONNECTIONPOOL",
+      "manifest": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa208-51785b-group\",\n      \"envVars\": [\n        {\n          \"key\": \"CONNECTIONPOOL\",\n          \"value\": \"\",\n          \"generateValue\": true\n        }\n      ]\n    }\n  ],\n  \"services\": [\n    {\n      \"name\": \"qa208-51785b-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"plan\": \"free\",\n      \"image\": {\n        \"url\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n      }\n    }\n  ]\n}\n",
+      "expectedPointer": "#/envVarGroups/0/envVars/0",
+      "actualPath": "envVarGroups[0].connectionPool"
+    }
+  ]
+}

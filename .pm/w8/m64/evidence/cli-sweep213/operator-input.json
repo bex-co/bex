@@ -1,0 +1,273 @@
+[
+  {
+    "label": "unchanged order control",
+    "app": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db71m5hjg4r32f3fte30"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-13T11:50:46.107421Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "envFromSecrets": [
+          "evg-db71m5hjg4r32f3fte0g-env",
+          "evg-db71m5hjg4r32f3fte10-env"
+        ],
+        "filesFromSecrets": [
+          "evg-db71m5hjg4r32f3fte0g-files",
+          "evg-db71m5hjg4r32f3fte10-files"
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    }
+  },
+  {
+    "label": "fresh duplicate link",
+    "app": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db71m5hjg4r32f3fte60"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-13T11:50:46.116136Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "envFromSecrets": [
+          "evg-db71m5hjg4r32f3fte3g-env",
+          "evg-db71m5hjg4r32f3fte40-env"
+        ],
+        "filesFromSecrets": [
+          "evg-db71m5hjg4r32f3fte3g-files",
+          "evg-db71m5hjg4r32f3fte40-files"
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    }
+  },
+  {
+    "label": "reversed declared links",
+    "app": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db71m5hjg4r32f3fte90"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-13T11:50:46.123923Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "envFromSecrets": [
+          "evg-db71m5hjg4r32f3fte6g-env",
+          "evg-db71m5hjg4r32f3fte70-env"
+        ],
+        "filesFromSecrets": [
+          "evg-db71m5hjg4r32f3fte6g-files",
+          "evg-db71m5hjg4r32f3fte70-files"
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    }
+  },
+  {
+    "label": "new earlier declaration appends last",
+    "app": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "2",
+        "labels": {
+          "bex.co/app-id": "srv-db71m5hjg4r32f3ftec0"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-13T11:50:46.134137Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "envFromSecrets": [
+          "evg-db71m5hjg4r32f3ftea0-env",
+          "evg-db71m5hjg4r32f3fte9g-env"
+        ],
+        "filesFromSecrets": [
+          "evg-db71m5hjg4r32f3ftea0-files",
+          "evg-db71m5hjg4r32f3fte9g-files"
+        ],
+        "notifyOnFail": "default",
+        "restartedAt": "2026-10-13T11:50:46.135366Z",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    }
+  },
+  {
+    "label": "omitted previous link persists",
+    "app": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db71m5hjg4r32f3ftef0"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-13T11:50:46.143665Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "envFromSecrets": [
+          "evg-db71m5hjg4r32f3ftecg-env",
+          "evg-db71m5hjg4r32f3fted0-env"
+        ],
+        "filesFromSecrets": [
+          "evg-db71m5hjg4r32f3ftecg-files",
+          "evg-db71m5hjg4r32f3fted0-files"
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    }
+  },
+  {
+    "label": "own literal overrides both orders",
+    "app": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db71m5hjg4r32f3ftei0"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-13T11:50:46.153467Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "VALUE",
+            "value": "own"
+          }
+        ],
+        "envFromSecrets": [
+          "evg-db71m5hjg4r32f3ftefg-env",
+          "evg-db71m5hjg4r32f3fteg0-env"
+        ],
+        "filesFromSecrets": [
+          "evg-db71m5hjg4r32f3ftefg-files",
+          "evg-db71m5hjg4r32f3fteg0-files"
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    }
+  },
+  {
+    "label": "own empty overrides both orders",
+    "app": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db71m5hjg4r32f3ftel0"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-13T11:50:46.162047Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "VALUE"
+          }
+        ],
+        "envFromSecrets": [
+          "evg-db71m5hjg4r32f3fteig-env",
+          "evg-db71m5hjg4r32f3ftej0-env"
+        ],
+        "filesFromSecrets": [
+          "evg-db71m5hjg4r32f3fteig-files",
+          "evg-db71m5hjg4r32f3ftej0-files"
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    }
+  }
+]

@@ -1,0 +1,293 @@
+HEAD d15c1e7fcfe0bc4806f398c9b94535560380e837
+
+lego/backend/internal/apps/deploy.go
+940: func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsByName map[string]*appv1alpha1.App, assignments map[string]core.EnvironmentAssignment, databaseIDs, kvCRNames, serviceSlugs map[string]string, lookupSlug func(string) string, res *StackResult) ([]deferredService, error) {
+941: 	var deferred []deferredService
+942: 	for _, svc := range st.services {
+943: 		if err := requireDeployAuthority(ctx, s); err != nil {
+944: 			return nil, err
+945: 		}
+946: 		laterRefs, err := resolveServiceRefs(&svc, databaseIDs, kvCRNames, lookupSlug)
+947: 		if err != nil {
+948: 			return nil, err
+949: 		}
+950: 		if assignment := assignments[svc.grouping]; assignment.ID != "" {
+951: 			svc.req.EnvironmentID = assignment.ID
+952: 			svc.req.EnvironmentSpecified = true
+953: 		} else if svc.ungrouped {
+954: 			svc.req.EnvironmentSpecified = true
+955: 		}
+956: 		svc.req.initialEnvGroups = svc.groupLinks
+957: 		created := appsByName[svc.req.Name] == nil
+958: 		v, app, err := s.applyStackService(ctx, svc.req, svc.fields, appsByName)
+959: 		if err != nil {
+960: 			return nil, err
+961: 		}
+962: 		verbCtx, ref := stackServiceTarget(ctx, app)
+963: 		serviceSlugs[svc.req.Name] = v.Slug
+964: 		if len(laterRefs) > 0 {
+965: 			deferred = append(deferred, deferredService{req: svc.req, fields: svc.fields, refs: laterRefs, app: app})
+966: 		}
+967: 		// A service the apply created linked its fromGroup groups as it was
+968: 		// written (initialEnvGroups); one that existed links them here, which is
+969: 		// idempotent (w5/143).
+970: 		if !created {
+971: 			for _, g := range svc.groupLinks {
+972: 				if err := requireDeployAuthority(ctx, s); err != nil {
+973: 					return nil, err
+974: 				}
+975: 				if err := s.EnvGroups.LinkEnvGroup(verbCtx, g, ref); err != nil {
+976: 					return nil, fmt.Errorf("linking env group %q to %q: %w", g, svc.req.Name, err)
+977: 				}
+978: 			}
+979: 		}
+980: 		// Seed sync:false/generateValue vars (seed-once) now that the service
+981: 		// exists.
+982: 		if len(svc.seedLiterals) > 0 || len(svc.seedGenerates) > 0 {
+
+lego/backend/internal/apps/deploy.go
+1926: 			credName, err = blueprintRegistryCredentialName(a.value)
+1927: 		}
+1928: 		if err != nil {
+1929: 			problems = append(problems, blueprintResourceError{kind: BlueprintResourceService, name: a.value.Name, err: err})
+1930: 			continue
+1931: 		}
+1932: 		pendings = append(pendings, pending{
+1933: 			svc:     parsedService{req: req, fields: blueprintServiceFields(fieldsByResource[BlueprintResourceService][req.Name]), groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, promptKeys: se.promptKeys, registryCredentialName: credName, grouping: a.grouping, ungrouped: a.ungrouped},
+1934: 			refVars: se.refVars,
+1935: 		})
+1936: 		idx.serviceKnownEnv[req.Name] = knownServiceEnv(se, st.envGroups)
+1937: 		idx.serviceTypes[req.Name] = req.Type
+1938: 		if req.Type == appv1alpha1.TypeWebService || req.Type == appv1alpha1.TypePrivateService {
+1939: 			port := req.Port
+1940: 			if port <= 0 {
+1941: 				port = appv1alpha1.DefaultPort
+1942: 			}
+1943: 			idx.servicePorts[req.Name] = port
+1944: 		}
+1945: 	}
+1946: 
+1947: 	if len(problems) > 0 {
+1948: 		// Pass 2 resolves references across declarations, so with one already
+1949: 		// refused it could only add cascades ("unknown service"). Return the
+1950: 		// services that did parse, unresolved, so validation can still run
+1951: 		// their own per-service checks; apply stops on the error.
+1952: 		for _, p := range pendings {
+1953: 			st.services = append(st.services, p.svc)
+1954: 		}
+1955: 		return st, problems
+1956: 	}
+1957: 
+1958: 	// Pass 2: classify each pending service's deferred references now that
+1959: 	// every name, port, and known-env is available.
+1960: 	for _, p := range pendings {
+1961: 		svc, err := idx.classifyRefs(p.svc, p.refVars)
+1962: 		if err != nil {
+1963: 			// Attributed to its service so validation can locate the env entry.
+1964: 			return parsedStack{}, blueprintResourceErrors{{kind: BlueprintResourceService, name: p.svc.req.Name, err: err}}
+1965: 		}
+1966: 		st.services = append(st.services, svc)
+1967: 	}
+
+lego/backend/internal/apps/deploy.go
+2232: func knownServiceEnv(se serviceEnv, groups []parsedEnvGroup) map[string]string {
+2233: 	byName := make(map[string]parsedEnvGroup, len(groups))
+2234: 	for _, g := range groups {
+2235: 		byName[g.name] = g
+2236: 	}
+2237: 	known := map[string]string{}
+2238: 	for _, link := range se.groupLinks {
+2239: 		g, declared := byName[link] // raw, as preflight and LinkEnvGroup read it
+2240: 		if !declared {
+2241: 			known = map[string]string{}
+2242: 			break
+2243: 		}
+2244: 		for k, v := range g.literals {
+2245: 			known[k] = v
+2246: 		}
+2247: 		for _, k := range g.generates {
+2248: 			delete(known, k)
+2249: 		}
+2250: 	}
+2251: 	for _, k := range se.seedGenerates {
+2252: 		delete(known, k)
+2253: 	}
+2254: 	for _, k := range se.promptKeys {
+2255: 		delete(known, k)
+2256: 	}
+2257: 	for k, v := range se.known {
+2258: 		known[k] = v
+2259: 	}
+2260: 	// A reference resolves after every literal and is appended after them in
+2261: 	// spec.Env, so it wins at runtime: a same-key literal, in either entry
+2262: 	// order, is not the value the process sees and must not be copied (w8/102).
+2263: 	for _, r := range se.refVars {
+2264: 		delete(known, r.Key)
+2265: 	}
+2266: 	return known
+2267: }
+2268: 
+
+lego/backend/internal/envgroups/initial_links.go
+96: 			cur.links = addString(cur.links, service)
+97: 			cur.updatedAt = s.now()
+98: 			return cur, nil
+99: 		})
+100: 		// A conflicting/failed PutCAS owns nothing. A locator failure still
+101: 		// returns its committed snapshot and must compensate that addition.
+102: 		group.added = addedThisAttempt && slices.Contains(committed.links, service)
+103: 		if err != nil {
+104: 			return err
+105: 		}
+106: 		a.Spec.EnvFromSecrets = addString(a.Spec.EnvFromSecrets, envSecretName(group.gid))
+107: 		a.Spec.FilesFromSecrets = addString(a.Spec.FilesFromSecrets, filesSecretName(group.gid))
+108: 	}
+109: 	if err = create(); err != nil {
+110: 		return err
+111: 	}
+112: 	if err = s.AuthorizeAppFresh(ctx, core.RelCanCreate, a); err != nil {
+
+lego/backend/internal/envgroups/service.go
+1154: 
+1155: // linkFetched is LinkService's post-authorize body, shared with LinkEnvGroup (the
+1156: // blueprint seam) so the two link paths authorize + audit exactly once each. It
+1157: // appends the group's Secret refs to the already-fetched App, rolls it, and
+1158: // records the service in the group's link set via CAS so a concurrent link to
+1159: // another service is preserved (w4/m97).
+1160: func (s *Service) linkFetched(ctx context.Context, gid string, a *appv1alpha1.App) error {
+1161: 	m, err := s.fetchGroup(ctx, core.RelCanCreate, gid)
+1162: 	if err != nil {
+1163: 		return err
+1164: 	}
+1165: 	if a.Labels[core.LabelTenant] != m.workspace {
+1166: 		return core.ErrForbidden
+1167: 	}
+1168: 	// A link materializes every group value inside caller-controlled workload
+1169: 	// code, so it is a sensitive read even though the API response stays masked.
+1170: 	// Reassert against the group's own workspace immediately before adding its
+1171: 	// Secret refs; a write-only OAuth grant or a freshly revoked developer must
+1172: 	// not turn App control into indirect secret disclosure.
+1173: 	if err := s.authorizeGroupSensitiveFresh(ctx, m); err != nil {
+1174: 		return err
+1175: 	}
+1176: 	// Keep the idempotency decision behind the sensitive gate. In particular, a
+1177: 	// Blueprint re-apply may already control an App linked by an earlier caller;
+1178: 	// returning before this check would let a write-only caller retain the link
+1179: 	// while replacing the workload with exfiltration code.
+1180: 	key := core.AppPublicID(a)
+1181: 	if slices.Contains(m.links, key) {
+1182: 		return nil
+1183: 	}
+1184: 	if err := validateGroupServiceEnvironment(m.environment, key, a.Labels); err != nil {
+1185: 		return err
+1186: 	}
+1187: 	if _, err := s.rollLinked(ctx, a, s.now(), func(a *appv1alpha1.App) {
+1188: 		a.Spec.EnvFromSecrets = addString(a.Spec.EnvFromSecrets, envSecretName(gid))
+1189: 		a.Spec.FilesFromSecrets = addString(a.Spec.FilesFromSecrets, filesSecretName(gid))
+1190: 	}); err != nil {
+1191: 		return err
+1192: 	}
+1193: 	_, err = s.mutateMetaCAS(ctx, gid, m.workspace, func(cur meta) (meta, error) {
+
+lego/backend/internal/envgroups/service.go
+1590: 
+1591: // LinkEnvGroup links the named group to a service for the blueprint apply path
+1592: // (w1/m35's `fromGroup`). Unknown group name is an error (the apply pre-flights
+1593: // existence, but this guards the direct call too) — findGroupByName's workspace
+1594: // scoping (w6/m24) means a same-named group in another workspace reports as
+1595: // unknown here, not linked. Idempotent: an already-linked service is not
+1596: // re-patched, so a stack re-apply neither churns the spec nor rolls the pod.
+1597: // Manage scope (via LinkService's AuthorizeApp).
+1598: func (s *Service) LinkEnvGroup(ctx context.Context, name, service string) error {
+1599: 	// Deferred audit (w4/m122) — the comment this replaces said "authorize (+
+1600: 	// audit) FIRST", which is exactly the shape that reported an unknown group
+1601: 	// name as a completed link.
+1602: 	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, service)
+1603: 	if err != nil {
+1604: 		return err
+1605: 	}
+1606: 	if s.Store == nil {
+1607: 		return core.ErrSecretsUnavailable
+1608: 	}
+1609: 	gid, _, found, err := s.findGroupByName(ctx, name)
+1610: 	if err != nil {
+1611: 		return err
+1612: 	}
+1613: 	if !found {
+1614: 		return fmt.Errorf("%w: env group %q does not exist", core.ErrBadRequest, name)
+1615: 	}
+1616: 	return s.linkFetched(ctx, gid, a)
+1617: }
+1618: 
+1619: // findGroupByName resolves an env group by its display name WITHIN THE ACTING
+1620: // WORKSPACE (Render addresses groups by name; bex stores them by id). w6/m24:
+1621: // scoped the same way ListEnvGroups is — a name search must never match, and so
+1622: // never reuse or overwrite, another workspace's same-named group; with the
+1623: // control-plane store off there is only one workspace, so the search stays
+1624: // unscoped (byte-identical to before). Returns found=false when no group of that
+
+lego/backend/internal/envgroups/service.go
+2143: func addString(list []string, s string) []string {
+2144: 	if slices.Contains(list, s) {
+2145: 		return list
+2146: 	}
+2147: 	return append(list, s)
+2148: }
+2149: 
+2150: // removeString returns list without any occurrence of the drop values. It
+
+lego/operator/internal/controller/app_controller.go
+4741: func appEnv(app *appv1alpha1.App, port int) []corev1.EnvVar {
+4742: 	env := make([]corev1.EnvVar, 0, len(app.Spec.Env)+1)
+4743: 	for _, e := range app.Spec.Env {
+4744: 		if e.Name == portEnvName {
+4745: 			continue // operator-owned; never let a user shadow it
+4746: 		}
+4747: 		ev := corev1.EnvVar{Name: e.Name, Value: e.Value}
+4748: 		if e.ValueFrom != nil && e.ValueFrom.SecretKeyRef != nil {
+4749: 			ev.Value = ""
+4750: 			ev.ValueFrom = &corev1.EnvVarSource{
+4751: 				SecretKeyRef: &corev1.SecretKeySelector{
+4752: 					LocalObjectReference: corev1.LocalObjectReference{Name: e.ValueFrom.SecretKeyRef.Name},
+4753: 					Key:                  e.ValueFrom.SecretKeyRef.Key,
+4754: 				},
+4755: 			}
+4756: 		}
+4757: 		env = append(env, ev)
+4758: 	}
+4759: 	env = append(env, corev1.EnvVar{Name: portEnvName, Value: strconv.Itoa(port)})
+4760: 	return env
+4761: }
+4762: 
+4763: // envFromSources wires the App's secret-backed env into the container: each linked
+
+lego/operator/internal/controller/app_controller.go
+4772: func envFromSources(app *appv1alpha1.App) []corev1.EnvFromSource {
+4773: 	var out []corev1.EnvFromSource
+4774: 	optional := true
+4775: 	// snapshotOrSource substitutes this release's immutable copy when one is active
+4776: 	// (w1/m152). The ORDER is untouched: groups first, the service's own last, so
+4777: 	// the documented precedence stays a property of list position and the existing
+4778: 	// precedence tests keep covering it.
+4779: 	for _, name := range app.Spec.EnvFromSecrets {
+4780: 		if name == "" {
+4781: 			continue
+4782: 		}
+4783: 		out = append(out, corev1.EnvFromSource{
+4784: 			SecretRef: &corev1.SecretEnvSource{
+4785: 				LocalObjectReference: corev1.LocalObjectReference{Name: snapshotOrSource(app, name)},
+4786: 				Optional:             &optional,
+4787: 			},
+4788: 		})
+4789: 	}
+4790: 	if name := runtimeEnvSecret(app); name != "" {
+4791: 		out = append(out, corev1.EnvFromSource{
+4792: 			SecretRef: &corev1.SecretEnvSource{
+4793: 				LocalObjectReference: corev1.LocalObjectReference{Name: snapshotOrSource(app, name)},
+4794: 			},
+4795: 		})
+4796: 	}
+4797: 	return out
+4798: }
+4799: 
+4800: // secretFilesVolumeName is the single projected volume carrying every secret-file

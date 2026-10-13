@@ -1,0 +1,70 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package controller
+
+import (
+	"encoding/json"
+	appv1 "github.com/bex-co/bex/lego/types/v1alpha1"
+	"os"
+	"reflect"
+	"testing"
+)
+
+func TestQAGroupCopyProjection213(t *testing.T) {
+	raw, err := os.ReadFile(os.Getenv("BEX_QA_GROUP213_INPUT"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var inputs []struct {
+		Label string
+		App   appv1.App
+	}
+	if err := json.Unmarshal(raw, &inputs); err != nil {
+		t.Fatal(err)
+	}
+	for _, input := range inputs {
+		t.Run(input.Label, func(t *testing.T) {
+			sources := envFromSources(&input.App)
+			names := []string{}
+			for _, source := range sources {
+				if source.SecretRef != nil {
+					names = append(names, source.SecretRef.Name)
+				}
+			}
+			if !reflect.DeepEqual(names, input.App.Spec.EnvFromSecrets) {
+				t.Fatalf("projection changed persisted order: %v / %v", names, input.App.Spec.EnvFromSecrets)
+			}
+			env := appEnv(&input.App, int(input.App.Spec.Port))
+			for _, literal := range input.App.Spec.Env {
+				if literal.Name != "VALUE" {
+					continue
+				}
+				found := false
+				for _, v := range env {
+					if v.Name == literal.Name && v.Value == literal.Value {
+						found = true
+					}
+				}
+				if !found {
+					t.Fatal("literal override not projected")
+				}
+			}
+			b, _ := json.Marshal(map[string]any{"case": input.Label, "actual_operator_envFrom": sources, "actual_operator_env": env, "persisted_order_retained": true, "qualification": "actual projection helpers over local backend-persisted fake App; no controller reconciliation, release snapshots or container executed"})
+			t.Log("QA213_PROJECTION " + string(b))
+		})
+	}
+}

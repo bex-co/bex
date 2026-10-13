@@ -1,0 +1,16 @@
+{
+  "head": "cb16919ab75d1a72663109b06707fb3663fc33cb",
+  "command": [
+    "go",
+    "build",
+    "-trimpath",
+    "-ldflags",
+    "-X github.com/render-oss/cli/pkg/cfg.Version=2.27.0 -X main.bexVersion=qa209-cb16919ab75d",
+    "-o",
+    "<QA_TMP>/bex-head209",
+    "."
+  ],
+  "exit": 0,
+  "elapsed": 4.399,
+  "checkout_build": true
+}

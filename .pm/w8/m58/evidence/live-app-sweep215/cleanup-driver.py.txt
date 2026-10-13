@@ -1,0 +1,22 @@
+import json,pathlib,subprocess,sys,datetime,time
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('<REPO>/.playwright-mcp/cli-qa-w8-checkpoint.json');d=json.loads(cp.read_text());sid=sys.argv[1];x=next(z for z in d['resources'] if z.get('id')==sid);base={z if isinstance(z,str) else z.get('service',z)['id'] for z in d['baseline']['services']}
+assert sid not in base and x['workspace']=='tea-daif693dqjvc73e7as3g' and x['type'] in ['web_service','static_site'];assert x['create_result']['exit']==0 and x['create_response']['id']==sid
+assert not x['state'].startswith('deleted:')
+assert x['sweep']==215 and x['dependency_ids']==[] and x['create_response']['serviceDetails']['plan']=='free'
+known_children={d['id'] for row in x.get('runtime_observations',[]) for d in __import__('json').loads(row['native_history']['stdout'])}
+def save():d['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(d,indent=2));cp.chmod(0o600)
+def cli(a):return json.loads(subprocess.check_output(['python3',str(p/'run.py'),'--release',*a],text=True))
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True))
+r=cli(['deploys','list',sid,'--confirm','-o','json']);assert r['exit']==0;x['deploy_children']=json.loads(r['stdout']);assert all(z['id'] in known_children for z in x['deploy_children']), 'Unrecorded child: inspect before parent delete';x['children_enumeration_evidence']=r;save();print('Recorded own service children',[(z['id'],z['status']) for z in x['deploy_children']],flush=True)
+x['state']='exact owned service delete pending';save();r=cli(['services','delete',sid,'--confirm','-o','json']);x['delete_result']=r;save();print('CLI delete',r['exit'],r['elapsed'],r['stderr'],flush=True)
+r=wire('/v1/services/'+sid);x['detail_after_delete']=r;save();print('Detail after delete',r['status'],flush=True)
+r=cli(['services','--confirm','-o','json']);assert r['exit']==0;ls=json.loads(r['stdout']) or [];ids={z.get('service',z)['id'] for z in ls};x['workspace_after_delete_ids']=sorted(ids);save();assert base<=ids;assert sid not in ids;print('Own ID absent; baseline IDs present',len(base),'current total',len(ids),flush=True)
+url=x['create_response']['serviceDetails']['url'];runtime_absent=False
+for attempt in range(3):
+ r=subprocess.run(['curl','--disable','-sS','--max-time','12','-w','\\n%{http_code}',url],text=True,capture_output=True);x.setdefault('runtime_after_delete_checks',[]).append({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr});save();runtime_absent=r.returncode==0 and r.stdout.endswith('404');print('Former runtime',r.returncode,r.stdout[-100:],flush=True)
+ if runtime_absent:break
+ if attempt<2:time.sleep(10)
+q=wire('/v1/owners/tea-daif693dqjvc73e7as3g/limits');x['quota_after_delete']=q;save();print('Quota',q['status'],q['response'].strip(),flush=True)
+if x['detail_after_delete']['status']=='404' and runtime_absent and q['status']=='200' and json.loads(q['response'])['services']['terminating']==0:x['state']='deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0'
+else:x['state']='delete acknowledged: bounded runtime/detail/quota reconciliation pending'
+save();print('Cleanup state',x['state'],flush=True)

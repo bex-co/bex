@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-13T10:46:33.751595+00:00",
+  "source_sync_HEAD": "cb16919ab75d1a72663109b06707fb3663fc33cb",
+  "current_HEAD_at_archiving": "cb16919ab75d1a72663109b06707fb3663fc33cb",
+  "deployed_operator_API_revision": "unknown",
+  "source_fix": "137820b94",
+  "published_Bex": "0.3.2",
+  "pinned_Render": "2.27.0/a764810a768202704e7206eb7b87a47211fcd98e",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "auth": "same isolated QA human grant",
+  "paid_features": 0,
+  "owned_free_resources": 2,
+  "native_child_deploys": 2,
+  "native_initial_PATH_results": "both live with exact PATH and hashes; no broadened control or extra deploy",
+  "render_variant": "PATH env argument precedes companion marker; Bex marker precedes PATH",
+  "cleanup": "native delete acknowledgments, API404, list absence, former runtime404, six baseline IDs present, quota6/PG0/KV0/terminating0",
+  "unverified": "Node; PATH-alone/normal/omitted/empty controls; hosted Blueprint literal PATH; current-build create replay; other native runtimes/kinds; GraphQL/MCP/dashboard; Kubernetes descendants; Render production",
+  "product_implementation_commit_push_by_QA": false
+}

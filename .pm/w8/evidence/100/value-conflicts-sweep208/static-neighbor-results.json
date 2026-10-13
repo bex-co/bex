@@ -1,0 +1,28 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-run",
+    "^TestBlueprintStaticRuleErrorsLocateTheRule$",
+    "-count=1",
+    "-timeout=60s",
+    "-json",
+    "./internal/apps"
+  ],
+  "exit": 0,
+  "elapsed": 8.19,
+  "passes": [
+    "TestBlueprintStaticRuleErrorsLocateTheRule/second_route_source_services[0].routes[1].source",
+    "TestBlueprintStaticRuleErrorsLocateTheRule/second_route_destination_services[0].routes[1].destination",
+    "TestBlueprintStaticRuleErrorsLocateTheRule/second_header_path_services[0].headers[1].path",
+    "TestBlueprintStaticRuleErrorsLocateTheRule/second_header_name_services[0].headers[1].name",
+    "TestBlueprintStaticRuleErrorsLocateTheRule/first_route_source_services[0].routes[0].source",
+    "TestBlueprintStaticRuleErrorsLocateTheRule/second_route_source_projects[0].environments[0].services[0].routes[1].source",
+    "TestBlueprintStaticRuleErrorsLocateTheRule/second_route_destination_projects[0].environments[0].services[0].routes[1].destination",
+    "TestBlueprintStaticRuleErrorsLocateTheRule/second_header_path_projects[0].environments[0].services[0].headers[1].path",
+    "TestBlueprintStaticRuleErrorsLocateTheRule/second_header_name_projects[0].environments[0].services[0].headers[1].name",
+    "TestBlueprintStaticRuleErrorsLocateTheRule/first_route_source_projects[0].environments[0].services[0].routes[0].source",
+    "TestBlueprintStaticRuleErrorsLocateTheRule"
+  ],
+  "stderr": ""
+}

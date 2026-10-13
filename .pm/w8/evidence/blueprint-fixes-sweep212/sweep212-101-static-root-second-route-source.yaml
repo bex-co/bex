@@ -1,0 +1,26 @@
+{
+  "services": [
+    {
+      "name": "qa212-52a55e-r00",
+      "type": "web",
+      "runtime": "static",
+      "repo": "https://github.com/bex-co/bex",
+      "branch": "main",
+      "rootDir": "examples/static-site",
+      "buildCommand": "",
+      "staticPublishPath": ".",
+      "routes": [
+        {
+          "type": "rewrite",
+          "source": "/app/*",
+          "destination": "/index.html"
+        },
+        {
+          "type": "rewrite",
+          "source": "missing-slash",
+          "destination": "/index.html"
+        }
+      ]
+    }
+  ]
+}

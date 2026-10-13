@@ -1,0 +1,330 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-overlay=<QA_TMP>/sweep206-hook-overlay.json",
+    "-run",
+    "^(TestQANativeInitialHook206|TestParseStackInitialDeployHookParsed|TestDeployStackInitialHookSetsPreDeployCommandOnFirstCreate|TestDeployStackInitialHookMarkedRanWhenPreDeploySucceeds|TestDeployStackUpdatesPendingInitialDeployHook|TestDeployStackInitialHookSkippedWhenAlreadyRan)$",
+    "-count=1",
+    "-timeout=90s",
+    "-json",
+    "./internal/deploys",
+    "./internal/apps"
+  ],
+  "exit": 0,
+  "elapsed": 7.332,
+  "records": [
+    {
+      "actual_native_wire_to_current_local_API": [
+        {
+          "body": "{\"clearCache\":\"do_not_clear\"}",
+          "method": "POST",
+          "path": "/v1/services/srv-db6vevpjg4rffmoso3l0/deploys",
+          "query": "",
+          "response": "{\"id\":\"dep-2\",\"serviceId\":\"srv-db6vevpjg4rffmoso3l0\",\"status\":\"created\",\"trigger\":\"api\",\"bexTrigger\":\"api\",\"image\":{\"ref\":\"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"},\"createdAt\":\"2026-10-13T09:18:55.958131Z\",\"updatedAt\":\"2026-10-13T09:18:55.958131Z\"}\n",
+          "status": 201,
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+        }
+      ],
+      "elapsed": 0.12348725,
+      "exit": 0,
+      "first_deploy_id": "dep-1",
+      "label": "bex-without-resync",
+      "modeled_first_live_revision": "rev-1",
+      "native_command": [
+        "bex",
+        "deploys",
+        "create",
+        "srv-db6vevpjg4rffmoso3l0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "new_release_generation": "2",
+      "old_predeploy_success_generation": 1,
+      "persisted_app_after_native": {
+        "metadata": {
+          "name": "qa206-hook",
+          "namespace": "default",
+          "resourceVersion": "3",
+          "generation": 1,
+          "labels": {
+            "bex.co/app-id": "srv-db6vevpjg4rffmoso3l0"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "2",
+            "app.bex.co/updated-at": "2023-11-14T22:13:20Z",
+            "bex.co/initial-deploy-hook": "echo qa206-initial-once"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "notifyOnFail": "default",
+          "preDeployCommand": "echo qa206-initial-once",
+          "restartedAt": "2023-11-14T22:13:20Z",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        },
+        "status": {
+          "phase": "Running",
+          "preDeploy": {
+            "job": "",
+            "generation": 1,
+            "status": "Succeeded"
+          },
+          "activeRevision": "rev-1",
+          "image": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+        }
+      },
+      "qualification": "Native released Bex/pinned Render against real current handlers over loopback, fake client/store; first operator completion simulated, no hosted hook/job/runtime or real auth tested",
+      "ran_marker": "",
+      "selected_predeploy_command": "echo qa206-initial-once",
+      "stderr": "",
+      "stdout": "{\n  \"createdAt\": \"2026-10-13T09:18:55.958131Z\",\n  \"id\": \"dep-2\",\n  \"image\": {\n    \"ref\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n  },\n  \"status\": \"created\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-13T09:18:55.958131Z\"\n}"
+    },
+    {
+      "actual_native_wire_to_current_local_API": [
+        {
+          "body": "{\"clearCache\":\"do_not_clear\"}",
+          "method": "POST",
+          "path": "/v1/services/srv-db6vevpjg4rffmoso3mg/deploys",
+          "query": "",
+          "response": "{\"id\":\"dep-2\",\"serviceId\":\"srv-db6vevpjg4rffmoso3mg\",\"status\":\"created\",\"trigger\":\"api\",\"bexTrigger\":\"api\",\"image\":{\"ref\":\"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"},\"createdAt\":\"2026-10-13T09:18:56.015787Z\",\"updatedAt\":\"2026-10-13T09:18:56.015787Z\"}\n",
+          "status": 201,
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+        }
+      ],
+      "elapsed": 0.051036292,
+      "exit": 0,
+      "first_deploy_id": "dep-1",
+      "label": "bex-resync-control",
+      "modeled_first_live_revision": "rev-1",
+      "native_command": [
+        "bex",
+        "deploys",
+        "create",
+        "srv-db6vevpjg4rffmoso3mg",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "new_release_generation": "2",
+      "old_predeploy_success_generation": 1,
+      "persisted_app_after_native": {
+        "metadata": {
+          "name": "qa206-hook",
+          "namespace": "default",
+          "resourceVersion": "4",
+          "generation": 1,
+          "labels": {
+            "bex.co/app-id": "srv-db6vevpjg4rffmoso3mg"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "2",
+            "app.bex.co/updated-at": "2023-11-14T22:13:20Z",
+            "bex.co/initial-deploy-hook": "echo qa206-initial-once",
+            "bex.co/initial-deploy-hook-ran": "true"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "notifyOnFail": "default",
+          "preDeployCommand": "echo qa206-regular",
+          "restartedAt": "2023-11-14T22:13:20Z",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        },
+        "status": {
+          "phase": "Running",
+          "preDeploy": {
+            "job": "",
+            "generation": 1,
+            "status": "Succeeded"
+          },
+          "activeRevision": "rev-1",
+          "image": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+        }
+      },
+      "qualification": "Native released Bex/pinned Render against real current handlers over loopback, fake client/store; first operator completion simulated, no hosted hook/job/runtime or real auth tested",
+      "ran_marker": "true",
+      "selected_predeploy_command": "echo qa206-regular",
+      "stderr": "",
+      "stdout": "{\n  \"createdAt\": \"2026-10-13T09:18:56.015787Z\",\n  \"id\": \"dep-2\",\n  \"image\": {\n    \"ref\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n  },\n  \"status\": \"created\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-13T09:18:56.015787Z\"\n}"
+    },
+    {
+      "actual_native_wire_to_current_local_API": [
+        {
+          "body": "{\"clearCache\":\"do_not_clear\"}",
+          "method": "POST",
+          "path": "/v1/services/srv-db6vf01jg4rffmoso3o0/deploys",
+          "query": "",
+          "response": "{\"id\":\"dep-2\",\"serviceId\":\"srv-db6vf01jg4rffmoso3o0\",\"status\":\"created\",\"trigger\":\"api\",\"bexTrigger\":\"api\",\"image\":{\"ref\":\"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"},\"createdAt\":\"2026-10-13T09:18:56.130066Z\",\"updatedAt\":\"2026-10-13T09:18:56.130066Z\"}\n",
+          "status": 201,
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+        }
+      ],
+      "elapsed": 0.108580959,
+      "exit": 0,
+      "first_deploy_id": "dep-1",
+      "label": "render-without-resync",
+      "modeled_first_live_revision": "rev-1",
+      "native_command": [
+        "render",
+        "deploys",
+        "create",
+        "srv-db6vf01jg4rffmoso3o0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "new_release_generation": "2",
+      "old_predeploy_success_generation": 1,
+      "persisted_app_after_native": {
+        "metadata": {
+          "name": "qa206-hook",
+          "namespace": "default",
+          "resourceVersion": "3",
+          "generation": 1,
+          "labels": {
+            "bex.co/app-id": "srv-db6vf01jg4rffmoso3o0"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "2",
+            "app.bex.co/updated-at": "2023-11-14T22:13:20Z",
+            "bex.co/initial-deploy-hook": "echo qa206-initial-once"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "notifyOnFail": "default",
+          "preDeployCommand": "echo qa206-initial-once",
+          "restartedAt": "2023-11-14T22:13:20Z",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        },
+        "status": {
+          "phase": "Running",
+          "preDeploy": {
+            "job": "",
+            "generation": 1,
+            "status": "Succeeded"
+          },
+          "activeRevision": "rev-1",
+          "image": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+        }
+      },
+      "qualification": "Native released Bex/pinned Render against real current handlers over loopback, fake client/store; first operator completion simulated, no hosted hook/job/runtime or real auth tested",
+      "ran_marker": "",
+      "selected_predeploy_command": "echo qa206-initial-once",
+      "stderr": "",
+      "stdout": "{\n  \"createdAt\": \"2026-10-13T09:18:56.130066Z\",\n  \"id\": \"dep-2\",\n  \"image\": {\n    \"ref\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n  },\n  \"status\": \"created\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-13T09:18:56.130066Z\"\n}"
+    },
+    {
+      "actual_native_wire_to_current_local_API": [
+        {
+          "body": "{\"clearCache\":\"do_not_clear\"}",
+          "method": "POST",
+          "path": "/v1/services/srv-db6vf01jg4rffmoso3pg/deploys",
+          "query": "",
+          "response": "{\"id\":\"dep-2\",\"serviceId\":\"srv-db6vf01jg4rffmoso3pg\",\"status\":\"created\",\"trigger\":\"api\",\"bexTrigger\":\"api\",\"image\":{\"ref\":\"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"},\"createdAt\":\"2026-10-13T09:18:56.184205Z\",\"updatedAt\":\"2026-10-13T09:18:56.184205Z\"}\n",
+          "status": 201,
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+        }
+      ],
+      "elapsed": 0.046635959,
+      "exit": 0,
+      "first_deploy_id": "dep-1",
+      "label": "render-resync-control",
+      "modeled_first_live_revision": "rev-1",
+      "native_command": [
+        "render",
+        "deploys",
+        "create",
+        "srv-db6vf01jg4rffmoso3pg",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "new_release_generation": "2",
+      "old_predeploy_success_generation": 1,
+      "persisted_app_after_native": {
+        "metadata": {
+          "name": "qa206-hook",
+          "namespace": "default",
+          "resourceVersion": "4",
+          "generation": 1,
+          "labels": {
+            "bex.co/app-id": "srv-db6vf01jg4rffmoso3pg"
+          },
+          "annotations": {
+            "app.bex.co/release-generation": "2",
+            "app.bex.co/updated-at": "2023-11-14T22:13:20Z",
+            "bex.co/initial-deploy-hook": "echo qa206-initial-once",
+            "bex.co/initial-deploy-hook-ran": "true"
+          }
+        },
+        "spec": {
+          "type": "web_service",
+          "image": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592",
+          "runtime": "image",
+          "builder": "auto",
+          "replicas": 1,
+          "port": 3000,
+          "notifyOnFail": "default",
+          "preDeployCommand": "echo qa206-regular",
+          "restartedAt": "2023-11-14T22:13:20Z",
+          "tier": "free",
+          "expose": true,
+          "subdomainPolicy": "enabled"
+        },
+        "status": {
+          "phase": "Running",
+          "preDeploy": {
+            "job": "",
+            "generation": 1,
+            "status": "Succeeded"
+          },
+          "activeRevision": "rev-1",
+          "image": "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592"
+        }
+      },
+      "qualification": "Native released Bex/pinned Render against real current handlers over loopback, fake client/store; first operator completion simulated, no hosted hook/job/runtime or real auth tested",
+      "ran_marker": "true",
+      "selected_predeploy_command": "echo qa206-regular",
+      "stderr": "",
+      "stdout": "{\n  \"createdAt\": \"2026-10-13T09:18:56.184205Z\",\n  \"id\": \"dep-2\",\n  \"image\": {\n    \"ref\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n  },\n  \"status\": \"created\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-13T09:18:56.184205Z\"\n}"
+    }
+  ],
+  "passes": [
+    "TestQANativeInitialHook206/bex-without-resync",
+    "TestQANativeInitialHook206/bex-resync-control",
+    "TestQANativeInitialHook206/render-without-resync",
+    "TestQANativeInitialHook206/render-resync-control",
+    "TestQANativeInitialHook206",
+    "TestParseStackInitialDeployHookParsed",
+    "TestDeployStackInitialHookSetsPreDeployCommandOnFirstCreate",
+    "TestDeployStackInitialHookMarkedRanWhenPreDeploySucceeds",
+    "TestDeployStackUpdatesPendingInitialDeployHook",
+    "TestDeployStackInitialHookSkippedWhenAlreadyRan"
+  ],
+  "stderr": "",
+  "qualification": "Native current loopback API/fake client/store, simulated first Live rev-1/PDSucceeded gen1; no hosted apply/runtime/auth certified"
+}

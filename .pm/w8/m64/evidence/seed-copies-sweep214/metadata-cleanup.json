@@ -1,0 +1,36 @@
+{
+  "at": "2026-10-13T12:44:52.494763+00:00",
+  "source_HEAD": "e2cc474297bac5212e5d64e2e251377e738b2006",
+  "deployed_API_operator_revision": "unknown",
+  "actual_apps_secrets_cases": 5,
+  "persisted_configured_source_copy_mismatches": 3,
+  "current_group_shadowed_copy_neighbor_test_records": 20,
+  "native_fresh_declaration_checks": 10,
+  "exact_native_wire_captures": 2,
+  "scope": "actual apps/secrets feature methods over fake Kubernetes/versioned storage, CR-only legacy mode; not hosted apply/auth/runtime or metadata-backed mode",
+  "source_value_proof": "actual GetEnvVar after actual edit and reapply; source spec references its own env Secret; consumer persisted spec contains old/new manifest seed",
+  "excluded_harness_attempt": "public view id differs from CR-only seeding storage selector; corrected edit/read to the same object-name key; conflict/not-found attempt is excluded, not a product bug",
+  "fake_IDs": "not production ownership/deletion targets; no resource-ledger additions",
+  "resources_created": 0,
+  "cleanup": "native copied configs/servers/threads/children removed; quota baseline",
+  "quota": {
+    "at": "2026-10-13T12:44:52.481602+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.358,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a49e702a2eb97b82-SJC"
+    },
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+  },
+  "QA_product_fix_commit_push_release": false
+}
