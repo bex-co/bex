@@ -60,6 +60,16 @@ jobs:
           - 5432:5432
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # TestLokiRequestMetricsClipToWindowOnLoki runs the request-metrics LogQL in
+      # the pinned Loki engine (w4/m175; 3.6.7 is production's version). Started
+      # first so its ~20 s warm-up overlaps setup; readiness is awaited before go test.
+      - name: start Loki (request-log metric reads)
+        run: |
+          docker rm -f backend-test-loki >/dev/null 2>&1 || true
+          docker run -d --name backend-test-loki \
+            -p 127.0.0.1:3100:3100 \
+            grafana/loki:3.6.7@sha256:3c8fd3570dd9219951a60d3f919c7f31923d10baee578b77bc26c4a0b32d092d \
+            -config.file=/etc/loki/local-config.yaml
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: lego/backend/go.mod
@@ -112,6 +122,8 @@ jobs:
           install -m755 -D "$RUNNER_TEMP/prometheus-2.55.1.linux-arm64/promtool" \
             "$RUNNER_TEMP/bin/promtool"
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: wait for Loki
+        run: timeout 90 bash -c 'until curl -sf http://localhost:3100/ready; do sleep 2; done'
       # TestRenderConformance (internal/api/conformance_test.go) validates bex's
       # REST responses against the pinned Render OpenAPI schemas in
       # internal/api/testdata/render-openapi.json. It runs as part of go test
@@ -134,6 +146,7 @@ jobs:
           BEX_TEST_OPENFGA_URL: http://localhost:8080
           BEX_TEST_OPENBAO_KV_URL: http://localhost:8200
           BEX_TEST_OPENBAO_KV_TOKEN: backend-test-only
+          BEX_TEST_LOKI_URL: http://localhost:3100
           # This job provisions every dependency above (and promtool): a test
           # that would skip for want of one fails here instead (testenv.Skip,
           # w5/m112), so the job can't quietly stop running it.
@@ -152,6 +165,6 @@ jobs:
           scripts/test_stripe_billing_operations.py
           scripts/test_stripe_billing_reconcile.py
           scripts/test_stripe_orphan_audit.py
-      - name: stop test OpenBao
+      - name: stop test OpenBao and Loki
         if: always()
-        run: docker rm -f backend-test-openbao
+        run: docker rm -f backend-test-openbao backend-test-loki

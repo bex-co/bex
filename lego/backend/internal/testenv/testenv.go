@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 // Package testenv decides what a test does when a dependency its CI job
-// provisions (the test Postgres, OpenFGA, OpenBao, promtool) is missing.
+// provisions (the test Postgres, OpenFGA, OpenBao, Loki, promtool) is missing.
 // Locally it skips, saying how to provide the dependency. In a job that
 // provisions them — RequireEnv=1, set by .github/workflows/backend-test.yml —
 // it fails instead, so that job can never quietly stop running a test because

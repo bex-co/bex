@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # backend-test-deps.sh — the backend suite's real dependencies, locally.
 #
-# Runs the Postgres 17, OpenFGA (seeded with the bex store and authz model) and
-# OpenBao that .github/workflows/backend-test.yml runs — the very digests, read
-# from that workflow so the two cannot drift — so `go test ./...` in
-# lego/backend runs the integration tests instead of skipping them (w5/m112).
+# Runs the Postgres 17, OpenFGA (seeded with the bex store and authz model),
+# OpenBao and Loki that .github/workflows/backend-test.yml runs — the very
+# digests, read from that workflow so the two cannot drift — so `go test ./...`
+# in lego/backend runs the integration tests instead of skipping them (w5/m112).
 # Containers are named per checkout and Docker picks their host ports, so they
 # never collide with a dev-N stack or with another worktree's run. Every `up`
 # starts them fresh, like CI's ephemeral ones: the suite assumes an empty
@@ -74,22 +74,26 @@ wait_for() { # what, probe...
 }
 
 up() {
-  local pg_image fga_image bao_image
+  local pg_image fga_image bao_image loki_image
   pg_image=${BEX_TEST_PG_IMAGE:-$(pin 'postgres:17')}
   fga_image=$(pin 'openfga/openfga:[^ @]+')
   bao_image=$(pin 'quay.io/openbao/openbao:[^ @]+')
+  loki_image=$(pin 'grafana/loki:[^ @]+')
   start "$prefix-postgres" "$pg_image" -e POSTGRES_PASSWORD=pw -p 127.0.0.1::5432
   start "$prefix-openbao" "$bao_image" -e BAO_DEV_ROOT_TOKEN_ID=$bao_token -p 127.0.0.1::8200 \
     -- server -dev -dev-listen-address=0.0.0.0:8200
   start "$prefix-openfga" "$fga_image" -e OPENFGA_DATASTORE_ENGINE=memory -p 127.0.0.1::8080 -- run
+  start "$prefix-loki" "$loki_image" -p 127.0.0.1::3100 -- -config.file=/etc/loki/local-config.yaml
 
   # Over TCP: the image's init-time server listens only on its unix socket.
   wait_for postgres docker exec "$prefix-postgres" pg_isready -h 127.0.0.1 -U postgres
-  local fga bao
+  local fga bao loki
   fga="http://127.0.0.1:$(port "$prefix-openfga" 8080)"
   bao="http://127.0.0.1:$(port "$prefix-openbao" 8200)"
+  loki="http://127.0.0.1:$(port "$prefix-loki" 3100)"
   wait_for openfga curl -sf "$fga/healthz"
   wait_for openbao curl -sf "$bao/v1/sys/health"
+  wait_for loki curl -sf "$loki/ready"
   local store_id
   store_id=$(curl -sf -X POST "$fga/stores" -H 'Content-Type: application/json' -d '{"name":"bex"}' | jq -r '.id')
   curl -sf -X POST "$fga/stores/$store_id/authorization-models" \
@@ -110,7 +114,7 @@ EOF
 }
 
 print_env() {
-  running "$prefix-postgres" && running "$prefix-openfga" && running "$prefix-openbao" || {
+  running "$prefix-postgres" && running "$prefix-openfga" && running "$prefix-openbao" && running "$prefix-loki" || {
     echo "backend-test-deps: not up; run: bash scripts/backend-test-deps.sh up" >&2
     exit 1
   }
@@ -119,6 +123,7 @@ export BEX_TEST_DB_URI='postgres://postgres:pw@127.0.0.1:$(port "$prefix-postgre
 export BEX_TEST_OPENFGA_URL='http://127.0.0.1:$(port "$prefix-openfga" 8080)'
 export BEX_TEST_OPENBAO_KV_URL='http://127.0.0.1:$(port "$prefix-openbao" 8200)'
 export BEX_TEST_OPENBAO_KV_TOKEN='$bao_token'
+export BEX_TEST_LOKI_URL='http://127.0.0.1:$(port "$prefix-loki" 3100)'
 EOF
   if [ -x "$shim_dir/promtool" ] && ! command -v promtool >/dev/null; then
     echo "export PATH='$shim_dir':\"\$PATH\""
@@ -126,7 +131,7 @@ EOF
 }
 
 down() {
-  docker rm -f -v "$prefix-postgres" "$prefix-openfga" "$prefix-openbao" >/dev/null 2>&1 || true
+  docker rm -f -v "$prefix-postgres" "$prefix-openfga" "$prefix-openbao" "$prefix-loki" >/dev/null 2>&1 || true
   rm -rf "${TMPDIR:-/tmp}/$prefix"
 }
 
