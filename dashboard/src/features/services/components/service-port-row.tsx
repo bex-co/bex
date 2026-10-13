@@ -41,6 +41,12 @@ export function ServicePortRow({ serviceId, port }: ServicePortRowProps) {
       min={MIN_SERVICE_PORT}
       max={MAX_SERVICE_PORT}
       busy={busy}
+      // Dirty-compare the parsed port, not the text: "03000" is port 3000, and
+      // saving it would roll an identical deploy (w4/278).
+      dirty={(draft) => {
+        const parsed = parsePort(draft);
+        return parsed !== null && parsed !== port;
+      }}
       validate={(draft) =>
         parsePort(draft) === null
           ? t("services.portRangeError", {
