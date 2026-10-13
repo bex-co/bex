@@ -126,10 +126,9 @@ const enLogs: Record<string, TranslationEntry> = {
       "Button in the truncation notice that fetches the next older page — the keyboard/underfilled-pane path to what scrolling to the top does",
   },
   "logs.truncatedNotice": {
-    message:
-      "Showing the newest 100 matching lines in this range — scroll up for older history.",
+    message: "Only part of this time range is loaded. Load older to continue.",
     description:
-      "Banner when hasMore is true: the selected range holds more than the 100-line page, so the view is truncated until the user pages back",
+      "Banner when hasMore is true: more of the selected range remains unloaded, however many older pages are already shown, so it names no line count (w4/280)",
   },
   "logs.partialSearchNotice": {
     message:
