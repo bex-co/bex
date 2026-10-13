@@ -32,10 +32,10 @@ import (
 // startcommand_test.go pins w6/m21: spec.startCommand overrides the running
 // container's Command whenever the image comes from an opaque Dockerfile build
 // (or a prebuilt image) — the operator has no control over that image's own
-// ENTRYPOINT/CMD, so effectiveBuilder gates the override on every non-native,
-// non-buildpack build strategy (app_controller.go), not narrowly on
-// runtime:docker. A native/buildpack build instead bakes the command into the
-// image's own CMD at build time, so no Deployment-level override applies.
+// ENTRYPOINT/CMD, so shellRunsStartCommand applies the override to the saved
+// prebuilt image and to every non-native, non-buildpack build strategy, not
+// narrowly on runtime:docker. A native/buildpack build instead bakes the command
+// into the image's own CMD at build time, so no Deployment-level override applies.
 var _ = Describe("StartCommand override (kubernetes runtime)", func() {
 	ctx := context.Background()
 
@@ -82,9 +82,13 @@ var _ = Describe("StartCommand override (kubernetes runtime)", func() {
 			"legacy-dockerfile-startcmd-app",
 			appv1alpha1.AppSpec{Builder: "dockerfile", StartCommand: "bin/server --flag"},
 			[]string{"/bin/sh", "-c", "bin/server --flag"}),
-		Entry("native runtime, startCommand set — baked into the image's own CMD, no Deployment override",
-			"native-startcmd-app",
+		// A prebuilt image never ran a native build, so retained native settings
+		// (a service switched from Git to an image keeps them) bake nothing into
+		// it: the saved command must run (w4/m202). The genuine native-build
+		// control is TestPrebuiltImageCommandAfterNativeSourceSwitch.
+		Entry("prebuilt image with retained native runtime, startCommand set — overrides",
+			"prebuilt-native-runtime-startcmd-app",
 			appv1alpha1.AppSpec{Runtime: "node", BuildCommand: "npm ci", StartCommand: "npm start"},
-			nil),
+			[]string{"/bin/sh", "-c", "npm start"}),
 	)
 })

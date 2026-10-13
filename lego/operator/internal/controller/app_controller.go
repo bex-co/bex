@@ -4120,11 +4120,11 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	if err != nil {
 		return r.fail(ctx, app, "DeployFailed", err)
 	}
-	effectiveApp, err := r.selectedRuntimeApp(ctx, app)
+	effectiveApp, launch, err := r.selectedRuntime(ctx, app)
 	if err != nil {
 		return r.fail(ctx, app, "DeployFailed", err)
 	}
-	tmpl := r.cronPodSpec(effectiveApp, image, port, labels)
+	tmpl := r.cronPodSpec(effectiveApp, image, port, labels, launch)
 	if restore != nil {
 		tmpl = *restore
 	}
@@ -4578,7 +4578,7 @@ func toCronRun(job *batchv1.Job) appv1alpha1.CronRun {
 // the App's env. A cron container declares no port — it is not an HTTP server.
 // spec.command, when set, overrides the image's default entrypoint/cmd via a
 // shell (Render's cron "Command" field); empty leaves the image's own command.
-func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int, labels map[string]string) corev1.PodTemplateSpec {
+func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int, labels map[string]string, launch launchMode) corev1.PodTemplateSpec {
 	container := corev1.Container{
 		Name:            appContainerName,
 		Image:           image,
@@ -4589,11 +4589,11 @@ func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int
 		SecurityContext: appSecCtx(app.Spec),
 	}
 	command := app.Spec.Command
-	if b := effectiveBuilder(app.Spec); command == "" && b != build.BuilderNative && b != build.BuilderBuildpack {
+	if command == "" && shellRunsStartCommand(app, image, launch) {
 		command = app.Spec.StartCommand
 	}
 	if command != "" {
-		container.Command = []string{shellBinary, "-c", command}
+		container.Command = shellCommand(command)
 	}
 	spec := corev1.PodSpec{
 		// No legacy Docker-link env vars (w4/m123) — a platform maintenance pod.
