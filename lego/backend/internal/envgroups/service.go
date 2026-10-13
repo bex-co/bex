@@ -569,6 +569,9 @@ func prepareCreateEnv(vars []CreateEnvVarInput) (map[string]string, error) {
 			return nil, core.InvalidEnvVarValueInput(key)
 		}
 		value := input.Value
+		if err := core.CheckEnvValue(key, value); err != nil {
+			return nil, err
+		}
 		if input.GenerateValue {
 			var err error
 			value, err = core.GenerateValue()

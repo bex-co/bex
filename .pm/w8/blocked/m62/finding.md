@@ -6,7 +6,7 @@ Published Bex v0.3.2 and unmodified Render v2.27.0 at a764810a768202704e7206eb7b
 
 ## Reproduction and controls
 
-Use the exact harmless [service literal](../evidence/m62/service-literal-nul.yaml), [service seed](../evidence/m62/service-seed-nul.yaml) and [group literal](../evidence/m62/group-literal-nul.yaml) fixtures. JSON is valid YAML; `\u0000` in these input files decodes to an actual NUL byte, rather than literal backslash text. Authenticate in an isolated CLI config and select the QA workspace.
+Use the exact harmless [service literal](../../evidence/m62/service-literal-nul.yaml), [service seed](../../evidence/m62/service-seed-nul.yaml) and [group literal](../../evidence/m62/group-literal-nul.yaml) fixtures. JSON is valid YAML; `\u0000` in these input files decodes to an actual NUL byte, rather than literal backslash text. Authenticate in an isolated CLI config and select the QA workspace.
 
 ```sh
 bex blueprints validate service-literal-nul.yaml --confirm -o json
@@ -14,7 +14,7 @@ bex blueprints validate service-seed-nul.yaml --confirm -o json
 bex blueprints validate group-literal-nul.yaml --confirm -o json
 ```
 
-Repeat with unmodified same-pin `render`, explicitly targeting Bex and an isolated copied config; never use Render production. Then repeat the corresponding three `*-newline-control.yaml` files. [Full native receipts](../evidence/m62/native.json) preserve exact argv, stdout, stderr, exit and elapsed time for all 12 processes.
+Repeat with unmodified same-pin `render`, explicitly targeting Bex and an isolated copied config; never use Render production. Then repeat the corresponding three `*-newline-control.yaml` files. [Full native receipts](../../evidence/m62/native.json) preserve exact argv, stdout, stderr, exit and elapsed time for all 12 processes.
 
 **Actual:** all six NUL checks return `valid:true`, print a plan, exit0 and emit no stderr. All six newline controls pass. **Expected:** NUL checks return the existing validation envelope with `valid:false` and field errors, producing native exit1. Newline controls stay valid.
 
@@ -22,23 +22,23 @@ The pinned consumer uses multipart `ownerId` plus the exact file bytes for `POST
 
 ## Actual producer and consumer proof
 
-The [actual compiler/parser diagnostic](../evidence/m62/parser.json) preserves all six values exactly in `req.Env`, `seedLiterals` or group `literals`. The [actual core patch diagnostic](../evidence/m62/core.json) accepts and preserves a JSON-decoded NUL value. Both diagnostics use virtual Go overlays, leaving product code unchanged.
+The [actual compiler/parser diagnostic](../../evidence/m62/parser.json) preserves all six values exactly in `req.Env`, `seedLiterals` or group `literals`. The [actual core patch diagnostic](../../evidence/m62/core.json) accepts and preserves a JSON-decoded NUL value. Both diagnostics use virtual Go overlays, leaving product code unchanged.
 
-The [local OCI control](../evidence/m62/local-env.json) uses the same pinned cached Python image for both inputs. Docker create succeeds for both. The ordinary 18-byte value starts and reaches the programme exactly. The NUL-containing 18-byte value fails at `docker start` with exit1 before the programme runs:
+The [local OCI control](../../evidence/m62/local-env.json) uses the same pinned cached Python image for both inputs. Docker create succeeds for both. The ordinary 18-byte value starts and reaches the programme exactly. The NUL-containing 18-byte value fails at `docker start` with exit1 before the programme runs:
 
 ```text
 invalid environment variable "QA_LITERAL": contains nul byte (\x00)
 ```
 
-The [actual generated loader](../evidence/m62/generated-loader.sh.txt), executed unchanged in the same local image, decodes the 18-byte NUL value into a 17-byte value and continues with exit0. Bash reports `command substitution: ignored null byte in input`. The ordinary control remains exact. Full hashes, stdout, stderr, creation proofs and cleanup are in [local-loader.json](../evidence/m62/local-loader.json).
+The [actual generated loader](../../evidence/m62/generated-loader.sh.txt), executed unchanged in the same local image, decodes the 18-byte NUL value into a 17-byte value and continues with exit0. Bash reports `command substitution: ignored null byte in input`. The ordinary control remains exact. Full hashes, stdout, stderr, creation proofs and cleanup are in [local-loader.json](../../evidence/m62/local-loader.json).
 
-The [file control](../evidence/m62/local-file.json) reads the exact same 18-byte NUL payload from a mounted file successfully, with the original hash. This distinguishes environment values from arbitrary file bytes. POSIX excludes NUL from process environment values. [POSIX.1-2024 environment definition](https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap08.html).
+The [file control](../../evidence/m62/local-file.json) reads the exact same 18-byte NUL payload from a mounted file successfully, with the original hash. This distinguishes environment values from arbitrary file bytes. POSIX excludes NUL from process environment values. [POSIX.1-2024 environment definition](https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap08.html).
 
 These are local consumer executions. No NUL value was applied to a production App, no hosted runtime failure is claimed, and no Render-production behavior is claimed.
 
 ## Root cause and shared-code census
 
-[Source excerpts](../evidence/m62/source.txt) and [counted callers](../evidence/m62/callers.json) retain producer and consumer boundaries.
+[Source excerpts](../../evidence/m62/source.txt) and [counted callers](../../evidence/m62/callers.json) retain producer and consumer boundaries.
 
 - `apps/blueprint.go:657–661` compiles then parses a plan without checking process-value representability. `apps/deploy.go:463` preserves nonempty NUL strings correctly; `parseEnvGroup:2136` and `classifyServiceEnv:2376` check names but retain literal values. Each parser helper has one production caller; literals, seeds and groups are distinct branches.
 - `core/environmentpatch.go:75–96` returns literal patch values unchecked. It has two production callers: `secrets/batch.go:538` and `envgroups/patch.go:187`. The actual core diagnostic covers this boundary; the live API routes were not called.

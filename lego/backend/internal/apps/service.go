@@ -2157,6 +2157,9 @@ func checkReservedSpecEnv(env []appv1alpha1.EnvVar) error {
 		if item.ValueFrom == nil && core.IsReservedEnvKey(item.Name) {
 			return core.ReservedEnvKeyError(item.Name)
 		}
+		if err := core.CheckEnvValue(item.Name, item.Value); err != nil {
+			return err
+		}
 	}
 	return nil
 }

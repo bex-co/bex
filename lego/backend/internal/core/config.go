@@ -190,6 +190,27 @@ func CheckEnvKey(k string) error {
 	return nil
 }
 
+// ValidEnvValue reports whether a process environment can carry v: a POSIX
+// environment string ends at its first NUL (w8/m62, docs/ADR004-app-deployment.md).
+func ValidEnvValue(v string) bool {
+	return strings.IndexByte(v, 0) < 0
+}
+
+// EnvValueSentence is the one wording for a value ValidEnvValue rejects. It
+// names the key, never the value (docs/ADR013-secrets.md).
+func EnvValueSentence(k string) string {
+	return fmt.Sprintf("environment variable %q contains a NUL byte, which a process environment cannot carry; use a secret file for binary content", k)
+}
+
+// CheckEnvValue is the gate for a value a caller newly supplies. Only new
+// values are checked, so a legacy stored value stays replaceable/deletable.
+func CheckEnvValue(k, value string) error {
+	if !ValidEnvValue(value) {
+		return NewBadRequestError("ENVIRONMENT_VARIABLE_VALUE_INVALID", EnvValueSentence(k), map[string]any{"key": k})
+	}
+	return nil
+}
+
 // ValidSecretFileName reports whether name is a legal Kubernetes Secret key:
 // the file is mounted at /etc/secrets/<name>, so a name outside the rule (a
 // path, or "..data", which the kubelet's atomic-writer layout owns) would fail

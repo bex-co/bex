@@ -2162,6 +2162,10 @@ func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
 			}
 			pg.generates = append(pg.generates, e.Key)
 		default:
+			if !core.ValidEnvValue(e.Value) {
+				return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: %s",
+					core.ErrBadRequest, name, e.Key, core.EnvValueSentence(e.Key))
+			}
 			pg.literals[e.Key] = e.Value
 		}
 	}
@@ -2398,6 +2402,16 @@ func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv
 		if core.IsReservedEnvKey(e.Key) {
 			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: %s",
 				core.ErrBadRequest, a.Name, e.Key, core.ReservedEnvKeySentence(e.Key))
+		}
+		// The value this entry stores: its literal, or the prompt answer a
+		// sync:false key without one seeds.
+		value := e.Value
+		if e.Sync != nil && !*e.Sync && value == "" {
+			value = overrides.envVarValues[e.Key]
+		}
+		if !core.ValidEnvValue(value) {
+			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: %s",
+				core.ErrBadRequest, a.Name, e.Key, core.EnvValueSentence(e.Key))
 		}
 		switch {
 		case e.FromDatabase != nil, e.FromService != nil:
