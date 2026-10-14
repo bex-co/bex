@@ -1,17 +1,17 @@
 # w4 · m208 — Datastore plan previews match their ready cards
 
-**Worker:** worker4 **Goal:** Postgres and Key Value plan cards preserve their ready title/description, responsive tier grid and footer geometry through resource, catalog and lazy loading. **Status:** todo
+**Worker:** worker4 **Goal:** Postgres and Key Value plan cards preserve their ready title/description, responsive tier grid and footer geometry through resource, catalog and lazy loading. **Status:** blocked — t001–t005 done and shipped (2026-10-14: one inert datastore plan preview across all six loading producers); t006 live geometry replay at desktop/mobile and t007 need the dashboard deployed to production.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Define one inert datastore plan preview from ready geometry | 30m | — |
-| t002 | Use the shared preview in both Key Value loading branches | 20m | t001 |
-| t003 | Align the complete Postgres plan loading chain | 35m | t001 |
-| t004 | Render parity | 15m | t002, t003 |
-| t005 | Simplify | 10m | t004 |
-| t006 | Test coverage | 40m | t004 |
+| t001 | Define one inert datastore plan preview from ready geometry — **DONE 2026-10-14** | 30m | — |
+| t002 | Use the shared preview in both Key Value loading branches — **DONE 2026-10-14** | 20m | t001 |
+| t003 | Align the complete Postgres plan loading chain — **DONE 2026-10-14** | 35m | t001 |
+| t004 | Render parity — **DONE 2026-10-14** | 15m | t002, t003 |
+| t005 | Simplify — **DONE 2026-10-14** | 10m | t004 |
+| t006 | Test coverage — local done; **BLOCKED: live geometry replay after deploy** | 40m | t004 |
 | t007 | Closeout | 10m | t005, t006 |
 
 ## Definition of done
@@ -25,11 +25,11 @@
 
 ## Source + Goal linkage
 
-- **Source:** user-requested infinite functional `$qa-find-bugs w4`, muse.env only through the login helper; a454/a465/a466, 2026-10-14. Promoted from w4/301: [historical source](source-301.md), [expanded finding](finding.md), [Key Value resource](../evidence/301-keyvalue-plan-skeleton.json), [Key Value catalog](../evidence/301-keyvalue-catalog-loading.json), [Postgres](../evidence/m208-postgres-plan-loading.json). Severity minor; filing only.
-- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md) pillar 1, usable hosting configuration; supplied skeleton-shape rule and w5/m79 t009's faithful datastore previews; [ADR009](../../../docs/ADR009-postgresql-management.md), [ADR021](../../../docs/ADR021-keyvalue-management.md).
+- **Source:** user-requested infinite functional `$qa-find-bugs w4`, muse.env only through the login helper; a454/a465/a466, 2026-10-14. Promoted from w4/301: [historical source](source-301.md), [expanded finding](finding.md), [Key Value resource](../../evidence/301-keyvalue-plan-skeleton.json), [Key Value catalog](../../evidence/301-keyvalue-catalog-loading.json), [Postgres](../../evidence/m208-postgres-plan-loading.json). Severity minor; filing only.
+- **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md) pillar 1, usable hosting configuration; supplied skeleton-shape rule and w5/m79 t009's faithful datastore previews; [ADR009](../../../../docs/ADR009-postgresql-management.md), [ADR021](../../../../docs/ADR021-keyvalue-management.md).
 - **Expected outcome:** data arrival replaces placeholders with the same plan-card anatomy rather than expanding/shrinking its grid and footer.
 - **Why now:** fresh live evidence extends the original 60m Key Value note to two datastore families, four live loading branches and two remaining Postgres source-traced stages. This is one shared pending-chain fix with multiple implementation tasks, so it is promoted instead of duplicating the issue or keeping an artificially sub-hour note.
-- **Scope:** dashboard preview/reservation only. [m207](../m207/README.md) owns radio naming/keyboard interaction; [298](../298.md), [299](../299.md) and [303](../303.md) own different detail regions. Source arrays, prices, eligibility, plan updates, authorization and readiness semantics are preserved.
+- **Scope:** dashboard preview/reservation only. [m207](../m207/README.md) owns radio naming/keyboard interaction; [298](../../298.md), [299](../../299.md) and [303](../../303.md) own different detail regions. Source arrays, prices, eligibility, plan updates, authorization and readiness semantics are preserved.
 - **Standing closing tasks:** parity preserves existing UI/API-driven behavior and conscious Render differences; simplify, meaningful tests and live closeout are included. No signed-in Render loading-layout comparison is claimed.
 
 **Total estimate:** 2h40.

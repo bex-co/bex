@@ -14,6 +14,7 @@ import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities"
 import { useKeyValueInstanceTypes } from "@/features/keyvalue/hooks/use-key-value-instance-types";
 import { useUpdateKeyValuePlan } from "@/features/keyvalue/hooks/use-update-key-value-plan";
 import { PlanCardGrid } from "@/common/components/plan-card-grid";
+import { PlanTierSlots } from "@/common/components/datastore-plan-preview";
 import type { KeyValueView } from "@/features/keyvalue/types";
 
 export interface KeyValuePlanSectionProps {
@@ -31,7 +32,7 @@ export function KeyValuePlanSection({
   const operateDenied = !canOperate;
   const operateReasonKey = capabilities.reasonKey("can_operate");
   const operateReason = operateReasonKey ? t(operateReasonKey) : undefined;
-  const { instanceTypes } = useKeyValueInstanceTypes();
+  const { instanceTypes, loading } = useKeyValueInstanceTypes();
   const { updatePlan, busy } = useUpdateKeyValuePlan();
   const [selected, setSelected] = useState<string>(keyValue.plan ?? "free");
   const [confirming, setConfirming] = useState(false);
@@ -63,13 +64,17 @@ export function KeyValuePlanSection({
             {operateReason}
           </p>
         ) : null}
-        <PlanCardGrid
-          instanceTypes={instanceTypes}
-          value={selected}
-          disabled={operateDenied}
-          ariaLabel={t("keyvalue.planTitle")}
-          onChange={setSelected}
-        />
+        {loading && instanceTypes.length === 0 ? (
+          <PlanTierSlots />
+        ) : (
+          <PlanCardGrid
+            instanceTypes={instanceTypes}
+            value={selected}
+            disabled={operateDenied}
+            ariaLabel={t("keyvalue.planTitle")}
+            onChange={setSelected}
+          />
+        )}
 
         <div className="flex justify-end gap-2 border-t pt-4">
           <Button
