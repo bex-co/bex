@@ -1,0 +1,805 @@
+{
+  "pass": "a480",
+  "reviewedHead": "538f7c3b4",
+  "severity": "minor",
+  "fixture": {
+    "id": "srv-db7sf71llfps73emufj0",
+    "name": "qa-20261014-a480-detail",
+    "runId": "crr-qsndkqj2819t9urkambm",
+    "plan": "free",
+    "image": "busybox:1.37",
+    "schedule": "0 0 1 1 *"
+  },
+  "baseline": {
+    "at": "2026-10-14T18:18:04.167Z",
+    "request": {
+      "operationName": "Qaa467Inventory",
+      "query": "query Qaa467Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    }
+  },
+  "create": {
+    "at": "2026-10-14T18:19:09.840Z",
+    "request": {
+      "operationName": "CreateService",
+      "variables": {
+        "image": "busybox:1.37",
+        "name": "qa-20261014-a480-detail",
+        "type": "cron_job",
+        "registryCredentialId": "",
+        "runtime": "image",
+        "plan": "free",
+        "schedule": "0 0 1 1 *",
+        "command": "sh -c 'printf QA_A480_DETAIL; exit 0'",
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "createService": {
+          "__typename": "Service",
+          "environmentId": null,
+          "id": "srv-db7sf71llfps73emufj0",
+          "latestDeployId": "dep-db7sf71llfps73emufjg",
+          "name": "qa-20261014-a480-detail",
+          "phase": "",
+          "projectId": null,
+          "registryCredentialId": "",
+          "type": "cron_job"
+        }
+      }
+    },
+    "url": "https://dashboard.bex.co/services/srv-db7sf71llfps73emufj0/deploys/dep-db7sf71llfps73emufjg"
+  },
+  "trigger": {
+    "at": "2026-10-14T18:19:42.479Z",
+    "request": {
+      "operationName": "RunCronJob",
+      "variables": {
+        "id": "srv-db7sf71llfps73emufj0"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "mutation RunCronJob($id: String!) {\n  runCronJob(id: $id) {\n    id\n    status\n    startedAt\n    finishedAt\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "runCronJob": {
+          "__typename": "CronRun",
+          "finishedAt": "",
+          "id": "crr-qsndkqj2819t9urkambm",
+          "startedAt": "",
+          "status": "pending"
+        }
+      }
+    },
+    "url": "https://dashboard.bex.co/services/srv-db7sf71llfps73emufj0/events"
+  },
+  "terminal": {
+    "reads": [
+      {
+        "at": "2026-10-14T18:19:43.742Z",
+        "request": {
+          "operationName": "Qaa480History",
+          "query": "query Qaa480History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+          "variables": {
+            "id": "srv-db7sf71llfps73emufj0"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "cronJobRuns": [
+              {
+                "finishedAt": "",
+                "id": "crr-qsndkqj2819t9urkambm",
+                "startedAt": "2026-10-14T18:19:41Z",
+                "status": "pending"
+              }
+            ],
+            "deploys": [
+              {
+                "id": "dep-db7sf71llfps73emufjg",
+                "status": "live",
+                "trigger": "create"
+              }
+            ],
+            "server": {
+              "command": "sh -c 'printf QA_A480_DETAIL; exit 0'",
+              "id": "srv-db7sf71llfps73emufj0",
+              "lastSuccessfulRunAt": "",
+              "name": "qa-20261014-a480-detail",
+              "nextRunAt": "2027-01-01T00:00:00Z",
+              "phase": "Running",
+              "runs": [
+                {
+                  "finishedAt": "",
+                  "id": "crr-qsndkqj2819t9urkambm",
+                  "startedAt": "2026-10-14T18:19:41Z",
+                  "status": "pending"
+                }
+              ],
+              "schedule": "0 0 1 1 *"
+            }
+          }
+        }
+      },
+      {
+        "at": "2026-10-14T18:19:46.972Z",
+        "request": {
+          "operationName": "Qaa480History",
+          "query": "query Qaa480History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+          "variables": {
+            "id": "srv-db7sf71llfps73emufj0"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "cronJobRuns": [
+              {
+                "finishedAt": "2026-10-14T18:19:46Z",
+                "id": "crr-qsndkqj2819t9urkambm",
+                "startedAt": "2026-10-14T18:19:41Z",
+                "status": "successful"
+              }
+            ],
+            "deploys": [
+              {
+                "id": "dep-db7sf71llfps73emufjg",
+                "status": "live",
+                "trigger": "create"
+              }
+            ],
+            "server": {
+              "command": "sh -c 'printf QA_A480_DETAIL; exit 0'",
+              "id": "srv-db7sf71llfps73emufj0",
+              "lastSuccessfulRunAt": "2026-10-14T18:19:46Z",
+              "name": "qa-20261014-a480-detail",
+              "nextRunAt": "2027-01-01T00:00:00Z",
+              "phase": "Running",
+              "runs": [
+                {
+                  "finishedAt": "2026-10-14T18:19:46Z",
+                  "id": "crr-qsndkqj2819t9urkambm",
+                  "startedAt": "2026-10-14T18:19:41Z",
+                  "status": "successful"
+                }
+              ],
+              "schedule": "0 0 1 1 *"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "desktop": {
+    "variant": "desktop",
+    "viewport": {
+      "width": 1440,
+      "height": 1200
+    },
+    "screenshots": [
+      "qa-a480-detail-pending-desktop.png",
+      "qa-a480-detail-ready-desktop.png"
+    ],
+    "receipt": {
+      "at": "2026-10-14T18:20:35.051Z",
+      "request": {
+        "operationName": "CronJobRun",
+        "variables": {
+          "serviceId": "srv-db7sf71llfps73emufj0",
+          "runId": "crr-qsndkqj2819t9urkambm"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query CronJobRun($serviceId: String!, $runId: String!) {\n  cronJobRun(serviceId: $serviceId, runId: $runId) {\n    id\n    status\n    startedAt\n    finishedAt\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "cronJobRun": {
+            "__typename": "CronRun",
+            "finishedAt": "2026-10-14T18:19:46Z",
+            "id": "crr-qsndkqj2819t9urkambm",
+            "startedAt": "2026-10-14T18:19:41Z",
+            "status": "successful"
+          }
+        }
+      },
+      "batchOperations": ["CronJobRun"],
+      "batchCardinality": 1,
+      "unchangedFullResponseHeld": true
+    },
+    "pending": {
+      "at": "2026-10-14T18:20:35.091Z",
+      "row": {
+        "bounds": {
+          "x": 421,
+          "y": 932,
+          "width": 854,
+          "height": 80.5
+        },
+        "content": {
+          "tag": "DIV",
+          "bounds": {
+            "x": 429,
+            "y": 940.5,
+            "width": 838,
+            "height": 64
+          },
+          "display": "block",
+          "columns": "none",
+          "gap": "normal",
+          "text": "",
+          "fields": 0
+        }
+      },
+      "table": {
+        "x": 421,
+        "y": 857,
+        "width": 854,
+        "height": 155.5
+      },
+      "skeletonCount": 1,
+      "fields": []
+    },
+    "ready": {
+      "at": "2026-10-14T18:20:42.470Z",
+      "row": {
+        "bounds": {
+          "x": 421,
+          "y": 932,
+          "width": 854,
+          "height": 98.5
+        },
+        "content": {
+          "tag": "DL",
+          "bounds": {
+            "x": 429,
+            "y": 940.5,
+            "width": 838,
+            "height": 82
+          },
+          "display": "grid",
+          "columns": "191.5px 191.5px 191.5px 191.5px",
+          "gap": "4px 24px",
+          "text": "Status\nSucceeded\nStarted\n10/14/2026, 11:19:41 AM\nFinished\n10/14/2026, 11:19:46 AM\nDuration\n5s\nRun ID\ncrr-qsndkqj2819t9urkambm",
+          "fields": 5
+        }
+      },
+      "table": {
+        "x": 421,
+        "y": 857,
+        "width": 854,
+        "height": 173.5
+      },
+      "skeletonCount": 0,
+      "fields": ["Status", "Started", "Finished", "Duration", "Run ID"]
+    }
+  },
+  "mobile": {
+    "variant": "mobile",
+    "viewport": {
+      "width": 390,
+      "height": 1200
+    },
+    "screenshots": [
+      "qa-a480-detail-pending-mobile.png",
+      "qa-a480-detail-ready-mobile.png"
+    ],
+    "receipt": {
+      "at": "2026-10-14T18:21:02.999Z",
+      "request": {
+        "operationName": "CronJobRun",
+        "variables": {
+          "serviceId": "srv-db7sf71llfps73emufj0",
+          "runId": "crr-qsndkqj2819t9urkambm"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query CronJobRun($serviceId: String!, $runId: String!) {\n  cronJobRun(serviceId: $serviceId, runId: $runId) {\n    id\n    status\n    startedAt\n    finishedAt\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "cronJobRun": {
+            "__typename": "CronRun",
+            "finishedAt": "2026-10-14T18:19:46Z",
+            "id": "crr-qsndkqj2819t9urkambm",
+            "startedAt": "2026-10-14T18:19:41Z",
+            "status": "successful"
+          }
+        }
+      },
+      "batchOperations": ["CronJobRun"],
+      "batchCardinality": 1,
+      "unchangedFullResponseHeld": true
+    },
+    "pending": {
+      "at": "2026-10-14T18:21:03.074Z",
+      "row": {
+        "bounds": {
+          "x": 37,
+          "y": 1135,
+          "width": 316,
+          "height": 80.5
+        },
+        "content": {
+          "tag": "DIV",
+          "bounds": {
+            "x": 45,
+            "y": 1143.5,
+            "width": 300,
+            "height": 64
+          },
+          "display": "block",
+          "columns": "none",
+          "gap": "normal",
+          "text": "",
+          "fields": 0
+        }
+      },
+      "table": {
+        "x": 37,
+        "y": 1060,
+        "width": 316,
+        "height": 155.5
+      },
+      "skeletonCount": 1,
+      "fields": []
+    },
+    "ready": {
+      "at": "2026-10-14T18:21:10.447Z",
+      "row": {
+        "bounds": {
+          "x": 37,
+          "y": 1123.5,
+          "width": 316,
+          "height": 218.5
+        },
+        "content": {
+          "tag": "DL",
+          "bounds": {
+            "x": 45,
+            "y": 1132,
+            "width": 300,
+            "height": 202
+          },
+          "display": "grid",
+          "columns": "138px 138px",
+          "gap": "4px 24px",
+          "text": "Status\nSucceeded\nStarted\n10/14/2026, 11:19:41 AM\nFinished\n10/14/2026, 11:19:46 AM\nDuration\n5s\nRun ID\ncrr-qsndkqj2819t9urkambm",
+          "fields": 5
+        }
+      },
+      "table": {
+        "x": 37,
+        "y": 1044,
+        "width": 316,
+        "height": 298
+      },
+      "skeletonCount": 0,
+      "fields": ["Status", "Started", "Finished", "Duration", "Run ID"]
+    }
+  },
+  "fieldMetrics": {
+    "at": "2026-10-14T18:22:11.797Z",
+    "scrollY": 0,
+    "fields": [
+      {
+        "label": "Status",
+        "bounds": {
+          "width": 138,
+          "height": 58
+        },
+        "term": {
+          "width": 138,
+          "height": 16
+        },
+        "value": {
+          "width": 138,
+          "height": 22,
+          "text": "Succeeded",
+          "font": "14px",
+          "lineHeight": "20px",
+          "children": [
+            {
+              "text": "Succeeded",
+              "width": 82.59375,
+              "height": 22,
+              "font": "12px",
+              "lineHeight": "16px",
+              "whiteSpace": "nowrap",
+              "overflowWrap": "anywhere"
+            }
+          ]
+        }
+      },
+      {
+        "label": "Started",
+        "bounds": {
+          "width": 138,
+          "height": 58
+        },
+        "term": {
+          "width": 138,
+          "height": 16
+        },
+        "value": {
+          "width": 138,
+          "height": 40,
+          "text": "10/14/2026, 11:19:41 AM",
+          "font": "14px",
+          "lineHeight": "20px",
+          "children": [
+            {
+              "text": "10/14/2026, 11:19:41 AM",
+              "width": 85.1875,
+              "height": 37,
+              "font": "14px",
+              "lineHeight": "20px",
+              "whiteSpace": "normal",
+              "overflowWrap": "anywhere"
+            }
+          ]
+        }
+      },
+      {
+        "label": "Finished",
+        "bounds": {
+          "width": 138,
+          "height": 58
+        },
+        "term": {
+          "width": 138,
+          "height": 16
+        },
+        "value": {
+          "width": 138,
+          "height": 40,
+          "text": "10/14/2026, 11:19:46 AM",
+          "font": "14px",
+          "lineHeight": "20px",
+          "children": [
+            {
+              "text": "10/14/2026, 11:19:46 AM",
+              "width": 85.1875,
+              "height": 37,
+              "font": "14px",
+              "lineHeight": "20px",
+              "whiteSpace": "normal",
+              "overflowWrap": "anywhere"
+            }
+          ]
+        }
+      },
+      {
+        "label": "Duration",
+        "bounds": {
+          "width": 138,
+          "height": 58
+        },
+        "term": {
+          "width": 138,
+          "height": 16
+        },
+        "value": {
+          "width": 138,
+          "height": 20,
+          "text": "5s",
+          "font": "14px",
+          "lineHeight": "20px",
+          "children": [
+            {
+              "text": "5s",
+              "width": 15.859375,
+              "height": 17,
+              "font": "14px",
+              "lineHeight": "20px",
+              "whiteSpace": "normal",
+              "overflowWrap": "anywhere"
+            }
+          ]
+        }
+      },
+      {
+        "label": "Run ID",
+        "bounds": {
+          "width": 138,
+          "height": 78
+        },
+        "term": {
+          "width": 138,
+          "height": 16
+        },
+        "value": {
+          "width": 138,
+          "height": 60,
+          "text": "crr-qsndkqj2819t9urkambm",
+          "font": "14px",
+          "lineHeight": "20px",
+          "children": [
+            {
+              "text": "crr-qsndkqj2819t9urkambm",
+              "width": 137.28125,
+              "height": 54,
+              "font": "12px",
+              "lineHeight": "16px",
+              "whiteSpace": "normal",
+              "overflowWrap": "anywhere"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "delete": {
+    "at": "2026-10-14T18:22:54.092Z",
+    "request": {
+      "operationName": "DeleteService",
+      "variables": {
+        "id": "srv-db7sf71llfps73emufj0"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deleteService": true
+      }
+    },
+    "url": "https://dashboard.bex.co/"
+  },
+  "cleanup": {
+    "at": "2026-10-14T18:23:40.066Z",
+    "inventory": {
+      "at": "2026-10-14T18:23:39.516Z",
+      "request": {
+        "operationName": "Qaa467Inventory",
+        "query": "query Qaa467Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      }
+    },
+    "resource": {
+      "status": 404,
+      "body": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+    },
+    "runs": {
+      "status": 404,
+      "body": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+    },
+    "inventoryMatches": {
+      "blueprints": true,
+      "databases": true,
+      "envGroups": true,
+      "keyValues": true,
+      "projects": true,
+      "services": true,
+      "webhookEndpoints": true
+    }
+  },
+  "logout": {
+    "helperExitCode": 0,
+    "result": "ok logged-out",
+    "browser": {
+      "at": "2026-10-14T18:24:14.435Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "limits": [
+    "Only the original complete CronJobRun request/response was delayed. Each intercepted batch had exactly one operation and its unchanged HTTP 200 response was released after the pending capture plus a seven-second hold.",
+    "Both complete table crops were inspected at desktop 1440x1200 and mobile 390x1200. Screenshot scrolling affects absolute y positions, so row/content/table heights and widths establish the mismatch; no outage duration, screen-position or CLS metric is inferred.",
+    "The fixed successful run was used for geometry. Running/missing timestamps, true detail errors, cached reopen, canceled/failed runs, second-row expansion, Chinese and alias URLs remain fix-verification controls.",
+    "The initial fixture name exceeded the visible 30-character rule and was rejected before submission; it was shortened before the single native CreateService.",
+    "No backend execution, schema, polling, state transitions or product implementation was changed."
+  ]
+}
