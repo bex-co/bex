@@ -1,5 +1,6 @@
 import { cn } from "@/common/lib/utils/utils.ts";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCardRadioGroup } from "@/common/hooks/use-card-radio-group";
 import {
   formatInstanceCPU,
   formatInstanceMemory,
@@ -22,7 +23,8 @@ export interface PlanCardGridProps {
   value: string;
   onChange: (id: string) => void;
   disabled?: boolean;
-  ariaLabel?: string;
+  /** The group's accessible name — the visible plan label it sits under. */
+  ariaLabel: string;
 }
 
 /**
@@ -41,6 +43,12 @@ export function PlanCardGrid({
   ariaLabel,
 }: PlanCardGridProps) {
   const { t } = useTranslations();
+  const radio = useCardRadioGroup(
+    instanceTypes.map((it) => it.id),
+    value,
+    onChange,
+    disabled,
+  );
   return (
     <div
       role="radiogroup"
@@ -53,6 +61,7 @@ export function PlanCardGrid({
         return (
           <button
             key={it.id}
+            {...radio(it.id)}
             type="button"
             role="radio"
             aria-checked={selected}

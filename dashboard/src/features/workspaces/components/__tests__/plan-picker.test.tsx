@@ -44,4 +44,29 @@ describe("PlanPicker", () => {
     await user.click(screen.getByRole("radio", { name: /Pro/ }));
     expect(onSelect).toHaveBeenCalledWith("pro");
   });
+
+  // w4/m207: the arrows move focus and the draft plan; Tab leaves the group.
+  it("moves between plans with the arrow keys and keeps one Tab stop", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    const { rerender } = render(
+      <>
+        <PlanPicker selected="hobby" onSelect={onSelect} />
+        <button type="button">after</button>
+      </>,
+    );
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole("radio", { name: /Hobby/ }));
+    await user.keyboard("{ArrowRight}");
+    expect(onSelect).toHaveBeenLastCalledWith("pro");
+    expect(document.activeElement).toBe(screen.getByRole("radio", { name: /Pro/ }));
+    rerender(
+      <>
+        <PlanPicker selected="pro" onSelect={onSelect} />
+        <button type="button">after</button>
+      </>,
+    );
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "after" }));
+  });
 });
