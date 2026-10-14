@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { SvgLineChart, EmptyChart, ChartLegend } from "../svg-line-chart";
 
 const POINTS = [
@@ -41,6 +41,30 @@ describe("SvgLineChart", () => {
     render(<SvgLineChart unit="cpu" series={[]} />);
     expect(screen.getByText("No data in range")).toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+});
+
+// w4/296: the captured lightly-used CPU Percentage samples.
+describe("SvgLineChart small positive values", () => {
+  const SMALL = [
+    { timestamp: "2026-10-14T06:40:00Z", value: 0.07821397872822744 },
+    { timestamp: "2026-10-14T06:40:30Z", value: 0.2505198684260272 },
+  ];
+
+  it("labels distinct axis ticks and a positive ArrowRight tooltip", () => {
+    const { container } = render(
+      <SvgLineChart
+        unit="percentage"
+        series={[{ points: SMALL, color: "var(--chart-1)" }]}
+      />,
+    );
+    const ticks = Array.from(container.querySelectorAll("svg text")).map(
+      (t) => t.textContent,
+    );
+    expect(ticks).toEqual(["0%", "0.125%", "0.251%"]);
+
+    fireEvent.keyDown(screen.getByRole("img"), { key: "ArrowRight" });
+    expect(screen.getByText("0.0782%")).toBeInTheDocument();
   });
 });
 

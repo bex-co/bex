@@ -204,6 +204,23 @@ describe("ApplicationMetricsCard", () => {
     expect(screen.getAllByText("3").length).toBeGreaterThan(0);
   });
 
+  it("keeps a lightly used service's CPU headline positive (w4/296)", async () => {
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      if (metric === "cpu" && !opts?.percentage)
+        return seriesResult(
+          "cpu",
+          [0.00007821397872822744, 0.0002505198684260272],
+        );
+      return emptyResult();
+    });
+
+    renderCard();
+    await selectTotalTab();
+
+    expect(screen.getByText("0.000251 cores")).toBeInTheDocument();
+    expect(screen.queryByText("0.000 cores")).not.toBeInTheDocument();
+  });
+
   it("renders server percentages as-is, never dividing by the _limit series (w5/m90)", async () => {
     mockUseMetrics.mockImplementation((_resource, metric, opts) => {
       // Absolute usage (bytes) and server percentages (already 0..100).
