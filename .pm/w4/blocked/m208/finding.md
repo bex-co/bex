@@ -1,6 +1,6 @@
 # Datastore plan previews differ across resource and catalog loading
 
-**Severity:** minor. **Source:** continuous functional qa-find-bugs w4, a454/a465/a466, 2026-10-14; credentials consumed by the login helper. Filing only. [Original Key Value source](source-301.md), [resource receipts](../evidence/301-keyvalue-plan-skeleton.json), [complete Key Value catalog batches](../evidence/301-keyvalue-catalog-loading.json), [complete Postgres batches](../evidence/m208-postgres-plan-loading.json).
+**Severity:** minor. **Source:** continuous functional qa-find-bugs w4, a454/a465/a466, 2026-10-14; credentials consumed by the login helper. Filing only. [Original Key Value source](source-301.md), [resource receipts](../../evidence/301-keyvalue-plan-skeleton.json), [complete Key Value catalog batches](../../evidence/301-keyvalue-catalog-loading.json), [complete Postgres batches](../../evidence/m208-postgres-plan-loading.json).
 
 ## Four independently observed producer states
 
