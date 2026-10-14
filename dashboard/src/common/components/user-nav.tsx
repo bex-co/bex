@@ -17,6 +17,7 @@ import { EMPTY_LOGIN_SEARCH } from "@/common/lib/auth/auth";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -131,14 +132,39 @@ export function UserNav() {
   const userInitial =
     (traits?.name || traits?.email)?.[0]?.toUpperCase() || "U";
 
-  // On mobile, show a simple button that navigates to settings
-  if (isMobile) {
-    return (
-      <UserAvatarButton userInitial={userInitial} onClick={handleSettings} />
-    );
-  }
+  const themeItems = (
+    [
+      ["light", Sun],
+      ["dark", Moon],
+      ["system", Monitor],
+    ] as const
+  ).map(([value, Icon]) => (
+    <DropdownMenuItem
+      key={value}
+      onClick={() => setTheme(value)}
+      className={theme === value ? "bg-accent" : ""}
+    >
+      <Icon className="mr-2 h-4 w-4" />
+      <span>{t(THEME_LABEL_KEYS[value])}</span>
+    </DropdownMenuItem>
+  ));
 
-  // On desktop, show the full dropdown menu
+  const languageItems = SUPPORTED_LANGUAGES.map((lang) => (
+    <DropdownMenuItem
+      key={lang}
+      onClick={() => handleLanguage(lang)}
+      className={lang === currentLanguage ? "bg-accent" : ""}
+    >
+      <span className="flex-1">{LANGUAGE_NAMES[lang]}</span>
+      {lang === currentLanguage && <Check className="h-4 w-4" />}
+    </DropdownMenuItem>
+  ));
+
+  // One menu at every width (w4/302). Desktop keeps the hover/arrow-key
+  // flyout submenus; below the 768px breakpoint a side flyout has no room and
+  // no hover, so the same items render inline as labelled groups inside the
+  // one scrollable touch menu. Mobile used to replace the whole menu with a
+  // bare Settings link, which stranded theme and language on narrow screens.
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -161,63 +187,52 @@ export function UserNav() {
           <span>{t("common.userMenuSettings")}</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
-            <Palette className="mr-2 h-4 w-4" />
-            <div className="flex flex-col">
-              <span>{t("common.userMenuTheme")}</span>
-              <span className="text-xs text-muted-foreground">
-                {t(THEME_LABEL_KEYS[theme])}
-              </span>
-            </div>
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuItem
-              onClick={() => setTheme("light")}
-              className={theme === "light" ? "bg-accent" : ""}
-            >
-              <Sun className="mr-2 h-4 w-4" />
-              <span>{t("common.userMenuThemeLight")}</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setTheme("dark")}
-              className={theme === "dark" ? "bg-accent" : ""}
-            >
-              <Moon className="mr-2 h-4 w-4" />
-              <span>{t("common.userMenuThemeDark")}</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setTheme("system")}
-              className={theme === "system" ? "bg-accent" : ""}
-            >
-              <Monitor className="mr-2 h-4 w-4" />
-              <span>{t("common.userMenuThemeSystem")}</span>
-            </DropdownMenuItem>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
-            <Globe className="mr-2 h-4 w-4" />
-            <div className="flex flex-col">
-              <span>{t("common.userMenuLanguage")}</span>
-              <span className="text-xs text-muted-foreground">
-                {LANGUAGE_NAMES[currentLanguage]}
-              </span>
-            </div>
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            {SUPPORTED_LANGUAGES.map((lang) => (
-              <DropdownMenuItem
-                key={lang}
-                onClick={() => handleLanguage(lang)}
-                className={lang === currentLanguage ? "bg-accent" : ""}
-              >
-                <span className="flex-1">{LANGUAGE_NAMES[lang]}</span>
-                {lang === currentLanguage && <Check className="h-4 w-4" />}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
+        {isMobile ? (
+          <>
+            <DropdownMenuGroup aria-label={t("common.userMenuTheme")}>
+              <DropdownMenuLabel className="flex items-center text-xs text-muted-foreground">
+                <Palette className="mr-2 h-4 w-4" />
+                {t("common.userMenuTheme")}
+              </DropdownMenuLabel>
+              {themeItems}
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup aria-label={t("common.userMenuLanguage")}>
+              <DropdownMenuLabel className="flex items-center text-xs text-muted-foreground">
+                <Globe className="mr-2 h-4 w-4" />
+                {t("common.userMenuLanguage")}
+              </DropdownMenuLabel>
+              {languageItems}
+            </DropdownMenuGroup>
+          </>
+        ) : (
+          <>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Palette className="mr-2 h-4 w-4" />
+                <div className="flex flex-col">
+                  <span>{t("common.userMenuTheme")}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {t(THEME_LABEL_KEYS[theme])}
+                  </span>
+                </div>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>{themeItems}</DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Globe className="mr-2 h-4 w-4" />
+                <div className="flex flex-col">
+                  <span>{t("common.userMenuLanguage")}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {LANGUAGE_NAMES[currentLanguage]}
+                  </span>
+                </div>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>{languageItems}</DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={handleLogout}
