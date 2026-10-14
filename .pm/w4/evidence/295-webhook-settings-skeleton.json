@@ -1,0 +1,1086 @@
+{
+  "finding": "Webhook Settings pending form places help after inputs and under-reserves static text",
+  "sourceHead": "f461d9d12",
+  "fixture": {
+    "id": "whk-db7hs0et41sc7388o3g0",
+    "name": "qa-20261013-a429-layout",
+    "enabled": false
+  },
+  "desktop": {
+    "at": "2026-10-14T06:17:36.858Z",
+    "url": "https://dashboard.bex.co/webhook/whk-db7hs0et41sc7388o3g0/settings",
+    "instrumentation": "Delayed only the owned WebhookEndpoint read response by7 seconds; contents and mutations unchanged.",
+    "captured": [
+      {
+        "request": {
+          "operationName": "WebhookEndpoint",
+          "variables": {
+            "id": "whk-db7hs0et41sc7388o3g0",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query WebhookEndpoint($id: String!, $ownerId: String) {\n  webhookEndpoint(id: $id, ownerId: $ownerId) {\n    id\n    name\n    url\n    eventTypes\n    enabled\n    disabledReason\n    createdAt\n    createdBy\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "webhookEndpoint": {
+              "__typename": "WebhookEndpoint",
+              "createdAt": "2026-10-14T06:15:29Z",
+              "createdBy": "c73bb20d-40ff-42df-8597-c9a428697d12",
+              "disabledReason": "",
+              "enabled": false,
+              "eventTypes": ["deploy_ended"],
+              "id": "whk-db7hs0et41sc7388o3g0",
+              "name": "qa-20261013-a429-layout",
+              "url": "https://example.com/qa-a429-disabled"
+            }
+          }
+        }
+      }
+    ],
+    "pending": {
+      "main": {
+        "x": 256,
+        "y": 0,
+        "width": 1184,
+        "height": 1000
+      },
+      "frames": [
+        {
+          "route": "webhook-active-tab",
+          "box": {
+            "x": 256,
+            "y": 48,
+            "width": 1184,
+            "height": 952
+          }
+        },
+        {
+          "route": "webhook-settings",
+          "box": {
+            "x": 400,
+            "y": 244,
+            "width": 896,
+            "height": 1179
+          }
+        }
+      ],
+      "cards": [
+        {
+          "box": {
+            "x": 400,
+            "y": 244,
+            "width": 896,
+            "height": 428
+          },
+          "header": {
+            "x": 401,
+            "y": 265,
+            "width": 894,
+            "height": 24
+          },
+          "content": {
+            "x": 401,
+            "y": 305,
+            "width": 894,
+            "height": 346
+          },
+          "descriptions": 0,
+          "inputs": 0,
+          "buttons": 0,
+          "skeletons": [
+            {
+              "x": 421,
+              "y": 265,
+              "width": 112,
+              "height": 20
+            },
+            {
+              "x": 434,
+              "y": 318,
+              "width": 160,
+              "height": 16
+            },
+            {
+              "x": 434,
+              "y": 342,
+              "width": 614.390625,
+              "height": 16
+            },
+            {
+              "x": 1218,
+              "y": 318,
+              "width": 44,
+              "height": 24
+            },
+            {
+              "x": 421,
+              "y": 395,
+              "width": 128,
+              "height": 16
+            },
+            {
+              "x": 421,
+              "y": 419,
+              "width": 854,
+              "height": 36
+            },
+            {
+              "x": 421,
+              "y": 463,
+              "width": 683.1875,
+              "height": 16
+            },
+            {
+              "x": 421,
+              "y": 503,
+              "width": 128,
+              "height": 16
+            },
+            {
+              "x": 421,
+              "y": 527,
+              "width": 854,
+              "height": 36
+            },
+            {
+              "x": 421,
+              "y": 571,
+              "width": 683.1875,
+              "height": 16
+            },
+            {
+              "x": 421,
+              "y": 611,
+              "width": 96,
+              "height": 16
+            },
+            {
+              "x": 421,
+              "y": 635,
+              "width": 683.1875,
+              "height": 16
+            }
+          ]
+        },
+        {
+          "box": {
+            "x": 400,
+            "y": 696,
+            "width": 896,
+            "height": 561
+          },
+          "header": {
+            "x": 401,
+            "y": 717,
+            "width": 894,
+            "height": 48
+          },
+          "content": {
+            "x": 401,
+            "y": 781,
+            "width": 894,
+            "height": 455
+          },
+          "descriptions": 0,
+          "inputs": 0,
+          "buttons": 0,
+          "skeletons": [
+            {
+              "x": 421,
+              "y": 717,
+              "width": 112,
+              "height": 20
+            },
+            {
+              "x": 421,
+              "y": 749,
+              "width": 683.1875,
+              "height": 16
+            },
+            {
+              "x": 421,
+              "y": 781,
+              "width": 112,
+              "height": 16
+            },
+            {
+              "x": 430,
+              "y": 814,
+              "width": 836,
+              "height": 36
+            },
+            {
+              "x": 430,
+              "y": 858,
+              "width": 128,
+              "height": 28
+            },
+            {
+              "x": 434,
+              "y": 907,
+              "width": 16,
+              "height": 16
+            },
+            {
+              "x": 462,
+              "y": 907,
+              "width": 160,
+              "height": 16
+            },
+            {
+              "x": 434,
+              "y": 931,
+              "width": 16,
+              "height": 16
+            },
+            {
+              "x": 462,
+              "y": 931,
+              "width": 224,
+              "height": 16
+            },
+            {
+              "x": 434,
+              "y": 955,
+              "width": 16,
+              "height": 16
+            },
+            {
+              "x": 462,
+              "y": 955,
+              "width": 224,
+              "height": 16
+            },
+            {
+              "x": 434,
+              "y": 979,
+              "width": 16,
+              "height": 16
+            },
+            {
+              "x": 462,
+              "y": 979,
+              "width": 160,
+              "height": 16
+            },
+            {
+              "x": 434,
+              "y": 1003,
+              "width": 16,
+              "height": 16
+            },
+            {
+              "x": 462,
+              "y": 1003,
+              "width": 224,
+              "height": 16
+            },
+            {
+              "x": 434,
+              "y": 1027,
+              "width": 16,
+              "height": 16
+            },
+            {
+              "x": 462,
+              "y": 1027,
+              "width": 224,
+              "height": 16
+            },
+            {
+              "x": 434,
+              "y": 1051,
+              "width": 16,
+              "height": 16
+            },
+            {
+              "x": 462,
+              "y": 1051,
+              "width": 160,
+              "height": 16
+            },
+            {
+              "x": 434,
+              "y": 1075,
+              "width": 16,
+              "height": 16
+            },
+            {
+              "x": 462,
+              "y": 1075,
+              "width": 224,
+              "height": 16
+            },
+            {
+              "x": 1163,
+              "y": 1200,
+              "width": 112,
+              "height": 36
+            }
+          ]
+        },
+        {
+          "box": {
+            "x": 400,
+            "y": 1281,
+            "width": 896,
+            "height": 142
+          },
+          "header": {
+            "x": 401,
+            "y": 1302,
+            "width": 894,
+            "height": 48
+          },
+          "content": {
+            "x": 401,
+            "y": 1366,
+            "width": 894,
+            "height": 36
+          },
+          "descriptions": 0,
+          "inputs": 0,
+          "buttons": 0,
+          "skeletons": [
+            {
+              "x": 421,
+              "y": 1302,
+              "width": 128,
+              "height": 20
+            },
+            {
+              "x": 421,
+              "y": 1334,
+              "width": 683.1875,
+              "height": 16
+            },
+            {
+              "x": 421,
+              "y": 1366,
+              "width": 128,
+              "height": 36
+            }
+          ]
+        }
+      ]
+    },
+    "ready": {
+      "main": {
+        "x": 256,
+        "y": 0,
+        "width": 1184,
+        "height": 1000
+      },
+      "frames": [],
+      "cards": [
+        {
+          "box": {
+            "x": 400,
+            "y": 265,
+            "width": 896,
+            "height": 414
+          },
+          "header": {
+            "x": 401,
+            "y": 286,
+            "width": 894,
+            "height": 20
+          },
+          "content": {
+            "x": 401,
+            "y": 322,
+            "width": 894,
+            "height": 336
+          },
+          "descriptions": 0,
+          "inputs": 2,
+          "buttons": 1,
+          "skeletons": []
+        },
+        {
+          "box": {
+            "x": 400,
+            "y": 703,
+            "width": 896,
+            "height": 557
+          },
+          "header": {
+            "x": 401,
+            "y": 724,
+            "width": 894,
+            "height": 40
+          },
+          "content": {
+            "x": 401,
+            "y": 780,
+            "width": 894,
+            "height": 459
+          },
+          "descriptions": 1,
+          "inputs": 1,
+          "buttons": 75,
+          "skeletons": []
+        },
+        {
+          "box": {
+            "x": 400,
+            "y": 1284,
+            "width": 896,
+            "height": 134
+          },
+          "header": {
+            "x": 401,
+            "y": 1305,
+            "width": 894,
+            "height": 40
+          },
+          "content": {
+            "x": 401,
+            "y": 1361,
+            "width": 894,
+            "height": 36
+          },
+          "descriptions": 1,
+          "inputs": 0,
+          "buttons": 1,
+          "skeletons": []
+        }
+      ]
+    },
+    "routeState": {
+      "status": "pending",
+      "matches": [
+        "__root__",
+        "/webhook/$webhookId",
+        "/webhook/$webhookId/settings"
+      ]
+    }
+  },
+  "desktopReadyFields": {
+    "at": "2026-10-14T06:20:21.723Z",
+    "fields": [
+      {
+        "id": "webhook-settings-name",
+        "label": {
+          "x": 421,
+          "y": 380,
+          "width": 854,
+          "height": 14
+        },
+        "help": {
+          "x": 421,
+          "y": 402,
+          "width": 854,
+          "height": 20
+        },
+        "input": {
+          "x": 421,
+          "y": 430,
+          "width": 854,
+          "height": 36
+        }
+      },
+      {
+        "id": "webhook-settings-url",
+        "label": {
+          "x": 421,
+          "y": 490,
+          "width": 854,
+          "height": 14
+        },
+        "help": {
+          "x": 421,
+          "y": 512,
+          "width": 854,
+          "height": 20
+        },
+        "input": {
+          "x": 421,
+          "y": 540,
+          "width": 854,
+          "height": 36
+        }
+      }
+    ]
+  },
+  "mobile": {
+    "at": "2026-10-14T06:20:32.958Z",
+    "url": "https://dashboard.bex.co/webhook/whk-db7hs0et41sc7388o3g0/settings",
+    "instrumentation": "Delayed only the owned WebhookEndpoint read response by7 seconds; contents and mutations unchanged.",
+    "captured": [
+      {
+        "request": {
+          "operationName": "WebhookEndpoint",
+          "variables": {
+            "id": "whk-db7hs0et41sc7388o3g0",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query WebhookEndpoint($id: String!, $ownerId: String) {\n  webhookEndpoint(id: $id, ownerId: $ownerId) {\n    id\n    name\n    url\n    eventTypes\n    enabled\n    disabledReason\n    createdAt\n    createdBy\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "webhookEndpoint": {
+              "__typename": "WebhookEndpoint",
+              "createdAt": "2026-10-14T06:15:29Z",
+              "createdBy": "c73bb20d-40ff-42df-8597-c9a428697d12",
+              "disabledReason": "",
+              "enabled": false,
+              "eventTypes": ["deploy_ended"],
+              "id": "whk-db7hs0et41sc7388o3g0",
+              "name": "qa-20261013-a429-layout",
+              "url": "https://example.com/qa-a429-disabled"
+            }
+          }
+        }
+      }
+    ],
+    "pending": {
+      "main": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844
+      },
+      "frames": [
+        {
+          "route": "webhook-active-tab",
+          "box": {
+            "x": 0,
+            "y": 48,
+            "width": 390,
+            "height": 796
+          }
+        },
+        {
+          "route": "webhook-settings",
+          "box": {
+            "x": 16,
+            "y": 312,
+            "width": 358,
+            "height": 1179
+          }
+        }
+      ],
+      "cards": [
+        {
+          "box": {
+            "x": 16,
+            "y": 312,
+            "width": 358,
+            "height": 428
+          },
+          "header": {
+            "x": 17,
+            "y": 333,
+            "width": 356,
+            "height": 24
+          },
+          "content": {
+            "x": 17,
+            "y": 373,
+            "width": 356,
+            "height": 346
+          },
+          "descriptions": 0,
+          "inputs": 0,
+          "buttons": 0,
+          "skeletons": [
+            {
+              "x": 37,
+              "y": 333,
+              "width": 112,
+              "height": 20
+            },
+            {
+              "x": 50,
+              "y": 386,
+              "width": 160,
+              "height": 16
+            },
+            {
+              "x": 50,
+              "y": 410,
+              "width": 184,
+              "height": 16
+            },
+            {
+              "x": 296,
+              "y": 386,
+              "width": 44,
+              "height": 24
+            },
+            {
+              "x": 37,
+              "y": 463,
+              "width": 128,
+              "height": 16
+            },
+            {
+              "x": 37,
+              "y": 487,
+              "width": 316,
+              "height": 36
+            },
+            {
+              "x": 37,
+              "y": 531,
+              "width": 252.796875,
+              "height": 16
+            },
+            {
+              "x": 37,
+              "y": 571,
+              "width": 128,
+              "height": 16
+            },
+            {
+              "x": 37,
+              "y": 595,
+              "width": 316,
+              "height": 36
+            },
+            {
+              "x": 37,
+              "y": 639,
+              "width": 252.796875,
+              "height": 16
+            },
+            {
+              "x": 37,
+              "y": 679,
+              "width": 96,
+              "height": 16
+            },
+            {
+              "x": 37,
+              "y": 703,
+              "width": 252.796875,
+              "height": 16
+            }
+          ]
+        },
+        {
+          "box": {
+            "x": 16,
+            "y": 764,
+            "width": 358,
+            "height": 561
+          },
+          "header": {
+            "x": 17,
+            "y": 785,
+            "width": 356,
+            "height": 48
+          },
+          "content": {
+            "x": 17,
+            "y": 849,
+            "width": 356,
+            "height": 455
+          },
+          "descriptions": 0,
+          "inputs": 0,
+          "buttons": 0,
+          "skeletons": [
+            {
+              "x": 37,
+              "y": 785,
+              "width": 112,
+              "height": 20
+            },
+            {
+              "x": 37,
+              "y": 817,
+              "width": 252.796875,
+              "height": 16
+            },
+            {
+              "x": 37,
+              "y": 849,
+              "width": 112,
+              "height": 16
+            },
+            {
+              "x": 46,
+              "y": 882,
+              "width": 298,
+              "height": 36
+            },
+            {
+              "x": 46,
+              "y": 926,
+              "width": 128,
+              "height": 28
+            },
+            {
+              "x": 50,
+              "y": 975,
+              "width": 16,
+              "height": 16
+            },
+            {
+              "x": 78,
+              "y": 975,
+              "width": 160,
+              "height": 16
+            },
+            {
+              "x": 50,
+              "y": 999,
+              "width": 16,
+              "height": 16
+            },
+            {
+              "x": 78,
+              "y": 999,
+              "width": 224,
+              "height": 16
+            },
+            {
+              "x": 50,
+              "y": 1023,
+              "width": 16,
+              "height": 16
+            },
+            {
+              "x": 78,
+              "y": 1023,
+              "width": 224,
+              "height": 16
+            },
+            {
+              "x": 50,
+              "y": 1047,
+              "width": 16,
+              "height": 16
+            },
+            {
+              "x": 78,
+              "y": 1047,
+              "width": 160,
+              "height": 16
+            },
+            {
+              "x": 50,
+              "y": 1071,
+              "width": 16,
+              "height": 16
+            },
+            {
+              "x": 78,
+              "y": 1071,
+              "width": 224,
+              "height": 16
+            },
+            {
+              "x": 50,
+              "y": 1095,
+              "width": 16,
+              "height": 16
+            },
+            {
+              "x": 78,
+              "y": 1095,
+              "width": 224,
+              "height": 16
+            },
+            {
+              "x": 50,
+              "y": 1119,
+              "width": 16,
+              "height": 16
+            },
+            {
+              "x": 78,
+              "y": 1119,
+              "width": 160,
+              "height": 16
+            },
+            {
+              "x": 50,
+              "y": 1143,
+              "width": 16,
+              "height": 16
+            },
+            {
+              "x": 78,
+              "y": 1143,
+              "width": 224,
+              "height": 16
+            },
+            {
+              "x": 241,
+              "y": 1268,
+              "width": 112,
+              "height": 36
+            }
+          ]
+        },
+        {
+          "box": {
+            "x": 16,
+            "y": 1349,
+            "width": 358,
+            "height": 142
+          },
+          "header": {
+            "x": 17,
+            "y": 1370,
+            "width": 356,
+            "height": 48
+          },
+          "content": {
+            "x": 17,
+            "y": 1434,
+            "width": 356,
+            "height": 36
+          },
+          "descriptions": 0,
+          "inputs": 0,
+          "buttons": 0,
+          "skeletons": [
+            {
+              "x": 37,
+              "y": 1370,
+              "width": 128,
+              "height": 20
+            },
+            {
+              "x": 37,
+              "y": 1402,
+              "width": 252.796875,
+              "height": 16
+            },
+            {
+              "x": 37,
+              "y": 1434,
+              "width": 128,
+              "height": 36
+            }
+          ]
+        }
+      ]
+    },
+    "ready": {
+      "main": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844
+      },
+      "frames": [],
+      "cards": [
+        {
+          "box": {
+            "x": 16,
+            "y": 345,
+            "width": 358,
+            "height": 494
+          },
+          "header": {
+            "x": 17,
+            "y": 366,
+            "width": 356,
+            "height": 20
+          },
+          "content": {
+            "x": 17,
+            "y": 402,
+            "width": 356,
+            "height": 416
+          },
+          "descriptions": 0,
+          "inputs": 2,
+          "buttons": 1,
+          "skeletons": []
+        },
+        {
+          "box": {
+            "x": 16,
+            "y": 863,
+            "width": 358,
+            "height": 577
+          },
+          "header": {
+            "x": 17,
+            "y": 884,
+            "width": 356,
+            "height": 60
+          },
+          "content": {
+            "x": 17,
+            "y": 960,
+            "width": 356,
+            "height": 459
+          },
+          "descriptions": 1,
+          "inputs": 1,
+          "buttons": 75,
+          "skeletons": []
+        },
+        {
+          "box": {
+            "x": 16,
+            "y": 1464,
+            "width": 358,
+            "height": 154
+          },
+          "header": {
+            "x": 17,
+            "y": 1485,
+            "width": 356,
+            "height": 60
+          },
+          "content": {
+            "x": 17,
+            "y": 1561,
+            "width": 356,
+            "height": 36
+          },
+          "descriptions": 1,
+          "inputs": 0,
+          "buttons": 1,
+          "skeletons": []
+        }
+      ]
+    },
+    "routeState": {
+      "status": "pending",
+      "matches": [
+        "__root__",
+        "/webhook/$webhookId",
+        "/webhook/$webhookId/settings"
+      ]
+    }
+  },
+  "mobileReadyFields": {
+    "at": "2026-10-14T06:21:43.370Z",
+    "fields": [
+      {
+        "id": "webhook-settings-name",
+        "label": {
+          "x": 37,
+          "y": 480,
+          "width": 316,
+          "height": 14
+        },
+        "help": {
+          "x": 37,
+          "y": 502,
+          "width": 316,
+          "height": 20
+        },
+        "input": {
+          "x": 37,
+          "y": 530,
+          "width": 316,
+          "height": 36
+        }
+      },
+      {
+        "id": "webhook-settings-url",
+        "label": {
+          "x": 37,
+          "y": 590,
+          "width": 316,
+          "height": 14
+        },
+        "help": {
+          "x": 37,
+          "y": 612,
+          "width": 316,
+          "height": 40
+        },
+        "input": {
+          "x": 37,
+          "y": 660,
+          "width": 316,
+          "height": 36
+        }
+      }
+    ]
+  },
+  "probeCodes": {
+    "desktop": "async(page)=>{await page.setViewportSize({width:1440,height:1000});const captured=[];const handler=async route=>{const request=route.request();let list=[];try{const data=request.postDataJSON();list=Array.isArray(data)?data:[data];}catch{}const index=list.findIndex(q=>q?.operationName==='WebhookEndpoint'&&q.variables?.id===\"whk-db7hs0et41sc7388o3g0\");if(index<0){await route.continue();return;}const response=await route.fetch();const body=await response.json();captured.push({request:list[index],status:response.status(),body:Array.isArray(body)?body[index]:body});await page.waitForTimeout(7000);await route.fulfill({response});};await page.route('**/graphql',handler);const measure=()=>{const box=el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};};return {main:box(document.querySelector('main')),frames:[...document.querySelectorAll('[data-route-skeleton]')].map(el=>({route:el.getAttribute('data-route-skeleton'),box:box(el)})),cards:[...document.querySelectorAll('main [data-slot=\"card\"]')].map(el=>({box:box(el),header:box(el.querySelector('[data-slot=\"card-header\"]')),content:box(el.querySelector('[data-slot=\"card-content\"]')),descriptions:el.querySelectorAll('[data-slot=\"card-description\"]').length,inputs:el.querySelectorAll('input').length,buttons:el.querySelectorAll('button').length,skeletons:[...el.querySelectorAll('[data-slot=\"skeleton\"]')].map(box)}))};};try{await page.evaluate(id=>{void window.__TSR_ROUTER__.navigate({to:'/webhook/'+id+'/settings'});},\"whk-db7hs0et41sc7388o3g0\");await page.locator('[data-route-skeleton]').first().waitFor({timeout:10000});await page.waitForTimeout(400);const pending=await page.evaluate(measure);const routeState=await page.evaluate(()=>({status:window.__TSR_ROUTER__.state.status,matches:window.__TSR_ROUTER__.state.matches.map(m=>m.routeId),pendingMatches:window.__TSR_ROUTER__.state.pendingMatches?.map(m=>m.routeId)}));await page.screenshot({path:'qa-a429-pending-desktop.png'});await page.getByRole('button',{name:'Delete',exact:true}).waitFor({timeout:25000});await page.waitForTimeout(750);const ready=await page.evaluate(measure);await page.screenshot({path:'qa-a429-ready-desktop.png'});return {at:new Date().toISOString(),url:page.url(),instrumentation:'Delayed only the owned WebhookEndpoint read response by7 seconds; contents and mutations unchanged.',captured,pending,ready,routeState};}finally{await page.unroute('**/graphql',handler);}}",
+    "mobile": "async(page)=>{await page.setViewportSize({width:390,height:844});const captured=[];const handler=async route=>{const request=route.request();let list=[];try{const data=request.postDataJSON();list=Array.isArray(data)?data:[data];}catch{}const index=list.findIndex(q=>q?.operationName==='WebhookEndpoint'&&q.variables?.id===\"whk-db7hs0et41sc7388o3g0\");if(index<0){await route.continue();return;}const response=await route.fetch();const body=await response.json();captured.push({request:list[index],status:response.status(),body:Array.isArray(body)?body[index]:body});await page.waitForTimeout(7000);await route.fulfill({response});};await page.route('**/graphql',handler);const measure=()=>{const box=el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};};return {main:box(document.querySelector('main')),frames:[...document.querySelectorAll('[data-route-skeleton]')].map(el=>({route:el.getAttribute('data-route-skeleton'),box:box(el)})),cards:[...document.querySelectorAll('main [data-slot=\"card\"]')].map(el=>({box:box(el),header:box(el.querySelector('[data-slot=\"card-header\"]')),content:box(el.querySelector('[data-slot=\"card-content\"]')),descriptions:el.querySelectorAll('[data-slot=\"card-description\"]').length,inputs:el.querySelectorAll('input').length,buttons:el.querySelectorAll('button').length,skeletons:[...el.querySelectorAll('[data-slot=\"skeleton\"]')].map(box)}))};};try{await page.evaluate(id=>{void window.__TSR_ROUTER__.navigate({to:'/webhook/'+id+'/settings'});},\"whk-db7hs0et41sc7388o3g0\");await page.locator('[data-route-skeleton]').first().waitFor({timeout:10000});await page.waitForTimeout(400);const pending=await page.evaluate(measure);const routeState=await page.evaluate(()=>({status:window.__TSR_ROUTER__.state.status,matches:window.__TSR_ROUTER__.state.matches.map(m=>m.routeId),pendingMatches:window.__TSR_ROUTER__.state.pendingMatches?.map(m=>m.routeId)}));await page.screenshot({path:'qa-a429-pending-mobile.png'});await page.getByRole('button',{name:'Delete',exact:true}).waitFor({timeout:25000});await page.waitForTimeout(750);const ready=await page.evaluate(measure);await page.screenshot({path:'qa-a429-ready-mobile.png'});return {at:new Date().toISOString(),url:page.url(),instrumentation:'Delayed only the owned WebhookEndpoint read response by7 seconds; contents and mutations unchanged.',captured,pending,ready,routeState};}finally{await page.unroute('**/graphql',handler);}}"
+  },
+  "reviewedScreenshots": [
+    ".playwright-mcp/qa-a429-pending-desktop.png",
+    ".playwright-mcp/qa-a429-ready-desktop.png",
+    ".playwright-mcp/qa-a429-pending-mobile.png",
+    ".playwright-mcp/qa-a429-ready-mobile.png"
+  ],
+  "cleanup": {
+    "delete": {
+      "at": "2026-10-14T06:24:37.464Z",
+      "request": [
+        {
+          "operationName": "DeleteWebhookEndpoint",
+          "variables": {
+            "id": "whk-db7hs0et41sc7388o3g0",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation DeleteWebhookEndpoint($id: String!, $ownerId: String) {\n  deleteWebhookEndpoint(id: $id, ownerId: $ownerId)\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "deleteWebhookEndpoint": true
+          }
+        }
+      ]
+    },
+    "endpointRead": {
+      "status": 404,
+      "body": {
+        "code": "NOT_FOUND",
+        "error": "not found",
+        "id": "not_found",
+        "message": "not found",
+        "params": null
+      }
+    },
+    "sevenInventorySetsRestored": true,
+    "sessionRevokeExit": 0,
+    "browser": {
+      "at": "2026-10-14T06:26:09.081Z",
+      "owners": {
+        "url": "https://api.bex.co/v1/owners",
+        "status": 401,
+        "body": "{\"error\":\"unauthorized\",\"id\":\"unauthorized\",\"message\":\"unauthorized\"}\n"
+      },
+      "cookieCount": 0,
+      "pageCount": 1,
+      "url": "about:blank"
+    }
+  },
+  "limits": [
+    "Only the owned WebhookEndpoint unchanged read response was held7 seconds; handlers removed in finally. No mutation, failure, auth response or foreign endpoint intercepted.",
+    "Production TanStack Router public navigate method used to enter Settings; no throttled sidebar/tab-click assertion.",
+    "Disabled owner-visible endpoint, English desktop/mobile only; status remained disabled and no notification delivery was triggered.",
+    "Parent header's data-dependent height/chips were measured but are outside the finding; control offsets compared relative to the General card.",
+    "Create-only secret never returned to model; screenshots captured only after leaving its creation step. No secret value or credential persisted."
+  ]
+}
