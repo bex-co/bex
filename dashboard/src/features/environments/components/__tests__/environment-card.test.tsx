@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { EnvironmentCard } from "@/features/environments/components/environment-card";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
+import type { EnvGroupView } from "@/features/env-groups/types";
 import type { ServiceView } from "@/features/services/types";
 
 const rename = vi.fn();
@@ -322,6 +323,84 @@ describe("EnvironmentCard", () => {
     expect(setServices).toHaveBeenCalled();
     expect(setDatabases).toHaveBeenCalled();
     expect(screen.getByText("Selected: 1")).toBeInTheDocument();
+  });
+
+  // w4/m206: a two-group move timed out after moving one group. The next
+  // read removed that group from this environment, but its selection key
+  // survived: one row on screen, "Selected: 2", Move enabled.
+  it("counts only selections still in this environment once a failed move has partly applied", async () => {
+    setEnvGroups.mockResolvedValue(false);
+    const user = userEvent.setup();
+    const group = (id: string, name: string): EnvGroupView => ({
+      id,
+      name,
+      ownerId: "tea-1",
+      environmentId: env.id,
+      createdAt: null,
+      updatedAt: null,
+      revision: "1",
+      availability: null,
+      serviceLinks: [],
+      envVarKeys: [],
+      secretFileNames: [],
+    });
+    const envGroups = [
+      group("evg-first", "first"),
+      group("evg-second", "second"),
+    ];
+    const right: EnvironmentView = { ...env, id: "env-2", name: "right" };
+    const left = (envGroupIds: string[]): EnvironmentView => ({
+      ...env,
+      envGroupIds,
+    });
+    const card = (source: EnvironmentView, query = "") => (
+      <EnvironmentCard
+        environment={source}
+        services={[]}
+        databases={[]}
+        keyValues={[]}
+        envGroups={envGroups}
+        allEnvironments={[source, right]}
+        resourceFilter={{ environmentId: null, query, kind: "all" }}
+        servicePending={null}
+        onRunServiceAction={vi.fn()}
+        onDatabaseDeleted={vi.fn()}
+        onKeyValueDeleted={vi.fn()}
+      />
+    );
+    const { rerender } = render(card(left(["evg-first", "evg-second"])));
+
+    await user.click(screen.getByRole("button", { name: "select all rows" }));
+    expect(screen.getByText("Selected: 2")).toBeInTheDocument();
+    // A row hidden only by the search stays selected.
+    rerender(card(left(["evg-first", "evg-second"]), "second"));
+    expect(screen.getByText("Selected: 2")).toBeInTheDocument();
+    rerender(card(left(["evg-first", "evg-second"])));
+
+    await user.click(
+      screen.getByRole("combobox", {
+        name: "Move selected resources to environment",
+      }),
+    );
+    await user.click(screen.getByRole("option", { name: "right" }));
+    await user.click(screen.getByRole("button", { name: "Move" }));
+    expect(setEnvGroups).toHaveBeenCalledWith("env-2", "right", [
+      "evg-first",
+      "evg-second",
+    ]);
+    // The write failed as far as the client knows: both stay selected…
+    expect(screen.getByText("Selected: 2")).toBeInTheDocument();
+
+    // …until the placement read shows the first group has left.
+    rerender(card(left(["evg-second"])));
+    expect(screen.getByText("Selected: 1")).toBeInTheDocument();
+    setEnvGroups.mockClear();
+    await user.click(screen.getByRole("button", { name: "Move" }));
+    expect(setEnvGroups).toHaveBeenCalledWith("env-2", "right", ["evg-second"]);
+
+    // The acknowledgment-lost case: both arrived, nothing is left to move.
+    rerender(card(left([])));
+    expect(screen.queryByText(/Selected: [12]/)).not.toBeInTheDocument();
   });
 
   it("renames via the overflow menu", async () => {

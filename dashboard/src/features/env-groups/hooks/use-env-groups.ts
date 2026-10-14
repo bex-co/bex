@@ -231,6 +231,10 @@ export function useEnvGroupMutations(
         toast.error(t("envGroups.createError", { name: input.name }), {
           description: error instanceof Error ? error.message : undefined,
         });
+        // A create that failed may still have been saved — its answer can be
+        // lost after the write (w4/m206). Re-read the list before the user
+        // retries, so a group that was created is there to be seen.
+        await bestEffortRefetch(refetch);
         return null;
       } finally {
         setBusy(false);

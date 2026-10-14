@@ -1,18 +1,18 @@
 # w4 · m206 — Make environment-group creation and moves recoverable
 
-**Worker:** worker4 **Goal:** ordinary scoped group creation and a two-group move complete within the existing API budget, and an interrupted write has a discoverable, recoverable outcome. **Status:** todo
+**Worker:** worker4 **Goal:** ordinary scoped group creation and a two-group move complete within the existing API budget, and an interrupted write has a discoverable, recoverable outcome. **Status:** blocked (release pipeline deploys backend + dashboard; then QA replays the DoD and confirms the production name residue freed itself, for t008). t001–t007 done.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Bound scoped creation and move work without full environment hydration | 40m | — |
-| t002 | Recover failed creation and its owned name reservation | 50m | t001 |
-| t003 | Reconcile interrupted membership moves and source selection | 45m | t001, t002 |
-| t004 | Audit shared callers, aliases and passing controls | 30m | t003 |
-| t005 | Render parity | 15m | t004 |
-| t006 | Simplify | 15m | t005 |
-| t007 | Test coverage | 40m | t005, t006 |
+| t001 | Bound scoped creation and move work without full environment hydration — **DONE** | 40m | — |
+| t002 | Recover failed creation and its owned name reservation — **DONE** | 50m | t001 |
+| t003 | Reconcile interrupted membership moves and source selection — **DONE** | 45m | t001, t002 |
+| t004 | Audit shared callers, aliases and passing controls — **DONE** | 30m | t003 |
+| t005 | Render parity — **DONE** | 15m | t004 |
+| t006 | Simplify — **DONE** | 15m | t005 |
+| t007 | Test coverage — **DONE** | 40m | t005, t006 |
 | t008 | Closeout | 20m | t007 |
 
 ## Definition of done
