@@ -1245,6 +1245,13 @@ type CronRun struct {
 	// NonZeroExit or OOMKilled.
 	// +optional
 	ExitCode *int32 `json:"exitCode,omitempty"`
+
+	// OrderedAt is the operator-internal clock the bounded history is ordered
+	// by (RFC3339): the Job's start time, else its creation time. It survives
+	// the Job, so a run canceled before it started still sorts after its Job
+	// is deleted (w4/m210). Not part of any public run view.
+	// +optional
+	OrderedAt string `json:"orderedAt,omitempty"`
 }
 
 // CronRunCancellation is durable cancellation intent for a cron Job. Name is

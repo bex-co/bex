@@ -1315,6 +1315,13 @@ spec:
                     name:
                       description: Name is the Kubernetes Job name backing this run.
                       type: string
+                    orderedAt:
+                      description: |-
+                        OrderedAt is the operator-internal clock the bounded history is ordered
+                        by (RFC3339): the Job's start time, else its creation time. It survives
+                        the Job, so a run canceled before it started still sorts after its Job
+                        is deleted (w4/m210). Not part of any public run view.
+                      type: string
                     startedAt:
                       description: StartedAt is when the run began (RFC3339); empty
                         if it has not started yet.
