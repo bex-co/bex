@@ -265,6 +265,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **303** — [Key Value Networking preview replaces its form with one loading block](303.md) (50m) ← functional QA a460; pending omits help/inputs/actions at both widths and mobile expands24px; unchanged owned reads and exact form bounds, private Free fixture deleted, inventories restored and session revoked.
 - [ ] **302** — [Mobile avatar removes the dashboard's language and theme controls](302.md) (50m) ← functional QA a458; fresh 390px avatar leads to Settings without preference controls, while desktop controls work and persist; role/Sidebar/source proof, original preferences and inventories restored, session revoked.
 - [ ] **301** — [Key Value plan loading card omits the responsive tier grid and footer](301.md) (55m) ← functional QA a454; unchanged owned read expands plan card 70px desktop/234px mobile; catalog/DOM proof, private Free fixture deleted, inventories restored and session revoked.
 - [ ] **295** — [Webhook Settings loading fields put help below inputs](295.md) (50m) ← functional QA a429; owned read-delay desktop/mobile previews reverse field help/control order and compress static text, General card grows66px on mobile; durable DOM/API evidence, disabled endpoint deleted and session revoked.
