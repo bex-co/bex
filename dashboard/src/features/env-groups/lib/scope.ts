@@ -40,6 +40,22 @@ export function environmentNameIn(
     : undefined;
 }
 
+/**
+ * Why an index holds no name for a saved id: still loading (including before
+ * the workspace resolves), a failed read with no prior success ("error"), or
+ * `undefined` when a successful lookup simply lacks it — the only case where
+ * "Unknown Environment" is true (w4/304).
+ */
+export function environmentLookupStatus(index: {
+  ready: boolean;
+  loading: boolean;
+  error?: Error;
+}): "loading" | "error" | undefined {
+  if (index.loading) return "loading";
+  if (index.ready) return undefined;
+  return index.error ? "error" : "loading";
+}
+
 /** `null` (workspace) -> the sentinel the Select needs. */
 export function scopeValue(environmentId: string | null): string {
   return environmentId || WORKSPACE_SCOPE;
