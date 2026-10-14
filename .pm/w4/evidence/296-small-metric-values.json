@@ -1,0 +1,3367 @@
+{
+  "schemaVersion": 1,
+  "pass": "a431",
+  "scope": "Functional Metrics rendering on one owned Free web service",
+  "sourceHead": "2762f18ee",
+  "fixture": {
+    "id": "srv-db7iauet41sc7388o4eg",
+    "name": "qa-20261013-a431-metrics",
+    "deployId": "dep-db7iauet41sc7388o4f0",
+    "publicUrl": "https://qa-20261013-a431-metrics.onbex.co"
+  },
+  "create": {
+    "at": "2026-10-14T06:47:23.192Z",
+    "request": [
+      {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "docker.io/library/busybox:1.37",
+          "name": "qa-20261013-a431-metrics",
+          "type": "web_service",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "sh -c 'printf \"QA_A431_METRICS\\n\" >/tmp/index.html; exec httpd -f -p 8841 -h /tmp'",
+          "plan": "free",
+          "port": 8841,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db7iauet41sc7388o4eg",
+            "latestDeployId": "dep-db7iauet41sc7388o4f0",
+            "name": "qa-20261013-a431-metrics",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      }
+    ],
+    "url": "https://dashboard.bex.co/services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0",
+    "ui": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261013-a431-metrics\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a431-metrics\" [level=1]\n  - text: Service Deploying\n  - 'link \"Latest deploy: Created\"':\n    - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n    - text: Latest deploy Created\n  - link \"Free\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db7iauet41sc7388o4eg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a431-metrics.onbex.co\":\n    - /url: https://qa-20261013-a431-metrics.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a431-metrics\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: —\n  - term: Created\n  - definition:\n    - time: now\n  - text: Deploy status Created First Deploy dep-db7iauet41sc7388o4f0\n  - button \"Cancel deploy dep-db7iauet41sc7388o4f0\" [disabled]: Cancel\n  - paragraph: docker.io/library/busybox:1.37\n  - term: \"Created:\"\n  - definition: October 13, 2026 at 11:47 PM\n  - term: \"Updated:\"\n  - definition: October 13, 2026 at 11:47 PM\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 13, 2026 at 11:47 PM\n    - listitem:\n      - paragraph: Created\n      - time: October 13, 2026 at 11:47 PM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\"\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: Loading logs…"
+  },
+  "initial": {
+    "at": "2026-10-14T06:47:50.115Z",
+    "request": {
+      "operationName": "Qaa431Inventory",
+      "query": "query Qaa431Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-db7iauet41sc7388o4eg",
+            "name": "qa-20261013-a431-metrics",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    },
+    "deploys": {
+      "status": 200,
+      "body": [
+        {
+          "deploy": {
+            "id": "dep-db7iauet41sc7388o4f0",
+            "serviceId": "srv-db7iauet41sc7388o4eg",
+            "status": "live",
+            "trigger": "other",
+            "bexTrigger": "create",
+            "image": {
+              "ref": "docker.io/library/busybox:1.37"
+            },
+            "createdAt": "2026-10-14T06:47:21.984955Z",
+            "updatedAt": "2026-10-14T06:47:34.854435Z",
+            "finishedAt": "2026-10-14T06:47:34.854434Z"
+          },
+          "cursor": "dep-db7iauet41sc7388o4f0"
+        }
+      ]
+    },
+    "ui": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261013-a431-metrics\"\n  - button \"Search\": Search Ctrl K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a431-metrics\" [level=1]\n  - text: Service Running Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db7iauet41sc7388o4eg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a431-metrics.onbex.co\":\n    - /url: https://qa-20261013-a431-metrics.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a431-metrics\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: now\n  - combobox \"Filter events\"\n  - combobox \"Time range\"\n  - button \"Show event timeline\"\n  - text: Application Metrics\n  - tablist \"Aggregation\":\n    - tab \"Raw\" [selected]\n    - tab \"Min\"\n    - tab \"Max\"\n    - tab \"Avg\"\n  - tablist:\n    - tab \"Percentage\" [selected]\n    - tab \"Total\"\n  - text: Memory\n  - link \"Limit\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/plan\n  - text: …\n  - status \"Loading…\"\n  - text: CPU\n  - link \"Limit\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/plan\n  - text: …\n  - status \"Loading…\"\n  - text: Total Instances\n  - link \"Manage scaling\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/scaling\n  - text: …\n  - status \"Loading…\"\n  - text: Network Metrics Aggregated across all instances\n  - combobox \"Status Code\"\n  - combobox \"Host\"\n  - textbox \"Path\":\n    - /placeholder: Path…\n  - text: Total Requests\n  - combobox \"Group by\"\n  - status \"Loading…\"\n  - text: Response Times\n  - combobox \"Percentile\"\n  - status \"Loading…\"\n  - text: Outbound Bandwidth\n  - status \"Loading…\""
+  },
+  "customApply": {
+    "at": "2026-10-14T06:50:37.558Z",
+    "url": "https://dashboard.bex.co/services/srv-db7iauet41sc7388o4eg/metrics?range=custom&rangeStart=2026-10-14T06%3A40%3A00.000Z&rangeEnd=2026-10-14T06%3A50%3A00.000Z",
+    "captured": [
+      {
+        "at": "2026-10-14T06:50:34.118Z",
+        "request": [
+          {
+            "operationName": "ServiceEvents",
+            "variables": {
+              "serviceId": "srv-db7iauet41sc7388o4eg",
+              "startTime": "2026-10-14T06:40:00.000Z",
+              "endTime": "2026-10-14T06:50:00.000Z",
+              "limit": 100
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query ServiceEvents($serviceId: String!, $startTime: String!, $endTime: String!, $cursor: String, $limit: Int) {\n  serviceEvents(\n    serviceId: $serviceId\n    startTime: $startTime\n    endTime: $endTime\n    cursor: $cursor\n    limit: $limit\n  ) {\n    id\n    type\n    timestamp\n    cursor\n    details {\n      deployId\n      deployStatus\n      preDeployStatus\n      fullDeployStatus\n      failureReason\n      cancelReason\n      stallReason\n      status\n      actor\n      triggeredByUser\n      image\n      commitId\n      commitMessage\n      startedAt\n      finishedAt\n      reasonCode\n      exitCode\n      instanceId\n      fromCount\n      toCount\n      branchFrom\n      branchTo\n      commitUrl\n      projectFrom\n      projectTo\n      environmentFrom\n      environmentTo\n      trigger {\n        firstBuild\n        envUpdated\n        manual\n        deployedByRender\n        clearCache\n        rollback\n        deployHook\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"
+          }
+        ],
+        "status": 200,
+        "body": [
+          {
+            "data": {
+              "serviceEvents": [
+                {
+                  "__typename": "ServiceEvent",
+                  "cursor": "MjAyNi0xMC0xNFQwNjo0NzozNC44NTQ0MzRafGRlcC1kYjdpYXVldDQxc2M3Mzg4bzRmMDplbmRlZA",
+                  "details": {
+                    "__typename": "ServiceEventDetails",
+                    "actor": "",
+                    "branchFrom": "",
+                    "branchTo": "",
+                    "cancelReason": "",
+                    "commitId": "",
+                    "commitMessage": "",
+                    "commitUrl": "",
+                    "deployId": "dep-db7iauet41sc7388o4f0",
+                    "deployStatus": "succeeded",
+                    "environmentFrom": null,
+                    "environmentTo": null,
+                    "exitCode": null,
+                    "failureReason": "",
+                    "finishedAt": "2026-10-14T06:47:34Z",
+                    "fromCount": null,
+                    "fullDeployStatus": "",
+                    "image": "docker.io/library/busybox:1.37",
+                    "instanceId": "",
+                    "preDeployStatus": "",
+                    "projectFrom": null,
+                    "projectTo": null,
+                    "reasonCode": "",
+                    "stallReason": "",
+                    "startedAt": "",
+                    "status": "",
+                    "toCount": null,
+                    "trigger": null,
+                    "triggeredByUser": "c73bb20d-40ff-42df-8597-c9a428697d12"
+                  },
+                  "id": "evt-k1bp70h0c5e8aokjev39",
+                  "timestamp": "2026-10-14T06:47:34Z",
+                  "type": "deploy_ended"
+                },
+                {
+                  "__typename": "ServiceEvent",
+                  "cursor": "MjAyNi0xMC0xNFQwNjo0NzoyMS45ODQ5NTVafGRlcC1kYjdpYXVldDQxc2M3Mzg4bzRmMDpzdGFydGVk",
+                  "details": {
+                    "__typename": "ServiceEventDetails",
+                    "actor": "",
+                    "branchFrom": "",
+                    "branchTo": "",
+                    "cancelReason": "",
+                    "commitId": "",
+                    "commitMessage": "",
+                    "commitUrl": "",
+                    "deployId": "dep-db7iauet41sc7388o4f0",
+                    "deployStatus": "",
+                    "environmentFrom": null,
+                    "environmentTo": null,
+                    "exitCode": null,
+                    "failureReason": "",
+                    "finishedAt": "2026-10-14T06:47:34Z",
+                    "fromCount": null,
+                    "fullDeployStatus": "",
+                    "image": "docker.io/library/busybox:1.37",
+                    "instanceId": "",
+                    "preDeployStatus": "",
+                    "projectFrom": null,
+                    "projectTo": null,
+                    "reasonCode": "",
+                    "stallReason": "",
+                    "startedAt": "",
+                    "status": "",
+                    "toCount": null,
+                    "trigger": {
+                      "__typename": "DeployTrigger",
+                      "clearCache": false,
+                      "deployHook": false,
+                      "deployedByRender": false,
+                      "envUpdated": false,
+                      "firstBuild": true,
+                      "manual": false,
+                      "rollback": false
+                    },
+                    "triggeredByUser": "c73bb20d-40ff-42df-8597-c9a428697d12"
+                  },
+                  "id": "evt-o78fc3vgj0tdc2o53623",
+                  "timestamp": "2026-10-14T06:47:21Z",
+                  "type": "deploy_started"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "at": "2026-10-14T06:50:34.474Z",
+        "request": [
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iauet41sc7388o4eg"]
+                  }
+                ],
+                "name": "CPU",
+                "start": "2026-10-14T06:40:00.000Z",
+                "end": "2026-10-14T06:50:00.000Z",
+                "resolution": 5
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iauet41sc7388o4eg"]
+                  }
+                ],
+                "name": "MEMORY",
+                "start": "2026-10-14T06:40:00.000Z",
+                "end": "2026-10-14T06:50:00.000Z",
+                "resolution": 5
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iauet41sc7388o4eg"]
+                  }
+                ],
+                "name": "CPU",
+                "start": "2026-10-14T06:40:00.000Z",
+                "end": "2026-10-14T06:50:00.000Z",
+                "resolution": 5,
+                "percentage": true
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iauet41sc7388o4eg"]
+                  }
+                ],
+                "name": "MEMORY",
+                "start": "2026-10-14T06:40:00.000Z",
+                "end": "2026-10-14T06:50:00.000Z",
+                "resolution": 5,
+                "percentage": true
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iauet41sc7388o4eg"]
+                  }
+                ],
+                "name": "CPU_LIMIT",
+                "start": "2026-10-14T06:40:00.000Z",
+                "end": "2026-10-14T06:50:00.000Z",
+                "resolution": 5
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iauet41sc7388o4eg"]
+                  }
+                ],
+                "name": "MEMORY_LIMIT",
+                "start": "2026-10-14T06:40:00.000Z",
+                "end": "2026-10-14T06:50:00.000Z",
+                "resolution": 5
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iauet41sc7388o4eg"]
+                  }
+                ],
+                "name": "CPU_TARGET",
+                "start": "2026-10-14T06:40:00.000Z",
+                "end": "2026-10-14T06:50:00.000Z",
+                "resolution": 5
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iauet41sc7388o4eg"]
+                  }
+                ],
+                "name": "MEMORY_TARGET",
+                "start": "2026-10-14T06:40:00.000Z",
+                "end": "2026-10-14T06:50:00.000Z",
+                "resolution": 5
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iauet41sc7388o4eg"]
+                  }
+                ],
+                "name": "INSTANCES",
+                "start": "2026-10-14T06:40:00.000Z",
+                "end": "2026-10-14T06:50:00.000Z",
+                "resolution": 5
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iauet41sc7388o4eg"]
+                  }
+                ],
+                "name": "HTTP_REQUESTS",
+                "start": "2026-10-14T06:40:00.000Z",
+                "end": "2026-10-14T06:50:00.000Z",
+                "resolution": 5
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iauet41sc7388o4eg"]
+                  }
+                ],
+                "name": "HTTP_LATENCY",
+                "start": "2026-10-14T06:40:00.000Z",
+                "end": "2026-10-14T06:50:00.000Z",
+                "resolution": 5,
+                "parameters": [
+                  {
+                    "quantile": 0.9
+                  }
+                ]
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iauet41sc7388o4eg"]
+                  }
+                ],
+                "name": "BANDWIDTH",
+                "start": "2026-10-14T06:40:00.000Z",
+                "end": "2026-10-14T06:50:00.000Z",
+                "resolution": 60
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          }
+        ],
+        "status": 200,
+        "body": [
+          {
+            "data": {
+              "metrics": [
+                {
+                  "__typename": "MetricSeries",
+                  "labels": [
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "instance",
+                      "value": "srv-db7iauet41sc7388o4eg-teul9dvj9kioctf1tu58"
+                    },
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "resource",
+                      "value": "srv-db7iauet41sc7388o4eg"
+                    }
+                  ],
+                  "parameters": [],
+                  "unit": "cpu",
+                  "values": [
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:47:55Z",
+                      "value": 7.821397872822744e-5
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:00Z",
+                      "value": 0.0001067366909736651
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:05Z",
+                      "value": 0.0001067366909736651
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:10Z",
+                      "value": 0.00013409739564752046
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:15Z",
+                      "value": 0.00013409739564752046
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:20Z",
+                      "value": 0.00013409739564752048
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:25Z",
+                      "value": 0.00012565763424188036
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:30Z",
+                      "value": 0.00010630000000000014
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:35Z",
+                      "value": 0.0001252210067460967
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:40Z",
+                      "value": 0.00021893821101940658
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:45Z",
+                      "value": 0.00021893821101940658
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:50Z",
+                      "value": 0.00021893821101940658
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:55Z",
+                      "value": 0.0002505198684260272
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:00Z",
+                      "value": 0.0002505198684260272
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:05Z",
+                      "value": 0.0001828314876428848
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:10Z",
+                      "value": 0.0001460327156723003
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:15Z",
+                      "value": 0.0001460327156723003
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:20Z",
+                      "value": 0.0001460327156723003
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:25Z",
+                      "value": 0.0001379101531836634
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:30Z",
+                      "value": 0.0001379101531836634
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:35Z",
+                      "value": 0.0001379101531836634
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:40Z",
+                      "value": 9.904976180828312e-5
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:45Z",
+                      "value": 0.00011056972107931779
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:50Z",
+                      "value": 0.00013823951125241593
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:55Z",
+                      "value": 0.00011550487163102904
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:50:00Z",
+                      "value": 0.00010398491235999437
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "data": {
+              "metrics": [
+                {
+                  "__typename": "MetricSeries",
+                  "labels": [
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "instance",
+                      "value": "srv-db7iauet41sc7388o4eg-teul9dvj9kioctf1tu58"
+                    },
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "resource",
+                      "value": "srv-db7iauet41sc7388o4eg"
+                    }
+                  ],
+                  "parameters": [],
+                  "unit": "bytes",
+                  "values": [
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:47:25Z",
+                      "value": 376832
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:47:30Z",
+                      "value": 376832
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:47:35Z",
+                      "value": 376832
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:47:40Z",
+                      "value": 376832
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:47:45Z",
+                      "value": 376832
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:47:50Z",
+                      "value": 376832
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:47:55Z",
+                      "value": 376832
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:00Z",
+                      "value": 376832
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:05Z",
+                      "value": 376832
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:10Z",
+                      "value": 376832
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:15Z",
+                      "value": 376832
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:20Z",
+                      "value": 376832
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:25Z",
+                      "value": 376832
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:30Z",
+                      "value": 376832
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:35Z",
+                      "value": 376832
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:40Z",
+                      "value": 380928
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:45Z",
+                      "value": 380928
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:50Z",
+                      "value": 380928
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:55Z",
+                      "value": 380928
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:00Z",
+                      "value": 380928
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:05Z",
+                      "value": 380928
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:10Z",
+                      "value": 380928
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:15Z",
+                      "value": 380928
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:20Z",
+                      "value": 380928
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:25Z",
+                      "value": 380928
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:30Z",
+                      "value": 380928
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:35Z",
+                      "value": 380928
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:40Z",
+                      "value": 380928
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:45Z",
+                      "value": 380928
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:50Z",
+                      "value": 380928
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:55Z",
+                      "value": 380928
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:50:00Z",
+                      "value": 380928
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "data": {
+              "metrics": [
+                {
+                  "__typename": "MetricSeries",
+                  "labels": [
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "instance",
+                      "value": "srv-db7iauet41sc7388o4eg-teul9dvj9kioctf1tu58"
+                    },
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "resource",
+                      "value": "srv-db7iauet41sc7388o4eg"
+                    }
+                  ],
+                  "parameters": [],
+                  "unit": "percentage",
+                  "values": [
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:47:55Z",
+                      "value": 0.07821397872822744
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:00Z",
+                      "value": 0.1067366909736651
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:05Z",
+                      "value": 0.1067366909736651
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:10Z",
+                      "value": 0.13409739564752043
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:15Z",
+                      "value": 0.13409739564752043
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:20Z",
+                      "value": 0.13409739564752046
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:25Z",
+                      "value": 0.12565763424188034
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:30Z",
+                      "value": 0.10630000000000014
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:35Z",
+                      "value": 0.12522100674609668
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:40Z",
+                      "value": 0.21893821101940658
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:45Z",
+                      "value": 0.21893821101940658
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:50Z",
+                      "value": 0.21893821101940658
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:55Z",
+                      "value": 0.2505198684260272
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:00Z",
+                      "value": 0.2505198684260272
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:05Z",
+                      "value": 0.18283148764288482
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:10Z",
+                      "value": 0.14603271567230028
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:15Z",
+                      "value": 0.14603271567230028
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:20Z",
+                      "value": 0.14603271567230028
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:25Z",
+                      "value": 0.1379101531836634
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:30Z",
+                      "value": 0.1379101531836634
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:35Z",
+                      "value": 0.1379101531836634
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:40Z",
+                      "value": 0.09904976180828311
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:45Z",
+                      "value": 0.11056972107931777
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:50Z",
+                      "value": 0.13823951125241593
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:55Z",
+                      "value": 0.11550487163102903
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:50:00Z",
+                      "value": 0.10398491235999437
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "data": {
+              "metrics": [
+                {
+                  "__typename": "MetricSeries",
+                  "labels": [
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "instance",
+                      "value": "srv-db7iauet41sc7388o4eg-teul9dvj9kioctf1tu58"
+                    },
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "resource",
+                      "value": "srv-db7iauet41sc7388o4eg"
+                    }
+                  ],
+                  "parameters": [],
+                  "unit": "percentage",
+                  "values": [
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:47:40Z",
+                      "value": 0.0701904296875
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:47:45Z",
+                      "value": 0.0701904296875
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:47:50Z",
+                      "value": 0.0701904296875
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:47:55Z",
+                      "value": 0.0701904296875
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:00Z",
+                      "value": 0.0701904296875
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:05Z",
+                      "value": 0.0701904296875
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:10Z",
+                      "value": 0.0701904296875
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:15Z",
+                      "value": 0.0701904296875
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:20Z",
+                      "value": 0.0701904296875
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:25Z",
+                      "value": 0.0701904296875
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:30Z",
+                      "value": 0.0701904296875
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:35Z",
+                      "value": 0.0701904296875
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:40Z",
+                      "value": 0.070953369140625
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:45Z",
+                      "value": 0.070953369140625
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:50Z",
+                      "value": 0.070953369140625
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:55Z",
+                      "value": 0.070953369140625
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:00Z",
+                      "value": 0.070953369140625
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:05Z",
+                      "value": 0.070953369140625
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:10Z",
+                      "value": 0.070953369140625
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:15Z",
+                      "value": 0.070953369140625
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:20Z",
+                      "value": 0.070953369140625
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:25Z",
+                      "value": 0.070953369140625
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:30Z",
+                      "value": 0.070953369140625
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:35Z",
+                      "value": 0.070953369140625
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:40Z",
+                      "value": 0.070953369140625
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:45Z",
+                      "value": 0.070953369140625
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:50Z",
+                      "value": 0.070953369140625
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:55Z",
+                      "value": 0.070953369140625
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:50:00Z",
+                      "value": 0.070953369140625
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "data": {
+              "metrics": [
+                {
+                  "__typename": "MetricSeries",
+                  "labels": [
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "instance",
+                      "value": "srv-db7iauet41sc7388o4eg-teul9dvj9kioctf1tu58"
+                    },
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "resource",
+                      "value": "srv-db7iauet41sc7388o4eg"
+                    }
+                  ],
+                  "parameters": [],
+                  "unit": "cpu",
+                  "values": [
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:50:34Z",
+                      "value": 0.1
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "data": {
+              "metrics": [
+                {
+                  "__typename": "MetricSeries",
+                  "labels": [
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "instance",
+                      "value": "srv-db7iauet41sc7388o4eg-teul9dvj9kioctf1tu58"
+                    },
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "resource",
+                      "value": "srv-db7iauet41sc7388o4eg"
+                    }
+                  ],
+                  "parameters": [],
+                  "unit": "bytes",
+                  "values": [
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:50:34Z",
+                      "value": 536870912
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "data": {
+              "metrics": []
+            }
+          },
+          {
+            "data": {
+              "metrics": []
+            }
+          },
+          {
+            "data": {
+              "metrics": [
+                {
+                  "__typename": "MetricSeries",
+                  "labels": [
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "resource",
+                      "value": "srv-db7iauet41sc7388o4eg"
+                    }
+                  ],
+                  "parameters": [],
+                  "unit": "count",
+                  "values": [
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:47:25Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:47:30Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:47:35Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:47:40Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:47:45Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:47:50Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:47:55Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:00Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:05Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:10Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:15Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:20Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:25Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:30Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:35Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:40Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:45Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:50Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:55Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:00Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:05Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:10Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:15Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:20Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:25Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:30Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:35Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:40Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:45Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:50Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:55Z",
+                      "value": 1
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:50:00Z",
+                      "value": 1
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "data": {
+              "metrics": [
+                {
+                  "__typename": "MetricSeries",
+                  "labels": [
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "resource",
+                      "value": "srv-db7iauet41sc7388o4eg"
+                    }
+                  ],
+                  "parameters": [],
+                  "unit": "count",
+                  "values": [
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:25Z",
+                      "value": 3
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "data": {
+              "metrics": [
+                {
+                  "__typename": "MetricSeries",
+                  "labels": [
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "resource",
+                      "value": "srv-db7iauet41sc7388o4eg"
+                    }
+                  ],
+                  "parameters": [
+                    {
+                      "__typename": "MetricSeriesParameter",
+                      "quantile": 0.9
+                    }
+                  ],
+                  "unit": "seconds",
+                  "values": []
+                }
+              ]
+            }
+          },
+          {
+            "data": {
+              "metrics": [
+                {
+                  "__typename": "MetricSeries",
+                  "labels": [
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "degraded_sources",
+                      "value": "direct"
+                    },
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "resource",
+                      "value": "srv-db7iauet41sc7388o4eg"
+                    }
+                  ],
+                  "parameters": [],
+                  "unit": "bytes",
+                  "values": [
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:40:00Z",
+                      "value": 0
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:41:00Z",
+                      "value": 0
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:42:00Z",
+                      "value": 0
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:43:00Z",
+                      "value": 0
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:44:00Z",
+                      "value": 0
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:45:00Z",
+                      "value": 0
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:46:00Z",
+                      "value": 0
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:47:00Z",
+                      "value": 0
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:48:00Z",
+                      "value": 0
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:49:00Z",
+                      "value": 0
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T06:50:00Z",
+                      "value": 0
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "ui": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261013-a431-metrics\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a431-metrics\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db7iauet41sc7388o4eg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a431-metrics.onbex.co\":\n    - /url: https://qa-20261013-a431-metrics.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a431-metrics\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 2m\n  - combobox \"Filter events\": All events\n  - combobox \"Time range\": Custom…\n  - button \"Edit custom range\"\n  - button \"Show event timeline\" [pressed]\n  - text: Event timeline\n  - list \"Event timeline\":\n    - listitem:\n      - link \"deploy ended 2m\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n        - text: deploy ended\n        - time: 2m\n    - listitem:\n      - link \"deploy started 2m\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n        - text: deploy started\n        - time: 2m\n  - text: Application Metrics Instances\n  - listbox \"Instances\":\n    - option \"srv-db7iauet41sc7388o4eg-teul9\"\n  - tablist \"Aggregation\":\n    - tab \"Raw\" [selected]\n    - tab \"Min\"\n    - tab \"Max\"\n    - tab \"Avg\"\n  - tablist:\n    - tab \"Percentage\" [selected]\n    - tab \"Total\"\n  - text: Memory\n  - link \"Limit\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/plan\n  - text: 512 MiB 0.1%\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Line chart with 29 data points\": 0% 0% 0%\n  - text: CPU\n  - link \"Limit\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/plan\n  - text: 0.100 cores 0.1%\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Line chart with 26 data points\": 0% 0% 0%\n  - text: Total Instances\n  - link \"Manage scaling\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/scaling\n  - text: \"1\"\n  - list \"Service events\":\n    - listitem:\n      - link \"Deploy started\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n    - listitem:\n      - link \"Deploy live\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n  - img \"Line chart with 32 data points\": 0 0.5 1\n  - text: Network Metrics Aggregated across all instances\n  - combobox \"Status Code\": Status Code All\n  - combobox \"Host\": Host All\n  - textbox \"Path\":\n    - /placeholder: Path…\n  - text: Total Requests 3 requests\n  - combobox \"Group by\": Group by All requests\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Bar chart with 1 data points\": 0 1.5 3\n  - text: Response Times\n  - combobox \"Percentile\": Percentile p90\n  - text: No data in range Outbound Bandwidth Partial data\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Line chart with 11 data points\": 0 B 0 B 0 B\n  - paragraph: 0 B used this month *"
+  },
+  "metricEntries": [
+    {
+      "query": {
+        "filters": [
+          {
+            "field": "RESOURCE",
+            "values": ["srv-db7iauet41sc7388o4eg"]
+          }
+        ],
+        "name": "CPU",
+        "start": "2026-10-14T06:40:00.000Z",
+        "end": "2026-10-14T06:50:00.000Z",
+        "resolution": 5
+      },
+      "unit": "cpu",
+      "samples": 26,
+      "min": 7.821397872822744e-5,
+      "max": 0.0002505198684260272,
+      "body": {
+        "data": {
+          "metrics": [
+            {
+              "__typename": "MetricSeries",
+              "labels": [
+                {
+                  "__typename": "MetricLabel",
+                  "field": "instance",
+                  "value": "srv-db7iauet41sc7388o4eg-teul9dvj9kioctf1tu58"
+                },
+                {
+                  "__typename": "MetricLabel",
+                  "field": "resource",
+                  "value": "srv-db7iauet41sc7388o4eg"
+                }
+              ],
+              "parameters": [],
+              "unit": "cpu",
+              "values": [
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:47:55Z",
+                  "value": 7.821397872822744e-5
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:00Z",
+                  "value": 0.0001067366909736651
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:05Z",
+                  "value": 0.0001067366909736651
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:10Z",
+                  "value": 0.00013409739564752046
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:15Z",
+                  "value": 0.00013409739564752046
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:20Z",
+                  "value": 0.00013409739564752048
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:25Z",
+                  "value": 0.00012565763424188036
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:30Z",
+                  "value": 0.00010630000000000014
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:35Z",
+                  "value": 0.0001252210067460967
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:40Z",
+                  "value": 0.00021893821101940658
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:45Z",
+                  "value": 0.00021893821101940658
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:50Z",
+                  "value": 0.00021893821101940658
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:55Z",
+                  "value": 0.0002505198684260272
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:00Z",
+                  "value": 0.0002505198684260272
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:05Z",
+                  "value": 0.0001828314876428848
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:10Z",
+                  "value": 0.0001460327156723003
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:15Z",
+                  "value": 0.0001460327156723003
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:20Z",
+                  "value": 0.0001460327156723003
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:25Z",
+                  "value": 0.0001379101531836634
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:30Z",
+                  "value": 0.0001379101531836634
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:35Z",
+                  "value": 0.0001379101531836634
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:40Z",
+                  "value": 9.904976180828312e-5
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:45Z",
+                  "value": 0.00011056972107931779
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:50Z",
+                  "value": 0.00013823951125241593
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:55Z",
+                  "value": 0.00011550487163102904
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:50:00Z",
+                  "value": 0.00010398491235999437
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query": {
+        "filters": [
+          {
+            "field": "RESOURCE",
+            "values": ["srv-db7iauet41sc7388o4eg"]
+          }
+        ],
+        "name": "MEMORY",
+        "start": "2026-10-14T06:40:00.000Z",
+        "end": "2026-10-14T06:50:00.000Z",
+        "resolution": 5
+      },
+      "unit": "bytes",
+      "samples": 32,
+      "min": 376832,
+      "max": 380928,
+      "body": {
+        "data": {
+          "metrics": [
+            {
+              "__typename": "MetricSeries",
+              "labels": [
+                {
+                  "__typename": "MetricLabel",
+                  "field": "instance",
+                  "value": "srv-db7iauet41sc7388o4eg-teul9dvj9kioctf1tu58"
+                },
+                {
+                  "__typename": "MetricLabel",
+                  "field": "resource",
+                  "value": "srv-db7iauet41sc7388o4eg"
+                }
+              ],
+              "parameters": [],
+              "unit": "bytes",
+              "values": [
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:47:25Z",
+                  "value": 376832
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:47:30Z",
+                  "value": 376832
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:47:35Z",
+                  "value": 376832
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:47:40Z",
+                  "value": 376832
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:47:45Z",
+                  "value": 376832
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:47:50Z",
+                  "value": 376832
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:47:55Z",
+                  "value": 376832
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:00Z",
+                  "value": 376832
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:05Z",
+                  "value": 376832
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:10Z",
+                  "value": 376832
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:15Z",
+                  "value": 376832
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:20Z",
+                  "value": 376832
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:25Z",
+                  "value": 376832
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:30Z",
+                  "value": 376832
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:35Z",
+                  "value": 376832
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:40Z",
+                  "value": 380928
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:45Z",
+                  "value": 380928
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:50Z",
+                  "value": 380928
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:55Z",
+                  "value": 380928
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:00Z",
+                  "value": 380928
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:05Z",
+                  "value": 380928
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:10Z",
+                  "value": 380928
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:15Z",
+                  "value": 380928
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:20Z",
+                  "value": 380928
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:25Z",
+                  "value": 380928
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:30Z",
+                  "value": 380928
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:35Z",
+                  "value": 380928
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:40Z",
+                  "value": 380928
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:45Z",
+                  "value": 380928
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:50Z",
+                  "value": 380928
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:55Z",
+                  "value": 380928
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:50:00Z",
+                  "value": 380928
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query": {
+        "filters": [
+          {
+            "field": "RESOURCE",
+            "values": ["srv-db7iauet41sc7388o4eg"]
+          }
+        ],
+        "name": "CPU",
+        "start": "2026-10-14T06:40:00.000Z",
+        "end": "2026-10-14T06:50:00.000Z",
+        "resolution": 5,
+        "percentage": true
+      },
+      "unit": "percentage",
+      "samples": 26,
+      "min": 0.07821397872822744,
+      "max": 0.2505198684260272,
+      "body": {
+        "data": {
+          "metrics": [
+            {
+              "__typename": "MetricSeries",
+              "labels": [
+                {
+                  "__typename": "MetricLabel",
+                  "field": "instance",
+                  "value": "srv-db7iauet41sc7388o4eg-teul9dvj9kioctf1tu58"
+                },
+                {
+                  "__typename": "MetricLabel",
+                  "field": "resource",
+                  "value": "srv-db7iauet41sc7388o4eg"
+                }
+              ],
+              "parameters": [],
+              "unit": "percentage",
+              "values": [
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:47:55Z",
+                  "value": 0.07821397872822744
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:00Z",
+                  "value": 0.1067366909736651
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:05Z",
+                  "value": 0.1067366909736651
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:10Z",
+                  "value": 0.13409739564752043
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:15Z",
+                  "value": 0.13409739564752043
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:20Z",
+                  "value": 0.13409739564752046
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:25Z",
+                  "value": 0.12565763424188034
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:30Z",
+                  "value": 0.10630000000000014
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:35Z",
+                  "value": 0.12522100674609668
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:40Z",
+                  "value": 0.21893821101940658
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:45Z",
+                  "value": 0.21893821101940658
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:50Z",
+                  "value": 0.21893821101940658
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:55Z",
+                  "value": 0.2505198684260272
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:00Z",
+                  "value": 0.2505198684260272
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:05Z",
+                  "value": 0.18283148764288482
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:10Z",
+                  "value": 0.14603271567230028
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:15Z",
+                  "value": 0.14603271567230028
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:20Z",
+                  "value": 0.14603271567230028
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:25Z",
+                  "value": 0.1379101531836634
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:30Z",
+                  "value": 0.1379101531836634
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:35Z",
+                  "value": 0.1379101531836634
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:40Z",
+                  "value": 0.09904976180828311
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:45Z",
+                  "value": 0.11056972107931777
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:50Z",
+                  "value": 0.13823951125241593
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:55Z",
+                  "value": 0.11550487163102903
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:50:00Z",
+                  "value": 0.10398491235999437
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query": {
+        "filters": [
+          {
+            "field": "RESOURCE",
+            "values": ["srv-db7iauet41sc7388o4eg"]
+          }
+        ],
+        "name": "MEMORY",
+        "start": "2026-10-14T06:40:00.000Z",
+        "end": "2026-10-14T06:50:00.000Z",
+        "resolution": 5,
+        "percentage": true
+      },
+      "unit": "percentage",
+      "samples": 29,
+      "min": 0.0701904296875,
+      "max": 0.070953369140625,
+      "body": {
+        "data": {
+          "metrics": [
+            {
+              "__typename": "MetricSeries",
+              "labels": [
+                {
+                  "__typename": "MetricLabel",
+                  "field": "instance",
+                  "value": "srv-db7iauet41sc7388o4eg-teul9dvj9kioctf1tu58"
+                },
+                {
+                  "__typename": "MetricLabel",
+                  "field": "resource",
+                  "value": "srv-db7iauet41sc7388o4eg"
+                }
+              ],
+              "parameters": [],
+              "unit": "percentage",
+              "values": [
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:47:40Z",
+                  "value": 0.0701904296875
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:47:45Z",
+                  "value": 0.0701904296875
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:47:50Z",
+                  "value": 0.0701904296875
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:47:55Z",
+                  "value": 0.0701904296875
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:00Z",
+                  "value": 0.0701904296875
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:05Z",
+                  "value": 0.0701904296875
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:10Z",
+                  "value": 0.0701904296875
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:15Z",
+                  "value": 0.0701904296875
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:20Z",
+                  "value": 0.0701904296875
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:25Z",
+                  "value": 0.0701904296875
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:30Z",
+                  "value": 0.0701904296875
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:35Z",
+                  "value": 0.0701904296875
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:40Z",
+                  "value": 0.070953369140625
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:45Z",
+                  "value": 0.070953369140625
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:50Z",
+                  "value": 0.070953369140625
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:55Z",
+                  "value": 0.070953369140625
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:00Z",
+                  "value": 0.070953369140625
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:05Z",
+                  "value": 0.070953369140625
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:10Z",
+                  "value": 0.070953369140625
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:15Z",
+                  "value": 0.070953369140625
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:20Z",
+                  "value": 0.070953369140625
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:25Z",
+                  "value": 0.070953369140625
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:30Z",
+                  "value": 0.070953369140625
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:35Z",
+                  "value": 0.070953369140625
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:40Z",
+                  "value": 0.070953369140625
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:45Z",
+                  "value": 0.070953369140625
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:50Z",
+                  "value": 0.070953369140625
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:55Z",
+                  "value": 0.070953369140625
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:50:00Z",
+                  "value": 0.070953369140625
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query": {
+        "filters": [
+          {
+            "field": "RESOURCE",
+            "values": ["srv-db7iauet41sc7388o4eg"]
+          }
+        ],
+        "name": "CPU_LIMIT",
+        "start": "2026-10-14T06:40:00.000Z",
+        "end": "2026-10-14T06:50:00.000Z",
+        "resolution": 5
+      },
+      "unit": "cpu",
+      "samples": 1,
+      "min": 0.1,
+      "max": 0.1,
+      "body": {
+        "data": {
+          "metrics": [
+            {
+              "__typename": "MetricSeries",
+              "labels": [
+                {
+                  "__typename": "MetricLabel",
+                  "field": "instance",
+                  "value": "srv-db7iauet41sc7388o4eg-teul9dvj9kioctf1tu58"
+                },
+                {
+                  "__typename": "MetricLabel",
+                  "field": "resource",
+                  "value": "srv-db7iauet41sc7388o4eg"
+                }
+              ],
+              "parameters": [],
+              "unit": "cpu",
+              "values": [
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:50:34Z",
+                  "value": 0.1
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query": {
+        "filters": [
+          {
+            "field": "RESOURCE",
+            "values": ["srv-db7iauet41sc7388o4eg"]
+          }
+        ],
+        "name": "MEMORY_LIMIT",
+        "start": "2026-10-14T06:40:00.000Z",
+        "end": "2026-10-14T06:50:00.000Z",
+        "resolution": 5
+      },
+      "unit": "bytes",
+      "samples": 1,
+      "min": 536870912,
+      "max": 536870912,
+      "body": {
+        "data": {
+          "metrics": [
+            {
+              "__typename": "MetricSeries",
+              "labels": [
+                {
+                  "__typename": "MetricLabel",
+                  "field": "instance",
+                  "value": "srv-db7iauet41sc7388o4eg-teul9dvj9kioctf1tu58"
+                },
+                {
+                  "__typename": "MetricLabel",
+                  "field": "resource",
+                  "value": "srv-db7iauet41sc7388o4eg"
+                }
+              ],
+              "parameters": [],
+              "unit": "bytes",
+              "values": [
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:50:34Z",
+                  "value": 536870912
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query": {
+        "filters": [
+          {
+            "field": "RESOURCE",
+            "values": ["srv-db7iauet41sc7388o4eg"]
+          }
+        ],
+        "name": "CPU_TARGET",
+        "start": "2026-10-14T06:40:00.000Z",
+        "end": "2026-10-14T06:50:00.000Z",
+        "resolution": 5
+      },
+      "samples": 0,
+      "min": null,
+      "max": null,
+      "body": {
+        "data": {
+          "metrics": []
+        }
+      }
+    },
+    {
+      "query": {
+        "filters": [
+          {
+            "field": "RESOURCE",
+            "values": ["srv-db7iauet41sc7388o4eg"]
+          }
+        ],
+        "name": "MEMORY_TARGET",
+        "start": "2026-10-14T06:40:00.000Z",
+        "end": "2026-10-14T06:50:00.000Z",
+        "resolution": 5
+      },
+      "samples": 0,
+      "min": null,
+      "max": null,
+      "body": {
+        "data": {
+          "metrics": []
+        }
+      }
+    },
+    {
+      "query": {
+        "filters": [
+          {
+            "field": "RESOURCE",
+            "values": ["srv-db7iauet41sc7388o4eg"]
+          }
+        ],
+        "name": "INSTANCES",
+        "start": "2026-10-14T06:40:00.000Z",
+        "end": "2026-10-14T06:50:00.000Z",
+        "resolution": 5
+      },
+      "unit": "count",
+      "samples": 32,
+      "min": 1,
+      "max": 1,
+      "body": {
+        "data": {
+          "metrics": [
+            {
+              "__typename": "MetricSeries",
+              "labels": [
+                {
+                  "__typename": "MetricLabel",
+                  "field": "resource",
+                  "value": "srv-db7iauet41sc7388o4eg"
+                }
+              ],
+              "parameters": [],
+              "unit": "count",
+              "values": [
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:47:25Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:47:30Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:47:35Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:47:40Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:47:45Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:47:50Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:47:55Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:00Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:05Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:10Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:15Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:20Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:25Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:30Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:35Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:40Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:45Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:50Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:55Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:00Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:05Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:10Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:15Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:20Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:25Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:30Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:35Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:40Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:45Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:50Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:55Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:50:00Z",
+                  "value": 1
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query": {
+        "filters": [
+          {
+            "field": "RESOURCE",
+            "values": ["srv-db7iauet41sc7388o4eg"]
+          }
+        ],
+        "name": "HTTP_REQUESTS",
+        "start": "2026-10-14T06:40:00.000Z",
+        "end": "2026-10-14T06:50:00.000Z",
+        "resolution": 5
+      },
+      "unit": "count",
+      "samples": 1,
+      "min": 3,
+      "max": 3,
+      "body": {
+        "data": {
+          "metrics": [
+            {
+              "__typename": "MetricSeries",
+              "labels": [
+                {
+                  "__typename": "MetricLabel",
+                  "field": "resource",
+                  "value": "srv-db7iauet41sc7388o4eg"
+                }
+              ],
+              "parameters": [],
+              "unit": "count",
+              "values": [
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:25Z",
+                  "value": 3
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query": {
+        "filters": [
+          {
+            "field": "RESOURCE",
+            "values": ["srv-db7iauet41sc7388o4eg"]
+          }
+        ],
+        "name": "HTTP_LATENCY",
+        "start": "2026-10-14T06:40:00.000Z",
+        "end": "2026-10-14T06:50:00.000Z",
+        "resolution": 5,
+        "parameters": [
+          {
+            "quantile": 0.9
+          }
+        ]
+      },
+      "unit": "seconds",
+      "samples": 0,
+      "min": null,
+      "max": null,
+      "body": {
+        "data": {
+          "metrics": [
+            {
+              "__typename": "MetricSeries",
+              "labels": [
+                {
+                  "__typename": "MetricLabel",
+                  "field": "resource",
+                  "value": "srv-db7iauet41sc7388o4eg"
+                }
+              ],
+              "parameters": [
+                {
+                  "__typename": "MetricSeriesParameter",
+                  "quantile": 0.9
+                }
+              ],
+              "unit": "seconds",
+              "values": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query": {
+        "filters": [
+          {
+            "field": "RESOURCE",
+            "values": ["srv-db7iauet41sc7388o4eg"]
+          }
+        ],
+        "name": "BANDWIDTH",
+        "start": "2026-10-14T06:40:00.000Z",
+        "end": "2026-10-14T06:50:00.000Z",
+        "resolution": 60
+      },
+      "unit": "bytes",
+      "samples": 11,
+      "min": 0,
+      "max": 0,
+      "body": {
+        "data": {
+          "metrics": [
+            {
+              "__typename": "MetricSeries",
+              "labels": [
+                {
+                  "__typename": "MetricLabel",
+                  "field": "degraded_sources",
+                  "value": "direct"
+                },
+                {
+                  "__typename": "MetricLabel",
+                  "field": "resource",
+                  "value": "srv-db7iauet41sc7388o4eg"
+                }
+              ],
+              "parameters": [],
+              "unit": "bytes",
+              "values": [
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:40:00Z",
+                  "value": 0
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:41:00Z",
+                  "value": 0
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:42:00Z",
+                  "value": 0
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:43:00Z",
+                  "value": 0
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:44:00Z",
+                  "value": 0
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:45:00Z",
+                  "value": 0
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:46:00Z",
+                  "value": 0
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:47:00Z",
+                  "value": 0
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:48:00Z",
+                  "value": 0
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:49:00Z",
+                  "value": 0
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-14T06:50:00Z",
+                  "value": 0
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "cancelReload": {
+    "at": "2026-10-14T06:51:04.978Z",
+    "before": {
+      "url": "https://dashboard.bex.co/services/srv-db7iauet41sc7388o4eg/metrics?range=custom&rangeStart=2026-10-14T06%3A40%3A00.000Z&rangeEnd=2026-10-14T06%3A50%3A00.000Z",
+      "start": "2026-10-13T23:40",
+      "end": "2026-10-13T23:50"
+    },
+    "unchanged": true,
+    "charts": [
+      {
+        "label": "Line chart with 29 data points",
+        "texts": [
+          {
+            "text": "0%",
+            "x": "38",
+            "y": "160"
+          },
+          {
+            "text": "0%",
+            "x": "38",
+            "y": "84"
+          },
+          {
+            "text": "0%",
+            "x": "38",
+            "y": "8"
+          }
+        ]
+      },
+      {
+        "label": "Line chart with 26 data points",
+        "texts": [
+          {
+            "text": "0%",
+            "x": "38",
+            "y": "160"
+          },
+          {
+            "text": "0%",
+            "x": "38",
+            "y": "84"
+          },
+          {
+            "text": "0%",
+            "x": "38",
+            "y": "8"
+          }
+        ]
+      },
+      {
+        "label": "Line chart with 32 data points",
+        "texts": [
+          {
+            "text": "0",
+            "x": "38",
+            "y": "160"
+          },
+          {
+            "text": "0.5",
+            "x": "38",
+            "y": "84"
+          },
+          {
+            "text": "1",
+            "x": "38",
+            "y": "8"
+          }
+        ]
+      },
+      {
+        "label": "Bar chart with 1 data points",
+        "texts": [
+          {
+            "text": "0",
+            "x": "38",
+            "y": "160"
+          },
+          {
+            "text": "1.5",
+            "x": "38",
+            "y": "84"
+          },
+          {
+            "text": "3",
+            "x": "38",
+            "y": "8"
+          }
+        ]
+      },
+      {
+        "label": "Line chart with 11 data points",
+        "texts": [
+          {
+            "text": "0 B",
+            "x": "38",
+            "y": "160"
+          },
+          {
+            "text": "0 B",
+            "x": "38",
+            "y": "160"
+          },
+          {
+            "text": "0 B",
+            "x": "38",
+            "y": "160"
+          }
+        ]
+      }
+    ],
+    "url": "https://dashboard.bex.co/services/srv-db7iauet41sc7388o4eg/metrics?range=custom&rangeStart=2026-10-14T06%3A40%3A00.000Z&rangeEnd=2026-10-14T06%3A50%3A00.000Z",
+    "mobileDialog": "- dialog \"Custom range\":\n  - heading \"Custom range\" [level=2]\n  - paragraph: Choose an absolute start and end. Windows over 30 days aren't available.\n  - text: Start\n  - textbox \"Start\": 2026-10-13T23:40\n  - text: End\n  - textbox \"End\": 2026-10-13T23:50\n  - button \"Cancel\"\n  - button \"Apply\"\n  - button \"Close\"",
+    "width": {
+      "viewport": 390,
+      "document": 390
+    }
+  },
+  "mobileModes": {
+    "at": "2026-10-14T06:51:37.003Z",
+    "url": "https://dashboard.bex.co/services/srv-db7iauet41sc7388o4eg/metrics?range=custom&rangeStart=2026-10-14T06%3A40%3A00.000Z&rangeEnd=2026-10-14T06%3A50%3A00.000Z",
+    "percentage": {
+      "at": "2026-10-14T06:51:35.968Z",
+      "ui": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261013-a431-metrics\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a431-metrics\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db7iauet41sc7388o4eg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a431-metrics.onbex.co\":\n    - /url: https://qa-20261013-a431-metrics.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a431-metrics\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 3m\n  - combobox \"Filter events\": All events\n  - combobox \"Time range\": Custom…\n  - button \"Edit custom range\"\n  - button \"Show event timeline\"\n  - text: Application Metrics Instances\n  - listbox \"Instances\":\n    - option \"srv-db7iauet41sc7388o4eg-teul9\"\n  - tablist \"Aggregation\":\n    - tab \"Raw\" [selected]\n    - tab \"Min\"\n    - tab \"Max\"\n    - tab \"Avg\"\n  - tablist:\n    - tab \"Percentage\" [selected]\n    - tab \"Total\"\n  - text: Memory\n  - link \"Limit\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/plan\n  - text: 512 MiB 0.1%\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Line chart with 29 data points\": 0% 0% 0%\n  - text: CPU\n  - link \"Limit\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/plan\n  - text: 0.100 cores 0.1%\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Line chart with 26 data points\": 0% 0% 0%\n  - text: Total Instances\n  - link \"Manage scaling\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/scaling\n  - text: \"1\"\n  - list \"Service events\":\n    - listitem:\n      - link \"Deploy started\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n    - listitem:\n      - link \"Deploy live\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n  - img \"Line chart with 32 data points\": 0 0.5 1\n  - text: Network Metrics Aggregated across all instances\n  - combobox \"Status Code\": Status Code All\n  - combobox \"Host\": Host All\n  - textbox \"Path\":\n    - /placeholder: Path…\n  - text: Total Requests 3 requests\n  - combobox \"Group by\": Group by All requests\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Bar chart with 1 data points\": 0 1.5 3\n  - text: Response Times\n  - combobox \"Percentile\": Percentile p90\n  - text: No data in range Outbound Bandwidth Partial data\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Line chart with 11 data points\": 0 B 0 B 0 B\n  - paragraph: 19 B used this month *",
+      "charts": [
+        {
+          "label": "Line chart with 29 data points",
+          "texts": ["0%", "0%", "0%"]
+        },
+        {
+          "label": "Line chart with 26 data points",
+          "texts": ["0%", "0%", "0%"]
+        },
+        {
+          "label": "Line chart with 32 data points",
+          "texts": ["0", "0.5", "1"]
+        },
+        {
+          "label": "Bar chart with 1 data points",
+          "texts": ["0", "1.5", "3"]
+        },
+        {
+          "label": "Line chart with 11 data points",
+          "texts": ["0 B", "0 B", "0 B"]
+        }
+      ]
+    },
+    "total": {
+      "ui": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261013-a431-metrics\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a431-metrics\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db7iauet41sc7388o4eg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a431-metrics.onbex.co\":\n    - /url: https://qa-20261013-a431-metrics.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a431-metrics\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 3m\n  - combobox \"Filter events\": All events\n  - combobox \"Time range\": Custom…\n  - button \"Edit custom range\"\n  - button \"Show event timeline\"\n  - text: Application Metrics Instances\n  - listbox \"Instances\":\n    - option \"srv-db7iauet41sc7388o4eg-teul9\"\n  - tablist \"Aggregation\":\n    - tab \"Raw\" [selected]\n    - tab \"Min\"\n    - tab \"Max\"\n    - tab \"Avg\"\n  - tablist:\n    - tab \"Percentage\"\n    - tab \"Total\" [selected]\n  - text: Memory\n  - link \"Limit\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/plan\n  - text: 512 MiB 372 KiB\n  - list \"Service events\":\n    - listitem:\n      - link \"Deploy started\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n    - listitem:\n      - link \"Deploy live\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n  - img \"Line chart with 32 data points\": 0 B 186.0 KiB 372.0 KiB\n  - text: CPU\n  - link \"Limit\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/plan\n  - text: 0.100 cores 0.000 cores\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Line chart with 26 data points\": 0.00 0.00 0.00\n  - text: Total Instances\n  - link \"Manage scaling\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/scaling\n  - text: \"1\"\n  - list \"Service events\":\n    - listitem:\n      - link \"Deploy started\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n    - listitem:\n      - link \"Deploy live\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n  - img \"Line chart with 32 data points\": 0 0.5 1\n  - text: Network Metrics Aggregated across all instances\n  - combobox \"Status Code\": Status Code All\n  - combobox \"Host\": Host All\n  - textbox \"Path\":\n    - /placeholder: Path…\n  - text: Total Requests 3 requests\n  - combobox \"Group by\": Group by All requests\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Bar chart with 1 data points\": 0 1.5 3\n  - text: Response Times\n  - combobox \"Percentile\": Percentile p90\n  - text: No data in range Outbound Bandwidth Partial data\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Line chart with 11 data points\": 0 B 0 B 0 B\n  - paragraph: 19 B used this month *",
+      "charts": [
+        {
+          "label": "Line chart with 32 data points",
+          "texts": ["0 B", "186.0 KiB", "372.0 KiB"]
+        },
+        {
+          "label": "Line chart with 26 data points",
+          "texts": ["0.00", "0.00", "0.00"]
+        },
+        {
+          "label": "Line chart with 32 data points",
+          "texts": ["0", "0.5", "1"]
+        },
+        {
+          "label": "Bar chart with 1 data points",
+          "texts": ["0", "1.5", "3"]
+        },
+        {
+          "label": "Line chart with 11 data points",
+          "texts": ["0 B", "0 B", "0 B"]
+        }
+      ]
+    }
+  },
+  "mobileTooltip": {
+    "at": "2026-10-14T06:52:21.643Z",
+    "url": "https://dashboard.bex.co/services/srv-db7iauet41sc7388o4eg/metrics?range=custom&rangeStart=2026-10-14T06%3A40%3A00.000Z&rangeEnd=2026-10-14T06%3A50%3A00.000Z",
+    "ui": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261013-a431-metrics\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a431-metrics\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db7iauet41sc7388o4eg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a431-metrics.onbex.co\":\n    - /url: https://qa-20261013-a431-metrics.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a431-metrics\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 4m\n  - combobox \"Filter events\": All events\n  - combobox \"Time range\": Custom…\n  - button \"Edit custom range\"\n  - button \"Show event timeline\"\n  - text: Application Metrics Instances\n  - listbox \"Instances\":\n    - option \"srv-db7iauet41sc7388o4eg-teul9\"\n  - tablist \"Aggregation\":\n    - tab \"Raw\" [selected]\n    - tab \"Min\"\n    - tab \"Max\"\n    - tab \"Avg\"\n  - tablist:\n    - tab \"Percentage\" [selected]\n    - tab \"Total\"\n  - text: Memory\n  - link \"Limit\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/plan\n  - text: 512 MiB 0.1%\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Line chart with 29 data points\": 0% 0% 0%\n  - text: srv-db7iauet41sc7388o4eg-teul9dvj9kioctf1tu58 0% 11:47:40 PM CPU\n  - link \"Limit\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/plan\n  - text: 0.100 cores 0.1%\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Line chart with 26 data points\": 0% 0% 0%\n  - text: Total Instances\n  - link \"Manage scaling\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/scaling\n  - text: \"1\"\n  - list \"Service events\":\n    - listitem:\n      - link \"Deploy started\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n    - listitem:\n      - link \"Deploy live\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n  - img \"Line chart with 32 data points\": 0 0.5 1\n  - text: Network Metrics Aggregated across all instances\n  - combobox \"Status Code\": Status Code All\n  - combobox \"Host\": Host All\n  - textbox \"Path\":\n    - /placeholder: Path…\n  - text: Total Requests 3 requests\n  - combobox \"Group by\": Group by All requests\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Bar chart with 1 data points\": 0 1.5 3\n  - text: Response Times\n  - combobox \"Percentile\": Percentile p90\n  - text: No data in range Outbound Bandwidth Partial data\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Line chart with 11 data points\": 0 B 0 B 0 B\n  - paragraph: 18 B used this month *",
+    "charts": [
+      {
+        "label": "Line chart with 29 data points",
+        "texts": ["0%", "0%", "0%"],
+        "bbox": {
+          "width": 316,
+          "height": 94.796875
+        }
+      },
+      {
+        "label": "Line chart with 26 data points",
+        "texts": ["0%", "0%", "0%"],
+        "bbox": {
+          "width": 316,
+          "height": 94.796875
+        }
+      },
+      {
+        "label": "Line chart with 32 data points",
+        "texts": ["0", "0.5", "1"],
+        "bbox": {
+          "width": 316,
+          "height": 94.796875
+        }
+      },
+      {
+        "label": "Bar chart with 1 data points",
+        "texts": ["0", "1.5", "3"],
+        "bbox": {
+          "width": 316,
+          "height": 94.796875
+        }
+      },
+      {
+        "label": "Line chart with 11 data points",
+        "texts": ["0 B", "0 B", "0 B"],
+        "bbox": {
+          "width": 316,
+          "height": 94.796875
+        }
+      }
+    ]
+  },
+  "desktop": {
+    "at": "2026-10-14T06:53:45.731Z",
+    "url": "https://dashboard.bex.co/services/srv-db7iauet41sc7388o4eg/metrics?range=custom&rangeStart=2026-10-14T06%3A40%3A00.000Z&rangeEnd=2026-10-14T06%3A50%3A00.000Z",
+    "percentage": {
+      "at": "2026-10-14T06:53:45.142Z",
+      "ui": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261013-a431-metrics\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a431-metrics\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db7iauet41sc7388o4eg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a431-metrics.onbex.co\":\n    - /url: https://qa-20261013-a431-metrics.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a431-metrics\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 5m\n  - combobox \"Filter events\": All events\n  - combobox \"Time range\": Custom…\n  - button \"Edit custom range\"\n  - button \"Show event timeline\"\n  - text: Application Metrics Instances\n  - listbox \"Instances\":\n    - option \"srv-db7iauet41sc7388o4eg-teul9\"\n  - tablist \"Aggregation\":\n    - tab \"Raw\" [selected]\n    - tab \"Min\"\n    - tab \"Max\"\n    - tab \"Avg\"\n  - tablist:\n    - tab \"Percentage\" [selected]\n    - tab \"Total\"\n  - text: Memory\n  - link \"Limit\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/plan\n  - text: 512 MiB 0.1%\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Line chart with 29 data points\": 0% 0% 0%\n  - text: srv-db7iauet41sc7388o4eg-teul9dvj9kioctf1tu58 0% 11:47:40 PM CPU\n  - link \"Limit\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/plan\n  - text: 0.100 cores 0.1%\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Line chart with 26 data points\": 0% 0% 0%\n  - text: Total Instances\n  - link \"Manage scaling\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/scaling\n  - text: \"1\"\n  - list \"Service events\":\n    - listitem:\n      - link \"Deploy started\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n    - listitem:\n      - link \"Deploy live\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n  - img \"Line chart with 32 data points\": 0 0.5 1\n  - text: Network Metrics Aggregated across all instances\n  - combobox \"Status Code\": Status Code All\n  - combobox \"Host\": Host All\n  - textbox \"Path\":\n    - /placeholder: Path…\n  - text: Total Requests 3 requests\n  - combobox \"Group by\": Group by All requests\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Bar chart with 1 data points\": 0 1.5 3\n  - text: Response Times\n  - combobox \"Percentile\": Percentile p90\n  - text: No data in range Outbound Bandwidth Partial data\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Line chart with 11 data points\": 0 B 0 B 0 B\n  - paragraph: 17 B used this month *",
+      "charts": [
+        {
+          "label": "Line chart with 29 data points",
+          "texts": ["0%", "0%", "0%"],
+          "paths": [
+            "M44,9.634408602150529 L63.57142857142857,9.634408602150529 L83.14285714285714,9.634408602150529 L102.71428571428571,9.634408602150529 L122.28571428571428,9.634408602150529 L141.85714285714286,9.634408602150529 L161.42857142857142,9.634408602150529 L181,9.634408602150529 L200.57142857142856,9.634408602150529 L220.14285714285717,9.634408602150529 L239.71428571428572,9.634408602150529 L259.2857142857143,9.634408602150529 L278.85714285714283,8 L298.42857142857144,8 L318,8 L337.57142857142856,8 L357.1428571428571,8 L376.71428571428567,8 L396.28571428571433,8 L415.8571428571429,8 L435.42857142857144,8 L455,8 L474.57142857142856,8 L494.1428571428571,8 L513.7142857142857,8 L533.2857142857143,8 L552.8571428571429,8 L572.4285714285714,8 L592,8"
+          ]
+        },
+        {
+          "label": "Line chart with 26 data points",
+          "texts": ["0%", "0%", "0%"],
+          "paths": [
+            "M44,112.5445832245398 L65.92,95.23876118118086 L87.84,95.23876118118086 L109.75999999999999,78.63797364063487 L131.68,78.63797364063487 L153.60000000000002,78.63797364063485 L175.51999999999998,83.75870015912294 L197.44000000000003,95.5037183217626 L219.36,84.02361878524265 L241.28,27.16180124142045 L263.20000000000005,27.16180124142045 L285.12,27.16180124142045 L307.03999999999996,8 L328.96000000000004,8 L350.88000000000005,49.069133333333355 L372.8,71.39635781525287 L394.72,71.39635781525287 L416.64000000000004,71.39635781525287 L438.56,76.32462760091806 L460.48,76.32462760091806 L482.40000000000003,76.32462760091806 L504.32,99.90271554327997 L526.24,92.91311499702904 L548.1600000000001,76.12479344498895 L570.0799999999999,89.91877012301514 L592,96.90837066926606"
+          ]
+        },
+        {
+          "label": "Line chart with 32 data points",
+          "texts": ["0", "0.5", "1"],
+          "paths": [
+            "M44,8 L61.677419354838705,8 L79.35483870967741,8 L97.03225806451613,8 L114.70967741935483,8 L132.38709677419354,8 L150.06451612903226,8 L167.74193548387098,8 L185.41935483870967,8 L203.09677419354838,8 L220.7741935483871,8 L238.45161290322582,8 L256.1290322580645,8 L273.80645161290323,8 L291.48387096774195,8 L309.16129032258067,8 L326.83870967741933,8 L344.51612903225805,8 L362.19354838709677,8 L379.8709677419355,8 L397.5483870967742,8 L415.22580645161287,8 L432.90322580645164,8 L450.5806451612903,8 L468.258064516129,8 L485.9354838709677,8 L503.61290322580646,8 L521.2903225806451,8 L538.9677419354839,8 L556.6451612903226,8 L574.3225806451613,8 L592,8"
+          ]
+        },
+        {
+          "label": "Bar chart with 1 data points",
+          "texts": ["0", "1.5", "3"],
+          "paths": []
+        },
+        {
+          "label": "Line chart with 11 data points",
+          "texts": ["0 B", "0 B", "0 B"],
+          "paths": [
+            "M44,160 L98.80000000000001,160 L153.60000000000002,160 L208.4,160 L263.20000000000005,160 L318,160 L372.8,160 L427.59999999999997,160 L482.40000000000003,160 L537.2,160 L592,160"
+          ]
+        }
+      ]
+    },
+    "total": {
+      "at": "2026-10-14T06:53:45.724Z",
+      "ui": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261013-a431-metrics\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261013-a431-metrics\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db7iauet41sc7388o4eg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261013-a431-metrics.onbex.co\":\n    - /url: https://qa-20261013-a431-metrics.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261013-a431-metrics\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 5m\n  - combobox \"Filter events\": All events\n  - combobox \"Time range\": Custom…\n  - button \"Edit custom range\"\n  - button \"Show event timeline\"\n  - text: Application Metrics Instances\n  - listbox \"Instances\":\n    - option \"srv-db7iauet41sc7388o4eg-teul9\"\n  - tablist \"Aggregation\":\n    - tab \"Raw\" [selected]\n    - tab \"Min\"\n    - tab \"Max\"\n    - tab \"Avg\"\n  - tablist:\n    - tab \"Percentage\"\n    - tab \"Total\" [selected]\n  - text: Memory\n  - link \"Limit\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/plan\n  - text: 512 MiB 372 KiB\n  - list \"Service events\":\n    - listitem:\n      - link \"Deploy started\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n    - listitem:\n      - link \"Deploy live\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n  - img \"Line chart with 32 data points\": 0 B 186.0 KiB 372.0 KiB\n  - text: CPU\n  - link \"Limit\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/plan\n  - text: 0.100 cores 0.000 cores\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Line chart with 26 data points\": 0.00 0.00 0.00\n  - text: srv-db7iauet41sc7388o4eg-teul9dvj9kioctf1tu58 0.00 11:47:55 PM Total Instances\n  - link \"Manage scaling\":\n    - /url: /services/srv-db7iauet41sc7388o4eg/scaling\n  - text: \"1\"\n  - list \"Service events\":\n    - listitem:\n      - link \"Deploy started\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n    - listitem:\n      - link \"Deploy live\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/deploys/dep-db7iauet41sc7388o4f0\n  - img \"Line chart with 32 data points\": 0 0.5 1\n  - text: Network Metrics Aggregated across all instances\n  - combobox \"Status Code\": Status Code All\n  - combobox \"Host\": Host All\n  - textbox \"Path\":\n    - /placeholder: Path…\n  - text: Total Requests 3 requests\n  - combobox \"Group by\": Group by All requests\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Bar chart with 1 data points\": 0 1.5 3\n  - text: Response Times\n  - combobox \"Percentile\": Percentile p90\n  - text: No data in range Outbound Bandwidth Partial data\n  - list \"Service events\":\n    - listitem:\n      - link \"2 events\":\n        - /url: /services/srv-db7iauet41sc7388o4eg/events\n        - text: \"2\"\n  - img \"Line chart with 11 data points\": 0 B 0 B 0 B\n  - paragraph: 17 B used this month *",
+      "charts": [
+        {
+          "label": "Line chart with 32 data points",
+          "texts": ["0 B", "186.0 KiB", "372.0 KiB"]
+        },
+        {
+          "label": "Line chart with 26 data points",
+          "texts": ["0.00", "0.00", "0.00"]
+        },
+        {
+          "label": "Line chart with 32 data points",
+          "texts": ["0", "0.5", "1"]
+        },
+        {
+          "label": "Bar chart with 1 data points",
+          "texts": ["0", "1.5", "3"]
+        },
+        {
+          "label": "Line chart with 11 data points",
+          "texts": ["0 B", "0 B", "0 B"]
+        }
+      ]
+    }
+  },
+  "delete": {
+    "at": "2026-10-14T06:55:09.583Z",
+    "preset": {
+      "at": "2026-10-14T06:55:06.906Z",
+      "url": "https://dashboard.bex.co/services/srv-db7iauet41sc7388o4eg/metrics?range=30m",
+      "range": "Custom…",
+      "editCustomCount": 1
+    },
+    "request": [
+      {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db7iauet41sc7388o4eg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "deleteService": true
+        }
+      }
+    ]
+  },
+  "inventoryCleanup": {
+    "at": "2026-10-14T06:56:02.609Z",
+    "service": {
+      "id": "srv-db7iauet41sc7388o4eg",
+      "status": 404,
+      "body": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+    },
+    "request": {
+      "operationName": "Qaa431Inventory",
+      "query": "query Qaa431Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    },
+    "publicResult": {
+      "status": 404,
+      "body": "404 page not found\n"
+    }
+  },
+  "sessionCleanup": {
+    "at": "2026-10-14T06:56:33.460Z",
+    "owners": {
+      "url": "https://api.bex.co/v1/owners",
+      "status": 401,
+      "body": "{\"error\":\"unauthorized\",\"id\":\"unauthorized\",\"message\":\"unauthorized\"}\n"
+    },
+    "cookieCount": 0,
+    "pageCount": 1,
+    "url": "about:blank"
+  },
+  "baselineSource": "Prior pass verified seven-family inventory at 2026-10-14T06:45:52.846Z, before a431 creation; initial a431 inventory harness passed an object as code and did not execute a query.",
+  "screenshotsViewed": [
+    ".playwright-mcp/qa-a431-percentage-desktop.png",
+    ".playwright-mcp/qa-a431-percentage-mobile.png",
+    ".playwright-mcp/qa-a431-total-desktop.png"
+  ],
+  "limitations": [
+    "Initial screenshot after reload captured pending state because the unscoped image selector matched the sidebar; replaced desktop screenshot after waiting for main svg[role=img].",
+    "Custom menu initial selector omitted its ellipsis; corrected from actual accessibility tree.",
+    "Preset URL cleared custom bounds, but the 500ms read preceded settling; post-settle preset rendering was not verified.",
+    "No mixed replicas, aggregation, scaling, datastore, static, missing-source, or REST/MCP metrics acceptance certified."
+  ]
+}
