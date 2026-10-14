@@ -1,0 +1,353 @@
+{
+  "pass": "a458",
+  "scope": "signed-in mobile dashboard language/theme control reachability",
+  "resourceMutations": [],
+  "baseline": {
+    "at": "2026-10-14T12:56:19.196Z",
+    "request": {
+      "operationName": "Qaa458Inventory",
+      "query": "query Qaa458Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    }
+  },
+  "firstMobile": {
+    "at": "2026-10-14T12:56:40.820Z",
+    "before": {
+      "at": "2026-10-14T12:56:39.870Z",
+      "url": "https://dashboard.bex.co/keyvalue/new",
+      "lang": "en",
+      "theme": null,
+      "width": 390
+    },
+    "url": "https://dashboard.bex.co/settings",
+    "visibleControlCount": 36,
+    "preferenceControls": [],
+    "sections": [
+      "account",
+      "integrations",
+      "access",
+      "security",
+      "danger-zone"
+    ],
+    "width": 390,
+    "menuCount": 0
+  },
+  "drawer": {
+    "at": "2026-10-14T12:57:22.367Z",
+    "url": "https://dashboard.bex.co/settings",
+    "preferenceRoleCounts": {
+      "button": 0,
+      "combobox": 0,
+      "menuitem": 0,
+      "radio": 0,
+      "link": 0
+    },
+    "drawerPreferenceCounts": {
+      "button": 0,
+      "combobox": 0,
+      "menuitem": 0,
+      "radio": 0,
+      "link": 0
+    },
+    "drawer": "- dialog \"Sidebar\":\n  - heading \"Sidebar\" [level=2]\n  - paragraph: Displays the mobile sidebar.\n  - link \"Go home\":\n    - /url: /\n    - img \"bex\"\n  - list:\n    - listitem:\n      - button \"bex\"\n  - button \"Toggle Sidebar\"\n  - list:\n    - listitem:\n      - link \"Projects\":\n        - /url: /\n    - listitem:\n      - link \"Blueprints\":\n        - /url: /blueprints\n    - listitem:\n      - link \"Agents\":\n        - /url: /agents\n    - listitem:\n      - link \"Environment Groups\":\n        - /url: /env-groups\n  - text: Integrations\n  - list:\n    - listitem:\n      - link \"Webhooks\":\n        - /url: /webhooks\n    - listitem:\n      - link \"Notifications\":\n        - /url: /notifications\n  - text: Workspace\n  - list:\n    - listitem:\n      - link \"Billing\":\n        - /url: /billing\n    - listitem:\n      - link \"Settings\":\n        - /url: /workspace/settings"
+  },
+  "desktop": {
+    "at": "2026-10-14T12:57:24.415Z",
+    "url": "https://dashboard.bex.co/keyvalue/new",
+    "preferences": ["ThemeSystem", "LanguageEnglish"],
+    "theme": null,
+    "lang": "en"
+  },
+  "functionalDesktopAndFreshMobileControl": {
+    "at": "2026-10-14T12:58:12.000Z",
+    "desktop": {
+      "at": "2026-10-14T12:58:09.083Z",
+      "lang": "zh",
+      "dark": true,
+      "theme": "dark"
+    },
+    "mobile": {
+      "url": "https://dashboard.bex.co/settings",
+      "lang": "zh",
+      "dark": true,
+      "theme": "dark",
+      "preferenceRoleCounts": {
+        "button": 0,
+        "combobox": 0,
+        "menuitem": 0,
+        "radio": 0,
+        "link": 0
+      },
+      "navigationType": "reload",
+      "documentWidth": 390
+    }
+  },
+  "restored": {
+    "at": "2026-10-14T12:59:41.183Z",
+    "lang": "en",
+    "theme": null,
+    "dark": false,
+    "preferences": ["ThemeSystem", "LanguageEnglish"],
+    "url": "https://dashboard.bex.co/keyvalue/new"
+  },
+  "repeat": {
+    "at": "2026-10-14T13:00:08.774Z",
+    "url": "https://dashboard.bex.co/settings",
+    "roleCounts": {
+      "button": 0,
+      "combobox": 0,
+      "menuitem": 0,
+      "radio": 0,
+      "link": 0
+    },
+    "drawerUi": "- dialog \"Sidebar\":\n  - heading \"Sidebar\" [level=2]\n  - paragraph: Displays the mobile sidebar.\n  - link \"Go home\":\n    - /url: /\n    - img \"bex\"\n  - list:\n    - listitem:\n      - button \"bex\"\n  - button \"Toggle Sidebar\"\n  - list:\n    - listitem:\n      - link \"Projects\":\n        - /url: /\n    - listitem:\n      - link \"Blueprints\":\n        - /url: /blueprints\n    - listitem:\n      - link \"Agents\":\n        - /url: /agents\n    - listitem:\n      - link \"Environment Groups\":\n        - /url: /env-groups\n  - text: Integrations\n  - list:\n    - listitem:\n      - link \"Webhooks\":\n        - /url: /webhooks\n    - listitem:\n      - link \"Notifications\":\n        - /url: /notifications\n  - text: Workspace\n  - list:\n    - listitem:\n      - link \"Billing\":\n        - /url: /billing\n    - listitem:\n      - link \"Settings\":\n        - /url: /workspace/settings",
+    "lang": "en",
+    "theme": null,
+    "documentWidth": 390
+  },
+  "cleanup": {
+    "at": "2026-10-14T13:01:00.758Z",
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    },
+    "matches": [
+      {
+        "family": "blueprints",
+        "exact": true,
+        "count": 1
+      },
+      {
+        "family": "databases",
+        "exact": true,
+        "count": 4
+      },
+      {
+        "family": "envGroups",
+        "exact": true,
+        "count": 1
+      },
+      {
+        "family": "keyValues",
+        "exact": true,
+        "count": 2
+      },
+      {
+        "family": "projects",
+        "exact": true,
+        "count": 3
+      },
+      {
+        "family": "services",
+        "exact": true,
+        "count": 5
+      },
+      {
+        "family": "webhookEndpoints",
+        "exact": true,
+        "count": 0
+      }
+    ],
+    "preferences": {
+      "lang": "en",
+      "theme": null
+    }
+  },
+  "revoked": {
+    "at": "2026-10-14T13:01:52.057Z",
+    "owners": {
+      "url": "https://api.bex.co/v1/owners",
+      "status": 401,
+      "body": "{\"error\":\"unauthorized\",\"id\":\"unauthorized\",\"message\":\"unauthorized\"}\n"
+    },
+    "cookieCount": 0,
+    "pageCount": 1,
+    "url": "about:blank"
+  },
+  "screenshots": [
+    ".playwright-mcp/qa-a458-mobile-preferences-missing.png",
+    ".playwright-mcp/qa-a458-desktop-preference-menu-stable.png",
+    ".playwright-mcp/qa-a458-mobile-drawer-stable.png",
+    ".playwright-mcp/qa-a458-mobile-chinese-dark-no-preferences.png"
+  ],
+  "limits": [
+    "No resource fixtures or account settings/auth actions; only native browser theme/language preferences changed and restored.",
+    "Control absence verified with Playwright accessible roles plus drawer tree and entire first-party settings source, not a button-innerText heuristic.",
+    "Browser resized to 390x844/1440x1000, not a physical touch-device replay.",
+    "Initial theme restore used wrong Chinese System label; corrected through native English menu, original absent theme storage restored.",
+    "Initial desktop/drawer screenshots preceded animation completion; only stable replacements cited.",
+    "Whole-page control-name census omitted from durable receipt to avoid unrelated account metadata."
+  ]
+}
