@@ -1,0 +1,1236 @@
+{
+  "pass": "a466",
+  "scope": "Postgres plan resource-loading and mounted-catalog-loading previews",
+  "fixture": {
+    "id": "dpg-db7pg8ut41sc7388oc2g",
+    "name": "qa-20261014-a466-pgplan",
+    "plan": "free",
+    "public": false
+  },
+  "baseline": {
+    "at": "2026-10-14T14:56:32.599Z",
+    "request": {
+      "operationName": "Qaa466Inventory",
+      "query": "query Qaa466Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    }
+  },
+  "create": {
+    "at": "2026-10-14T14:56:35.901Z",
+    "status": 200,
+    "request": [
+      {
+        "operationName": "CreateDatabase",
+        "variables": {
+          "name": "qa-20261014-a466-pgplan",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "plan": "free",
+          "public": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateDatabase($name: String!, $databaseName: String, $databaseUser: String, $ownerId: String, $environmentId: String, $plan: String, $version: String, $diskSizeGB: Int, $public: Boolean) {\n  createDatabase(\n    name: $name\n    databaseName: $databaseName\n    databaseUser: $databaseUser\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    diskSizeGB: $diskSizeGB\n    public: $public\n  ) {\n    id\n    name\n    databaseName\n    databaseUser\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+      }
+    ],
+    "body": [
+      {
+        "data": {
+          "createDatabase": {
+            "__typename": "Database",
+            "databaseName": "dpg_db7pg8ut41sc7388oc2g",
+            "databaseUser": "dpg_db7pg8ut41sc7388oc2g_user",
+            "environmentId": null,
+            "id": "dpg-db7pg8ut41sc7388oc2g",
+            "name": "qa-20261014-a466-pgplan",
+            "plan": "free",
+            "projectId": null,
+            "status": "creating"
+          }
+        }
+      }
+    ],
+    "url": "https://dashboard.bex.co/databases/dpg-db7pg8ut41sc7388oc2g"
+  },
+  "operationalState": {
+    "at": "2026-10-14T15:05:32.777Z",
+    "status": 200,
+    "request": {
+      "query": "query($id:String!){database(id:$id){id name plan status version public}}",
+      "variables": {
+        "id": "dpg-db7pg8ut41sc7388oc2g"
+      }
+    },
+    "body": {
+      "data": {
+        "database": {
+          "id": "dpg-db7pg8ut41sc7388oc2g",
+          "name": "qa-20261014-a466-pgplan",
+          "plan": "free",
+          "public": false,
+          "status": "available",
+          "version": "18"
+        }
+      }
+    }
+  },
+  "resource": {
+    "desktop": {
+      "at": "2026-10-14T15:10:13.425Z",
+      "captured": [
+        {
+          "at": "2026-10-14T15:10:05.354Z",
+          "method": "POST",
+          "url": "https://api.bex.co/graphql",
+          "request": [
+            {
+              "operationName": "Database",
+              "variables": {
+                "id": "dpg-db7pg8ut41sc7388oc2g"
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query Database($id: String!) {\n  database(id: $id) {\n    id\n    name\n    plan\n    version\n    status\n    statusReason\n    statusReasonCode\n    databaseName\n    databaseUser\n    diskSizeGB\n    diskAutoscalingEnabled\n    highAvailabilityEnabled\n    readReplicas {\n      name\n      connectionInfo {\n        internalHost\n        externalHost\n        __typename\n      }\n      __typename\n    }\n    suspended\n    createdAt\n    updatedAt\n    externalHost\n    public\n    poolerEnabled\n    backupsEnabled\n    ipAllowList\n    region\n    __typename\n  }\n}"
+            }
+          ],
+          "operationNames": ["Database"],
+          "status": 200,
+          "body": [
+            {
+              "data": {
+                "database": {
+                  "__typename": "Database",
+                  "backupsEnabled": false,
+                  "createdAt": "2026-10-14T14:56:35Z",
+                  "databaseName": "dpg_db7pg8ut41sc7388oc2g",
+                  "databaseUser": "dpg_db7pg8ut41sc7388oc2g_user",
+                  "diskAutoscalingEnabled": false,
+                  "diskSizeGB": 1,
+                  "externalHost": "",
+                  "highAvailabilityEnabled": false,
+                  "id": "dpg-db7pg8ut41sc7388oc2g",
+                  "ipAllowList": [],
+                  "name": "qa-20261014-a466-pgplan",
+                  "plan": "free",
+                  "poolerEnabled": false,
+                  "public": false,
+                  "readReplicas": [],
+                  "region": "fsn1",
+                  "status": "available",
+                  "statusReason": null,
+                  "statusReasonCode": null,
+                  "suspended": "not_suspended",
+                  "updatedAt": "2026-10-14T14:57:32Z",
+                  "version": "18"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "redactions": [],
+      "pending": {
+        "at": "2026-10-14T15:10:05.435Z",
+        "layout": {
+          "section": {
+            "x": 280,
+            "y": 1711,
+            "width": 888,
+            "height": 200
+          },
+          "card": {
+            "x": 280,
+            "y": 1711,
+            "width": 888,
+            "height": 200
+          },
+          "header": {
+            "x": 281,
+            "y": 1732,
+            "width": 886,
+            "height": 24
+          },
+          "content": {
+            "x": 281,
+            "y": 1772,
+            "width": 886,
+            "height": 118
+          },
+          "radios": [],
+          "skeletons": [
+            {
+              "x": 301,
+              "y": 1732,
+              "width": 160,
+              "height": 20
+            },
+            {
+              "x": 301,
+              "y": 1772,
+              "width": 846,
+              "height": 118
+            }
+          ],
+          "routeSkeletonCount": 2,
+          "documentWidth": 1440
+        },
+        "ui": "",
+        "entityHeadingCount": 0
+      },
+      "ready": {
+        "at": "2026-10-14T15:10:13.332Z",
+        "layout": {
+          "section": {
+            "x": 280,
+            "y": 176,
+            "width": 888,
+            "height": 237
+          },
+          "card": {
+            "x": 280,
+            "y": 176,
+            "width": 888,
+            "height": 237
+          },
+          "header": {
+            "x": 281,
+            "y": 197,
+            "width": 886,
+            "height": 40
+          },
+          "content": {
+            "x": 281,
+            "y": 253,
+            "width": 886,
+            "height": 139
+          },
+          "radios": [
+            {
+              "name": "Free$0.00/month256 MB RAM · 0.1 CPU",
+              "checked": "true",
+              "box": {
+                "x": 301,
+                "y": 253,
+                "width": 274,
+                "height": 70
+              }
+            },
+            {
+              "name": "Basic 256MB$4.90/month256 MB RAM · 0.1 CPU",
+              "checked": "false",
+              "box": {
+                "x": 587,
+                "y": 253,
+                "width": 274,
+                "height": 70
+              }
+            },
+            {
+              "name": "Basic 1GB$14.00/month1 GB RAM · 0.5 CPU",
+              "checked": "false",
+              "box": {
+                "x": 873,
+                "y": 253,
+                "width": 274,
+                "height": 70
+              }
+            }
+          ],
+          "skeletons": [],
+          "routeSkeletonCount": 0,
+          "documentWidth": 1440
+        },
+        "ui": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- radiogroup \"Instance type\":\n  - radio \"Free $0.00/month 256 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Basic 256MB $4.90/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Basic 1GB $14.00/month 1 GB RAM · 0.5 CPU\"\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]"
+      }
+    },
+    "mobile": {
+      "at": "2026-10-14T15:15:17.682Z",
+      "captured": [
+        {
+          "at": "2026-10-14T15:15:09.723Z",
+          "method": "POST",
+          "url": "https://api.bex.co/graphql",
+          "request": [
+            {
+              "operationName": "Database",
+              "variables": {
+                "id": "dpg-db7pg8ut41sc7388oc2g"
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query Database($id: String!) {\n  database(id: $id) {\n    id\n    name\n    plan\n    version\n    status\n    statusReason\n    statusReasonCode\n    databaseName\n    databaseUser\n    diskSizeGB\n    diskAutoscalingEnabled\n    highAvailabilityEnabled\n    readReplicas {\n      name\n      connectionInfo {\n        internalHost\n        externalHost\n        __typename\n      }\n      __typename\n    }\n    suspended\n    createdAt\n    updatedAt\n    externalHost\n    public\n    poolerEnabled\n    backupsEnabled\n    ipAllowList\n    region\n    __typename\n  }\n}"
+            }
+          ],
+          "operationNames": ["Database"],
+          "status": 200,
+          "body": [
+            {
+              "data": {
+                "database": {
+                  "__typename": "Database",
+                  "backupsEnabled": false,
+                  "createdAt": "2026-10-14T14:56:35Z",
+                  "databaseName": "dpg_db7pg8ut41sc7388oc2g",
+                  "databaseUser": "dpg_db7pg8ut41sc7388oc2g_user",
+                  "diskAutoscalingEnabled": false,
+                  "diskSizeGB": 1,
+                  "externalHost": "",
+                  "highAvailabilityEnabled": false,
+                  "id": "dpg-db7pg8ut41sc7388oc2g",
+                  "ipAllowList": [],
+                  "name": "qa-20261014-a466-pgplan",
+                  "plan": "free",
+                  "poolerEnabled": false,
+                  "public": false,
+                  "readReplicas": [],
+                  "region": "fsn1",
+                  "status": "available",
+                  "statusReason": null,
+                  "statusReasonCode": null,
+                  "suspended": "not_suspended",
+                  "updatedAt": "2026-10-14T14:57:32Z",
+                  "version": "18"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "redactions": [],
+      "pending": {
+        "at": "2026-10-14T15:15:10.265Z",
+        "layout": {
+          "section": {
+            "x": 16,
+            "y": 1997,
+            "width": 358,
+            "height": 200
+          },
+          "card": {
+            "x": 16,
+            "y": 1997,
+            "width": 358,
+            "height": 200
+          },
+          "header": {
+            "x": 17,
+            "y": 2018,
+            "width": 356,
+            "height": 24
+          },
+          "content": {
+            "x": 17,
+            "y": 2058,
+            "width": 356,
+            "height": 118
+          },
+          "radios": [],
+          "skeletons": [
+            {
+              "x": 37,
+              "y": 2018,
+              "width": 160,
+              "height": 20
+            },
+            {
+              "x": 37,
+              "y": 2058,
+              "width": 316,
+              "height": 118
+            }
+          ],
+          "routeSkeletonCount": 2,
+          "documentWidth": 390
+        },
+        "ui": "",
+        "entityHeadingCount": 0
+      },
+      "ready": {
+        "at": "2026-10-14T15:15:17.606Z",
+        "layout": {
+          "section": {
+            "x": 16,
+            "y": 216,
+            "width": 358,
+            "height": 441
+          },
+          "card": {
+            "x": 16,
+            "y": 216,
+            "width": 358,
+            "height": 441
+          },
+          "header": {
+            "x": 17,
+            "y": 237,
+            "width": 356,
+            "height": 80
+          },
+          "content": {
+            "x": 17,
+            "y": 333,
+            "width": 356,
+            "height": 303
+          },
+          "radios": [
+            {
+              "name": "Free$0.00/month256 MB RAM · 0.1 CPU",
+              "checked": "true",
+              "box": {
+                "x": 37,
+                "y": 333,
+                "width": 316,
+                "height": 70
+              }
+            },
+            {
+              "name": "Basic 256MB$4.90/month256 MB RAM · 0.1 CPU",
+              "checked": "false",
+              "box": {
+                "x": 37,
+                "y": 415,
+                "width": 316,
+                "height": 70
+              }
+            },
+            {
+              "name": "Basic 1GB$14.00/month1 GB RAM · 0.5 CPU",
+              "checked": "false",
+              "box": {
+                "x": 37,
+                "y": 497,
+                "width": 316,
+                "height": 70
+              }
+            }
+          ],
+          "skeletons": [],
+          "routeSkeletonCount": 0,
+          "documentWidth": 390
+        },
+        "ui": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- radiogroup \"Instance type\":\n  - radio \"Free $0.00/month 256 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Basic 256MB $4.90/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Basic 1GB $14.00/month 1 GB RAM · 0.5 CPU\"\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]"
+      }
+    }
+  },
+  "catalog": {
+    "desktop": {
+      "at": "2026-10-14T15:03:16.843Z",
+      "captured": [
+        {
+          "at": "2026-10-14T15:03:08.990Z",
+          "url": "https://api.bex.co/graphql",
+          "method": "POST",
+          "operationNames": ["DatabaseInstanceTypes"],
+          "request": [
+            {
+              "operationName": "DatabaseInstanceTypes",
+              "variables": {},
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query DatabaseInstanceTypes {\n  databaseInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    maxStorageGB\n    supportsDiskAutoscaling\n    supportsConnectionPooling\n    maxReadReplicas\n    supportsHighAvailability\n    monthlyUsd\n    __typename\n  }\n}"
+            }
+          ],
+          "status": 200,
+          "body": [
+            {
+              "data": {
+                "databaseInstanceTypes": [
+                  {
+                    "__typename": "DatabaseInstanceType",
+                    "cpu": "100m",
+                    "id": "free",
+                    "maxReadReplicas": 0,
+                    "maxStorageGB": 1,
+                    "memory": "256Mi",
+                    "monthlyUsd": "0.00",
+                    "name": "Free",
+                    "storageGB": 1,
+                    "supportsConnectionPooling": false,
+                    "supportsDiskAutoscaling": false,
+                    "supportsHighAvailability": false
+                  },
+                  {
+                    "__typename": "DatabaseInstanceType",
+                    "cpu": "100m",
+                    "id": "basic-256mb",
+                    "maxReadReplicas": 0,
+                    "maxStorageGB": 16384,
+                    "memory": "256Mi",
+                    "monthlyUsd": "4.90",
+                    "name": "Basic 256MB",
+                    "storageGB": 1,
+                    "supportsConnectionPooling": true,
+                    "supportsDiskAutoscaling": true,
+                    "supportsHighAvailability": false
+                  },
+                  {
+                    "__typename": "DatabaseInstanceType",
+                    "cpu": "500m",
+                    "id": "basic-1gb",
+                    "maxReadReplicas": 5,
+                    "maxStorageGB": 16384,
+                    "memory": "1Gi",
+                    "monthlyUsd": "14.00",
+                    "name": "Basic 1GB",
+                    "storageGB": 5,
+                    "supportsConnectionPooling": true,
+                    "supportsDiskAutoscaling": true,
+                    "supportsHighAvailability": false
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "redactions": [],
+      "pending": {
+        "at": "2026-10-14T15:03:09.445Z",
+        "layout": {
+          "section": {
+            "x": 280,
+            "y": 104,
+            "width": 888,
+            "height": 247
+          },
+          "card": {
+            "x": 280,
+            "y": 104,
+            "width": 888,
+            "height": 247
+          },
+          "header": {
+            "x": 281,
+            "y": 125,
+            "width": 886,
+            "height": 40
+          },
+          "content": {
+            "x": 281,
+            "y": 181,
+            "width": 886,
+            "height": 149
+          },
+          "radios": [],
+          "skeletonCount": 3,
+          "routeSkeletonCount": 0,
+          "documentWidth": 1440
+        },
+        "ui": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]",
+        "entityHeading": "qa-20261014-a466-pgplan"
+      },
+      "ready": {
+        "at": "2026-10-14T15:03:16.772Z",
+        "layout": {
+          "section": {
+            "x": 280,
+            "y": 255.59375,
+            "width": 888,
+            "height": 237
+          },
+          "card": {
+            "x": 280,
+            "y": 255.59375,
+            "width": 888,
+            "height": 237
+          },
+          "header": {
+            "x": 281,
+            "y": 276.59375,
+            "width": 886,
+            "height": 40
+          },
+          "content": {
+            "x": 281,
+            "y": 332.59375,
+            "width": 886,
+            "height": 139
+          },
+          "radios": [
+            {
+              "name": "Free$0.00/month256 MB RAM · 0.1 CPU",
+              "checked": "true",
+              "box": {
+                "x": 301,
+                "y": 332.59375,
+                "width": 274,
+                "height": 70
+              }
+            },
+            {
+              "name": "Basic 256MB$4.90/month256 MB RAM · 0.1 CPU",
+              "checked": "false",
+              "box": {
+                "x": 587,
+                "y": 332.59375,
+                "width": 274,
+                "height": 70
+              }
+            },
+            {
+              "name": "Basic 1GB$14.00/month1 GB RAM · 0.5 CPU",
+              "checked": "false",
+              "box": {
+                "x": 873,
+                "y": 332.59375,
+                "width": 274,
+                "height": 70
+              }
+            }
+          ],
+          "skeletonCount": 0,
+          "routeSkeletonCount": 0,
+          "documentWidth": 1440
+        },
+        "ui": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- radiogroup \"Instance type\":\n  - radio \"Free $0.00/month 256 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Basic 256MB $4.90/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Basic 1GB $14.00/month 1 GB RAM · 0.5 CPU\"\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]"
+      }
+    },
+    "mobile": {
+      "at": "2026-10-14T15:05:32.022Z",
+      "captured": [
+        {
+          "at": "2026-10-14T15:05:24.522Z",
+          "url": "https://api.bex.co/graphql",
+          "method": "POST",
+          "operationNames": ["DatabaseInstanceTypes"],
+          "request": [
+            {
+              "operationName": "DatabaseInstanceTypes",
+              "variables": {},
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query DatabaseInstanceTypes {\n  databaseInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    maxStorageGB\n    supportsDiskAutoscaling\n    supportsConnectionPooling\n    maxReadReplicas\n    supportsHighAvailability\n    monthlyUsd\n    __typename\n  }\n}"
+            }
+          ],
+          "status": 200,
+          "body": [
+            {
+              "data": {
+                "databaseInstanceTypes": [
+                  {
+                    "__typename": "DatabaseInstanceType",
+                    "cpu": "100m",
+                    "id": "free",
+                    "maxReadReplicas": 0,
+                    "maxStorageGB": 1,
+                    "memory": "256Mi",
+                    "monthlyUsd": "0.00",
+                    "name": "Free",
+                    "storageGB": 1,
+                    "supportsConnectionPooling": false,
+                    "supportsDiskAutoscaling": false,
+                    "supportsHighAvailability": false
+                  },
+                  {
+                    "__typename": "DatabaseInstanceType",
+                    "cpu": "100m",
+                    "id": "basic-256mb",
+                    "maxReadReplicas": 0,
+                    "maxStorageGB": 16384,
+                    "memory": "256Mi",
+                    "monthlyUsd": "4.90",
+                    "name": "Basic 256MB",
+                    "storageGB": 1,
+                    "supportsConnectionPooling": true,
+                    "supportsDiskAutoscaling": true,
+                    "supportsHighAvailability": false
+                  },
+                  {
+                    "__typename": "DatabaseInstanceType",
+                    "cpu": "500m",
+                    "id": "basic-1gb",
+                    "maxReadReplicas": 5,
+                    "maxStorageGB": 16384,
+                    "memory": "1Gi",
+                    "monthlyUsd": "14.00",
+                    "name": "Basic 1GB",
+                    "storageGB": 5,
+                    "supportsConnectionPooling": true,
+                    "supportsDiskAutoscaling": true,
+                    "supportsHighAvailability": false
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "redactions": [],
+      "pending": {
+        "at": "2026-10-14T15:05:25.147Z",
+        "layout": {
+          "section": {
+            "x": 16,
+            "y": 914,
+            "width": 358,
+            "height": 463
+          },
+          "card": {
+            "x": 16,
+            "y": 914,
+            "width": 358,
+            "height": 463
+          },
+          "header": {
+            "x": 17,
+            "y": 935,
+            "width": 356,
+            "height": 80
+          },
+          "content": {
+            "x": 17,
+            "y": 1031,
+            "width": 356,
+            "height": 325
+          },
+          "radios": [],
+          "skeletonCount": 3,
+          "routeSkeletonCount": 0,
+          "documentWidth": 390
+        },
+        "ui": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]",
+        "entityHeading": "qa-20261014-a466-pgplan"
+      },
+      "ready": {
+        "at": "2026-10-14T15:05:31.946Z",
+        "layout": {
+          "section": {
+            "x": 16,
+            "y": 295.59375,
+            "width": 358,
+            "height": 441
+          },
+          "card": {
+            "x": 16,
+            "y": 295.59375,
+            "width": 358,
+            "height": 441
+          },
+          "header": {
+            "x": 17,
+            "y": 316.59375,
+            "width": 356,
+            "height": 80
+          },
+          "content": {
+            "x": 17,
+            "y": 412.59375,
+            "width": 356,
+            "height": 303
+          },
+          "radios": [
+            {
+              "name": "Free$0.00/month256 MB RAM · 0.1 CPU",
+              "checked": "true",
+              "box": {
+                "x": 37,
+                "y": 412.59375,
+                "width": 316,
+                "height": 70
+              }
+            },
+            {
+              "name": "Basic 256MB$4.90/month256 MB RAM · 0.1 CPU",
+              "checked": "false",
+              "box": {
+                "x": 37,
+                "y": 494.59375,
+                "width": 316,
+                "height": 70
+              }
+            },
+            {
+              "name": "Basic 1GB$14.00/month1 GB RAM · 0.5 CPU",
+              "checked": "false",
+              "box": {
+                "x": 37,
+                "y": 576.59375,
+                "width": 316,
+                "height": 70
+              }
+            }
+          ],
+          "skeletonCount": 0,
+          "routeSkeletonCount": 0,
+          "documentWidth": 390
+        },
+        "ui": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- radiogroup \"Instance type\":\n  - radio \"Free $0.00/month 256 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Basic 256MB $4.90/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Basic 1GB $14.00/month 1 GB RAM · 0.5 CPU\"\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]"
+      }
+    }
+  },
+  "excludedInitialDeferredCapture": {
+    "reason": "First catalog-delay receipt measured the 200px deferred empty section before actual card mount, not the catalog skeleton; excluded from mounted-card claim.",
+    "receipt": {
+      "at": "2026-10-14T14:58:40.856Z",
+      "captured": [
+        {
+          "at": "2026-10-14T14:58:32.933Z",
+          "url": "https://api.bex.co/graphql",
+          "method": "POST",
+          "operationNames": ["DatabaseInstanceTypes"],
+          "request": [
+            {
+              "operationName": "DatabaseInstanceTypes",
+              "variables": {},
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query DatabaseInstanceTypes {\n  databaseInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    maxStorageGB\n    supportsDiskAutoscaling\n    supportsConnectionPooling\n    maxReadReplicas\n    supportsHighAvailability\n    monthlyUsd\n    __typename\n  }\n}"
+            }
+          ],
+          "status": 200,
+          "body": [
+            {
+              "data": {
+                "databaseInstanceTypes": [
+                  {
+                    "__typename": "DatabaseInstanceType",
+                    "cpu": "100m",
+                    "id": "free",
+                    "maxReadReplicas": 0,
+                    "maxStorageGB": 1,
+                    "memory": "256Mi",
+                    "monthlyUsd": "0.00",
+                    "name": "Free",
+                    "storageGB": 1,
+                    "supportsConnectionPooling": false,
+                    "supportsDiskAutoscaling": false,
+                    "supportsHighAvailability": false
+                  },
+                  {
+                    "__typename": "DatabaseInstanceType",
+                    "cpu": "100m",
+                    "id": "basic-256mb",
+                    "maxReadReplicas": 0,
+                    "maxStorageGB": 16384,
+                    "memory": "256Mi",
+                    "monthlyUsd": "4.90",
+                    "name": "Basic 256MB",
+                    "storageGB": 1,
+                    "supportsConnectionPooling": true,
+                    "supportsDiskAutoscaling": true,
+                    "supportsHighAvailability": false
+                  },
+                  {
+                    "__typename": "DatabaseInstanceType",
+                    "cpu": "500m",
+                    "id": "basic-1gb",
+                    "maxReadReplicas": 5,
+                    "maxStorageGB": 16384,
+                    "memory": "1Gi",
+                    "monthlyUsd": "14.00",
+                    "name": "Basic 1GB",
+                    "storageGB": 5,
+                    "supportsConnectionPooling": true,
+                    "supportsDiskAutoscaling": true,
+                    "supportsHighAvailability": false
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "redactions": [],
+      "pending": {
+        "at": "2026-10-14T14:58:33.444Z",
+        "layout": {
+          "section": {
+            "x": 280,
+            "y": 256,
+            "width": 888,
+            "height": 200
+          },
+          "card": null,
+          "header": null,
+          "content": null,
+          "radios": [],
+          "skeletonCount": 0,
+          "routeSkeletonCount": 0,
+          "documentWidth": 1440
+        },
+        "ui": "",
+        "entityHeading": "qa-20261014-a466-pgplan"
+      },
+      "ready": {
+        "at": "2026-10-14T14:58:40.774Z",
+        "layout": {
+          "section": {
+            "x": 280,
+            "y": 255.796875,
+            "width": 888,
+            "height": 237
+          },
+          "card": {
+            "x": 280,
+            "y": 255.796875,
+            "width": 888,
+            "height": 237
+          },
+          "header": {
+            "x": 281,
+            "y": 276.796875,
+            "width": 886,
+            "height": 40
+          },
+          "content": {
+            "x": 281,
+            "y": 332.796875,
+            "width": 886,
+            "height": 139
+          },
+          "radios": [
+            {
+              "name": "Free$0.00/month256 MB RAM · 0.1 CPU",
+              "checked": "true",
+              "box": {
+                "x": 301,
+                "y": 332.796875,
+                "width": 274,
+                "height": 70
+              }
+            },
+            {
+              "name": "Basic 256MB$4.90/month256 MB RAM · 0.1 CPU",
+              "checked": "false",
+              "box": {
+                "x": 587,
+                "y": 332.796875,
+                "width": 274,
+                "height": 70
+              }
+            },
+            {
+              "name": "Basic 1GB$14.00/month1 GB RAM · 0.5 CPU",
+              "checked": "false",
+              "box": {
+                "x": 873,
+                "y": 332.796875,
+                "width": 274,
+                "height": 70
+              }
+            }
+          ],
+          "skeletonCount": 0,
+          "routeSkeletonCount": 0,
+          "documentWidth": 1440
+        },
+        "ui": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- radiogroup \"Instance type\":\n  - radio \"Free $0.00/month 256 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Basic 256MB $4.90/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Basic 1GB $14.00/month 1 GB RAM · 0.5 CPU\"\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]"
+      }
+    }
+  },
+  "delete": {
+    "at": "2026-10-14T15:27:41.830Z",
+    "beforeDelete": {
+      "status": 200,
+      "body": {
+        "data": {
+          "database": {
+            "id": "dpg-db7pg8ut41sc7388oc2g",
+            "name": "qa-20261014-a466-pgplan",
+            "plan": "free",
+            "public": false,
+            "status": "available",
+            "version": "18"
+          }
+        }
+      }
+    },
+    "status": 200,
+    "request": [
+      {
+        "operationName": "DeleteDatabase",
+        "variables": {
+          "id": "dpg-db7pg8ut41sc7388oc2g"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteDatabase($id: String!, $confirm: String) {\n  deleteDatabase(id: $id, confirm: $confirm)\n}"
+      }
+    ],
+    "body": [
+      {
+        "data": {
+          "deleteDatabase": true
+        }
+      }
+    ]
+  },
+  "cleanup": {
+    "at": "2026-10-14T15:27:53.932Z",
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    },
+    "matches": [
+      {
+        "family": "blueprints",
+        "exact": true,
+        "count": 1
+      },
+      {
+        "family": "databases",
+        "exact": true,
+        "count": 4
+      },
+      {
+        "family": "envGroups",
+        "exact": true,
+        "count": 1
+      },
+      {
+        "family": "keyValues",
+        "exact": true,
+        "count": 2
+      },
+      {
+        "family": "projects",
+        "exact": true,
+        "count": 3
+      },
+      {
+        "family": "services",
+        "exact": true,
+        "count": 5
+      },
+      {
+        "family": "webhookEndpoints",
+        "exact": true,
+        "count": 0
+      }
+    ],
+    "deleted": {
+      "id": "dpg-db7pg8ut41sc7388oc2g",
+      "status": 404
+    }
+  },
+  "revoked": {
+    "at": "2026-10-14T15:33:32.912Z",
+    "owners": {
+      "url": "https://api.bex.co/v1/owners",
+      "status": 401,
+      "body": "{\"error\":\"unauthorized\",\"id\":\"unauthorized\",\"message\":\"unauthorized\"}\n"
+    },
+    "cookieCount": 0,
+    "pageCount": 1,
+    "url": "about:blank"
+  },
+  "screenshots": {
+    "resourcePendingDesktop": ".playwright-mcp/qa-a466-pg-resource-pending-desktop.png",
+    "resourceReadyDesktop": ".playwright-mcp/qa-a466-pg-resource-ready-desktop.png",
+    "resourcePendingMobile": ".playwright-mcp/qa-a466-pg-resource-pending-mobile.png",
+    "sharedCompleteReadyMobile": ".playwright-mcp/qa-a466-pg-catalog-mounted-ready-mobile.png",
+    "catalog": [
+      ".playwright-mcp/qa-a466-pg-catalog-mounted-pending-desktop.png",
+      ".playwright-mcp/qa-a466-pg-catalog-mounted-ready-desktop.png",
+      ".playwright-mcp/qa-a466-pg-catalog-mounted-pending-mobile.png",
+      ".playwright-mcp/qa-a466-pg-catalog-mounted-ready-mobile.png"
+    ]
+  },
+  "limits": [
+    "Complete unchanged HTTP JSON request/response batches retained: resource Database alone, catalog DatabaseInstanceTypes alone; no headers and zero scrub redactions.",
+    "Only plan loading UI reads on one owned private Free Postgres18; no plan selection/save, query, client connection or secret reveal.",
+    "Resource-ready mobile screenshot had sticky nav overlap; complete mounted-catalog ready mobile image is reused as the same fixture/state ready control.",
+    "Deferred reservation/lazy Suspense fallback traced separately; no independently delayed JS chunk or offscreen-transition acceptance claimed.",
+    "Fresh actual card mount was awaited for catalog claims; no duplicate-chrome claim inferred from resource header+body route-skeleton count2.",
+    "No implementation/test/milestone acceptance closure."
+  ]
+}
