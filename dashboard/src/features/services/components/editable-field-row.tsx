@@ -94,7 +94,8 @@ export interface EditableFieldRowProps {
  * lives in a real, visibly disabled input (or select). A pencil Edit button
  * enables and focuses that same control and swaps the pencil for Cancel + "Save
  * changes", Save staying disabled until the draft actually differs. Cancel (and
- * Escape) restores the value and the disabled state. Rebuild-affecting fields
+ * Escape) restores the value and the disabled state, and returns keyboard
+ * focus to the pencil (w4/293). Rebuild-affecting fields
  * pass a `confirm` dialog that runs — and can be dismissed — before onSave fires.
  *
  * One component, three variants: pass `options` for the select variant (the
@@ -133,6 +134,11 @@ export function EditableFieldRow({
   const [confirming, setConfirming] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const editButtonRef = useRef<HTMLButtonElement>(null);
+  // Set only by an explicit Cancel/Escape so the post-render effect returns
+  // focus to the restored pencil — never on mount, a server refresh, or a
+  // save (w4/293).
+  const restoreFocusRef = useRef(false);
   const editable = !disabled;
   // The disabled control always shows the persisted value; the draft only
   // exists while editing (seeded on Edit), so an external value update never
@@ -149,6 +155,15 @@ export function EditableFieldRow({
     }
   }, [editing, options]);
 
+  // Cancel disables the focused control and unmounts Cancel/Save, which would
+  // drop keyboard focus to <body>; hand it to this row's restored pencil once
+  // it is mounted. A disabled row renders no pencil, so focus stays put.
+  useEffect(() => {
+    if (editing || !restoreFocusRef.current) return;
+    restoreFocusRef.current = false;
+    editButtonRef.current?.focus();
+  }, [editing]);
+
   const normalized = trim ? draft.trim() : draft;
   const validationError = editing ? (validate?.(draft) ?? null) : null;
   const description =
@@ -162,6 +177,7 @@ export function EditableFieldRow({
   }
 
   function cancel() {
+    restoreFocusRef.current = true;
     setDraft(value);
     setEditing(false);
   }
@@ -299,6 +315,7 @@ export function EditableFieldRow({
         ) : (
           editable && (
             <Button
+              ref={editButtonRef}
               size="icon"
               variant="ghost"
               aria-label={editLabel}

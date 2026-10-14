@@ -457,4 +457,204 @@ describe("EditableFieldRow", () => {
     );
     expect(trigger).toHaveClass("basis-full", "sm:basis-0");
   });
+
+  describe("cancel returns keyboard focus to the pencil (w4/293)", () => {
+    it("Escape on a text field focuses Edit, and Enter reopens the saved value", async () => {
+      const user = userEvent.setup();
+      const onSave = ok();
+      render(
+        <EditableFieldRow
+          label="Health Check Path"
+          value="/healthz"
+          editLabel="Edit health check path"
+          onSave={onSave}
+        />,
+      );
+
+      screen.getByRole("button", { name: "Edit health check path" }).focus();
+      await user.keyboard("{Enter}");
+      const input = screen.getByRole("textbox", { name: "Health Check Path" });
+      expect(input).toHaveFocus();
+      await user.type(input, "/draft");
+      await user.keyboard("{Escape}");
+
+      expect(input).toHaveValue("/healthz");
+      expect(input).toBeDisabled();
+      const pencil = screen.getByRole("button", {
+        name: "Edit health check path",
+      });
+      expect(pencil).toHaveFocus();
+
+      await user.keyboard("{Enter}");
+      expect(input).toBeEnabled();
+      expect(input).toHaveValue("/healthz");
+      expect(input).toHaveFocus();
+      expect(onSave).not.toHaveBeenCalled();
+    });
+
+    it("Escape on a number field focuses Edit, and Enter reopens it", async () => {
+      const user = userEvent.setup();
+      render(
+        <EditableFieldRow
+          label="Port"
+          value="8846"
+          editLabel="Edit port"
+          type="number"
+          onSave={ok()}
+        />,
+      );
+
+      screen.getByRole("button", { name: "Edit port" }).focus();
+      await user.keyboard("{Enter}");
+      const input = screen.getByRole("spinbutton", { name: "Port" });
+      await user.clear(input);
+      await user.type(input, "8847");
+      await user.keyboard("{Escape}");
+
+      expect(input).toHaveValue(8846);
+      expect(screen.getByRole("button", { name: "Edit port" })).toHaveFocus();
+      await user.keyboard("{Enter}");
+      expect(input).toBeEnabled();
+      expect(input).toHaveFocus();
+    });
+
+    it("keyboard activation of Cancel focuses Edit", async () => {
+      const user = userEvent.setup();
+      render(
+        <EditableFieldRow
+          label="Health Check Path"
+          value="/healthz"
+          editLabel="Edit health check path"
+          onSave={ok()}
+        />,
+      );
+
+      await user.click(
+        screen.getByRole("button", { name: "Edit health check path" }),
+      );
+      await user.type(
+        screen.getByRole("textbox", { name: "Health Check Path" }),
+        "/draft",
+      );
+      await user.tab();
+      expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
+      await user.keyboard("{Enter}");
+
+      expect(
+        screen.getByRole("button", { name: "Edit health check path" }),
+      ).toHaveFocus();
+    });
+
+    it("select: popup Escape keeps editing; explicit Cancel focuses Edit", async () => {
+      const user = userEvent.setup();
+      render(
+        <EditableFieldRow
+          label="Notifications"
+          value="default"
+          editLabel="Edit notifications"
+          options={[
+            { value: "default", label: "Use workspace default" },
+            { value: "none", label: "No notifications" },
+          ]}
+          onSave={ok()}
+        />,
+      );
+
+      await user.click(
+        screen.getByRole("button", { name: "Edit notifications" }),
+      );
+      const trigger = screen.getByRole("combobox", { name: "Notifications" });
+      await user.click(trigger);
+      await user.keyboard("{Escape}");
+      expect(trigger).toBeEnabled();
+      expect(
+        screen.queryByRole("button", { name: "Edit notifications" }),
+      ).not.toBeInTheDocument();
+
+      screen.getByRole("button", { name: "Cancel" }).focus();
+      await user.keyboard("{Enter}");
+      expect(trigger).toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: "Edit notifications" }),
+      ).toHaveFocus();
+    });
+
+    it("combobox: explicit Cancel focuses Edit", async () => {
+      const user = userEvent.setup();
+      render(
+        <EditableFieldRow
+          label="Branch"
+          value="main"
+          editLabel="Edit branch"
+          comboboxOptions={[{ value: "main", label: "main" }]}
+          onSave={ok()}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "Edit branch" }));
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(screen.getByRole("combobox", { name: "Branch" })).toHaveValue(
+        "main",
+      );
+      expect(screen.getByRole("button", { name: "Edit branch" })).toHaveFocus();
+    });
+
+    it("never moves focus on mount, on save, or into a row that became disabled", async () => {
+      const user = userEvent.setup();
+      const props = {
+        label: "Health Check Path",
+        value: "/healthz",
+        editLabel: "Edit health check path",
+        onSave: ok(),
+      };
+      const { rerender } = render(
+        <>
+          <button type="button">Elsewhere</button>
+          <EditableFieldRow {...props} />
+        </>,
+      );
+      expect(
+        screen.getByRole("button", { name: "Edit health check path" }),
+      ).not.toHaveFocus();
+
+      // A successful save is not a cancellation: no focus hand-off.
+      await user.click(
+        screen.getByRole("button", { name: "Edit health check path" }),
+      );
+      await user.type(
+        screen.getByRole("textbox", { name: "Health Check Path" }),
+        "/v2",
+      );
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+      expect(props.onSave).toHaveBeenCalledWith("/healthz/v2");
+      expect(
+        screen.getByRole("button", { name: "Edit health check path" }),
+      ).not.toHaveFocus();
+
+      // Cancel on a row that lost edit rights renders no pencil, so nothing
+      // is focused, and re-enabling it later does not steal focus.
+      await user.click(
+        screen.getByRole("button", { name: "Edit health check path" }),
+      );
+      rerender(
+        <>
+          <button type="button">Elsewhere</button>
+          <EditableFieldRow {...props} disabled />
+        </>,
+      );
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+      expect(
+        screen.queryByRole("button", { name: "Edit health check path" }),
+      ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: "Elsewhere" }).focus();
+      rerender(
+        <>
+          <button type="button">Elsewhere</button>
+          <EditableFieldRow {...props} />
+        </>,
+      );
+      expect(screen.getByRole("button", { name: "Elsewhere" })).toHaveFocus();
+    });
+  });
 });
