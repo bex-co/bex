@@ -1,0 +1,1770 @@
+{
+  "schemaVersion": 1,
+  "pass": "a448",
+  "sourceHead": "a11a77272",
+  "scope": "Key Value Maxmemory Policy and Persistence Mode route-pending/ready card structure; two owned private Free Valkey8 fixtures at desktop/mobile",
+  "fixture": {
+    "id": "red-db7ldbut41sc7388o7lg",
+    "name": "qa-20261014-a448-policy"
+  },
+  "baseline": {
+    "at": "2026-10-14T10:16:51.553Z",
+    "request": {
+      "operationName": "Qaa448Inventory",
+      "query": "query Qaa448Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    }
+  },
+  "create": {
+    "at": "2026-10-14T10:17:20.056Z",
+    "request": [
+      {
+        "operationName": "CreateKeyValue",
+        "variables": {
+          "name": "qa-20261014-a448-policy",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "plan": "free",
+          "public": false,
+          "maxmemoryPolicy": "allkeys-lru",
+          "persistenceMode": "journal-snapshot"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateKeyValue($name: String!, $ownerId: String, $environmentId: String, $plan: String, $version: String, $storageGB: Int, $public: Boolean, $maxmemoryPolicy: String, $persistenceMode: String) {\n  createKeyValue(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    storageGB: $storageGB\n    public: $public\n    maxmemoryPolicy: $maxmemoryPolicy\n    persistenceMode: $persistenceMode\n  ) {\n    id\n    name\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "createKeyValue": {
+            "__typename": "KeyValue",
+            "environmentId": null,
+            "id": "red-db7ldbut41sc7388o7lg",
+            "name": "qa-20261014-a448-policy",
+            "plan": "free",
+            "projectId": null,
+            "status": "creating"
+          }
+        }
+      }
+    ],
+    "url": "https://dashboard.bex.co/keyvalue/red-db7ldbut41sc7388o7lg"
+  },
+  "available": {
+    "at": "2026-10-14T10:18:00.241Z",
+    "request": {
+      "query": "query($id:String!){keyValue(id:$id){id status version plan public maxmemoryPolicy persistenceMode}}",
+      "variables": {
+        "id": "red-db7ldbut41sc7388o7lg"
+      }
+    },
+    "checks": [
+      {
+        "at": "2026-10-14T10:18:00.241Z",
+        "status": 200,
+        "body": {
+          "data": {
+            "keyValue": {
+              "id": "red-db7ldbut41sc7388o7lg",
+              "maxmemoryPolicy": "allkeys_lru",
+              "persistenceMode": "journal_snapshot",
+              "plan": "free",
+              "public": false,
+              "status": "available",
+              "version": "8"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "desktopProbeCode": "async(page)=>{\nawait page.setViewportSize({width:1440,height:1000});await page.goto('https://dashboard.bex.co/env-groups');await page.getByRole('heading',{name:'Environment Groups',exact:true}).waitFor({timeout:25000});await page.waitForFunction(()=>!!window.__TSR_ROUTER__,{},{timeout:15000});\nconst captured=[];const handler=async route=>{const request=route.request();let list=[];try{const data=request.postDataJSON();list=Array.isArray(data)?data:[data]}catch{}const index=list.findIndex(q=>q?.operationName==='KeyValue'&&q.variables?.id==='red-db7ldbut41sc7388o7lg');if(index<0){await route.continue();return}const response=await route.fetch();const body=await response.json();captured.push({request:list[index],status:response.status(),body:Array.isArray(body)?body[index]:body});await page.waitForTimeout(7000);await route.fulfill({response})};\nconst measure=()=>{const box=el=>{if(!el)return null;const r=el.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height}};const main=document.querySelector('main');return{main:box(main),frames:[...document.querySelectorAll('[data-route-skeleton]')].map(el=>({route:el.getAttribute('data-route-skeleton'),box:box(el)})),regions:[...document.querySelectorAll('main [data-skeleton-region]')].map(el=>({name:el.getAttribute('data-skeleton-region'),box:box(el)})),sections:[...document.querySelectorAll('main section[id]')].map(el=>({id:el.id,box:box(el)})),cards:[...document.querySelectorAll('main [data-slot=\"card\"]')].map(el=>({box:box(el),header:box(el.querySelector('[data-slot=\"card-header\"]')),content:box(el.querySelector('[data-slot=\"card-content\"]')),title:el.querySelector('[data-slot=\"card-title\"]')?.textContent||null,descriptions:el.querySelectorAll('[data-slot=\"card-description\"]').length,inputs:el.querySelectorAll('input').length,buttons:el.querySelectorAll('button').length})),width:{viewport:innerWidth,document:document.documentElement.scrollWidth}}};\nawait page.route('**/graphql',handler);\ntry{await page.evaluate(()=>{void window.__TSR_ROUTER__.navigate({to:'/keyvalue/red-db7ldbut41sc7388o7lg'})});await page.locator('[data-route-skeleton=\"keyvalue-overview\"]').waitFor({timeout:15000});await page.waitForTimeout(350);await page.locator('[data-skeleton-region=\"maxmemory-policy\"]').evaluate(el=>el.scrollIntoView({block:'start'}));const pending={at:new Date().toISOString(),layout:await page.evaluate(measure),ui:await page.locator('main').ariaSnapshot()};await page.screenshot({path:'qa-a448-policy-pending-desktop.png'});await page.getByRole('heading',{name:'qa-20261014-a448-policy',exact:true}).waitFor({timeout:25000});await page.getByRole('button',{name:'Reveal connection info',exact:true}).waitFor({timeout:25000});await page.waitForTimeout(500);await page.locator('#maxmemory-policy').evaluate(el=>el.scrollIntoView({block:'start'}));const ready={at:new Date().toISOString(),layout:await page.evaluate(measure),ui:await page.locator('main').ariaSnapshot()};await page.screenshot({path:'qa-a448-policy-ready-desktop.png'});return{at:new Date().toISOString(),captured,pending,ready}}finally{await page.unroute('**/graphql',handler)}\n}",
+  "mobileProbeCode": "async(page)=>{\nawait page.setViewportSize({width:390,height:844});await page.goto('https://dashboard.bex.co/env-groups');await page.getByRole('heading',{name:'Environment Groups',exact:true}).waitFor({timeout:25000});await page.waitForFunction(()=>!!window.__TSR_ROUTER__,{},{timeout:15000});\nconst captured=[];const handler=async route=>{const request=route.request();let list=[];try{const data=request.postDataJSON();list=Array.isArray(data)?data:[data]}catch{}const index=list.findIndex(q=>q?.operationName==='KeyValue'&&q.variables?.id==='red-db7ldbut41sc7388o7lg');if(index<0){await route.continue();return}const response=await route.fetch();const body=await response.json();captured.push({request:list[index],status:response.status(),body:Array.isArray(body)?body[index]:body});await page.waitForTimeout(7000);await route.fulfill({response})};\nconst measure=()=>{const box=el=>{if(!el)return null;const r=el.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height}};const main=document.querySelector('main');return{main:box(main),frames:[...document.querySelectorAll('[data-route-skeleton]')].map(el=>({route:el.getAttribute('data-route-skeleton'),box:box(el)})),regions:[...document.querySelectorAll('main [data-skeleton-region]')].map(el=>({name:el.getAttribute('data-skeleton-region'),box:box(el)})),sections:[...document.querySelectorAll('main section[id]')].map(el=>({id:el.id,box:box(el)})),cards:[...document.querySelectorAll('main [data-slot=\"card\"]')].map(el=>({box:box(el),header:box(el.querySelector('[data-slot=\"card-header\"]')),content:box(el.querySelector('[data-slot=\"card-content\"]')),title:el.querySelector('[data-slot=\"card-title\"]')?.textContent||null,descriptions:el.querySelectorAll('[data-slot=\"card-description\"]').length,inputs:el.querySelectorAll('input').length,buttons:el.querySelectorAll('button').length})),width:{viewport:innerWidth,document:document.documentElement.scrollWidth}}};\nawait page.route('**/graphql',handler);\ntry{await page.evaluate(()=>{void window.__TSR_ROUTER__.navigate({to:'/keyvalue/red-db7ldbut41sc7388o7lg'})});await page.locator('[data-route-skeleton=\"keyvalue-overview\"]').waitFor({timeout:15000});await page.waitForTimeout(350);await page.locator('[data-skeleton-region=\"maxmemory-policy\"]').evaluate(el=>el.scrollIntoView({block:'start'}));const pending={at:new Date().toISOString(),layout:await page.evaluate(measure),ui:await page.locator('main').ariaSnapshot()};await page.screenshot({path:'qa-a448-policy-pending-mobile.png'});await page.getByRole('heading',{name:'qa-20261014-a448-policy',exact:true}).waitFor({timeout:25000});await page.getByRole('button',{name:'Reveal connection info',exact:true}).waitFor({timeout:25000});await page.waitForTimeout(500);await page.locator('#maxmemory-policy').evaluate(el=>el.scrollIntoView({block:'start'}));const ready={at:new Date().toISOString(),layout:await page.evaluate(measure),ui:await page.locator('main').ariaSnapshot()};await page.screenshot({path:'qa-a448-policy-ready-mobile.png'});return{at:new Date().toISOString(),captured,pending,ready}}finally{await page.unroute('**/graphql',handler)}\n}",
+  "desktop": {
+    "at": "2026-10-14T10:18:36.429Z",
+    "captured": [
+      {
+        "request": {
+          "operationName": "KeyValue",
+          "variables": {
+            "id": "red-db7ldbut41sc7388o7lg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query KeyValue($id: String!) {\n  keyValue(id: $id) {\n    id\n    name\n    plan\n    version\n    status\n    statusReason\n    statusReasonCode\n    suspended\n    createdAt\n    updatedAt\n    externalHost\n    public\n    region\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "keyValue": {
+              "__typename": "KeyValue",
+              "createdAt": "2026-10-14T10:17:19Z",
+              "externalHost": "",
+              "id": "red-db7ldbut41sc7388o7lg",
+              "name": "qa-20261014-a448-policy",
+              "plan": "free",
+              "public": false,
+              "region": "fsn1",
+              "status": "available",
+              "statusReason": null,
+              "statusReasonCode": null,
+              "suspended": "not_suspended",
+              "updatedAt": "2026-10-14T10:17:48Z",
+              "version": "8"
+            }
+          }
+        }
+      }
+    ],
+    "pending": {
+      "at": "2026-10-14T10:18:28.517Z",
+      "layout": {
+        "main": {
+          "x": 256,
+          "y": 0,
+          "width": 1184,
+          "height": 1000
+        },
+        "frames": [
+          {
+            "route": "keyvalue-detail",
+            "box": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0
+            }
+          },
+          {
+            "route": "keyvalue-overview",
+            "box": {
+              "x": 280,
+              "y": -377,
+              "width": 1136,
+              "height": 1353
+            }
+          }
+        ],
+        "regions": [
+          {
+            "name": "resource-header",
+            "box": {
+              "x": 256,
+              "y": 48,
+              "width": 1184,
+              "height": 57
+            }
+          },
+          {
+            "name": "resource-title",
+            "box": {
+              "x": 280,
+              "y": 64,
+              "width": 264,
+              "height": 24
+            }
+          },
+          {
+            "name": "tabs",
+            "box": {
+              "x": 256,
+              "y": 105,
+              "width": 1184,
+              "height": 39
+            }
+          },
+          {
+            "name": "active-tab",
+            "box": {
+              "x": 256,
+              "y": 144,
+              "width": 1184,
+              "height": 856
+            }
+          },
+          {
+            "name": "section-navigation",
+            "box": {
+              "x": 1208,
+              "y": 192,
+              "width": 208,
+              "height": 248
+            }
+          },
+          {
+            "name": "metadata",
+            "box": {
+              "x": 280,
+              "y": -377,
+              "width": 888,
+              "height": 358
+            }
+          },
+          {
+            "name": "connection",
+            "box": {
+              "x": 280,
+              "y": 5,
+              "width": 888,
+              "height": 134
+            }
+          },
+          {
+            "name": "networking",
+            "box": {
+              "x": 280,
+              "y": 163,
+              "width": 888,
+              "height": 246
+            }
+          },
+          {
+            "name": "plan",
+            "box": {
+              "x": 280,
+              "y": 433,
+              "width": 888,
+              "height": 167
+            }
+          },
+          {
+            "name": "maxmemory-policy",
+            "box": {
+              "x": 280,
+              "y": 624,
+              "width": 888,
+              "height": 134
+            }
+          },
+          {
+            "name": "persistence-mode",
+            "box": {
+              "x": 280,
+              "y": 782,
+              "width": 888,
+              "height": 134
+            }
+          },
+          {
+            "name": "danger-zone",
+            "box": {
+              "x": 280,
+              "y": 940,
+              "width": 888,
+              "height": 36
+            }
+          }
+        ],
+        "sections": [],
+        "cards": [
+          {
+            "box": {
+              "x": 280,
+              "y": -377,
+              "width": 888,
+              "height": 358
+            },
+            "header": {
+              "x": 281,
+              "y": -356,
+              "width": 886,
+              "height": 24
+            },
+            "content": {
+              "x": 281,
+              "y": -316,
+              "width": 886,
+              "height": 276
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 280,
+              "y": 5,
+              "width": 888,
+              "height": 134
+            },
+            "header": {
+              "x": 281,
+              "y": 26,
+              "width": 886,
+              "height": 24
+            },
+            "content": {
+              "x": 281,
+              "y": 66,
+              "width": 886,
+              "height": 52
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 280,
+              "y": 163,
+              "width": 888,
+              "height": 246
+            },
+            "header": {
+              "x": 281,
+              "y": 184,
+              "width": 886,
+              "height": 24
+            },
+            "content": {
+              "x": 281,
+              "y": 224,
+              "width": 886,
+              "height": 164
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 280,
+              "y": 433,
+              "width": 888,
+              "height": 167
+            },
+            "header": {
+              "x": 281,
+              "y": 454,
+              "width": 886,
+              "height": 24
+            },
+            "content": {
+              "x": 281,
+              "y": 494,
+              "width": 886,
+              "height": 85
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 280,
+              "y": 624,
+              "width": 888,
+              "height": 134
+            },
+            "header": {
+              "x": 281,
+              "y": 645,
+              "width": 886,
+              "height": 24
+            },
+            "content": {
+              "x": 281,
+              "y": 685,
+              "width": 886,
+              "height": 52
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 280,
+              "y": 782,
+              "width": 888,
+              "height": 134
+            },
+            "header": {
+              "x": 281,
+              "y": 803,
+              "width": 886,
+              "height": 24
+            },
+            "content": {
+              "x": 281,
+              "y": 843,
+              "width": 886,
+              "height": 52
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          }
+        ],
+        "width": {
+          "viewport": 1440,
+          "document": 1440
+        }
+      },
+      "ui": "- main:\n  - navigation \"Breadcrumbs\": Key Value red-db7ldbut41sc7388o7lg\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - navigation \"Key Value detail navigation\":\n    - button \"Overview\"\n    - button \"Metrics\"\n    - button \"Logs\""
+    },
+    "ready": {
+      "at": "2026-10-14T10:18:36.373Z",
+      "layout": {
+        "main": {
+          "x": 256,
+          "y": 0,
+          "width": 1184,
+          "height": 1000
+        },
+        "frames": [],
+        "regions": [],
+        "sections": [
+          {
+            "id": "metadata",
+            "box": {
+              "x": 280,
+              "y": -588,
+              "width": 888,
+              "height": 351
+            }
+          },
+          {
+            "id": "connection",
+            "box": {
+              "x": 280,
+              "y": -213,
+              "width": 888,
+              "height": 134
+            }
+          },
+          {
+            "id": "networking",
+            "box": {
+              "x": 280,
+              "y": -55,
+              "width": 888,
+              "height": 246
+            }
+          },
+          {
+            "id": "plan",
+            "box": {
+              "x": 280,
+              "y": 215,
+              "width": 888,
+              "height": 237
+            }
+          },
+          {
+            "id": "maxmemory-policy",
+            "box": {
+              "x": 280,
+              "y": 476,
+              "width": 888,
+              "height": 208
+            }
+          },
+          {
+            "id": "persistence-mode",
+            "box": {
+              "x": 280,
+              "y": 708,
+              "width": 888,
+              "height": 208
+            }
+          },
+          {
+            "id": "danger-zone",
+            "box": {
+              "x": 280,
+              "y": 940,
+              "width": 888,
+              "height": 36
+            }
+          }
+        ],
+        "cards": [
+          {
+            "box": {
+              "x": 280,
+              "y": -588,
+              "width": 888,
+              "height": 351
+            },
+            "header": {
+              "x": 281,
+              "y": -567,
+              "width": 886,
+              "height": 20
+            },
+            "content": {
+              "x": 281,
+              "y": -531,
+              "width": 886,
+              "height": 273
+            },
+            "title": "Details",
+            "descriptions": 0,
+            "inputs": 1,
+            "buttons": 1
+          },
+          {
+            "box": {
+              "x": 280,
+              "y": -213,
+              "width": 888,
+              "height": 134
+            },
+            "header": {
+              "x": 281,
+              "y": -192,
+              "width": 886,
+              "height": 40
+            },
+            "content": {
+              "x": 281,
+              "y": -136,
+              "width": 886,
+              "height": 36
+            },
+            "title": "Connections",
+            "descriptions": 1,
+            "inputs": 0,
+            "buttons": 1
+          },
+          {
+            "box": {
+              "x": 280,
+              "y": -55,
+              "width": 888,
+              "height": 246
+            },
+            "header": {
+              "x": 281,
+              "y": -34,
+              "width": 886,
+              "height": 40
+            },
+            "content": {
+              "x": 281,
+              "y": 22,
+              "width": 886,
+              "height": 148
+            },
+            "title": "Networking",
+            "descriptions": 1,
+            "inputs": 2,
+            "buttons": 2
+          },
+          {
+            "box": {
+              "x": 280,
+              "y": 215,
+              "width": 888,
+              "height": 237
+            },
+            "header": {
+              "x": 281,
+              "y": 236,
+              "width": 886,
+              "height": 40
+            },
+            "content": {
+              "x": 281,
+              "y": 292,
+              "width": 886,
+              "height": 139
+            },
+            "title": "Instance type",
+            "descriptions": 1,
+            "inputs": 0,
+            "buttons": 5
+          },
+          {
+            "box": {
+              "x": 280,
+              "y": 476,
+              "width": 888,
+              "height": 208
+            },
+            "header": {
+              "x": 281,
+              "y": 497,
+              "width": 886,
+              "height": 60
+            },
+            "content": {
+              "x": 281,
+              "y": 573,
+              "width": 886,
+              "height": 90
+            },
+            "title": "Maxmemory Policy",
+            "descriptions": 1,
+            "inputs": 0,
+            "buttons": 2
+          },
+          {
+            "box": {
+              "x": 280,
+              "y": 708,
+              "width": 888,
+              "height": 208
+            },
+            "header": {
+              "x": 281,
+              "y": 729,
+              "width": 886,
+              "height": 60
+            },
+            "content": {
+              "x": 281,
+              "y": 805,
+              "width": 886,
+              "height": 90
+            },
+            "title": "Persistence Mode",
+            "descriptions": 1,
+            "inputs": 0,
+            "buttons": 2
+          }
+        ],
+        "width": {
+          "viewport": 1440,
+          "document": 1440
+        }
+      },
+      "ui": "- main:\n  - navigation \"Breadcrumbs\": Key Value qa-20261014-a448-policy\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - heading \"qa-20261014-a448-policy\" [level=1]\n  - text: Available\n  - navigation \"Key Value detail navigation\":\n    - button \"Overview\"\n    - button \"Metrics\"\n    - button \"Logs\"\n  - navigation \"Key Value sections\":\n    - link \"Details\":\n      - /url: \"#metadata\"\n    - link \"Connections\":\n      - /url: \"#connection\"\n    - link \"Networking\":\n      - /url: \"#networking\"\n    - link \"Instance type\":\n      - /url: \"#plan\"\n    - link \"Maxmemory Policy\":\n      - /url: \"#maxmemory-policy\"\n    - link \"Persistence Mode\":\n      - /url: \"#persistence-mode\"\n    - link \"Danger Zone\":\n      - /url: \"#danger-zone\"\n  - text: Details Name Change the display name. The Key Value ID and all connection details stay the same.\n  - textbox \"Name\" [disabled]: qa-20261014-a448-policy\n  - button \"Edit Key Value name\"\n  - term: ID\n  - definition:\n    - code: red-db7ldbut41sc7388o7lg\n  - term: Status\n  - definition: Available\n  - term: Instance type\n  - definition: Free\n  - term: Version\n  - definition: Valkey 8\n  - term: Public access\n  - definition: \"No\"\n  - term: Region\n  - definition: fsn1\n  - term: Created\n  - definition:\n    - time: 1m\n  - text: Connections Connection strings for this Key Value store. Revealed only when you ask — never shown automatically.\n  - button \"Reveal connection info\"\n  - text: Networking Restrict which source IPs can reach the external endpoint.\n  - paragraph: External connections are disabled. Save one or more IP rules to enable access.\n  - paragraph: Saving CIDR rules enables external access for matching source IPs. Saving an empty list blocks external connections. Internal access is unchanged.\n  - text: No IP rules. Save an empty list to block external connections.\n  - textbox \"New CIDR block\":\n    - /placeholder: 203.0.113.0/24\n  - textbox \"New rule description\":\n    - /placeholder: Description (optional)\n  - button \"Add\" [disabled]\n  - button \"Save allowlist\" [disabled]\n  - text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n  - radiogroup:\n    - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\" [checked]\n    - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\"\n    - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\"\n  - button \"Cancel\" [disabled]\n  - button \"Save\" [disabled]\n  - text: Maxmemory Policy Change how keys are evicted once the store reaches its memory limit. Saving restarts the store, so connections drop for up to a minute. Maxmemory policy How keys are evicted once the store reaches its memory limit.\n  - combobox \"Maxmemory policy\" [disabled]: allkeys-lru (recommended for caches)\n  - button \"Edit maxmemory policy\"\n  - text: Persistence Mode Changing modes restarts the store and interrupts connections while data is prepared. Switching between Journal + Snapshot and Snapshot only preserves data. Switching to or from Off discards all data. Persistence mode How data is persisted to disk so it survives a restart.\n  - combobox \"Persistence mode\" [disabled]: Journal + Snapshot\n  - button \"Edit persistence mode\"\n  - button \"Delete Key Value Instance\"\n  - button \"Suspend Key Value Instance\""
+    }
+  },
+  "mobile": {
+    "at": "2026-10-14T10:18:55.046Z",
+    "captured": [
+      {
+        "request": {
+          "operationName": "KeyValue",
+          "variables": {
+            "id": "red-db7ldbut41sc7388o7lg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query KeyValue($id: String!) {\n  keyValue(id: $id) {\n    id\n    name\n    plan\n    version\n    status\n    statusReason\n    statusReasonCode\n    suspended\n    createdAt\n    updatedAt\n    externalHost\n    public\n    region\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "keyValue": {
+              "__typename": "KeyValue",
+              "createdAt": "2026-10-14T10:17:19Z",
+              "externalHost": "",
+              "id": "red-db7ldbut41sc7388o7lg",
+              "name": "qa-20261014-a448-policy",
+              "plan": "free",
+              "public": false,
+              "region": "fsn1",
+              "status": "available",
+              "statusReason": null,
+              "statusReasonCode": null,
+              "suspended": "not_suspended",
+              "updatedAt": "2026-10-14T10:17:48Z",
+              "version": "8"
+            }
+          }
+        }
+      }
+    ],
+    "pending": {
+      "at": "2026-10-14T10:18:47.165Z",
+      "layout": {
+        "main": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844
+        },
+        "frames": [
+          {
+            "route": "keyvalue-detail",
+            "box": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0
+            }
+          },
+          {
+            "route": "keyvalue-overview",
+            "box": {
+              "x": 16,
+              "y": -1095,
+              "width": 358,
+              "height": 1923
+            }
+          }
+        ],
+        "regions": [
+          {
+            "name": "resource-header",
+            "box": {
+              "x": 0,
+              "y": 48,
+              "width": 390,
+              "height": 57
+            }
+          },
+          {
+            "name": "resource-title",
+            "box": {
+              "x": 16,
+              "y": 64,
+              "width": 264,
+              "height": 24
+            }
+          },
+          {
+            "name": "tabs",
+            "box": {
+              "x": 0,
+              "y": 105,
+              "width": 390,
+              "height": 39
+            }
+          },
+          {
+            "name": "active-tab",
+            "box": {
+              "x": 0,
+              "y": 144,
+              "width": 390,
+              "height": 700
+            }
+          },
+          {
+            "name": "section-navigation",
+            "box": {
+              "x": 0,
+              "y": 160,
+              "width": 390,
+              "height": 50
+            }
+          },
+          {
+            "name": "metadata",
+            "box": {
+              "x": 16,
+              "y": -1021,
+              "width": 358,
+              "height": 534
+            }
+          },
+          {
+            "name": "connection",
+            "box": {
+              "x": 16,
+              "y": -463,
+              "width": 358,
+              "height": 174
+            }
+          },
+          {
+            "name": "networking",
+            "box": {
+              "x": 16,
+              "y": -265,
+              "width": 358,
+              "height": 358
+            }
+          },
+          {
+            "name": "plan",
+            "box": {
+              "x": 16,
+              "y": 117,
+              "width": 358,
+              "height": 207
+            }
+          },
+          {
+            "name": "maxmemory-policy",
+            "box": {
+              "x": 16,
+              "y": 348,
+              "width": 358,
+              "height": 174
+            }
+          },
+          {
+            "name": "persistence-mode",
+            "box": {
+              "x": 16,
+              "y": 546,
+              "width": 358,
+              "height": 174
+            }
+          },
+          {
+            "name": "danger-zone",
+            "box": {
+              "x": 16,
+              "y": 744,
+              "width": 358,
+              "height": 84
+            }
+          }
+        ],
+        "sections": [],
+        "cards": [
+          {
+            "box": {
+              "x": 16,
+              "y": -1021,
+              "width": 358,
+              "height": 534
+            },
+            "header": {
+              "x": 17,
+              "y": -1000,
+              "width": 356,
+              "height": 24
+            },
+            "content": {
+              "x": 17,
+              "y": -960,
+              "width": 356,
+              "height": 452
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 16,
+              "y": -463,
+              "width": 358,
+              "height": 174
+            },
+            "header": {
+              "x": 17,
+              "y": -442,
+              "width": 356,
+              "height": 24
+            },
+            "content": {
+              "x": 17,
+              "y": -402,
+              "width": 356,
+              "height": 92
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 16,
+              "y": -265,
+              "width": 358,
+              "height": 358
+            },
+            "header": {
+              "x": 17,
+              "y": -244,
+              "width": 356,
+              "height": 24
+            },
+            "content": {
+              "x": 17,
+              "y": -204,
+              "width": 356,
+              "height": 276
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 16,
+              "y": 117,
+              "width": 358,
+              "height": 207
+            },
+            "header": {
+              "x": 17,
+              "y": 138,
+              "width": 356,
+              "height": 24
+            },
+            "content": {
+              "x": 17,
+              "y": 178,
+              "width": 356,
+              "height": 125
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 16,
+              "y": 348,
+              "width": 358,
+              "height": 174
+            },
+            "header": {
+              "x": 17,
+              "y": 369,
+              "width": 356,
+              "height": 24
+            },
+            "content": {
+              "x": 17,
+              "y": 409,
+              "width": 356,
+              "height": 92
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 16,
+              "y": 546,
+              "width": 358,
+              "height": 174
+            },
+            "header": {
+              "x": 17,
+              "y": 567,
+              "width": 356,
+              "height": 24
+            },
+            "content": {
+              "x": 17,
+              "y": 607,
+              "width": 356,
+              "height": 92
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          }
+        ],
+        "width": {
+          "viewport": 390,
+          "document": 390
+        }
+      },
+      "ui": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\": red-db7ldbut41sc7388o7lg\n  - button \"Search\"\n  - button \"New\"\n  - navigation \"Key Value detail navigation\":\n    - button \"Overview\"\n    - button \"Metrics\"\n    - button \"Logs\""
+    },
+    "ready": {
+      "at": "2026-10-14T10:18:55.010Z",
+      "layout": {
+        "main": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844
+        },
+        "frames": [],
+        "regions": [],
+        "sections": [
+          {
+            "id": "metadata",
+            "box": {
+              "x": 16,
+              "y": -1414,
+              "width": 358,
+              "height": 493
+            }
+          },
+          {
+            "id": "connection",
+            "box": {
+              "x": 16,
+              "y": -897,
+              "width": 358,
+              "height": 174
+            }
+          },
+          {
+            "id": "networking",
+            "box": {
+              "x": 16,
+              "y": -699,
+              "width": 358,
+              "height": 382
+            }
+          },
+          {
+            "id": "plan",
+            "box": {
+              "x": 16,
+              "y": -293,
+              "width": 358,
+              "height": 441
+            }
+          },
+          {
+            "id": "maxmemory-policy",
+            "box": {
+              "x": 16,
+              "y": 172,
+              "width": 358,
+              "height": 268
+            }
+          },
+          {
+            "id": "persistence-mode",
+            "box": {
+              "x": 16,
+              "y": 464,
+              "width": 358,
+              "height": 288
+            }
+          },
+          {
+            "id": "danger-zone",
+            "box": {
+              "x": 16,
+              "y": 776,
+              "width": 358,
+              "height": 84
+            }
+          }
+        ],
+        "cards": [
+          {
+            "box": {
+              "x": 16,
+              "y": -1414,
+              "width": 358,
+              "height": 493
+            },
+            "header": {
+              "x": 17,
+              "y": -1393,
+              "width": 356,
+              "height": 20
+            },
+            "content": {
+              "x": 17,
+              "y": -1357,
+              "width": 356,
+              "height": 415
+            },
+            "title": "Details",
+            "descriptions": 0,
+            "inputs": 1,
+            "buttons": 1
+          },
+          {
+            "box": {
+              "x": 16,
+              "y": -897,
+              "width": 358,
+              "height": 174
+            },
+            "header": {
+              "x": 17,
+              "y": -876,
+              "width": 356,
+              "height": 80
+            },
+            "content": {
+              "x": 17,
+              "y": -780,
+              "width": 356,
+              "height": 36
+            },
+            "title": "Connections",
+            "descriptions": 1,
+            "inputs": 0,
+            "buttons": 1
+          },
+          {
+            "box": {
+              "x": 16,
+              "y": -699,
+              "width": 358,
+              "height": 382
+            },
+            "header": {
+              "x": 17,
+              "y": -678,
+              "width": 356,
+              "height": 60
+            },
+            "content": {
+              "x": 17,
+              "y": -602,
+              "width": 356,
+              "height": 264
+            },
+            "title": "Networking",
+            "descriptions": 1,
+            "inputs": 2,
+            "buttons": 2
+          },
+          {
+            "box": {
+              "x": 16,
+              "y": -293,
+              "width": 358,
+              "height": 441
+            },
+            "header": {
+              "x": 17,
+              "y": -272,
+              "width": 356,
+              "height": 80
+            },
+            "content": {
+              "x": 17,
+              "y": -176,
+              "width": 356,
+              "height": 303
+            },
+            "title": "Instance type",
+            "descriptions": 1,
+            "inputs": 0,
+            "buttons": 5
+          },
+          {
+            "box": {
+              "x": 16,
+              "y": 172,
+              "width": 358,
+              "height": 268
+            },
+            "header": {
+              "x": 17,
+              "y": 193,
+              "width": 356,
+              "height": 80
+            },
+            "content": {
+              "x": 17,
+              "y": 289,
+              "width": 356,
+              "height": 130
+            },
+            "title": "Maxmemory Policy",
+            "descriptions": 1,
+            "inputs": 0,
+            "buttons": 2
+          },
+          {
+            "box": {
+              "x": 16,
+              "y": 464,
+              "width": 358,
+              "height": 288
+            },
+            "header": {
+              "x": 17,
+              "y": 485,
+              "width": 356,
+              "height": 120
+            },
+            "content": {
+              "x": 17,
+              "y": 621,
+              "width": 356,
+              "height": 110
+            },
+            "title": "Persistence Mode",
+            "descriptions": 1,
+            "inputs": 0,
+            "buttons": 2
+          }
+        ],
+        "width": {
+          "viewport": 390,
+          "document": 390
+        }
+      },
+      "ui": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\": qa-20261014-a448-policy\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - heading \"qa-20261014-a448-policy\" [level=1]\n  - text: Available\n  - navigation \"Key Value detail navigation\":\n    - button \"Overview\"\n    - button \"Metrics\"\n    - button \"Logs\"\n  - navigation \"Key Value sections\":\n    - link \"Details\":\n      - /url: \"#metadata\"\n    - link \"Connections\":\n      - /url: \"#connection\"\n    - link \"Networking\":\n      - /url: \"#networking\"\n    - link \"Instance type\":\n      - /url: \"#plan\"\n    - link \"Maxmemory Policy\":\n      - /url: \"#maxmemory-policy\"\n    - link \"Persistence Mode\":\n      - /url: \"#persistence-mode\"\n    - link \"Danger Zone\":\n      - /url: \"#danger-zone\"\n  - text: Details Name Change the display name. The Key Value ID and all connection details stay the same.\n  - textbox \"Name\" [disabled]: qa-20261014-a448-policy\n  - button \"Edit Key Value name\"\n  - term: ID\n  - definition:\n    - code: red-db7ldbut41sc7388o7lg\n  - term: Status\n  - definition: Available\n  - term: Instance type\n  - definition: Free\n  - term: Version\n  - definition: Valkey 8\n  - term: Public access\n  - definition: \"No\"\n  - term: Region\n  - definition: fsn1\n  - term: Created\n  - definition:\n    - time: 1m\n  - text: Connections Connection strings for this Key Value store. Revealed only when you ask — never shown automatically.\n  - button \"Reveal connection info\"\n  - text: Networking Restrict which source IPs can reach the external endpoint.\n  - paragraph: External connections are disabled. Save one or more IP rules to enable access.\n  - paragraph: Saving CIDR rules enables external access for matching source IPs. Saving an empty list blocks external connections. Internal access is unchanged.\n  - text: No IP rules. Save an empty list to block external connections.\n  - textbox \"New CIDR block\":\n    - /placeholder: 203.0.113.0/24\n  - textbox \"New rule description\":\n    - /placeholder: Description (optional)\n  - button \"Add\" [disabled]\n  - button \"Save allowlist\" [disabled]\n  - text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n  - radiogroup:\n    - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\" [checked]\n    - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\"\n    - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\"\n  - button \"Cancel\" [disabled]\n  - button \"Save\" [disabled]\n  - text: Maxmemory Policy Change how keys are evicted once the store reaches its memory limit. Saving restarts the store, so connections drop for up to a minute. Maxmemory policy How keys are evicted once the store reaches its memory limit.\n  - combobox \"Maxmemory policy\" [disabled]: allkeys-lru (recommended for caches)\n  - button \"Edit maxmemory policy\"\n  - text: Persistence Mode Changing modes restarts the store and interrupts connections while data is prepared. Switching between Journal + Snapshot and Snapshot only preserves data. Switching to or from Off discards all data. Persistence mode How data is persisted to disk so it survives a restart.\n  - combobox \"Persistence mode\" [disabled]: Journal + Snapshot\n  - button \"Edit persistence mode\"\n  - button \"Delete Key Value Instance\"\n  - button \"Suspend Key Value Instance\""
+    }
+  },
+  "mobileCardsScreenshot": {
+    "at": "2026-10-14T10:20:13.476Z",
+    "scroller": {
+      "tag": "DIV",
+      "changed": true,
+      "before": 1656,
+      "after": 1586
+    },
+    "cards": [
+      {
+        "id": "maxmemory-policy",
+        "box": {
+          "x": 16,
+          "y": 242,
+          "width": 358,
+          "height": 268
+        }
+      },
+      {
+        "id": "persistence-mode",
+        "box": {
+          "x": 16,
+          "y": 534,
+          "width": 358,
+          "height": 288
+        }
+      }
+    ]
+  },
+  "independentControl": {
+    "pass": "a441",
+    "fixtureId": "red-db7kgdhllfps73emu7d0",
+    "durableEvidence": "298-keyvalue-card-skeletons.json",
+    "desktopAt": "2026-10-14T09:17:01.221Z",
+    "mobileAt": "2026-10-14T09:17:56.141Z",
+    "desktopPending": [
+      {
+        "box": {
+          "x": 280,
+          "y": 1169,
+          "width": 888,
+          "height": 134
+        },
+        "header": {
+          "x": 281,
+          "y": 1190,
+          "width": 886,
+          "height": 24
+        },
+        "content": {
+          "x": 281,
+          "y": 1230,
+          "width": 886,
+          "height": 52
+        },
+        "title": null,
+        "descriptions": 0,
+        "inputs": 0,
+        "buttons": 0
+      },
+      {
+        "box": {
+          "x": 280,
+          "y": 1327,
+          "width": 888,
+          "height": 134
+        },
+        "header": {
+          "x": 281,
+          "y": 1348,
+          "width": 886,
+          "height": 24
+        },
+        "content": {
+          "x": 281,
+          "y": 1388,
+          "width": 886,
+          "height": 52
+        },
+        "title": null,
+        "descriptions": 0,
+        "inputs": 0,
+        "buttons": 0
+      }
+    ],
+    "desktopReady": [
+      {
+        "box": {
+          "x": 280,
+          "y": 1236,
+          "width": 888,
+          "height": 208
+        },
+        "header": {
+          "x": 281,
+          "y": 1257,
+          "width": 886,
+          "height": 60
+        },
+        "content": {
+          "x": 281,
+          "y": 1333,
+          "width": 886,
+          "height": 90
+        },
+        "title": "Maxmemory Policy",
+        "descriptions": 1,
+        "inputs": 0,
+        "buttons": 2
+      },
+      {
+        "box": {
+          "x": 280,
+          "y": 1468,
+          "width": 888,
+          "height": 208
+        },
+        "header": {
+          "x": 281,
+          "y": 1489,
+          "width": 886,
+          "height": 60
+        },
+        "content": {
+          "x": 281,
+          "y": 1565,
+          "width": 886,
+          "height": 90
+        },
+        "title": "Persistence Mode",
+        "descriptions": 1,
+        "inputs": 0,
+        "buttons": 2
+      }
+    ],
+    "mobilePending": [
+      {
+        "box": {
+          "x": 16,
+          "y": 1603,
+          "width": 358,
+          "height": 174
+        },
+        "header": {
+          "x": 17,
+          "y": 1624,
+          "width": 356,
+          "height": 24
+        },
+        "content": {
+          "x": 17,
+          "y": 1664,
+          "width": 356,
+          "height": 92
+        },
+        "title": null,
+        "descriptions": 0,
+        "inputs": 0,
+        "buttons": 0
+      },
+      {
+        "box": {
+          "x": 16,
+          "y": 1801,
+          "width": 358,
+          "height": 174
+        },
+        "header": {
+          "x": 17,
+          "y": 1822,
+          "width": 356,
+          "height": 24
+        },
+        "content": {
+          "x": 17,
+          "y": 1862,
+          "width": 356,
+          "height": 92
+        },
+        "title": null,
+        "descriptions": 0,
+        "inputs": 0,
+        "buttons": 0
+      }
+    ],
+    "mobileReady": [
+      {
+        "box": {
+          "x": 16,
+          "y": 1828,
+          "width": 358,
+          "height": 268
+        },
+        "header": {
+          "x": 17,
+          "y": 1849,
+          "width": 356,
+          "height": 80
+        },
+        "content": {
+          "x": 17,
+          "y": 1945,
+          "width": 356,
+          "height": 130
+        },
+        "title": "Maxmemory Policy",
+        "descriptions": 1,
+        "inputs": 0,
+        "buttons": 2
+      },
+      {
+        "box": {
+          "x": 16,
+          "y": 2120,
+          "width": 358,
+          "height": 288
+        },
+        "header": {
+          "x": 17,
+          "y": 2141,
+          "width": 356,
+          "height": 120
+        },
+        "content": {
+          "x": 17,
+          "y": 2277,
+          "width": 356,
+          "height": 110
+        },
+        "title": "Persistence Mode",
+        "descriptions": 1,
+        "inputs": 0,
+        "buttons": 2
+      }
+    ]
+  },
+  "delete": {
+    "at": "2026-10-14T10:20:15.306Z",
+    "request": [
+      {
+        "operationName": "DeleteKeyValue",
+        "variables": {
+          "id": "red-db7ldbut41sc7388o7lg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteKeyValue($id: String!, $confirm: String) {\n  deleteKeyValue(id: $id, confirm: $confirm)\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "deleteKeyValue": true
+        }
+      }
+    ]
+  },
+  "cleanup": {
+    "at": "2026-10-14T10:20:26.543Z",
+    "resource": {
+      "id": "red-db7ldbut41sc7388o7lg",
+      "status": 404,
+      "body": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+    },
+    "request": {
+      "operationName": "Qaa448Inventory",
+      "query": "query Qaa448Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    }
+  },
+  "inventoryChecks": [
+    {
+      "family": "blueprints",
+      "before": ["blp-d9nqg95cavls73fp8m10"],
+      "after": ["blp-d9nqg95cavls73fp8m10"],
+      "match": true
+    },
+    {
+      "family": "databases",
+      "before": [
+        "dpg-d9nqg95cavls73fp8m20",
+        "dpg-d9rrkoc4h4mc73edurp0",
+        "dpg-d9rs3ee0ccis738kc7c0",
+        "dpg-db34l9bor55s73cqpq9g"
+      ],
+      "after": [
+        "dpg-d9nqg95cavls73fp8m20",
+        "dpg-d9rrkoc4h4mc73edurp0",
+        "dpg-d9rs3ee0ccis738kc7c0",
+        "dpg-db34l9bor55s73cqpq9g"
+      ],
+      "match": true
+    },
+    {
+      "family": "envGroups",
+      "before": ["evg-db0s94c48ccs739jikr0"],
+      "after": ["evg-db0s94c48ccs739jikr0"],
+      "match": true
+    },
+    {
+      "family": "keyValues",
+      "before": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+      "after": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+      "match": true
+    },
+    {
+      "family": "projects",
+      "before": [
+        "prj-d9dgeo0bd9nc73a0vh1g",
+        "prj-d9e5qct5qe4s73b1mjn0",
+        "prj-d9sgfnbjghus73cg6hg0"
+      ],
+      "after": [
+        "prj-d9dgeo0bd9nc73a0vh1g",
+        "prj-d9e5qct5qe4s73b1mjn0",
+        "prj-d9sgfnbjghus73cg6hg0"
+      ],
+      "match": true
+    },
+    {
+      "family": "services",
+      "before": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ],
+      "after": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ],
+      "match": true
+    },
+    {
+      "family": "webhookEndpoints",
+      "before": [],
+      "after": [],
+      "match": true
+    }
+  ],
+  "sessionCleanup": {
+    "at": "2026-10-14T10:21:34.402Z",
+    "owners": {
+      "url": "https://api.bex.co/v1/owners",
+      "status": 401,
+      "body": "{\"error\":\"unauthorized\",\"id\":\"unauthorized\",\"message\":\"unauthorized\"}\n"
+    },
+    "cookieCount": 0,
+    "pageCount": 1,
+    "url": "about:blank"
+  },
+  "screenshotsViewed": [
+    ".playwright-mcp/qa-a448-policy-pending-desktop.png",
+    ".playwright-mcp/qa-a448-policy-ready-desktop.png",
+    ".playwright-mcp/qa-a448-policy-pending-mobile.png",
+    ".playwright-mcp/qa-a448-policy-ready-mobile-cards.png"
+  ],
+  "console": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "limits": [
+    "Compare within-card dimensions; viewport origins differ because native scroll reaches differently sized content bottoms, not evidence of a standalone parent/scroll defect",
+    "Initial ready-mobile screenshot clips first title behind sticky navigation; additional inner-scroll screenshot shows both complete cards",
+    "No policy/persistence mutation, Off confirmation, data write, connection reveal, public-host or paid-plan variant",
+    "Card-internal loading && !policy/mode state not independently delayed; scope is route-pending preview",
+    "Metadata/Connections remain w4/298; Instance type and Networking are separate unfiled structural candidates, not verified fixes here",
+    "No product implementation or dashboard suite run for filing"
+  ]
+}
