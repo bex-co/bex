@@ -40,7 +40,10 @@ import {
   titleLoaderFetchPolicy,
   translatedText,
 } from "@/common/lib/document-head";
-import { environmentNameIn } from "@/features/env-groups/lib/scope";
+import {
+  environmentLookupStatus,
+  environmentNameIn,
+} from "@/features/env-groups/lib/scope";
 
 // The trailing underscore in this file route deliberately escapes the
 // /env-groups list route's component hierarchy while preserving the public URL.
@@ -109,10 +112,22 @@ export function EnvGroupDetailPage() {
   };
   const errorKind = classifySecretStoreError(error);
   const notFound = isEnvGroupNotFound(error);
-  const environmentLabel = group?.environmentId
-    ? (environmentNameIn(scope, group.environmentId) ??
-      t("envGroups.unknownEnvironment", { id: group.environmentId }))
-    : t("envGroups.workspaceScope");
+  const environmentId = group?.environmentId;
+  const environmentName = environmentId
+    ? environmentNameIn(scope, environmentId)
+    : undefined;
+  // A name (including a last-good one kept across a refresh) always wins.
+  // Without one, "Unknown Environment" is only honest once a lookup has
+  // succeeded without the id; a lookup in flight or a failed first read is
+  // its own status, never a claim that the Environment is gone (w4/304).
+  const environmentStatus =
+    environmentId && !environmentName
+      ? environmentLookupStatus(scope)
+      : undefined;
+  const environmentLabel = !environmentId
+    ? t("envGroups.workspaceScope")
+    : (environmentName ??
+      t("envGroups.unknownEnvironment", { id: environmentId }));
 
   // A dead id — a not-found-shaped error, or a null row with no error at all —
   // redirects home (w9/m55); any other failed query stays put on the inline
@@ -203,6 +218,7 @@ export function EnvGroupDetailPage() {
                   <EnvGroupMetadata
                     group={group}
                     environmentLabel={environmentLabel}
+                    environmentStatus={environmentStatus}
                   />
                 </CardContent>
               </Card>

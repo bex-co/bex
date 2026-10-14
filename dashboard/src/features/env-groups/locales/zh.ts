@@ -189,6 +189,16 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     message: "工作区（无环境）",
     description: "Standalone Environment Group scope",
   },
+  "envGroups.environmentLookupLoading": {
+    message: "正在加载环境…",
+    description:
+      "Group metadata Environment value while the scope lookup is still loading",
+  },
+  "envGroups.environmentLookupFailed": {
+    message: "无法加载环境",
+    description:
+      "Group metadata Environment value when the scope lookup request failed",
+  },
   "envGroups.unknownEnvironment": {
     message: "未知环境（{id}）",
     description: "Deleted or inaccessible Environment fallback",
