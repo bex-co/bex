@@ -139,3 +139,55 @@ export function DatastoreConnectionsPreview({ kind }: { kind: DatastoreKind }) {
     </Card>
   );
 }
+
+const POLICY_COPY = {
+  // The recommended policy's label ("allkeys-lru (recommended for caches)")
+  // wraps to two lines on a narrow select; "Journal + Snapshot" fits one.
+  maxmemory: {
+    title: "keyvalue.maxmemoryTitle",
+    description: "keyvalue.maxmemoryDescription",
+    label: "keyvalue.maxmemoryLabel",
+    hint: "keyvalue.fieldMaxmemoryPolicyHint",
+    narrowLines: 2,
+  },
+  persistence: {
+    title: "keyvalue.persistenceTitle",
+    description: "keyvalue.persistenceDescription",
+    label: "keyvalue.persistenceLabel",
+    hint: "keyvalue.fieldPersistenceModeHint",
+    narrowLines: 1,
+  },
+} as const satisfies Record<
+  string,
+  { title: Key; description: Key; label: Key; hint: Key; narrowLines: 1 | 2 }
+>;
+
+/**
+ * A Key Value policy card (Maxmemory Policy / Persistence Mode): its title and
+ * description, then the select field's label, hint, value slot and pencil
+ * slot — the ready section's anatomy with no policy value and no editor
+ * (w4/299).
+ */
+export function KeyValuePolicyPreview({
+  policy,
+}: {
+  policy: keyof typeof POLICY_COPY;
+}) {
+  const { t } = useTranslations();
+  const copy = POLICY_COPY[policy];
+  return (
+    <Card inert aria-busy="true">
+      <CardHeader>
+        <CardTitle>{t(copy.title)}</CardTitle>
+        <CardDescription>{t(copy.description)}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <EditableFieldRowPreview
+          label={t(copy.label)}
+          hint={t(copy.hint)}
+          select={{ narrowLines: copy.narrowLines }}
+        />
+      </CardContent>
+    </Card>
+  );
+}
