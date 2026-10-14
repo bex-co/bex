@@ -61,7 +61,7 @@ if mode == 'create':
     assert limits['services']['used'] + limits['services']['terminating'] < limits['services']['limit']
     nonce = secrets.token_hex(3)
     date = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')
-    name = f'qa-{date}-{nonce}-file' 
+    name = f'qa-{date}-{nonce}-file'
     marker = 'qa221-' + nonce
     assert len(name) <= 30
     source_rows = json.loads((p/'sweep225-path-results.json').read_text())

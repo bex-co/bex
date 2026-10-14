@@ -1,20 +1,8 @@
 --- a/lego/backend/internal/apps/blueprint_compiler.go
 +++ b/lego/backend/internal/apps/blueprint_compiler.go
-@@ -1023,6 +1023,8 @@
- 	}
- }
- 
+@@ -1025,0 +1026,2 @@
 +var blueprintUnsignedEnvValuePath = regexp.MustCompile(`^#/((ungrouped|projects/[0-9]+/environments/[0-9]+)/)?(services|envVarGroups)/[0-9]+/envVars/[0-9]+/value$`)
 +
- func blueprintJSONScalar(node *yaml.Node, pointer string) (any, []BlueprintSourceProblem) {
- 	problem := func(code, message string) (any, []BlueprintSourceProblem) {
- 		return nil, []BlueprintSourceProblem{{Code: code, Path: pointer, Message: message, Line: node.Line, Column: node.Column}}
-@@ -1045,6 +1047,8 @@
- 		}
- 		integer, err := strconv.ParseInt(value, 10, 64)
- 		if err != nil {
+@@ -1047,0 +1050,2 @@
 +			unsigned, unsignedErr := strconv.ParseUint(value, 10, 64)
 +			if unsignedErr == nil && blueprintUnsignedEnvValuePath.MatchString(pointer) { return json.Number(strconv.FormatUint(unsigned, 10)), nil }
- 			return problem("BLUEPRINT_YAML_SCALAR", "Blueprint contains an invalid integer")
- 		}
- 		return integer, nil
