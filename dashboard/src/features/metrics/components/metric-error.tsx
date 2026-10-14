@@ -1,5 +1,6 @@
 import { TriangleAlert } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { chartFrameStyle } from "@/features/metrics/components/chart-layout";
 
 /**
  * Rendered when a metrics query FAILS with something other than the recognized
@@ -12,9 +13,10 @@ import { useTranslations } from "@/common/hooks/use-translations";
  * not-configured, and empty are three visibly different states.
  */
 export function MetricError({
-  height = 180,
+  height,
   message,
 }: {
+  /** Overrides the chart's responsive ratio with a fixed height. */
   height?: number;
   message?: string;
 }) {
@@ -23,8 +25,8 @@ export function MetricError({
   return (
     <div
       role="alert"
-      className="text-destructive border-destructive/50 flex flex-col items-center justify-center gap-2 rounded-md border text-sm"
-      style={{ height }}
+      className="text-destructive border-destructive/50 flex w-full flex-col items-center justify-center gap-2 rounded-md border text-sm"
+      style={chartFrameStyle(height)}
     >
       <TriangleAlert className="h-4 w-4" />
       <span>{message ?? t("metrics.chartError")}</span>

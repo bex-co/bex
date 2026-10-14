@@ -9,6 +9,61 @@ export const CHART_WIDTH = 600;
 export const CHART_HEIGHT = 180;
 export const CHART_PAD = { top: 8, right: 8, bottom: 20, left: 44 };
 
+/**
+ * The populated chart is a width-100% SVG with a CHART_WIDTH×CHART_HEIGHT
+ * viewBox, so it scales to that ratio (256px tall at 854px, 95px at 316px).
+ * Every non-data frame — loading, empty, unavailable, error — takes the same
+ * ratio, so a section never changes height when its data arrives (w4/m209).
+ */
+export const CHART_FRAME_STYLE = {
+  aspectRatio: `${CHART_WIDTH} / ${CHART_HEIGHT}`,
+} as const;
+
+// Tick labels are end-anchored TICK_LABEL_GAP left of the plot, at the
+// 9px axis font, and keep TICK_INSET clear of the canvas edge.
+const TICK_FONT_PX = 9;
+const TICK_LABEL_GAP = 6;
+const TICK_INSET = 4;
+let measureCtx: CanvasRenderingContext2D | null | undefined;
+
+/** A tick label's width at the axis font, in viewBox units. */
+export function tickLabelWidth(label: string): number {
+  if (measureCtx === undefined && typeof document !== "undefined") {
+    try {
+      measureCtx = document.createElement("canvas").getContext("2d");
+      if (measureCtx) {
+        const family = getComputedStyle(document.body).fontFamily || "sans-serif";
+        measureCtx.font = `${TICK_FONT_PX}px ${family}`;
+      }
+    } catch {
+      measureCtx = null;
+    }
+  }
+  const measured = measureCtx?.measureText(label).width;
+  // Without a canvas, a bounded estimate: 0.6em per character.
+  return measured && measured > 0 ? measured : label.length * TICK_FONT_PX * 0.6;
+}
+
+/**
+ * The plot's left gutter for these formatted y-tick labels: wide enough for
+ * the longest at the axis font plus its gap and inset, never narrower than
+ * CHART_PAD.left (w4/m209 — "536.7 KiB" no longer starts before the canvas).
+ */
+export function axisLeftPad(labels: string[]): number {
+  const widest = Math.max(0, ...labels.map(tickLabelWidth));
+  return Math.max(CHART_PAD.left, Math.ceil(widest + TICK_LABEL_GAP + TICK_INSET));
+}
+
+/** The x of an end-anchored tick label for a plot starting at left. */
+export function tickLabelX(left: number): number {
+  return left - TICK_LABEL_GAP;
+}
+
+/** A frame's style: an explicit caller height, else the chart's ratio. */
+export function chartFrameStyle(height?: number) {
+  return height != null ? { height } : CHART_FRAME_STYLE;
+}
+
 /** One series of a (possibly multi-series) chart — e.g. one instance or group. */
 export interface SeriesInput {
   points: ChartPoint[];

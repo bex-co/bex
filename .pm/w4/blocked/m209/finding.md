@@ -2,7 +2,7 @@
 
 Why: opening an owned datastore's Metrics tab rearranges the card at both widths; a correct returned memory measurement also loses part of its axis label.
 
-Source: functional $qa-find-bugs w4, 2026-10-14 pass a470. **Severity: minor** for each of two independently traced findings. Filing only. [Complete requests, responses, DOM measurements and cleanup](../evidence/m209-keyvalue-metrics-geometry.json).
+Source: functional $qa-find-bugs w4, 2026-10-14 pass a470. **Severity: minor** for each of two independently traced findings. Filing only. [Complete requests, responses, DOM measurements and cleanup](../../evidence/m209-keyvalue-metrics-geometry.json).
 
 ## Reproductions
 
