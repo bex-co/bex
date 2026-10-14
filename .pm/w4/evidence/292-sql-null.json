@@ -1,0 +1,701 @@
+{
+  "pass": "a406",
+  "researchHead": "73fbf863b",
+  "scope": "Functional read-only SQL result rendering on one owned private Free database.",
+  "sql": "SELECT value FROM (VALUES (1,NULL::text),(2,'NULL'::text),(3,'null'::text),(4,''::text),(5,'雪 café'::text)) AS sample(ord,value) ORDER BY ord",
+  "queryRunnerSource": "(sql,write=false)=>`async(page)=>{await page.getByRole('textbox',{name:'SQL query',exact:true}).fill(${JSON.stringify(sql)});let confirmation=null;if(${write}){await page.getByRole('button',{name:'Run query',exact:true}).click();await page.getByRole('alertdialog').waitFor();confirmation=await page.getByRole('alertdialog').ariaSnapshot();}const native=page.waitForResponse(r=>{if(!r.url().endsWith('/graphql'))return false;try{const a=r.request().postDataJSON();return(Array.isArray(a)?a:[a]).some(x=>x.operationName==='ExecuteDatabaseQuery'&&x.variables.sql===${JSON.stringify(sql)});}catch{return false;}},{timeout:25000});if(${write})await page.getByRole('alertdialog').getByRole('button',{name:'Run statement',exact:true}).click();else await page.getByRole('button',{name:'Run query',exact:true}).click();const r=await native;const request=r.request().postDataJSON();const body=await r.json();if(${write})await page.getByRole('alertdialog').waitFor({state:'detached'});await page.waitForTimeout(500);return {at:new Date().toISOString(),confirmation,request,status:r.status(),body,ui:await page.locator('#sql-console').ariaSnapshot()};}`",
+  "screenshot": {
+    "path": ".playwright-mcp/qa-sql-null-a406.png",
+    "visuallyInspected": true,
+    "supports": "The first two result cells both display ordinary NULL text; DOM and full native API receipts establish the differing underlying values."
+  },
+  "limits": [
+    "No data tables were created or modified; all console queries sent allowWrites:false.",
+    "No assistive-technology audio session was run; evidence is the real accessibility tree and DOM computed styles.",
+    "The JSON/number/array serialization milestones were not replayed; this finding changes only the null marker's UI presentation.",
+    "Empty text, lowercase null, Unicode and ordinary boolean predicate values serve as passing controls; no claim about all SQL types."
+  ],
+  "receipts": {
+    "Baseline": {
+      "at": "2026-10-14T00:32:15.509Z",
+      "request": {
+        "operationName": "QaA406Inventory",
+        "query": "query QaA406Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      },
+      "url": "https://dashboard.bex.co/?new=database"
+    },
+    "Create": {
+      "at": "2026-10-14T00:32:26.262Z",
+      "request": [
+        {
+          "operationName": "CreateDatabase",
+          "variables": {
+            "name": "qa-20261013-a406-null",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "plan": "free",
+            "public": false
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation CreateDatabase($name: String!, $databaseName: String, $databaseUser: String, $ownerId: String, $environmentId: String, $plan: String, $version: String, $diskSizeGB: Int, $public: Boolean) {\n  createDatabase(\n    name: $name\n    databaseName: $databaseName\n    databaseUser: $databaseUser\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    diskSizeGB: $diskSizeGB\n    public: $public\n  ) {\n    id\n    name\n    databaseName\n    databaseUser\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "createDatabase": {
+              "__typename": "Database",
+              "databaseName": "dpg_db7cr6lvr9kc73etrn40",
+              "databaseUser": "dpg_db7cr6lvr9kc73etrn40_user",
+              "environmentId": null,
+              "id": "dpg-db7cr6lvr9kc73etrn40",
+              "name": "qa-20261013-a406-null",
+              "plan": "free",
+              "projectId": null,
+              "status": "creating"
+            }
+          }
+        }
+      ]
+    },
+    "Readiness1": {
+      "request": {
+        "operationName": "QaA406Ready",
+        "query": "query QaA406Ready($id:String!){database(id:$id){id name status plan suspended}}",
+        "variables": {
+          "id": "dpg-db7cr6lvr9kc73etrn40"
+        }
+      },
+      "samples": [
+        {
+          "at": "2026-10-14T00:33:01.217Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db7cr6lvr9kc73etrn40",
+                "name": "qa-20261013-a406-null",
+                "plan": "free",
+                "status": "creating",
+                "suspended": "not_suspended"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-14T00:33:06.450Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db7cr6lvr9kc73etrn40",
+                "name": "qa-20261013-a406-null",
+                "plan": "free",
+                "status": "creating",
+                "suspended": "not_suspended"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-14T00:33:11.679Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db7cr6lvr9kc73etrn40",
+                "name": "qa-20261013-a406-null",
+                "plan": "free",
+                "status": "creating",
+                "suspended": "not_suspended"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-14T00:33:16.913Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db7cr6lvr9kc73etrn40",
+                "name": "qa-20261013-a406-null",
+                "plan": "free",
+                "status": "creating",
+                "suspended": "not_suspended"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-14T00:33:22.152Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db7cr6lvr9kc73etrn40",
+                "name": "qa-20261013-a406-null",
+                "plan": "free",
+                "status": "creating",
+                "suspended": "not_suspended"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Readiness2": {
+      "request": {
+        "operationName": "QaA406Ready",
+        "query": "query QaA406Ready($id:String!){database(id:$id){id name status plan suspended}}",
+        "variables": {
+          "id": "dpg-db7cr6lvr9kc73etrn40"
+        }
+      },
+      "samples": [
+        {
+          "at": "2026-10-14T00:33:51.212Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db7cr6lvr9kc73etrn40",
+                "name": "qa-20261013-a406-null",
+                "plan": "free",
+                "status": "available",
+                "suspended": "not_suspended"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "DesktopQuery": {
+      "at": "2026-10-14T00:34:05.101Z",
+      "confirmation": null,
+      "request": [
+        {
+          "operationName": "ExecuteDatabaseQuery",
+          "variables": {
+            "id": "dpg-db7cr6lvr9kc73etrn40",
+            "sql": "SELECT value FROM (VALUES (1,NULL::text),(2,'NULL'::text),(3,'null'::text),(4,''::text),(5,'雪 café'::text)) AS sample(ord,value) ORDER BY ord",
+            "allowWrites": false
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "executeDatabaseQuery": {
+              "__typename": "DatabaseQueryResult",
+              "columns": ["value"],
+              "rowCount": 5,
+              "rows": [
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": [null]
+                },
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": ["NULL"]
+                },
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": ["null"]
+                },
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": [""]
+                },
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": ["雪 café"]
+                }
+              ],
+              "truncated": false
+            }
+          }
+        }
+      ],
+      "ui": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": SELECT value FROM (VALUES (1,NULL::text),(2,'NULL'::text),(3,'null'::text),(4,''::text),(5,'雪 café'::text)) AS sample(ord,value) ORDER BY ord\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 5 rows returned\n- table:\n  - rowgroup:\n    - row \"value\":\n      - columnheader \"value\"\n  - rowgroup:\n    - row \"NULL\":\n      - cell \"NULL\"\n    - row \"NULL\":\n      - cell \"NULL\"\n    - row \"null\":\n      - cell \"null\"\n    - row:\n      - cell\n    - row \"雪 café\":\n      - cell \"雪 café\"\n- paragraph: Query history\n- button \"Clear\"\n- button \"SELECT value FROM (VALUES (1,NULL::text),(2,'NULL'::text),(3,'null'::text),(4,''::text),(5,'雪 café'::text)) AS sample(ord,value) ORDER BY ord\""
+    },
+    "DesktopCells": {
+      "at": "2026-10-14T00:34:06.136Z",
+      "cells": [
+        {
+          "text": "NULL",
+          "html": "NULL",
+          "ariaLabel": null,
+          "title": null,
+          "className": "p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] max-w-80 font-mono whitespace-pre-wrap",
+          "color": "oklch(0.15 0.008 260)",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "NULL",
+          "html": "NULL",
+          "ariaLabel": null,
+          "title": null,
+          "className": "p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] max-w-80 font-mono whitespace-pre-wrap",
+          "color": "oklch(0.15 0.008 260)",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "null",
+          "html": "null",
+          "ariaLabel": null,
+          "title": null,
+          "className": "p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] max-w-80 font-mono whitespace-pre-wrap",
+          "color": "oklch(0.15 0.008 260)",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "",
+          "html": "",
+          "ariaLabel": null,
+          "title": null,
+          "className": "p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] max-w-80 font-mono whitespace-pre-wrap",
+          "color": "oklch(0.15 0.008 260)",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "雪 café",
+          "html": "雪 café",
+          "ariaLabel": null,
+          "title": null,
+          "className": "p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] max-w-80 font-mono whitespace-pre-wrap",
+          "color": "oklch(0.15 0.008 260)",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "background": "rgba(0, 0, 0, 0)"
+        }
+      ],
+      "accessible": "- table:\n  - rowgroup:\n    - row \"value\":\n      - columnheader \"value\"\n  - rowgroup:\n    - row \"NULL\":\n      - cell \"NULL\"\n    - row \"NULL\":\n      - cell \"NULL\"\n    - row \"null\":\n      - cell \"null\"\n    - row:\n      - cell\n    - row \"雪 café\":\n      - cell \"雪 café\"",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    "DesktopFresh": {
+      "at": "2026-10-14T00:34:32.172Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db7cr6lvr9kc73etrn40#sql-console"
+    },
+    "DesktopRepeat": {
+      "at": "2026-10-14T00:34:33.590Z",
+      "confirmation": null,
+      "request": [
+        {
+          "operationName": "ExecuteDatabaseQuery",
+          "variables": {
+            "id": "dpg-db7cr6lvr9kc73etrn40",
+            "sql": "SELECT value FROM (VALUES (1,NULL::text),(2,'NULL'::text),(3,'null'::text),(4,''::text),(5,'雪 café'::text)) AS sample(ord,value) ORDER BY ord",
+            "allowWrites": false
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "executeDatabaseQuery": {
+              "__typename": "DatabaseQueryResult",
+              "columns": ["value"],
+              "rowCount": 5,
+              "rows": [
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": [null]
+                },
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": ["NULL"]
+                },
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": ["null"]
+                },
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": [""]
+                },
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": ["雪 café"]
+                }
+              ],
+              "truncated": false
+            }
+          }
+        }
+      ],
+      "ui": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": SELECT value FROM (VALUES (1,NULL::text),(2,'NULL'::text),(3,'null'::text),(4,''::text),(5,'雪 café'::text)) AS sample(ord,value) ORDER BY ord\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 5 rows returned\n- table:\n  - rowgroup:\n    - row \"value\":\n      - columnheader \"value\"\n  - rowgroup:\n    - row \"NULL\":\n      - cell \"NULL\"\n    - row \"NULL\":\n      - cell \"NULL\"\n    - row \"null\":\n      - cell \"null\"\n    - row:\n      - cell\n    - row \"雪 café\":\n      - cell \"雪 café\"\n- paragraph: Query history\n- button \"Clear\"\n- button \"SELECT value FROM (VALUES (1,NULL::text),(2,'NULL'::text),(3,'null'::text),(4,''::text),(5,'雪 café'::text)) AS sample(ord,value) ORDER BY ord\""
+    },
+    "MobileFresh": {
+      "at": "2026-10-14T00:34:35.836Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db7cr6lvr9kc73etrn40#sql-console"
+    },
+    "MobileQuery": {
+      "at": "2026-10-14T00:34:37.187Z",
+      "confirmation": null,
+      "request": [
+        {
+          "operationName": "ExecuteDatabaseQuery",
+          "variables": {
+            "id": "dpg-db7cr6lvr9kc73etrn40",
+            "sql": "SELECT value FROM (VALUES (1,NULL::text),(2,'NULL'::text),(3,'null'::text),(4,''::text),(5,'雪 café'::text)) AS sample(ord,value) ORDER BY ord",
+            "allowWrites": false
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "executeDatabaseQuery": {
+              "__typename": "DatabaseQueryResult",
+              "columns": ["value"],
+              "rowCount": 5,
+              "rows": [
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": [null]
+                },
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": ["NULL"]
+                },
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": ["null"]
+                },
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": [""]
+                },
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": ["雪 café"]
+                }
+              ],
+              "truncated": false
+            }
+          }
+        }
+      ],
+      "ui": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": SELECT value FROM (VALUES (1,NULL::text),(2,'NULL'::text),(3,'null'::text),(4,''::text),(5,'雪 café'::text)) AS sample(ord,value) ORDER BY ord\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 5 rows returned\n- table:\n  - rowgroup:\n    - row \"value\":\n      - columnheader \"value\"\n  - rowgroup:\n    - row \"NULL\":\n      - cell \"NULL\"\n    - row \"NULL\":\n      - cell \"NULL\"\n    - row \"null\":\n      - cell \"null\"\n    - row:\n      - cell\n    - row \"雪 café\":\n      - cell \"雪 café\"\n- paragraph: Query history\n- button \"Clear\"\n- button \"SELECT value FROM (VALUES (1,NULL::text),(2,'NULL'::text),(3,'null'::text),(4,''::text),(5,'雪 café'::text)) AS sample(ord,value) ORDER BY ord\""
+    },
+    "SemanticsControl": {
+      "at": "2026-10-14T00:35:07.517Z",
+      "confirmation": null,
+      "request": [
+        {
+          "operationName": "ExecuteDatabaseQuery",
+          "variables": {
+            "id": "dpg-db7cr6lvr9kc73etrn40",
+            "sql": "SELECT NULL::text IS NULL AS missing, 'NULL'::text IS NULL AS literal_is_missing",
+            "allowWrites": false
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "executeDatabaseQuery": {
+              "__typename": "DatabaseQueryResult",
+              "columns": ["missing", "literal_is_missing"],
+              "rowCount": 1,
+              "rows": [
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": ["true", "false"]
+                }
+              ],
+              "truncated": false
+            }
+          }
+        }
+      ],
+      "ui": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": SELECT NULL::text IS NULL AS missing, 'NULL'::text IS NULL AS literal_is_missing\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 1 row returned\n- table:\n  - rowgroup:\n    - row \"missing literal_is_missing\":\n      - columnheader \"missing\"\n      - columnheader \"literal_is_missing\"\n  - rowgroup:\n    - row \"true false\":\n      - cell \"true\"\n      - cell \"false\"\n- paragraph: Query history\n- button \"Clear\"\n- button \"SELECT NULL::text IS NULL AS missing, 'NULL'::text IS NULL AS literal_is_missing\"\n- button \"SELECT value FROM (VALUES (1,NULL::text),(2,'NULL'::text),(3,'null'::text),(4,''::text),(5,'雪 café'::text)) AS sample(ord,value) ORDER BY ord\""
+    },
+    "DeleteDialog": {
+      "at": "2026-10-14T00:35:08.568Z",
+      "dialog": "- alertdialog \"Delete qa-20261013-a406-null?\":\n  - heading \"Delete qa-20261013-a406-null?\" [level=2]\n  - paragraph: This action cannot be undone. Are you sure you want to delete this Postgres instance?\n  - paragraph:\n    - text: Type\n    - strong: sudo delete postgres qa-20261013-a406-null\n    - text: below to confirm.\n  - text: Sudo Command\n  - textbox \"Sudo Command\":\n    - /placeholder: sudo delete postgres qa-20261013-a406-null\n  - button \"Cancel\"\n  - button \"Delete database\" [disabled]"
+    },
+    "Delete": {
+      "at": "2026-10-14T00:35:30.702Z",
+      "request": [
+        {
+          "operationName": "DeleteDatabase",
+          "variables": {
+            "id": "dpg-db7cr6lvr9kc73etrn40"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation DeleteDatabase($id: String!, $confirm: String) {\n  deleteDatabase(id: $id, confirm: $confirm)\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "deleteDatabase": true
+          }
+        }
+      ]
+    },
+    "FinalInventory": {
+      "at": "2026-10-14T00:35:40.560Z",
+      "request": {
+        "operationName": "QaA406Inventory",
+        "query": "query QaA406Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      },
+      "deleted": {
+        "request": {
+          "method": "GET",
+          "url": "https://api.bex.co/v1/postgres/dpg-db7cr6lvr9kc73etrn40"
+        },
+        "status": 404,
+        "body": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+      },
+      "ownHistoryRemoved": true
+    },
+    "Logout": {
+      "at": "2026-10-14T00:36:05.697Z",
+      "owners": {
+        "url": "https://api.bex.co/v1/owners",
+        "status": 401,
+        "body": "{\"error\":\"unauthorized\",\"id\":\"unauthorized\",\"message\":\"unauthorized\"}\n"
+      },
+      "cookieCount": 0,
+      "pageCount": 1,
+      "url": "about:blank"
+    }
+  }
+}
