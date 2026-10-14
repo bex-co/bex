@@ -45,6 +45,7 @@ import {
   titleLoaderFetchPolicy,
   translatedText,
 } from "@/common/lib/document-head";
+import { DatastorePlanPreview } from "@/common/components/datastore-plan-preview";
 import { DeferredMount } from "@/common/components/deferred-mount";
 import { SECTION_NAVIGATION_STICKY_CLASS } from "@/common/components/section-navigation";
 
@@ -304,8 +305,14 @@ function DatabaseDetailPage() {
                   </DeferredMount>
                 </section>
                 <section id="plan" className="scroll-mt-6">
-                  <DeferredMount hashId="plan" minHeight={200}>
-                    <Suspense fallback={<CardSkeleton rows={3} />}>
+                  {/* The ready plan card's bounds for a three-tier catalog
+                      (w4/m208): 441px stacked on mobile, 237px from sm. */}
+                  <DeferredMount
+                    hashId="plan"
+                    minHeight="var(--plan-reserve)"
+                    className="[--plan-reserve:441px] sm:[--plan-reserve:237px]"
+                  >
+                    <Suspense fallback={<DatastorePlanPreview kind="postgres" />}>
                       <DatabasePlanSection
                         database={database}
                         onChanged={() => void refetch()}

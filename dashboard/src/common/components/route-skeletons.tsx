@@ -7,6 +7,7 @@ import {
   CardHeader,
 } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { DatastorePlanPreview } from "@/common/components/datastore-plan-preview";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   CardSkeleton,
@@ -2145,7 +2146,7 @@ export function DatabaseOverviewSkeleton() {
           <ReservedCardSkeleton height={320} />
         </Region>
         <Region name="plan">
-          <ReservedCardSkeleton height={200} />
+          <DatastorePlanPreview kind="postgres" />
         </Region>
         <Region name="insights">
           <ReservedCardSkeleton height={360} />
@@ -2218,7 +2219,7 @@ export function KeyValueOverviewSkeleton() {
           <ReservedCardSkeleton className="h-[358px] sm:h-[246px]" />
         </Region>
         <Region name="plan">
-          <ReservedCardSkeleton className="h-[207px] sm:h-[167px]" />
+          <DatastorePlanPreview kind="keyvalue" />
         </Region>
         <Region name="maxmemory-policy">
           <ReservedCardSkeleton className="h-[174px] sm:h-[134px]" />

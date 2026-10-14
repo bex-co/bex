@@ -8,29 +8,33 @@ import type { KeyValueView } from "@/features/keyvalue/types";
 
 const updatePlan = vi.fn();
 
+const catalog = vi.hoisted(() => ({
+  loading: false,
+  instanceTypes: [
+    {
+      id: "free",
+      name: "Free",
+      cpu: "0.1",
+      memory: "256Mi",
+      storageGB: 1,
+      monthlyUsd: "0.00",
+    },
+    {
+      id: "starter",
+      name: "Starter",
+      cpu: "0.5",
+      memory: "1Gi",
+      storageGB: 10,
+      monthlyUsd: "7.00",
+    },
+  ],
+}));
+
 vi.mock("@/features/keyvalue/hooks/use-key-value-instance-types", () => ({
-  useKeyValueInstanceTypes: () => ({
-    instanceTypes: [
-      {
-        id: "free",
-        name: "Free",
-        cpu: "0.1",
-        memory: "256Mi",
-        storageGB: 1,
-        monthlyUsd: "0.00",
-      },
-      {
-        id: "starter",
-        name: "Starter",
-        cpu: "0.5",
-        memory: "1Gi",
-        storageGB: 10,
-        monthlyUsd: "7.00",
-      },
-    ],
-    loading: false,
-    error: undefined,
-  }),
+  useKeyValueInstanceTypes: () =>
+    catalog.loading
+      ? { instanceTypes: [], loading: true, error: undefined }
+      : { instanceTypes: catalog.instanceTypes, loading: false, error: undefined },
 }));
 
 vi.mock("@/features/keyvalue/hooks/use-update-key-value-plan", () => ({
@@ -50,11 +54,25 @@ const KEY_VALUE: KeyValueView = {
 };
 
 beforeEach(() => {
+  catalog.loading = false;
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   updatePlan.mockReset().mockResolvedValue(true);
 });
 
 describe("KeyValuePlanSection", () => {
+  // w4/m208: while the catalog loads, the card keeps three tier slots in the
+  // ready grid instead of an empty radio group.
+  it("reserves three tier slots while the catalog loads", () => {
+    catalog.loading = true;
+    const { container } = render(
+      <KeyValuePlanSection keyValue={KEY_VALUE} onChanged={vi.fn()} />,
+    );
+    expect(screen.queryByRole("radiogroup")).toBeNull();
+    const slots = container.querySelector('[aria-hidden="true"]');
+    expect(slots?.children).toHaveLength(3);
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
   it("lets a contributor change plan through can_operate", async () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),

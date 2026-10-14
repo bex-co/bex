@@ -7,9 +7,9 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
-import { Skeleton } from "@/common/components/ui/skeleton";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { PlanCardGrid } from "@/common/components/plan-card-grid";
+import { PlanTierSlots } from "@/common/components/datastore-plan-preview";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
@@ -102,11 +102,7 @@ export function DatabasePlanSection({
           </p>
         ) : null}
         {loading && instanceTypes.length === 0 ? (
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-20 w-full" />
-            ))}
-          </div>
+          <PlanTierSlots />
         ) : (
           <PlanCardGrid
             instanceTypes={instanceTypes}
