@@ -4482,17 +4482,23 @@ func (r *AppReconciler) cronRuns(ctx context.Context, app *appv1alpha1.App, cron
 		return nil, err
 	}
 	items := jobs.Items
-	sort.Slice(items, func(i, j int) bool { return jobStartKey(&items[i]).After(jobStartKey(&items[j])) })
-	runs := make([]appv1alpha1.CronRun, 0, maxCronRuns)
 	prior := make(map[string]appv1alpha1.CronRun, len(app.Status.Runs))
-	for _, run := range app.Status.Runs {
+	priorIdx := make(map[string]int, len(app.Status.Runs))
+	for idx, run := range app.Status.Runs {
 		prior[run.Name] = run
+		priorIdx[run.Name] = idx
 	}
-	current := make(map[string]appv1alpha1.CronRun, len(items))
+	// w4/m210: every observation — a live Job or a retained terminal record —
+	// competes on one chronological clock and the cap applies once, after the
+	// merge. Absence from the bounded status used to mean "new", so an old
+	// completed Job whose record had been evicted jumped back to the head.
+	entries := make([]cronRunEntry, 0, len(items)+len(app.Status.Runs))
+	jobByName := make(map[string]*batchv1.Job, len(items))
 	for i := range items {
 		if err := r.enforceCronRunDeadline(ctx, app, cron, &items[i]); err != nil {
 			return nil, err
 		}
+		jobByName[items[i].Name] = &items[i]
 		run := toCronRun(&items[i])
 		if old, ok := prior[run.Name]; ok {
 			if run.StartedAt == "" {
@@ -4509,27 +4515,21 @@ func (r *AppReconciler) cronRuns(ctx context.Context, app *appv1alpha1.App, cron
 			run.Status = appv1alpha1.CronRunCanceled
 			run.FinishedAt = app.Spec.CancelRun.RequestedAt
 		}
-		if old, ok := prior[run.Name]; !ok || old.Status != appv1alpha1.CronRunFailed {
-			r.observeCronRunFailure(ctx, &items[i], &run)
+		key := jobStartKey(&items[i])
+		run.OrderedAt = key.UTC().Format(time.RFC3339)
+		// A live Job keeps its prior index too, so a tie with a retained record
+		// keeps the order the status already showed.
+		idx, ok := priorIdx[run.Name]
+		if !ok {
+			idx = -1
 		}
-		current[run.Name] = run
-		// A Job absent from the prior status is new, and the sorted Job list puts
-		// these newest executions first. Existing entries are appended below in
-		// their prior relative order, which remains stable when a newer canceled
-		// Job disappears while an older successful Job still exists.
-		if _, existed := prior[run.Name]; !existed && len(runs) < maxCronRuns {
-			runs = append(runs, run)
-		}
+		entries = append(entries, cronRunEntry{run: run, key: key, known: true, priorIdx: idx})
 	}
 	// Kubernetes may garbage-collect terminal Jobs (and cancellation deletes its
 	// Job by definition). Retain terminal entries already captured in status so
 	// the first-class run ids and cursor history remain stable across reads.
-	for _, old := range app.Status.Runs {
-		if len(runs) >= maxCronRuns {
-			break
-		}
-		if run, ok := current[old.Name]; ok {
-			runs = append(runs, run)
+	for idx, old := range app.Status.Runs {
+		if _, ok := jobByName[old.Name]; ok {
 			continue
 		}
 		if app.Spec.CancelRun != nil && app.Spec.CancelRun.Name == old.Name {
@@ -4538,10 +4538,95 @@ func (r *AppReconciler) cronRuns(ctx context.Context, app *appv1alpha1.App, cron
 		}
 		switch old.Status {
 		case appv1alpha1.CronRunSucceeded, appv1alpha1.CronRunFailed, appv1alpha1.CronRunCanceled:
-			runs = append(runs, old)
+			key, known := retainedRunKey(old)
+			entries = append(entries, cronRunEntry{run: old, key: key, known: known, priorIdx: idx})
 		}
 	}
+	inheritLegacyRunKeys(entries)
+	sort.Slice(entries, func(i, j int) bool { return entries[i].newerThan(entries[j]) })
+	if len(entries) > maxCronRuns {
+		entries = entries[:maxCronRuns]
+	}
+	runs := make([]appv1alpha1.CronRun, 0, len(entries))
+	for _, e := range entries {
+		run := e.run
+		// Failure causes are observed only for retained runs: an evicted Job's
+		// Pods are not worth a List on every reconcile.
+		if job, ok := jobByName[run.Name]; ok {
+			if old, ok := prior[run.Name]; !ok || old.Status != appv1alpha1.CronRunFailed {
+				r.observeCronRunFailure(ctx, job, &run)
+			}
+		}
+		runs = append(runs, run)
+	}
 	return runs, nil
+}
+
+// cronRunEntry is one candidate for the bounded run history: its run record,
+// the clock it orders by, and where it sat in the prior status (-1 if new).
+type cronRunEntry struct {
+	run      appv1alpha1.CronRun
+	key      time.Time
+	known    bool
+	priorIdx int
+}
+
+// newerThan orders the history newest first: by clock, then — for equal
+// clocks — by the order the prior status already showed (a new run before a
+// retained one), then by Job name, so every pass picks the same ten.
+func (e cronRunEntry) newerThan(o cronRunEntry) bool {
+	if !e.key.Equal(o.key) {
+		return e.key.After(o.key)
+	}
+	if e.priorIdx != o.priorIdx {
+		return e.priorIdx < o.priorIdx
+	}
+	return e.run.Name > o.run.Name
+}
+
+// retainedRunKey recovers a retained record's ordering clock: the persisted
+// OrderedAt, else its StartedAt. A legacy record that never started and
+// whose Job is gone has neither.
+func retainedRunKey(run appv1alpha1.CronRun) (time.Time, bool) {
+	for _, v := range []string{run.OrderedAt, run.StartedAt} {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			return t, true
+		}
+	}
+	return time.Time{}, false
+}
+
+// inheritLegacyRunKeys places records with no recoverable clock where the
+// prior status had them: each borrows the clock of the nearest earlier
+// (newer) prior record that has one — or, at the head, the nearest later one —
+// and the prior-index tie-break keeps it beside that neighbor. No start time
+// is invented; the borrowed clock is never persisted.
+func inheritLegacyRunKeys(entries []cronRunEntry) {
+	byIdx := map[int]*cronRunEntry{}
+	maxIdx := -1
+	for i := range entries {
+		if entries[i].priorIdx >= 0 {
+			byIdx[entries[i].priorIdx] = &entries[i]
+			maxIdx = max(maxIdx, entries[i].priorIdx)
+		}
+	}
+	for i := range entries {
+		e := &entries[i]
+		if e.known {
+			continue
+		}
+		found := false
+		for idx := e.priorIdx - 1; idx >= 0 && !found; idx-- {
+			if n, ok := byIdx[idx]; ok && n.known {
+				e.key, found = n.key, true
+			}
+		}
+		for idx := e.priorIdx + 1; idx <= maxIdx && !found; idx++ {
+			if n, ok := byIdx[idx]; ok && n.known {
+				e.key, found = n.key, true
+			}
+		}
+	}
 }
 
 // jobStartKey orders runs by when they started, falling back to creation time for

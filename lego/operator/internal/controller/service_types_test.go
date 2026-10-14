@@ -189,7 +189,12 @@ var _ = Describe("Additional service types (kubernetes runtime)", func() {
 				"foreground cancellation must remove the backing Job (envtest has no GC controller, so a deletion timestamp is the converged test signal)")
 			Expect(k8sClient.Get(ctx, nn, got)).To(Succeed())
 			Expect(got.Status.Runs).NotTo(BeEmpty())
-			Expect(got.Status.Runs[0]).To(Equal(appv1alpha1.CronRun{
+			// The canceled-before-start record carries its Job's creation clock
+			// so it keeps its place after the Job is gone (w4/m210).
+			canceledRun := got.Status.Runs[0]
+			Expect(canceledRun.OrderedAt).NotTo(BeEmpty())
+			canceledRun.OrderedAt = ""
+			Expect(canceledRun).To(Equal(appv1alpha1.CronRun{
 				Name: cancelJobName, FinishedAt: "2026-07-09T10:05:05Z", Status: appv1alpha1.CronRunCanceled,
 			}))
 

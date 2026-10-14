@@ -2,7 +2,7 @@
 
 Why: the Recent Runs panel and API put an old successful execution above newer failures once the ten-entry history is full, making the operational history misleading.
 
-**Severity:** minor. Source: functional $qa-find-bugs w4, 2026-10-14 a475. Filing only. [Complete requests, responses, boundary controls and cleanup](../evidence/m210-cron-history-boundary.json).
+**Severity:** minor. Source: functional $qa-find-bugs w4, 2026-10-14 a475. Filing only. [Complete requests, responses, boundary controls and cleanup](../../evidence/m210-cron-history-boundary.json).
 
 ## Live reproduction and target
 

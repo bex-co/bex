@@ -1,19 +1,19 @@
 # w4 · m210 — Keep capped cron history chronological
 
-**Worker:** worker4 **Goal:** retain the newest ten cron executions in stable chronological order without reclassifying old completed Jobs as new **Status:** todo
+**Worker:** worker4 **Goal:** retain the newest ten cron executions in stable chronological order without reclassifying old completed Jobs as new **Status:** blocked (t007 needs deploy + live replay)
 
-**Estimate:** 2h55 across seven tasks. [Finding and compatibility audit](finding.md) · [Complete live evidence](../evidence/m210-cron-history-boundary.json).
+**Estimate:** 2h55 across seven tasks. [Finding and compatibility audit](finding.md) · [Complete live evidence](../../evidence/m210-cron-history-boundary.json).
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Model history ordering, tombstones and legacy records | 25m | — |
-| [t002](t002.md) | Merge chronological observations before applying the cap | 45m | t001 |
-| [t003](t003.md) | Verify run adapters, paging and acknowledgement compatibility | 25m | t002 |
-| [t004](t004.md) | Render parity | 15m | t003 |
-| [t005](t005.md) | Simplify | 10m | t004 |
-| [t006](t006.md) | Test coverage | 45m | t004 |
+| [t001](done/t001.md) | Model history ordering, tombstones and legacy records | 25m | — — **DONE 2026-10-14** |
+| [t002](done/t002.md) | Merge chronological observations before applying the cap | 45m | t001 — **DONE 2026-10-14** |
+| [t003](done/t003.md) | Verify run adapters, paging and acknowledgement compatibility | 25m | t002 — **DONE 2026-10-14** |
+| [t004](done/t004.md) | Render parity | 15m | t003 — **DONE 2026-10-14** |
+| [t005](done/t005.md) | Simplify | 10m | t004 — **DONE 2026-10-14** |
+| [t006](done/t006.md) | Test coverage | 45m | t004 — **DONE 2026-10-14** |
 | [t007](t007.md) | Closeout | 10m | t005, t006 |
 
 ## Definition of done
