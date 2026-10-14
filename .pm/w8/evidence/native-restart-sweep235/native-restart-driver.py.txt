@@ -1,0 +1,52 @@
+from pathlib import Path
+import json,subprocess,datetime,secrets,shutil,sys,time
+p=Path(__file__).parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(cp.read_text());assert c.get('sync235_result')==0 and not c.get('active_sync_stash');mode,client=sys.argv[1:3];assert client in ['bex','render'];ws='tea-daif693dqjvc73e7as3g';idfile=p/('sweep235-'+client+'-id.txt');image='docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592'
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,indent=2,ensure_ascii=False));cp.chmod(0o600)
+def cli(args,bound=45):
+ f=p/'render-config/cli.yaml'
+ try:
+  if client=='render':
+   assert not f.exists();shutil.copyfile(p/'config/cli.yaml',f);f.chmod(0o600)
+  runner=['python3',str(p/'run-render.py')] if client=='render' else ['python3',str(p/'run.py'),'--release'];return json.loads(subprocess.check_output([*runner,'--bound='+str(bound),*args],text=True))
+ finally:
+  if client=='render':f.unlink(missing_ok=True)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True))
+def history(x):
+ r=cli(['deploys','list',x['id'],'--confirm','-o','json']);assert r['exit']==0;rows=json.loads(r['stdout']);x['deploy_children']=rows
+ for row in rows:
+  if row['id'] not in x['recorded_child_ids']:x['recorded_child_ids'].append(row['id'])
+ save();return r,rows
+def own(x):
+ baseline={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']};assert x['sweep']==235 and x['workspace']==ws and x['id'] not in baseline and x['create_result']['exit']==0 and x['create_response']['id']==x['id'] and x['create_response']['serviceDetails']['plan']=='free' and not x['state'].startswith('deleted:')
+if mode=='create':
+ assert not idfile.exists() and not any(v.get('sweep')==235 and v.get('client')==client for v in c['resources']);q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';limits=json.loads(q['response']);assert limits['services']['used']+limits['services']['terminating']<limits['services']['limit'];nonce=secrets.token_hex(4);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-img';marker='QA235_'+nonce;args=['services','create','--name',name,'--type','web_service','--runtime','image','--image',image,'--plan','free','--region','frankfurt','--env-var','HTTP_PORT=3000','--env-var','WHOAMI_PORT_NUMBER=3000','--health-check-path','/','--auto-deploy=false','--confirm','-o','json'];inv=cli(['services','--confirm','-o','json']);assert inv['exit']==0;existing=json.loads(inv['stdout']) or [];assert not any(v.get('service',v)['name']==name for v in existing)
+ x={'sweep':235,'client':client,'case':client,'workspace':ws,'type':'web_service','name':name,'nonce':nonce,'marker':marker,'image':image,'time':now(),'source_head':c['head'],'state':'native create intent persisted','create_command':[client,*args],'capacity_proof':q,'pre_create_inventory':inv,'recorded_child_ids':[],'dependency_ids':[]};c['resources'].append(x);save();r=cli(args);x['create_result']=r;x['state']='native result received; reconcile before retry';save();assert r['exit']==0;v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v);assert v['name']==name and v['ownerId']==ws and v['serviceDetails']['plan']=='free' and v['id'] not in {u.get('service',u)['id'] for u in existing};x.update(id=v['id'],create_response=v,state='created: native restart fixture activation pending');idfile.write_text(v['id']);save();print(json.dumps({'client':client,'id':v['id'],'native_exit':r['exit']}),flush=True);raise SystemExit(0)
+sid=idfile.read_text().strip();x=next(v for v in c['resources'] if v.get('id')==sid)
+if mode=='observe':
+ own(x);r,rows=history(x);f=p/('sweep235-'+client+'-runtime.json');path='/qa235-'+x['nonce'];http=subprocess.run(['curl','--disable','-sS','--max-time','10','-H','X-QA-Marker: '+x['marker'],'-o',str(f),'-w','%{http_code}',x['create_response']['serviceDetails']['url']+path],capture_output=True,text=True,timeout=14);raw=f.read_text() if f.exists() else '';f.unlink(missing_ok=True)
+ try:body=json.loads(raw)
+ except ValueError:body=None
+ exact=http.returncode==0 and http.stdout=='200' and isinstance(body,dict) and body.get('path')==path and body.get('headers',{}).get('x-qa-marker')==x['marker'];obs={'at':now(),'native_history':r,'target':rows[0],'runtime':{'HTTP':http.stdout,'exit':http.returncode,'body':body,'raw_body':raw,'stderr':http.stderr},'exact_request_marker':exact};x.setdefault('observations',[]).append(obs)
+ if rows[0]['status']=='live' and exact:x['ready']=True
+ save();print(json.dumps({'client':client,'status':rows[0]['status'],'HTTP':http.stdout,'exact_request_marker':exact}),flush=True)
+elif mode in ['deploy-implicit','deploy-explicit']:
+ own(x);before,rows=history(x);assert rows[0]['status']=='live' and x.get('ready');args=['deploys','create',sid]
+ if mode=='deploy-explicit':args+=['--image',image]
+ args+=['--wait','--confirm','-o','json'];intent={'at':now(),'variant':mode,'command':[client,*args],'before_ids':[v['id'] for v in rows]};x.setdefault('native_deploy_intents',[]).append(intent);save();intent['result']=cli(args,180);save();history(x);print(json.dumps({'client':client,'variant':mode,'native_exit':intent['result']['exit'],'elapsed':intent['result']['elapsed'],'stderr':intent['result']['stderr']}),flush=True)
+elif mode=='restart':
+ own(x);before,rows=history(x);assert rows[0]['status']=='live' and x.get('ready');instances=cli(['services','instances',sid,'--confirm','-o','json']);assert instances['exit']==0;initial=json.loads(instances['stdout']);assert len(initial)==1 and initial[0]['id'].startswith(sid+'-');args=['restart',sid,'--confirm','-o','json'];intent={'at':now(),'command':[client,*args],'before_deploy_ids':[v['id'] for v in rows],'before_instances':instances,'before_instance_ids':[v['id'] for v in initial],'qualification':'native restart of one exact-owned Free prebuilt-image service'};x.setdefault('restart_intents',[]).append(intent);save();intent['result']=cli(args);save();history(x);print(json.dumps({'client':client,'native_restart_exit':intent['result']['exit'],'elapsed':intent['result']['elapsed'],'stderr':intent['result']['stderr']}),flush=True)
+elif mode=='verify-restart':
+ own(x);assert x.get('restart_intents');r=cli(['services','instances',sid,'--confirm','-o','json']);assert r['exit']==0;rows=json.loads(r['stdout']);before=x['restart_intents'][-1]['before_instance_ids'];ids=[v['id'] for v in rows];changed=len(ids)==1 and ids!=before and all(v.startswith(sid+'-') for v in ids);receipt={'at':now(),'result':r,'before_ids':before,'actual_ids':ids,'one_replacement_instance':changed};x.setdefault('restart_instance_checks',[]).append(receipt);save();print(json.dumps({'client':client,'instances':len(ids),'one_replacement_instance':changed}),flush=True)
+elif mode=='instances':
+ own(x);receipts=[]
+ for output in ['json','yaml','text']:
+  args=['services','instances',sid,'--confirm','-o',output];r=cli(args);receipts.append({'format':output,'command':[client,*args],'result':r});x.setdefault('instance_queries',[]).append(receipts[-1]);save();assert r['exit']==0
+ print(json.dumps({'client':client,'native_formats':3,'exit_codes':[v['result']['exit'] for v in receipts]}),flush=True)
+elif mode=='metadata':
+ own(x);r=wire('/v1/services/'+sid);x.setdefault('metadata_reads',[]).append({'at':now(),'result':r});save();assert r['status']=='200';v=json.loads(r['response']);assert v['id']==sid and v['ownerId']==ws;print(json.dumps({'client':client,'imagePath':v.get('imagePath'),'repo':v.get('repo'),'runtime':v['serviceDetails'].get('runtime'),'env':v['serviceDetails'].get('env'),'phase':v.get('phase')}),flush=True)
+elif mode=='delete':
+ own(x);assert 'delete_result' not in x;history(x);x['state']='exact-owned native delete intent persisted';save();x['delete_result']=cli(['services','delete',sid,'--confirm','-o','json']);save();print(json.dumps({'client':client,'delete_exit':x['delete_result']['exit']}),flush=True)
+elif mode=='reconcile':
+ assert x['sweep']==235 and x['workspace']==ws and 'delete_result' in x;detail=wire('/v1/services/'+sid);listing=cli(['services','--confirm','-o','json']);assert listing['exit']==0;ids={v.get('service',v)['id'] for v in json.loads(listing['stdout']) or []};baseline={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']};assert baseline<=ids;r=subprocess.run(['curl','--disable','-sS','--max-time','10','-o','/dev/null','-w','%{http_code}',x['create_response']['serviceDetails']['url']],capture_output=True,text=True,timeout=14);q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';done=detail['status']=='404' and sid not in ids and r.returncode==0 and r.stdout=='404' and json.loads(q['response'])['services']['terminating']==0;x.setdefault('cleanup_reconciliations',[]).append({'at':now(),'detail':detail,'list_ids':sorted(ids),'baseline_present':True,'runtime':{'exit':r.returncode,'HTTP':r.stdout,'stderr':r.stderr},'quota':q});x['state']='deleted: nativeack/API404/listabsent/runtime404/baseline present/quota termination0' if done else 'delete acknowledged: passive cleanup reconciliation pending';save();print(json.dumps({'client':client,'complete':done,'detail':detail['status'],'runtime':r.stdout,'terminating':json.loads(q['response'])['services']['terminating']}),flush=True)
+else:raise ValueError(mode)

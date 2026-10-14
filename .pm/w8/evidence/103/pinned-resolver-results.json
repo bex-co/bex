@@ -1,0 +1,74 @@
+[
+  {
+    "actual_content": "NEIGHBOR_A\n",
+    "case": "plain control",
+    "expected_content": "NEIGHBOR_A\n",
+    "literal_argument": "qa-note.txt:$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/neighbor.txt",
+    "original_path": "$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/neighbor.txt",
+    "parse_error": null,
+    "parsed_path": "$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/neighbor.txt",
+    "pass": true,
+    "resolution_error": null,
+    "scope": "actual pinned parser and CLI request-builder resolver; local harmless files only; no hosted request or resource"
+  },
+  {
+    "actual_content": "NEIGHBOR_A\n",
+    "case": "trailing space selects neighbor",
+    "expected_content": "INTENDED_SPACE_B\n",
+    "literal_argument": "qa-note.txt:$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/neighbor.txt ",
+    "original_path": "$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/neighbor.txt ",
+    "parse_error": null,
+    "parsed_path": "$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/neighbor.txt",
+    "pass": false,
+    "resolution_error": null,
+    "scope": "actual pinned parser and CLI request-builder resolver; local harmless files only; no hosted request or resource"
+  },
+  {
+    "actual_content": "NEIGHBOR_A\n",
+    "case": "trailing tab selects neighbor",
+    "expected_content": "INTENDED_TAB_C\n",
+    "literal_argument": "qa-note.txt:$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/neighbor.txt\t",
+    "original_path": "$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/neighbor.txt\t",
+    "parse_error": null,
+    "parsed_path": "$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/neighbor.txt",
+    "pass": false,
+    "resolution_error": null,
+    "scope": "actual pinned parser and CLI request-builder resolver; local harmless files only; no hosted request or resource"
+  },
+  {
+    "actual_content": "NEIGHBOR_A\n",
+    "case": "trailing newline selects neighbor",
+    "expected_content": "INTENDED_NEWLINE_D\n",
+    "literal_argument": "qa-note.txt:$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/neighbor.txt\n",
+    "original_path": "$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/neighbor.txt\n",
+    "parse_error": null,
+    "parsed_path": "$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/neighbor.txt",
+    "pass": false,
+    "resolution_error": null,
+    "scope": "actual pinned parser and CLI request-builder resolver; local harmless files only; no hosted request or resource"
+  },
+  {
+    "actual_content": "INTERIOR_E\n",
+    "case": "interior space control",
+    "expected_content": "INTERIOR_E\n",
+    "literal_argument": "qa-note.txt:$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/interior name.txt",
+    "original_path": "$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/interior name.txt",
+    "parse_error": null,
+    "parsed_path": "$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/interior name.txt",
+    "pass": true,
+    "resolution_error": null,
+    "scope": "actual pinned parser and CLI request-builder resolver; local harmless files only; no hosted request or resource"
+  },
+  {
+    "actual_content": "",
+    "case": "no trimmed neighbor",
+    "expected_content": "INTENDED_ONLY_F\n",
+    "literal_argument": "qa-note.txt:$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/standalone.txt ",
+    "original_path": "$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/standalone.txt ",
+    "parse_error": null,
+    "parsed_path": "$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/standalone.txt",
+    "pass": false,
+    "resolution_error": "failed to read --secret-file \"qa-note.txt:$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/standalone.txt \": open $PRIVATE_QA_DIR/sweep225-path-probe/fixtures/standalone.txt: no such file or directory",
+    "scope": "actual pinned parser and CLI request-builder resolver; local harmless files only; no hosted request or resource"
+  }
+]

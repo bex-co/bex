@@ -1,0 +1,161 @@
+[
+  {
+    "actual_valid": false,
+    "case": "env omitted",
+    "declared_values": {
+      "a": "group a",
+      "b": "group b"
+    },
+    "effective_value": "group b",
+    "expected_eligible": true,
+    "qualification": "actual feature methods with fake Kubernetes and memory SecretKV; hosted runtime is separate",
+    "retained_links": [
+      "a",
+      "b"
+    ],
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"consumer\": envVars[\"COPY\"]: fromService.envVarKey references env \"VALUE\" on service \"source\", which has no such plainly-defined variable",
+          "line": 1,
+          "column": 311,
+          "path": "services[1].envVars[0]"
+        }
+      ]
+    }
+  },
+  {
+    "actual_valid": false,
+    "case": "env explicit empty",
+    "declared_values": {
+      "a": "group a",
+      "b": "group b"
+    },
+    "effective_value": "group b",
+    "expected_eligible": true,
+    "qualification": "actual feature methods with fake Kubernetes and memory SecretKV; hosted runtime is separate",
+    "retained_links": [
+      "a",
+      "b"
+    ],
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"consumer\": envVars[\"COPY\"]: fromService.envVarKey references env \"VALUE\" on service \"source\", which has no such plainly-defined variable",
+          "line": 1,
+          "column": 324,
+          "path": "services[1].envVars[0]"
+        }
+      ]
+    }
+  },
+  {
+    "actual_valid": false,
+    "case": "unrelated literal only",
+    "declared_values": {
+      "a": "group a",
+      "b": "group b"
+    },
+    "effective_value": "group b",
+    "expected_eligible": true,
+    "qualification": "actual feature methods with fake Kubernetes and memory SecretKV; hosted runtime is separate",
+    "retained_links": [
+      "a",
+      "b"
+    ],
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"consumer\": envVars[\"COPY\"]: fromService.envVarKey references env \"VALUE\" on service \"source\", which has no such plainly-defined variable",
+          "line": 1,
+          "column": 361,
+          "path": "services[1].envVars[0]"
+        }
+      ]
+    }
+  },
+  {
+    "actual_valid": true,
+    "case": "one authored retained link",
+    "declared_values": {
+      "a": "group a",
+      "b": "group b"
+    },
+    "effective_value": "group b",
+    "expected_eligible": true,
+    "qualification": "actual feature methods with fake Kubernetes and memory SecretKV; hosted runtime is separate",
+    "retained_links": [
+      "a",
+      "b"
+    ],
+    "validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "source",
+          "consumer"
+        ],
+        "envGroups": [
+          "a",
+          "b"
+        ],
+        "totalActions": 4,
+        "actions": [
+          {
+            "operation": "update",
+            "kind": "env_var_group",
+            "name": "a",
+            "sourcePath": "#/envVarGroups/0",
+            "resourceId": "evg-db7l42pjg4rcifj6h810",
+            "changedFields": [
+              {
+                "path": "envVars"
+              },
+              {
+                "path": "name"
+              }
+            ]
+          },
+          {
+            "operation": "update",
+            "kind": "env_var_group",
+            "name": "b",
+            "sourcePath": "#/envVarGroups/1",
+            "resourceId": "evg-db7l42pjg4rcifj6h81g",
+            "changedFields": [
+              {
+                "path": "envVars"
+              },
+              {
+                "path": "name"
+              }
+            ]
+          },
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/1",
+            "resourceId": "consumer"
+          },
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/0",
+            "resourceId": "source"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    }
+  }
+]

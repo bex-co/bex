@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-14T11:00:30.267415+00:00",
+  "head": "a69dd557da840358a7defb7a43bf49814eafbc2a",
+  "files": {
+    "lego/operator/internal/build/native.go": "9c39d59390ca328099986d0fbc47dd4da173f4e3",
+    "lego/operator/internal/build/native_test.go": "df6153f62364991590cc0054b1b7d911aadc42d8",
+    "lego/backend/internal/secrets/batch.go": "0c60050abac5104cd7c4d680c800364bef4debc2",
+    "lego/backend/internal/apps/rest.go": "20a861b6f2629f540917e4988822f7cea6745ae5"
+  },
+  "deployed_revision": "unknown"
+}

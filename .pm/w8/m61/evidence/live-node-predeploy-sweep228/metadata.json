@@ -1,0 +1,30 @@
+{
+  "source_head": "2762f18eed265c5e168ffb5ff050c7e14ce55c48",
+  "deployed_API_operator_revision": "unknown",
+  "published_Bex": "0.3.2 a6350da0d6e451e063143432e06c548ba7b5851b",
+  "unmodified_Render_pin": "2.27.0 a764810a768202704e7206eb7b87a47211fcd98e",
+  "checkout_control": "qa216-fd46f58c0c72; CLI tree identical to current HEAD, compiled with Go1.27.0; used only for omitted-PATH create",
+  "ordinary_empty_PATH_native_passes": 2,
+  "omitted_PATH_checkout_passes": 1,
+  "native_predeploy_failures": 2,
+  "PATH_only_same_commit_native_recovery_passes": 2,
+  "fresh_fixtures": 5,
+  "recorded_deploy_children": 7,
+  "final_services_quota": {
+    "used": 6,
+    "terminating": 0
+  },
+  "focused_operator_suites": [
+    "TestNativeEnvironmentKeepsApplicationPATH",
+    "TestNativeDockerfileClearsTheToolchainEntrypoint",
+    "TestJobShape"
+  ],
+  "production_predeploy_Ensure_callers": 1,
+  "native_toolchains": 6,
+  "wire_capture_scope": "native original create/deploy stdout and exact owned save-only PATCH setup retained; production native POST request bodies were not intercepted",
+  "root_cause_qualification": "predeploy.Job emits relative sh while preserving empty PATH; PATH-only same-commit recovery and absent original program logs strongly identify the shell lookup. Actual deployed image config and OCI runtime startup error are not inspected; exact exit128 origin remains qualified",
+  "REST_diagnostic_scope": "terminal same-owned-deploy events and predeploy marker readback; native pin accepts only app/request/build log types",
+  "unverified": "live literal Blueprint PATH, GraphQL/MCP/dashboard writes, other toolchain images, checkout-build empty PATH, direct Kubernetes descendant teardown, opaque-image predeploy PATH behavior",
+  "cleanup": "five exact owned services and seven deploy records absent by parent detail/list; former runtimes404; baseline IDs preserved; quota6/term0; local note inputs removed; copied Render configs removed",
+  "QA_product_edit_commit_push": false
+}

@@ -1,0 +1,842 @@
+[
+  {
+    "client": "bex",
+    "case": "own override over group nested=false ordinal=0",
+    "live_existing": false,
+    "source_id": null,
+    "qualification": "fresh source/group names; pure validation",
+    "fixture": "sweep242-own-group-0.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep242-own-group-0.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.857,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-1146c7-0-group\"\n    ],\n    \"services\": [\n      \"qa-20261014-1146c7-0-0\",\n      \"qa-20261014-1146c7-0-1\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=b0e2269b3cf0b8d0635fe8b1174314e6a74a410f55c96b95a41c2cdbfd49",
+          "body": "--b0e2269b3cf0b8d0635fe8b1174314e6a74a410f55c96b95a41c2cdbfd49\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--b0e2269b3cf0b8d0635fe8b1174314e6a74a410f55c96b95a41c2cdbfd49\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep242-own-group-0.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-0-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"qa-20261014-1146c7-0-1\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        },\n        {\n          \"key\": \"COPY\",\n          \"value\": \"unrelated literal\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-0-0\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-1146c7-0-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-0-1\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--b0e2269b3cf0b8d0635fe8b1174314e6a74a410f55c96b95a41c2cdbfd49--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-0-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"qa-20261014-1146c7-0-1\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        },\n        {\n          \"key\": \"COPY\",\n          \"value\": \"unrelated literal\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-0-0\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-1146c7-0-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-0-1\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-1146c7-0-0\",\"qa-20261014-1146c7-0-1\"],\"envGroups\":[\"qa-20261014-1146c7-0-group\"],\"totalActions\":3,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa-20261014-1146c7-0-group\",\"sourcePath\":\"#/envVarGroups/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-1146c7-0-0\",\"sourcePath\":\"#/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-1146c7-0-1\",\"sourcePath\":\"#/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a7096bfe2ffa9a-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation; existing owned source vs fresh-name control; validation creates no resource, never apply"
+  },
+  {
+    "client": "render",
+    "case": "own override over group nested=false ordinal=0",
+    "live_existing": false,
+    "source_id": null,
+    "qualification": "fresh source/group names; pure validation",
+    "fixture": "sweep242-own-group-0.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep242-own-group-0.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.78,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-1146c7-0-group\"\n    ],\n    \"services\": [\n      \"qa-20261014-1146c7-0-0\",\n      \"qa-20261014-1146c7-0-1\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=8050ec8fe22ed5fb5829705fb8199bec8859d52dc5c3424746bd192162c5",
+          "body": "--8050ec8fe22ed5fb5829705fb8199bec8859d52dc5c3424746bd192162c5\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--8050ec8fe22ed5fb5829705fb8199bec8859d52dc5c3424746bd192162c5\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep242-own-group-0.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-0-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"qa-20261014-1146c7-0-1\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        },\n        {\n          \"key\": \"COPY\",\n          \"value\": \"unrelated literal\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-0-0\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-1146c7-0-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-0-1\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--8050ec8fe22ed5fb5829705fb8199bec8859d52dc5c3424746bd192162c5--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-0-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"qa-20261014-1146c7-0-1\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        },\n        {\n          \"key\": \"COPY\",\n          \"value\": \"unrelated literal\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-0-0\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-1146c7-0-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-0-1\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-1146c7-0-0\",\"qa-20261014-1146c7-0-1\"],\"envGroups\":[\"qa-20261014-1146c7-0-group\"],\"totalActions\":3,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa-20261014-1146c7-0-group\",\"sourcePath\":\"#/envVarGroups/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-1146c7-0-0\",\"sourcePath\":\"#/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-1146c7-0-1\",\"sourcePath\":\"#/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a709727d83e9e7-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation; existing owned source vs fresh-name control; validation creates no resource, never apply"
+  },
+  {
+    "client": "bex",
+    "case": "own override over group nested=false ordinal=0",
+    "live_existing": true,
+    "source_id": "srv-db7oemhllfps73emuc4g",
+    "qualification": "existing own VALUE against a newly authored group, which validation does not create/link",
+    "fixture": "sweep242-own-group-1.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep242-own-group-1.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "services[0].envVars[0]",
+    "actual_path": "services[0].envVars[0]",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.875,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa-20261014-1146c7-1-0\\\": envVars[\\\"COPY\\\"]: fromService.envVarKey references env \\\"VALUE\\\" on existing service \\\"qa-20261014-836cb3a1-img\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\n      \"line\": 16,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=f41219241233553afe23093844fa02e2b690494c4556b4faa9d95a0276b9",
+          "body": "--f41219241233553afe23093844fa02e2b690494c4556b4faa9d95a0276b9\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--f41219241233553afe23093844fa02e2b690494c4556b4faa9d95a0276b9\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep242-own-group-1.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-1-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"qa-20261014-836cb3a1-img\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        },\n        {\n          \"key\": \"COPY\",\n          \"value\": \"unrelated literal\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-1-0\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-1146c7-1-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-836cb3a1-img\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--f41219241233553afe23093844fa02e2b690494c4556b4faa9d95a0276b9--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-1-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"qa-20261014-836cb3a1-img\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        },\n        {\n          \"key\": \"COPY\",\n          \"value\": \"unrelated literal\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-1-0\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-1146c7-1-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-836cb3a1-img\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa-20261014-1146c7-1-0\\\": envVars[\\\"COPY\\\"]: fromService.envVarKey references env \\\"VALUE\\\" on existing service \\\"qa-20261014-836cb3a1-img\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\"line\":16,\"column\":9,\"path\":\"services[0].envVars[0]\"}]}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a709792be2cf21-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": true,
+    "scope": "unchanged native multipart validation; existing owned source vs fresh-name control; validation creates no resource, never apply"
+  },
+  {
+    "client": "render",
+    "case": "own override over group nested=false ordinal=0",
+    "live_existing": true,
+    "source_id": "srv-db7oemhllfps73emuc4g",
+    "qualification": "existing own VALUE against a newly authored group, which validation does not create/link",
+    "fixture": "sweep242-own-group-1.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep242-own-group-1.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "services[0].envVars[0]",
+    "actual_path": "services[0].envVars[0]",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 1,
+      "elapsed": 1.367,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa-20261014-1146c7-1-0\\\": envVars[\\\"COPY\\\"]: fromService.envVarKey references env \\\"VALUE\\\" on existing service \\\"qa-20261014-836cb3a1-img\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\n      \"line\": 16,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=f1109e872ec9e1677cea291e575c36a80e5edbf047bb5862717e2b80dfa1",
+          "body": "--f1109e872ec9e1677cea291e575c36a80e5edbf047bb5862717e2b80dfa1\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--f1109e872ec9e1677cea291e575c36a80e5edbf047bb5862717e2b80dfa1\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep242-own-group-1.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-1-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"qa-20261014-836cb3a1-img\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        },\n        {\n          \"key\": \"COPY\",\n          \"value\": \"unrelated literal\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-1-0\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-1146c7-1-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-836cb3a1-img\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--f1109e872ec9e1677cea291e575c36a80e5edbf047bb5862717e2b80dfa1--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-1-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"qa-20261014-836cb3a1-img\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        },\n        {\n          \"key\": \"COPY\",\n          \"value\": \"unrelated literal\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-1-0\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-1146c7-1-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-836cb3a1-img\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa-20261014-1146c7-1-0\\\": envVars[\\\"COPY\\\"]: fromService.envVarKey references env \\\"VALUE\\\" on existing service \\\"qa-20261014-836cb3a1-img\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\"line\":16,\"column\":9,\"path\":\"services[0].envVars[0]\"}]}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a7097fa8bfce54-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": true,
+    "scope": "unchanged native multipart validation; existing owned source vs fresh-name control; validation creates no resource, never apply"
+  },
+  {
+    "client": "bex",
+    "case": "own override over group nested=false ordinal=1",
+    "live_existing": false,
+    "source_id": null,
+    "qualification": "fresh source/group names; pure validation",
+    "fixture": "sweep242-own-group-2.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep242-own-group-2.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.736,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-1146c7-2-group\"\n    ],\n    \"services\": [\n      \"qa-20261014-1146c7-2-0\",\n      \"qa-20261014-1146c7-2-1\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=92a04b94aa61c5519ee6d8a309cb1c2fd0a77ce044bdc46136ecef82b98b",
+          "body": "--92a04b94aa61c5519ee6d8a309cb1c2fd0a77ce044bdc46136ecef82b98b\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--92a04b94aa61c5519ee6d8a309cb1c2fd0a77ce044bdc46136ecef82b98b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep242-own-group-2.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-2-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"COPY\",\n          \"value\": \"unrelated literal\"\n        },\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"qa-20261014-1146c7-2-1\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-2-0\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-1146c7-2-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-2-1\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--92a04b94aa61c5519ee6d8a309cb1c2fd0a77ce044bdc46136ecef82b98b--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-2-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"COPY\",\n          \"value\": \"unrelated literal\"\n        },\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"qa-20261014-1146c7-2-1\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-2-0\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-1146c7-2-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-2-1\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-1146c7-2-0\",\"qa-20261014-1146c7-2-1\"],\"envGroups\":[\"qa-20261014-1146c7-2-group\"],\"totalActions\":3,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa-20261014-1146c7-2-group\",\"sourcePath\":\"#/envVarGroups/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-1146c7-2-0\",\"sourcePath\":\"#/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-1146c7-2-1\",\"sourcePath\":\"#/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a70989585415fd-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation; existing owned source vs fresh-name control; validation creates no resource, never apply"
+  },
+  {
+    "client": "render",
+    "case": "own override over group nested=false ordinal=1",
+    "live_existing": false,
+    "source_id": null,
+    "qualification": "fresh source/group names; pure validation",
+    "fixture": "sweep242-own-group-2.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep242-own-group-2.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 1.442,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-1146c7-2-group\"\n    ],\n    \"services\": [\n      \"qa-20261014-1146c7-2-0\",\n      \"qa-20261014-1146c7-2-1\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=8bd0a62a596644ceaf76645e4267f81ea6b4a17cb4d77c34d03ec81475c9",
+          "body": "--8bd0a62a596644ceaf76645e4267f81ea6b4a17cb4d77c34d03ec81475c9\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--8bd0a62a596644ceaf76645e4267f81ea6b4a17cb4d77c34d03ec81475c9\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep242-own-group-2.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-2-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"COPY\",\n          \"value\": \"unrelated literal\"\n        },\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"qa-20261014-1146c7-2-1\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-2-0\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-1146c7-2-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-2-1\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--8bd0a62a596644ceaf76645e4267f81ea6b4a17cb4d77c34d03ec81475c9--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-2-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"COPY\",\n          \"value\": \"unrelated literal\"\n        },\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"qa-20261014-1146c7-2-1\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-2-0\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-1146c7-2-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-2-1\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-1146c7-2-0\",\"qa-20261014-1146c7-2-1\"],\"envGroups\":[\"qa-20261014-1146c7-2-group\"],\"totalActions\":3,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa-20261014-1146c7-2-group\",\"sourcePath\":\"#/envVarGroups/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-1146c7-2-0\",\"sourcePath\":\"#/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-1146c7-2-1\",\"sourcePath\":\"#/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a70994f93a4d21-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation; existing owned source vs fresh-name control; validation creates no resource, never apply"
+  },
+  {
+    "client": "bex",
+    "case": "own override over group nested=false ordinal=1",
+    "live_existing": true,
+    "source_id": "srv-db7oemhllfps73emuc4g",
+    "qualification": "existing own VALUE against a newly authored group, which validation does not create/link",
+    "fixture": "sweep242-own-group-3.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep242-own-group-3.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "services[0].envVars[1]",
+    "actual_path": "services[0].envVars[0]",
+    "location_or_valid_control_pass": false,
+    "native_result": {
+      "exit": 1,
+      "elapsed": 1.24,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa-20261014-1146c7-3-0\\\": envVars[\\\"COPY\\\"]: fromService.envVarKey references env \\\"VALUE\\\" on existing service \\\"qa-20261014-836cb3a1-img\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\n      \"line\": 16,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=5634f93a1f28ae48f61282faab24172dd40538da32b1b33705619df3ce09",
+          "body": "--5634f93a1f28ae48f61282faab24172dd40538da32b1b33705619df3ce09\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--5634f93a1f28ae48f61282faab24172dd40538da32b1b33705619df3ce09\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep242-own-group-3.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-3-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"COPY\",\n          \"value\": \"unrelated literal\"\n        },\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"qa-20261014-836cb3a1-img\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-3-0\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-1146c7-3-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-836cb3a1-img\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--5634f93a1f28ae48f61282faab24172dd40538da32b1b33705619df3ce09--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-3-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"COPY\",\n          \"value\": \"unrelated literal\"\n        },\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"qa-20261014-836cb3a1-img\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-3-0\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-1146c7-3-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-836cb3a1-img\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa-20261014-1146c7-3-0\\\": envVars[\\\"COPY\\\"]: fromService.envVarKey references env \\\"VALUE\\\" on existing service \\\"qa-20261014-836cb3a1-img\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\"line\":16,\"column\":9,\"path\":\"services[0].envVars[0]\"}]}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a70999bb307803-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": true,
+    "scope": "unchanged native multipart validation; existing owned source vs fresh-name control; validation creates no resource, never apply"
+  },
+  {
+    "client": "render",
+    "case": "own override over group nested=false ordinal=1",
+    "live_existing": true,
+    "source_id": "srv-db7oemhllfps73emuc4g",
+    "qualification": "existing own VALUE against a newly authored group, which validation does not create/link",
+    "fixture": "sweep242-own-group-3.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep242-own-group-3.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "services[0].envVars[1]",
+    "actual_path": "services[0].envVars[0]",
+    "location_or_valid_control_pass": false,
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.69,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa-20261014-1146c7-3-0\\\": envVars[\\\"COPY\\\"]: fromService.envVarKey references env \\\"VALUE\\\" on existing service \\\"qa-20261014-836cb3a1-img\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\n      \"line\": 16,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=074dc8be17dcd46c4b653e1e552e5fd9a81412aab5d864b521e1b9673cac",
+          "body": "--074dc8be17dcd46c4b653e1e552e5fd9a81412aab5d864b521e1b9673cac\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--074dc8be17dcd46c4b653e1e552e5fd9a81412aab5d864b521e1b9673cac\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep242-own-group-3.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-3-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"COPY\",\n          \"value\": \"unrelated literal\"\n        },\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"qa-20261014-836cb3a1-img\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-3-0\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-1146c7-3-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-836cb3a1-img\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--074dc8be17dcd46c4b653e1e552e5fd9a81412aab5d864b521e1b9673cac--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-3-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"COPY\",\n          \"value\": \"unrelated literal\"\n        },\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"qa-20261014-836cb3a1-img\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-1146c7-3-0\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-1146c7-3-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-836cb3a1-img\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa-20261014-1146c7-3-0\\\": envVars[\\\"COPY\\\"]: fromService.envVarKey references env \\\"VALUE\\\" on existing service \\\"qa-20261014-836cb3a1-img\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\"line\":16,\"column\":9,\"path\":\"services[0].envVars[0]\"}]}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a709a37f3b7396-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": true,
+    "scope": "unchanged native multipart validation; existing owned source vs fresh-name control; validation creates no resource, never apply"
+  },
+  {
+    "client": "bex",
+    "case": "own override over group nested=true ordinal=0",
+    "live_existing": false,
+    "source_id": null,
+    "qualification": "fresh source/group names; pure validation",
+    "fixture": "sweep242-own-group-4.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep242-own-group-4.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.854,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-1146c7-4-group\"\n    ],\n    \"services\": [\n      \"qa-20261014-1146c7-4-0\",\n      \"qa-20261014-1146c7-4-1\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=35a41707aeb76df69cb9f36f0b3d18cc71664ea2928c8bbc380889a3d08b",
+          "body": "--35a41707aeb76df69cb9f36f0b3d18cc71664ea2928c8bbc380889a3d08b\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--35a41707aeb76df69cb9f36f0b3d18cc71664ea2928c8bbc380889a3d08b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep242-own-group-4.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-4-group\"\n    }\n  ],\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-1146c7-4-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                },\n                {\n                  \"key\": \"COPY\",\n                  \"value\": \"unrelated literal\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-4-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"fromGroup\": \"qa-20261014-1146c7-4-group\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-4-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-4-project\"\n    }\n  ]\n}\n\r\n--35a41707aeb76df69cb9f36f0b3d18cc71664ea2928c8bbc380889a3d08b--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-4-group\"\n    }\n  ],\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-1146c7-4-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                },\n                {\n                  \"key\": \"COPY\",\n                  \"value\": \"unrelated literal\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-4-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"fromGroup\": \"qa-20261014-1146c7-4-group\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-4-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-4-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-1146c7-4-0\",\"qa-20261014-1146c7-4-1\"],\"envGroups\":[\"qa-20261014-1146c7-4-group\"],\"totalActions\":3,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa-20261014-1146c7-4-group\",\"sourcePath\":\"#/envVarGroups/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-1146c7-4-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-1146c7-4-1\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a709a9fbd16ce3-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation; existing owned source vs fresh-name control; validation creates no resource, never apply"
+  },
+  {
+    "client": "render",
+    "case": "own override over group nested=true ordinal=0",
+    "live_existing": false,
+    "source_id": null,
+    "qualification": "fresh source/group names; pure validation",
+    "fixture": "sweep242-own-group-4.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep242-own-group-4.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.72,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-1146c7-4-group\"\n    ],\n    \"services\": [\n      \"qa-20261014-1146c7-4-0\",\n      \"qa-20261014-1146c7-4-1\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=2d0ad2e9a50946eba788d95d9b466ec0c678cc99f3e972f62eb50fa87c9c",
+          "body": "--2d0ad2e9a50946eba788d95d9b466ec0c678cc99f3e972f62eb50fa87c9c\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--2d0ad2e9a50946eba788d95d9b466ec0c678cc99f3e972f62eb50fa87c9c\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep242-own-group-4.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-4-group\"\n    }\n  ],\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-1146c7-4-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                },\n                {\n                  \"key\": \"COPY\",\n                  \"value\": \"unrelated literal\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-4-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"fromGroup\": \"qa-20261014-1146c7-4-group\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-4-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-4-project\"\n    }\n  ]\n}\n\r\n--2d0ad2e9a50946eba788d95d9b466ec0c678cc99f3e972f62eb50fa87c9c--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-4-group\"\n    }\n  ],\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-1146c7-4-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                },\n                {\n                  \"key\": \"COPY\",\n                  \"value\": \"unrelated literal\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-4-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"fromGroup\": \"qa-20261014-1146c7-4-group\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-4-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-4-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-1146c7-4-0\",\"qa-20261014-1146c7-4-1\"],\"envGroups\":[\"qa-20261014-1146c7-4-group\"],\"totalActions\":3,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa-20261014-1146c7-4-group\",\"sourcePath\":\"#/envVarGroups/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-1146c7-4-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-1146c7-4-1\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a709b0aa27f591-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation; existing owned source vs fresh-name control; validation creates no resource, never apply"
+  },
+  {
+    "client": "bex",
+    "case": "own override over group nested=true ordinal=0",
+    "live_existing": true,
+    "source_id": "srv-db7oemhllfps73emuc4g",
+    "qualification": "existing own VALUE against a newly authored group, which validation does not create/link",
+    "fixture": "sweep242-own-group-5.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep242-own-group-5.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "projects[0].environments[0].services[0].envVars[0]",
+    "actual_path": "projects[0].environments[0].services[0].envVars[0]",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.724,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 17,\n      \"error\": \"service \\\"qa-20261014-1146c7-5-0\\\": envVars[\\\"COPY\\\"]: fromService.envVarKey references env \\\"VALUE\\\" on existing service \\\"qa-20261014-836cb3a1-img\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\n      \"line\": 21,\n      \"path\": \"projects[0].environments[0].services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=930d0bba2bca103cb8dc80395299a26b26fa33491b21a3c8853a32974807",
+          "body": "--930d0bba2bca103cb8dc80395299a26b26fa33491b21a3c8853a32974807\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--930d0bba2bca103cb8dc80395299a26b26fa33491b21a3c8853a32974807\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep242-own-group-5.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-5-group\"\n    }\n  ],\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-836cb3a1-img\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                },\n                {\n                  \"key\": \"COPY\",\n                  \"value\": \"unrelated literal\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-5-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"fromGroup\": \"qa-20261014-1146c7-5-group\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-836cb3a1-img\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-5-project\"\n    }\n  ]\n}\n\r\n--930d0bba2bca103cb8dc80395299a26b26fa33491b21a3c8853a32974807--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-5-group\"\n    }\n  ],\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-836cb3a1-img\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                },\n                {\n                  \"key\": \"COPY\",\n                  \"value\": \"unrelated literal\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-5-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"fromGroup\": \"qa-20261014-1146c7-5-group\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-836cb3a1-img\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-5-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa-20261014-1146c7-5-0\\\": envVars[\\\"COPY\\\"]: fromService.envVarKey references env \\\"VALUE\\\" on existing service \\\"qa-20261014-836cb3a1-img\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\"line\":21,\"column\":17,\"path\":\"projects[0].environments[0].services[0].envVars[0]\"}]}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a709b74cd93911-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": true,
+    "scope": "unchanged native multipart validation; existing owned source vs fresh-name control; validation creates no resource, never apply"
+  },
+  {
+    "client": "render",
+    "case": "own override over group nested=true ordinal=0",
+    "live_existing": true,
+    "source_id": "srv-db7oemhllfps73emuc4g",
+    "qualification": "existing own VALUE against a newly authored group, which validation does not create/link",
+    "fixture": "sweep242-own-group-5.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep242-own-group-5.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "projects[0].environments[0].services[0].envVars[0]",
+    "actual_path": "projects[0].environments[0].services[0].envVars[0]",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 1,
+      "elapsed": 1.703,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 17,\n      \"error\": \"service \\\"qa-20261014-1146c7-5-0\\\": envVars[\\\"COPY\\\"]: fromService.envVarKey references env \\\"VALUE\\\" on existing service \\\"qa-20261014-836cb3a1-img\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\n      \"line\": 21,\n      \"path\": \"projects[0].environments[0].services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=6e7505a94015f1ee973e73935737d0dece5873596729e4e13042ab1a8e71",
+          "body": "--6e7505a94015f1ee973e73935737d0dece5873596729e4e13042ab1a8e71\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--6e7505a94015f1ee973e73935737d0dece5873596729e4e13042ab1a8e71\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep242-own-group-5.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-5-group\"\n    }\n  ],\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-836cb3a1-img\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                },\n                {\n                  \"key\": \"COPY\",\n                  \"value\": \"unrelated literal\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-5-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"fromGroup\": \"qa-20261014-1146c7-5-group\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-836cb3a1-img\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-5-project\"\n    }\n  ]\n}\n\r\n--6e7505a94015f1ee973e73935737d0dece5873596729e4e13042ab1a8e71--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-5-group\"\n    }\n  ],\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-836cb3a1-img\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                },\n                {\n                  \"key\": \"COPY\",\n                  \"value\": \"unrelated literal\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-5-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"fromGroup\": \"qa-20261014-1146c7-5-group\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-836cb3a1-img\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-5-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa-20261014-1146c7-5-0\\\": envVars[\\\"COPY\\\"]: fromService.envVarKey references env \\\"VALUE\\\" on existing service \\\"qa-20261014-836cb3a1-img\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\"line\":21,\"column\":17,\"path\":\"projects[0].environments[0].services[0].envVars[0]\"}]}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a709bdebf46037-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": true,
+    "scope": "unchanged native multipart validation; existing owned source vs fresh-name control; validation creates no resource, never apply"
+  },
+  {
+    "client": "bex",
+    "case": "own override over group nested=true ordinal=1",
+    "live_existing": false,
+    "source_id": null,
+    "qualification": "fresh source/group names; pure validation",
+    "fixture": "sweep242-own-group-6.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep242-own-group-6.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.72,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-1146c7-6-group\"\n    ],\n    \"services\": [\n      \"qa-20261014-1146c7-6-0\",\n      \"qa-20261014-1146c7-6-1\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=159ab4061cd2a9bd4f3c3e0043c9ea5f129f7d91d741354514951221bd09",
+          "body": "--159ab4061cd2a9bd4f3c3e0043c9ea5f129f7d91d741354514951221bd09\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--159ab4061cd2a9bd4f3c3e0043c9ea5f129f7d91d741354514951221bd09\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep242-own-group-6.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-6-group\"\n    }\n  ],\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"COPY\",\n                  \"value\": \"unrelated literal\"\n                },\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-1146c7-6-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-6-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"fromGroup\": \"qa-20261014-1146c7-6-group\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-6-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-6-project\"\n    }\n  ]\n}\n\r\n--159ab4061cd2a9bd4f3c3e0043c9ea5f129f7d91d741354514951221bd09--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-6-group\"\n    }\n  ],\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"COPY\",\n                  \"value\": \"unrelated literal\"\n                },\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-1146c7-6-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-6-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"fromGroup\": \"qa-20261014-1146c7-6-group\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-6-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-6-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-1146c7-6-0\",\"qa-20261014-1146c7-6-1\"],\"envGroups\":[\"qa-20261014-1146c7-6-group\"],\"totalActions\":3,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa-20261014-1146c7-6-group\",\"sourcePath\":\"#/envVarGroups/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-1146c7-6-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-1146c7-6-1\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a709caca67cc7e-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation; existing owned source vs fresh-name control; validation creates no resource, never apply"
+  },
+  {
+    "client": "render",
+    "case": "own override over group nested=true ordinal=1",
+    "live_existing": false,
+    "source_id": null,
+    "qualification": "fresh source/group names; pure validation",
+    "fixture": "sweep242-own-group-6.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep242-own-group-6.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.594,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-1146c7-6-group\"\n    ],\n    \"services\": [\n      \"qa-20261014-1146c7-6-0\",\n      \"qa-20261014-1146c7-6-1\"\n    ],\n    \"totalActions\": 3\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=3cd0d345e9181162878f3f0c332c29fdd49b609ff1b97594c4f9578f8f71",
+          "body": "--3cd0d345e9181162878f3f0c332c29fdd49b609ff1b97594c4f9578f8f71\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--3cd0d345e9181162878f3f0c332c29fdd49b609ff1b97594c4f9578f8f71\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep242-own-group-6.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-6-group\"\n    }\n  ],\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"COPY\",\n                  \"value\": \"unrelated literal\"\n                },\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-1146c7-6-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-6-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"fromGroup\": \"qa-20261014-1146c7-6-group\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-6-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-6-project\"\n    }\n  ]\n}\n\r\n--3cd0d345e9181162878f3f0c332c29fdd49b609ff1b97594c4f9578f8f71--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-6-group\"\n    }\n  ],\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"COPY\",\n                  \"value\": \"unrelated literal\"\n                },\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-1146c7-6-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-6-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"fromGroup\": \"qa-20261014-1146c7-6-group\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-6-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-6-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-1146c7-6-0\",\"qa-20261014-1146c7-6-1\"],\"envGroups\":[\"qa-20261014-1146c7-6-group\"],\"totalActions\":3,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa-20261014-1146c7-6-group\",\"sourcePath\":\"#/envVarGroups/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-1146c7-6-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-1146c7-6-1\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a709d158ca182a-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation; existing owned source vs fresh-name control; validation creates no resource, never apply"
+  },
+  {
+    "client": "bex",
+    "case": "own override over group nested=true ordinal=1",
+    "live_existing": true,
+    "source_id": "srv-db7oemhllfps73emuc4g",
+    "qualification": "existing own VALUE against a newly authored group, which validation does not create/link",
+    "fixture": "sweep242-own-group-7.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep242-own-group-7.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "projects[0].environments[0].services[0].envVars[1]",
+    "actual_path": "projects[0].environments[0].services[0].envVars[0]",
+    "location_or_valid_control_pass": false,
+    "native_result": {
+      "exit": 1,
+      "elapsed": 1.387,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 17,\n      \"error\": \"service \\\"qa-20261014-1146c7-7-0\\\": envVars[\\\"COPY\\\"]: fromService.envVarKey references env \\\"VALUE\\\" on existing service \\\"qa-20261014-836cb3a1-img\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\n      \"line\": 21,\n      \"path\": \"projects[0].environments[0].services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=cc1b83371e66e589a57200be7a6fc766737dc29743f6fd24a1c48af941d1",
+          "body": "--cc1b83371e66e589a57200be7a6fc766737dc29743f6fd24a1c48af941d1\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--cc1b83371e66e589a57200be7a6fc766737dc29743f6fd24a1c48af941d1\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep242-own-group-7.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-7-group\"\n    }\n  ],\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"COPY\",\n                  \"value\": \"unrelated literal\"\n                },\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-836cb3a1-img\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-7-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"fromGroup\": \"qa-20261014-1146c7-7-group\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-836cb3a1-img\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-7-project\"\n    }\n  ]\n}\n\r\n--cc1b83371e66e589a57200be7a6fc766737dc29743f6fd24a1c48af941d1--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-7-group\"\n    }\n  ],\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"COPY\",\n                  \"value\": \"unrelated literal\"\n                },\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-836cb3a1-img\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-7-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"fromGroup\": \"qa-20261014-1146c7-7-group\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-836cb3a1-img\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-7-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa-20261014-1146c7-7-0\\\": envVars[\\\"COPY\\\"]: fromService.envVarKey references env \\\"VALUE\\\" on existing service \\\"qa-20261014-836cb3a1-img\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\"line\":21,\"column\":17,\"path\":\"projects[0].environments[0].services[0].envVars[0]\"}]}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a709d7fbba58ac-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": true,
+    "scope": "unchanged native multipart validation; existing owned source vs fresh-name control; validation creates no resource, never apply"
+  },
+  {
+    "client": "render",
+    "case": "own override over group nested=true ordinal=1",
+    "live_existing": true,
+    "source_id": "srv-db7oemhllfps73emuc4g",
+    "qualification": "existing own VALUE against a newly authored group, which validation does not create/link",
+    "fixture": "sweep242-own-group-7.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep242-own-group-7.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "projects[0].environments[0].services[0].envVars[1]",
+    "actual_path": "projects[0].environments[0].services[0].envVars[0]",
+    "location_or_valid_control_pass": false,
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.653,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 17,\n      \"error\": \"service \\\"qa-20261014-1146c7-7-0\\\": envVars[\\\"COPY\\\"]: fromService.envVarKey references env \\\"VALUE\\\" on existing service \\\"qa-20261014-836cb3a1-img\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\n      \"line\": 21,\n      \"path\": \"projects[0].environments[0].services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=9245346fbb18454b606bee089cb37313b2e12d18e414a606cdab1a0f5cd1",
+          "body": "--9245346fbb18454b606bee089cb37313b2e12d18e414a606cdab1a0f5cd1\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--9245346fbb18454b606bee089cb37313b2e12d18e414a606cdab1a0f5cd1\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep242-own-group-7.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-7-group\"\n    }\n  ],\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"COPY\",\n                  \"value\": \"unrelated literal\"\n                },\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-836cb3a1-img\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-7-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"fromGroup\": \"qa-20261014-1146c7-7-group\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-836cb3a1-img\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-7-project\"\n    }\n  ]\n}\n\r\n--9245346fbb18454b606bee089cb37313b2e12d18e414a606cdab1a0f5cd1--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-7-group\"\n    }\n  ],\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"COPY\",\n                  \"value\": \"unrelated literal\"\n                },\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-836cb3a1-img\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-1146c7-7-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"fromGroup\": \"qa-20261014-1146c7-7-group\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-836cb3a1-img\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-1146c7-7-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa-20261014-1146c7-7-0\\\": envVars[\\\"COPY\\\"]: fromService.envVarKey references env \\\"VALUE\\\" on existing service \\\"qa-20261014-836cb3a1-img\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\"line\":21,\"column\":17,\"path\":\"projects[0].environments[0].services[0].envVars[0]\"}]}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a709e1ba71dfce-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": true,
+    "scope": "unchanged native multipart validation; existing owned source vs fresh-name control; validation creates no resource, never apply"
+  }
+]

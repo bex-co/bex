@@ -1,0 +1,12 @@
+{"Time":"2026-10-14T03:58:23.943279-07:00","Action":"start","Package":"github.com/bex-co/bex/lego/operator/internal/build"}
+{"Time":"2026-10-14T03:58:24.477033-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestNativeDockerfileEnvRevisionBustsCacheKey"}
+{"Time":"2026-10-14T03:58:24.477119-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestNativeDockerfileEnvRevisionBustsCacheKey","Output":"=== RUN   TestNativeDockerfileEnvRevisionBustsCacheKey\n"}
+{"Time":"2026-10-14T03:58:24.477146-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestNativeDockerfileEnvRevisionBustsCacheKey","Output":"--- PASS: TestNativeDockerfileEnvRevisionBustsCacheKey (0.00s)\n"}
+{"Time":"2026-10-14T03:58:24.477151-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestNativeDockerfileEnvRevisionBustsCacheKey","Elapsed":0}
+{"Time":"2026-10-14T03:58:24.477163-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestNativeSecretFilesTransport"}
+{"Time":"2026-10-14T03:58:24.477167-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestNativeSecretFilesTransport","Output":"=== RUN   TestNativeSecretFilesTransport\n"}
+{"Time":"2026-10-14T03:58:24.477301-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestNativeSecretFilesTransport","Output":"--- PASS: TestNativeSecretFilesTransport (0.00s)\n"}
+{"Time":"2026-10-14T03:58:24.477328-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestNativeSecretFilesTransport","Elapsed":0}
+{"Time":"2026-10-14T03:58:24.477335-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/build","Output":"PASS\n"}
+{"Time":"2026-10-14T03:58:24.478263-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/build","Output":"ok  \tgithub.com/bex-co/bex/lego/operator/internal/build\t0.534s\n"}
+{"Time":"2026-10-14T03:58:24.478303-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/build","Elapsed":0.535}

@@ -1,0 +1,658 @@
+[
+  {
+    "client": "bex",
+    "case": "plain control",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa225-local",
+      "--type",
+      "web_service",
+      "--image",
+      "nginx:1",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--secret-file",
+      "qa-note.txt:$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/neighbor.txt",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.131,
+    "stdout": "{\n  \"autoDeploy\": \"\",\n  \"createdAt\": \"0001-01-01T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-qa225localonly\",\n  \"name\": \"qa225-local\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"runtime\": \"image\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"0001-01-01T00:00:00Z\"\n}",
+    "stderr": "",
+    "captures": [
+      {
+        "method": "POST",
+        "path": "/v1/services",
+        "body": {
+          "image": {
+            "imagePath": "nginx:1",
+            "ownerId": ""
+          },
+          "name": "qa225-local",
+          "ownerId": "tea-qa225localonly",
+          "secretFiles": [
+            {
+              "content": "NEIGHBOR_A\n",
+              "name": "qa-note.txt"
+            }
+          ],
+          "serviceDetails": {
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "image"
+          },
+          "type": "web_service"
+        },
+        "scope": "local fake response only; no request forwarded to production; dummy credential"
+      }
+    ],
+    "expected_content": "NEIGHBOR_A\n",
+    "actual_request_content": "NEIGHBOR_A\n",
+    "file_bytes_preserved": true,
+    "qualification": "actual published Bex / unmodified Render against local POST-only fixture responder; no live hosting or production auth claim"
+  },
+  {
+    "client": "render",
+    "case": "plain control",
+    "command": [
+      "render",
+      "services",
+      "create",
+      "--name",
+      "qa225-local",
+      "--type",
+      "web_service",
+      "--image",
+      "nginx:1",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--secret-file",
+      "qa-note.txt:$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/neighbor.txt",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.986,
+    "stdout": "{\n  \"autoDeploy\": \"\",\n  \"createdAt\": \"0001-01-01T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-qa225localonly\",\n  \"name\": \"qa225-local\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"runtime\": \"image\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"0001-01-01T00:00:00Z\"\n}",
+    "stderr": "",
+    "captures": [
+      {
+        "method": "POST",
+        "path": "/v1/services",
+        "body": {
+          "image": {
+            "imagePath": "nginx:1",
+            "ownerId": ""
+          },
+          "name": "qa225-local",
+          "ownerId": "tea-qa225localonly",
+          "secretFiles": [
+            {
+              "content": "NEIGHBOR_A\n",
+              "name": "qa-note.txt"
+            }
+          ],
+          "serviceDetails": {
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "image"
+          },
+          "type": "web_service"
+        },
+        "scope": "local fake response only; no request forwarded to production; dummy credential"
+      }
+    ],
+    "expected_content": "NEIGHBOR_A\n",
+    "actual_request_content": "NEIGHBOR_A\n",
+    "file_bytes_preserved": true,
+    "qualification": "actual published Bex / unmodified Render against local POST-only fixture responder; no live hosting or production auth claim"
+  },
+  {
+    "client": "bex",
+    "case": "trailing space selects neighbor",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa225-local",
+      "--type",
+      "web_service",
+      "--image",
+      "nginx:1",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--secret-file",
+      "qa-note.txt:$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/neighbor.txt ",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.428,
+    "stdout": "{\n  \"autoDeploy\": \"\",\n  \"createdAt\": \"0001-01-01T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-qa225localonly\",\n  \"name\": \"qa225-local\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"runtime\": \"image\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"0001-01-01T00:00:00Z\"\n}",
+    "stderr": "",
+    "captures": [
+      {
+        "method": "POST",
+        "path": "/v1/services",
+        "body": {
+          "image": {
+            "imagePath": "nginx:1",
+            "ownerId": ""
+          },
+          "name": "qa225-local",
+          "ownerId": "tea-qa225localonly",
+          "secretFiles": [
+            {
+              "content": "NEIGHBOR_A\n",
+              "name": "qa-note.txt"
+            }
+          ],
+          "serviceDetails": {
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "image"
+          },
+          "type": "web_service"
+        },
+        "scope": "local fake response only; no request forwarded to production; dummy credential"
+      }
+    ],
+    "expected_content": "INTENDED_SPACE_B\n",
+    "actual_request_content": "NEIGHBOR_A\n",
+    "file_bytes_preserved": false,
+    "qualification": "actual published Bex / unmodified Render against local POST-only fixture responder; no live hosting or production auth claim"
+  },
+  {
+    "client": "render",
+    "case": "trailing space selects neighbor",
+    "command": [
+      "render",
+      "services",
+      "create",
+      "--name",
+      "qa225-local",
+      "--type",
+      "web_service",
+      "--image",
+      "nginx:1",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--secret-file",
+      "qa-note.txt:$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/neighbor.txt ",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.049,
+    "stdout": "{\n  \"autoDeploy\": \"\",\n  \"createdAt\": \"0001-01-01T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-qa225localonly\",\n  \"name\": \"qa225-local\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"runtime\": \"image\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"0001-01-01T00:00:00Z\"\n}",
+    "stderr": "",
+    "captures": [
+      {
+        "method": "POST",
+        "path": "/v1/services",
+        "body": {
+          "image": {
+            "imagePath": "nginx:1",
+            "ownerId": ""
+          },
+          "name": "qa225-local",
+          "ownerId": "tea-qa225localonly",
+          "secretFiles": [
+            {
+              "content": "NEIGHBOR_A\n",
+              "name": "qa-note.txt"
+            }
+          ],
+          "serviceDetails": {
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "image"
+          },
+          "type": "web_service"
+        },
+        "scope": "local fake response only; no request forwarded to production; dummy credential"
+      }
+    ],
+    "expected_content": "INTENDED_SPACE_B\n",
+    "actual_request_content": "NEIGHBOR_A\n",
+    "file_bytes_preserved": false,
+    "qualification": "actual published Bex / unmodified Render against local POST-only fixture responder; no live hosting or production auth claim"
+  },
+  {
+    "client": "bex",
+    "case": "trailing tab selects neighbor",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa225-local",
+      "--type",
+      "web_service",
+      "--image",
+      "nginx:1",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--secret-file",
+      "qa-note.txt:$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/neighbor.txt\t",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.054,
+    "stdout": "{\n  \"autoDeploy\": \"\",\n  \"createdAt\": \"0001-01-01T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-qa225localonly\",\n  \"name\": \"qa225-local\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"runtime\": \"image\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"0001-01-01T00:00:00Z\"\n}",
+    "stderr": "",
+    "captures": [
+      {
+        "method": "POST",
+        "path": "/v1/services",
+        "body": {
+          "image": {
+            "imagePath": "nginx:1",
+            "ownerId": ""
+          },
+          "name": "qa225-local",
+          "ownerId": "tea-qa225localonly",
+          "secretFiles": [
+            {
+              "content": "NEIGHBOR_A\n",
+              "name": "qa-note.txt"
+            }
+          ],
+          "serviceDetails": {
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "image"
+          },
+          "type": "web_service"
+        },
+        "scope": "local fake response only; no request forwarded to production; dummy credential"
+      }
+    ],
+    "expected_content": "INTENDED_TAB_C\n",
+    "actual_request_content": "NEIGHBOR_A\n",
+    "file_bytes_preserved": false,
+    "qualification": "actual published Bex / unmodified Render against local POST-only fixture responder; no live hosting or production auth claim"
+  },
+  {
+    "client": "render",
+    "case": "trailing tab selects neighbor",
+    "command": [
+      "render",
+      "services",
+      "create",
+      "--name",
+      "qa225-local",
+      "--type",
+      "web_service",
+      "--image",
+      "nginx:1",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--secret-file",
+      "qa-note.txt:$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/neighbor.txt\t",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.051,
+    "stdout": "{\n  \"autoDeploy\": \"\",\n  \"createdAt\": \"0001-01-01T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-qa225localonly\",\n  \"name\": \"qa225-local\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"runtime\": \"image\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"0001-01-01T00:00:00Z\"\n}",
+    "stderr": "",
+    "captures": [
+      {
+        "method": "POST",
+        "path": "/v1/services",
+        "body": {
+          "image": {
+            "imagePath": "nginx:1",
+            "ownerId": ""
+          },
+          "name": "qa225-local",
+          "ownerId": "tea-qa225localonly",
+          "secretFiles": [
+            {
+              "content": "NEIGHBOR_A\n",
+              "name": "qa-note.txt"
+            }
+          ],
+          "serviceDetails": {
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "image"
+          },
+          "type": "web_service"
+        },
+        "scope": "local fake response only; no request forwarded to production; dummy credential"
+      }
+    ],
+    "expected_content": "INTENDED_TAB_C\n",
+    "actual_request_content": "NEIGHBOR_A\n",
+    "file_bytes_preserved": false,
+    "qualification": "actual published Bex / unmodified Render against local POST-only fixture responder; no live hosting or production auth claim"
+  },
+  {
+    "client": "bex",
+    "case": "trailing newline selects neighbor",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa225-local",
+      "--type",
+      "web_service",
+      "--image",
+      "nginx:1",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--secret-file",
+      "qa-note.txt:$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/neighbor.txt\n",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.049,
+    "stdout": "{\n  \"autoDeploy\": \"\",\n  \"createdAt\": \"0001-01-01T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-qa225localonly\",\n  \"name\": \"qa225-local\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"runtime\": \"image\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"0001-01-01T00:00:00Z\"\n}",
+    "stderr": "",
+    "captures": [
+      {
+        "method": "POST",
+        "path": "/v1/services",
+        "body": {
+          "image": {
+            "imagePath": "nginx:1",
+            "ownerId": ""
+          },
+          "name": "qa225-local",
+          "ownerId": "tea-qa225localonly",
+          "secretFiles": [
+            {
+              "content": "NEIGHBOR_A\n",
+              "name": "qa-note.txt"
+            }
+          ],
+          "serviceDetails": {
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "image"
+          },
+          "type": "web_service"
+        },
+        "scope": "local fake response only; no request forwarded to production; dummy credential"
+      }
+    ],
+    "expected_content": "INTENDED_NEWLINE_D\n",
+    "actual_request_content": "NEIGHBOR_A\n",
+    "file_bytes_preserved": false,
+    "qualification": "actual published Bex / unmodified Render against local POST-only fixture responder; no live hosting or production auth claim"
+  },
+  {
+    "client": "render",
+    "case": "trailing newline selects neighbor",
+    "command": [
+      "render",
+      "services",
+      "create",
+      "--name",
+      "qa225-local",
+      "--type",
+      "web_service",
+      "--image",
+      "nginx:1",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--secret-file",
+      "qa-note.txt:$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/neighbor.txt\n",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.049,
+    "stdout": "{\n  \"autoDeploy\": \"\",\n  \"createdAt\": \"0001-01-01T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-qa225localonly\",\n  \"name\": \"qa225-local\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"runtime\": \"image\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"0001-01-01T00:00:00Z\"\n}",
+    "stderr": "",
+    "captures": [
+      {
+        "method": "POST",
+        "path": "/v1/services",
+        "body": {
+          "image": {
+            "imagePath": "nginx:1",
+            "ownerId": ""
+          },
+          "name": "qa225-local",
+          "ownerId": "tea-qa225localonly",
+          "secretFiles": [
+            {
+              "content": "NEIGHBOR_A\n",
+              "name": "qa-note.txt"
+            }
+          ],
+          "serviceDetails": {
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "image"
+          },
+          "type": "web_service"
+        },
+        "scope": "local fake response only; no request forwarded to production; dummy credential"
+      }
+    ],
+    "expected_content": "INTENDED_NEWLINE_D\n",
+    "actual_request_content": "NEIGHBOR_A\n",
+    "file_bytes_preserved": false,
+    "qualification": "actual published Bex / unmodified Render against local POST-only fixture responder; no live hosting or production auth claim"
+  },
+  {
+    "client": "bex",
+    "case": "interior space control",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa225-local",
+      "--type",
+      "web_service",
+      "--image",
+      "nginx:1",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--secret-file",
+      "qa-note.txt:$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/interior name.txt",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.052,
+    "stdout": "{\n  \"autoDeploy\": \"\",\n  \"createdAt\": \"0001-01-01T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-qa225localonly\",\n  \"name\": \"qa225-local\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"runtime\": \"image\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"0001-01-01T00:00:00Z\"\n}",
+    "stderr": "",
+    "captures": [
+      {
+        "method": "POST",
+        "path": "/v1/services",
+        "body": {
+          "image": {
+            "imagePath": "nginx:1",
+            "ownerId": ""
+          },
+          "name": "qa225-local",
+          "ownerId": "tea-qa225localonly",
+          "secretFiles": [
+            {
+              "content": "INTERIOR_E\n",
+              "name": "qa-note.txt"
+            }
+          ],
+          "serviceDetails": {
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "image"
+          },
+          "type": "web_service"
+        },
+        "scope": "local fake response only; no request forwarded to production; dummy credential"
+      }
+    ],
+    "expected_content": "INTERIOR_E\n",
+    "actual_request_content": "INTERIOR_E\n",
+    "file_bytes_preserved": true,
+    "qualification": "actual published Bex / unmodified Render against local POST-only fixture responder; no live hosting or production auth claim"
+  },
+  {
+    "client": "render",
+    "case": "interior space control",
+    "command": [
+      "render",
+      "services",
+      "create",
+      "--name",
+      "qa225-local",
+      "--type",
+      "web_service",
+      "--image",
+      "nginx:1",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--secret-file",
+      "qa-note.txt:$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/interior name.txt",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.048,
+    "stdout": "{\n  \"autoDeploy\": \"\",\n  \"createdAt\": \"0001-01-01T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-qa225localonly\",\n  \"name\": \"qa225-local\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"runtime\": \"image\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"0001-01-01T00:00:00Z\"\n}",
+    "stderr": "",
+    "captures": [
+      {
+        "method": "POST",
+        "path": "/v1/services",
+        "body": {
+          "image": {
+            "imagePath": "nginx:1",
+            "ownerId": ""
+          },
+          "name": "qa225-local",
+          "ownerId": "tea-qa225localonly",
+          "secretFiles": [
+            {
+              "content": "INTERIOR_E\n",
+              "name": "qa-note.txt"
+            }
+          ],
+          "serviceDetails": {
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "image"
+          },
+          "type": "web_service"
+        },
+        "scope": "local fake response only; no request forwarded to production; dummy credential"
+      }
+    ],
+    "expected_content": "INTERIOR_E\n",
+    "actual_request_content": "INTERIOR_E\n",
+    "file_bytes_preserved": true,
+    "qualification": "actual published Bex / unmodified Render against local POST-only fixture responder; no live hosting or production auth claim"
+  },
+  {
+    "client": "bex",
+    "case": "no trimmed neighbor",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa225-local",
+      "--type",
+      "web_service",
+      "--image",
+      "nginx:1",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--secret-file",
+      "qa-note.txt:$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/standalone.txt ",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 1,
+    "elapsed": 0.041,
+    "stdout": "",
+    "stderr": "Error: failed to read --secret-file \"qa-note.txt:$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/standalone.txt \": open $PRIVATE_QA_DIR/sweep225-path-probe/fixtures/standalone.txt: no such file or directory\n",
+    "captures": [],
+    "expected_content": "INTENDED_ONLY_F\n",
+    "actual_request_content": null,
+    "file_bytes_preserved": false,
+    "qualification": "actual published Bex / unmodified Render against local POST-only fixture responder; no live hosting or production auth claim"
+  },
+  {
+    "client": "render",
+    "case": "no trimmed neighbor",
+    "command": [
+      "render",
+      "services",
+      "create",
+      "--name",
+      "qa225-local",
+      "--type",
+      "web_service",
+      "--image",
+      "nginx:1",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--secret-file",
+      "qa-note.txt:$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/standalone.txt ",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 1,
+    "elapsed": 0.036,
+    "stdout": "",
+    "stderr": "Error: failed to read --secret-file \"qa-note.txt:$PRIVATE_QA_DIR/sweep225-path-probe/fixtures/standalone.txt \": open $PRIVATE_QA_DIR/sweep225-path-probe/fixtures/standalone.txt: no such file or directory\n",
+    "captures": [],
+    "expected_content": "INTENDED_ONLY_F\n",
+    "actual_request_content": null,
+    "file_bytes_preserved": false,
+    "qualification": "actual published Bex / unmodified Render against local POST-only fixture responder; no live hosting or production auth claim"
+  }
+]

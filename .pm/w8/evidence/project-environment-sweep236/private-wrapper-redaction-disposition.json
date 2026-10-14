@@ -1,0 +1,11 @@
+{
+  "false_mismatches": 2,
+  "original_private_placeholders": [
+    "[PRIVATE VALUE REDACTED]",
+    "[QA VALUE REDACTED]"
+  ],
+  "mechanism": "a plain YAML email was replaced after serialization with bracketed text, parsed as a sequence; native JSON email remained a string",
+  "correction": "private run.py/run-render.py placeholders changed to QA_PRIVATE_VALUE_REDACTED, a safe YAML scalar; repeated native reads agree",
+  "product_source_changed": false,
+  "new_bug_filed": false
+}

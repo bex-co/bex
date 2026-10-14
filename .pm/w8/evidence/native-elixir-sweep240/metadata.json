@@ -1,0 +1,26 @@
+{
+  "source_head": "4ea15f074e583cd6efda132ace6452f9018ac3bf",
+  "deployed_revision": "unknown",
+  "native_creates": 2,
+  "native_async_commit_deploys": 3,
+  "native_fixture_command_updates": 3,
+  "final_two_replays_exact": true,
+  "exact_corrected_and_redeployed_build_runtime": true,
+  "native_build_command_fixture_corrections": 1,
+  "original_Bex_probe_outcome_excluded": true,
+  "PATH_variants": [
+    "omitted",
+    "/usr/local/bin:/usr/bin:/bin"
+  ],
+  "owned_deleted": 2,
+  "recorded_deploy_children": 8,
+  "new_bug_filed": false,
+  "unverified": [
+    "native POSTs not intercepted",
+    "no deployed toolchain/OCI artifact identity",
+    "no tenant repo/source code changed; generated probe is fixture build output only",
+    "no live browser/GraphQL/MCP parity",
+    "no empty-PATH Elixir or predeploy Job replay",
+    "no full suites or m61 closeout"
+  ]
+}

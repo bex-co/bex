@@ -1,0 +1,186 @@
+lego/operator/internal/predeploy/predeploy.go:133
+133: // Job constructs the pre-deploy Job for o (a pure function — no cluster access —
+134: // so the Job shape is unit-testable). The single container is the new image with
+135: // the app pod's env/secrets, running `sh -c <Command>`; it never restarts or
+136: // retries and is bounded by predeployTimeout.
+137: func Job(o Options) *batchv1.Job {
+138: 	deadline := int64(predeployTimeout / time.Second)
+139: 	backoff := int32(0) // never retry a migration — a partial re-run can corrupt data
+140: 	ttl := int32(jobTTL)
+141: 
+142: 	container := corev1.Container{
+143: 		Name:            containerName,
+144: 		Image:           o.Image,
+145: 		Command:         []string{"sh", "-c", o.Command},
+146: 		Env:             o.Env,
+147: 		EnvFrom:         o.EnvFrom,
+148: 		Resources:       o.Resources,
+149: 		SecurityContext: o.SecurityContext,
+150: 		VolumeMounts:    o.VolumeMounts,
+
+lego/operator/internal/controller/app_controller.go:1480
+1480: // API performs the same projection before persistence, while this final mapping
+1481: // makes the mechanism robust for hand-applied Apps and older control planes.
+1482: func effectiveBuilder(spec appv1alpha1.AppSpec) string {
+1483: 	// A static site with a declared buildCommand and no other strategy input
+1484: 	// builds natively so the command actually runs — the auto/CNB path would
+1485: 	// silently ignore it (ADR029; the API performs the same projection).
+1486: 	if spec.Type == appv1alpha1.TypeStaticSite && strings.TrimSpace(spec.BuildCommand) != "" &&
+1487: 		strings.TrimSpace(spec.DockerfilePath) == "" && spec.Runtime == "" &&
+1488: 		(spec.Builder == "" || spec.Builder == build.BuilderAuto) {
+1489: 		return build.BuilderNative
+1490: 	}
+1491: 	switch spec.Runtime {
+1492: 	case runtimeDocker:
+1493: 		return build.BuilderDockerfile
+1494: 	case "elixir", "go", "node", "python", "ruby", "rust":
+1495: 		return build.BuilderNative
+1496: 	default:
+1497: 		return spec.Builder
+1498: 	}
+1499: }
+1500: 
+1501: // relocateBuildSecret copies one App-namespace Secret next to the build Job
+
+lego/operator/internal/controller/app_controller.go:5560
+5560: // reconcilePreDeploy runs spec.preDeployCommand to completion against image
+5561: // before the caller rolls the Deployment to it (w1/m33, docs/ADR004-app-deployment.md).
+5562: // It returns halt=true when the caller must stop this reconcile and return
+5563: // (res, err): either the step failed (err set — the previous revision keeps
+5564: // serving because the Deployment update below never runs) or it is still running
+5565: // (requeue). halt=false lets the rollout proceed — the step is unset or already
+5566: // succeeded for this revision.
+5567: //
+5568: // The step is gated per release generation, so operational generations (scale,
+5569: // routing, suspension, autoscaling) never re-run it. It runs once per rollout,
+5570: // exactly like Render's Pre-Deploy Command, and never re-runs a migration that
+5571: // already passed or failed for the same revision. That terminal bookkeeping also
+5572: // guards against re-creating the Job after its TTL reap.
+5573: func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, bool, error) {
+5574: 	command, initialHook := preDeployStepCommand(app)
+5575: 	if command == "" || canceledOverServed(app) {
+5576: 		if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
+5577: 			return ctrl.Result{}, true, err
+5578: 		}
+5579: 		return ctrl.Result{}, false, nil
+5580: 	}
+
+lego/operator/internal/controller/app_controller.go:5640
+5640: 	}
+5641: 
+5642: 	// The step's container mirrors the app pod: same env, envFrom (the app's
+5643: 	// "<name>-env" Secret a migration reads DATABASE_URL from), pull secrets,
+5644: 	// security context, tier resources, and secret-file volume. Co-located with
+5645: 	// the App, the Job resolves every one of those references in-namespace — no
+5646: 	// secret mirroring, no build-namespace pull credential.
+5647: 	release := inFlightRelease(app)
+5648: 	var vols []corev1.Volume
+5649: 	var mounts []corev1.VolumeMount
+5650: 	if vol, mount := secretFileMounts(release); vol != nil {
+5651: 		vols = []corev1.Volume{*vol}
+5652: 		mounts = []corev1.VolumeMount{*mount}
+5653: 	}
+5654: 	pullSecrets := r.imagePullSecrets(app, image)
+5655: 	if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
+5656: 		return r.failPreDeploy(ctx, app, failedPD(jobName, preDeployNotStarted(err)))
+5657: 	}
+5658: 	job, err := predeploy.Ensure(ctx, predeploy.Options{
+5659: 		Name:             app.Name,
+5660: 		AppUID:           string(app.UID),
+5661: 		Namespace:        ns,
+5662: 		Workspace:        app.Labels[labelWorkspace],
+5663: 		AppNamespace:     app.Namespace,
+5664: 		VerifyImage:      r.TenantSignKeySecret != "",
+5665: 		Image:            image,
+5666: 		Command:          command,
+5667: 		Revision:         rev,
+5668: 		Generation:       gen,
+5669: 		Env:              appEnv(app, port),
+5670: 		EnvFrom:          envFromSources(release),
+5671: 		ImagePullSecrets: pullSecrets,
+5672: 		SecurityContext:  appSecCtx(app.Spec),
+5673: 		ContainerPolicy:  app.Spec.ContainerPolicy,
+5674: 		Resources:        resourcesForTier(app.Spec.Tier),
+5675: 		Volumes:          vols,
+5676: 		VolumeMounts:     mounts,
+5677: 		Client:           r.Client,
+5678: 	})
+5679: 	if err != nil {
+5680: 		// A transient API error (create/get) — requeue without marking the deploy
+5681: 		// failed; the migration itself hasn't reported an outcome.
+5682: 		return ctrl.Result{}, true, err
+5683: 	}
+5684: 
+
+lego/operator/internal/controller/app_controller.go:5774
+5774: // verdict never matches it — and held the service in Deploying until it finished.
+5775: func hasPreDeployStep(app *appv1alpha1.App) bool {
+5776: 	command, _ := preDeployStepCommand(app)
+5777: 	return strings.TrimSpace(command) != "" && scalableRuntime(app) && !canceledOverServed(app)
+5778: }
+5779: 
+5780: // preDeployStepCommand is the command a release's pre-deploy step runs: the
+5781: // one-time spec.initialDeployHook until a release has run it to success, then
+5782: // spec.preDeployCommand (w8/m63). The roles stay separate even when the two
+5783: // commands are equal; initial reports which one was selected.
+5784: func preDeployStepCommand(app *appv1alpha1.App) (command string, initial bool) {
+5785: 	if strings.TrimSpace(app.Spec.InitialDeployHook) != "" && !app.Status.InitialDeployHookCompleted {
+5786: 		return app.Spec.InitialDeployHook, true
+5787: 	}
+5788: 	return app.Spec.PreDeployCommand, false
+5789: }
+5790: 
+
+lego/operator/internal/build/native.go:265
+265: 		return base
+266: 	}
+267: 	// The toolchain image's own ENTRYPOINT (node's docker-entrypoint.sh) is
+268: 	// looked up on the user's PATH, which may be empty or narrow; the absolute
+269: 	// bash CMD needs none of it, so the generated image runs that alone (w8/m61).
+270: 	start := shellJSON(o.StartCommand)
+271: 	return base + fmt.Sprintf(`ENV PORT=10000
+272: ENTRYPOINT []
+273: CMD %s
+274: `, start)
+275: }
+
+lego/operator/internal/build/native.go:277
+277: // shellJSON wraps a Render build/start command in a NON-login bash so the
+278: // toolchain image's own PATH survives. A login shell (`-lc`) sources Debian's
+279: // /etc/profile, which unconditionally overwrites PATH with the fixed system
+280: // default — dropping the toolchain directories the official images add via ENV
+281: // (golang's /usr/local/go/bin, rust's /usr/local/cargo/bin), so `go`/`cargo`
+282: // resolved to "command not found". Interpreted runtimes only appeared to work
+283: // because their binaries happen to live in /usr/local/bin, which is on that
+284: // default. `-c` keeps the image ENV PATH exactly as the runtime image declares.
+285: func shellJSON(command string) string {
+286: 	var out bytes.Buffer
+287: 	encoder := json.NewEncoder(&out)
+288: 	encoder.SetEscapeHTML(false)
+289: 	_ = encoder.Encode([]string{"/bin/bash", "-c", command})
+290: 	return strings.TrimSpace(out.String())
+
+lego/operator/internal/predeploy/predeploy_test.go:88
+88: 	c := pod.Containers[0]
+89: 	if c.Image != "zot/api:gen-3" {
+90: 		t.Errorf("container image = %q, want the new revision's image", c.Image)
+91: 	}
+92: 	// The command is shell-wrapped so an arbitrary string works.
+93: 	if got, want := c.Command, []string{"sh", "-c", "npm run migrate"}; strings.Join(got, "\x00") != strings.Join(want, "\x00") {
+94: 		t.Errorf("command = %v, want %v", got, want)
+95: 	}
+96: 	// The app pod's env/secrets/pull secrets are threaded through unchanged.
+97: 	if len(c.Env) != 1 || c.Env[0].Name != "FOO" {
+98: 		t.Errorf("env not threaded: %v", c.Env)
+99: 	}
+100: 	if len(c.EnvFrom) != 1 {
+101: 		t.Errorf("envFrom not threaded: %v", c.EnvFrom)
+
+lego/operator/internal/controller/app_controller.go:231
+231: // shellBinary is the shell every operator-authored container command runs
+232: // through, and awsIMDSDisabledEnv is the env var each S3-touching Job sets so
+233: // the AWS SDK never probes instance metadata.
+234: const (
+235: 	shellBinary        = "/bin/sh"
+236: 	awsIMDSDisabledEnv = "AWS_EC2_METADATA_DISABLED"
+237: 	awsIMDSDisabled    = "true"

@@ -1,0 +1,186 @@
+[
+  {
+    "actual_path": "services[0].envVars[0]",
+    "case": "existing seed nested=false ordinal=0",
+    "expected_path": "services[0].envVars[0]",
+    "family": "existing seed",
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"source\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        },\n        {\n          \"key\": \"COPY\",\n          \"value\": \"unrelated literal\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"consumer\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"sync\": false,\n          \"value\": \"seed\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "mislocated": false,
+    "nested": false,
+    "ordinal": 0,
+    "scope": "actual current-state apps/envgroups/secrets methods with fake store/Kubernetes; no hosted apply/process or security probe",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"consumer\": envVars[\"COPY\"]: fromService.envVarKey references env \"VALUE\" on existing service \"source\", which is a sync:false value seeded once, so its current value is not knowable from the Blueprint",
+          "line": 5,
+          "column": 9,
+          "path": "services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "actual_path": "services[0].envVars[0]",
+    "case": "existing seed nested=false ordinal=1",
+    "expected_path": "services[0].envVars[1]",
+    "family": "existing seed",
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"COPY\",\n          \"value\": \"unrelated literal\"\n        },\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"source\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"consumer\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"sync\": false,\n          \"value\": \"seed\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "mislocated": true,
+    "nested": false,
+    "ordinal": 1,
+    "scope": "actual current-state apps/envgroups/secrets methods with fake store/Kubernetes; no hosted apply/process or security probe",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"consumer\": envVars[\"COPY\"]: fromService.envVarKey references env \"VALUE\" on existing service \"source\", which is a sync:false value seeded once, so its current value is not knowable from the Blueprint",
+          "line": 5,
+          "column": 9,
+          "path": "services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "actual_path": "projects[0].environments[0].services[0].envVars[0]",
+    "case": "existing seed nested=true ordinal=0",
+    "expected_path": "projects[0].environments[0].services[0].envVars[0]",
+    "family": "existing seed",
+    "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"source\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                },\n                {\n                  \"key\": \"COPY\",\n                  \"value\": \"unrelated literal\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"consumer\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"source\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+    "mislocated": false,
+    "nested": true,
+    "ordinal": 0,
+    "scope": "actual current-state apps/envgroups/secrets methods with fake store/Kubernetes; no hosted apply/process or security probe",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"consumer\": envVars[\"COPY\"]: fromService.envVarKey references env \"VALUE\" on existing service \"source\", which is a sync:false value seeded once, so its current value is not knowable from the Blueprint",
+          "line": 10,
+          "column": 17,
+          "path": "projects[0].environments[0].services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "actual_path": "projects[0].environments[0].services[0].envVars[0]",
+    "case": "existing seed nested=true ordinal=1",
+    "expected_path": "projects[0].environments[0].services[0].envVars[1]",
+    "family": "existing seed",
+    "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"COPY\",\n                  \"value\": \"unrelated literal\"\n                },\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"source\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"consumer\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"source\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+    "mislocated": true,
+    "nested": true,
+    "ordinal": 1,
+    "scope": "actual current-state apps/envgroups/secrets methods with fake store/Kubernetes; no hosted apply/process or security probe",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"consumer\": envVars[\"COPY\"]: fromService.envVarKey references env \"VALUE\" on existing service \"source\", which is a sync:false value seeded once, so its current value is not knowable from the Blueprint",
+          "line": 10,
+          "column": 17,
+          "path": "projects[0].environments[0].services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "actual_path": "services[0].envVars[0]",
+    "case": "own override over group nested=false ordinal=0",
+    "expected_path": "services[0].envVars[0]",
+    "family": "own override over group",
+    "manifest": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"g\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"source\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        },\n        {\n          \"key\": \"COPY\",\n          \"value\": \"unrelated literal\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"consumer\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"g\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "mislocated": false,
+    "nested": false,
+    "ordinal": 0,
+    "scope": "actual current-state apps/envgroups/secrets methods with fake store/Kubernetes; no hosted apply/process or security probe",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"consumer\": envVars[\"COPY\"]: fromService.envVarKey references env \"VALUE\" on existing service \"source\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint",
+          "line": 16,
+          "column": 9,
+          "path": "services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "actual_path": "services[0].envVars[0]",
+    "case": "own override over group nested=false ordinal=1",
+    "expected_path": "services[0].envVars[1]",
+    "family": "own override over group",
+    "manifest": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"g\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"COPY\",\n          \"value\": \"unrelated literal\"\n        },\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"source\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"consumer\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"g\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "mislocated": true,
+    "nested": false,
+    "ordinal": 1,
+    "scope": "actual current-state apps/envgroups/secrets methods with fake store/Kubernetes; no hosted apply/process or security probe",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"consumer\": envVars[\"COPY\"]: fromService.envVarKey references env \"VALUE\" on existing service \"source\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint",
+          "line": 16,
+          "column": 9,
+          "path": "services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "actual_path": "projects[0].environments[0].services[0].envVars[0]",
+    "case": "own override over group nested=true ordinal=0",
+    "expected_path": "projects[0].environments[0].services[0].envVars[0]",
+    "family": "own override over group",
+    "manifest": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"g\"\n    }\n  ],\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"source\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                },\n                {\n                  \"key\": \"COPY\",\n                  \"value\": \"unrelated literal\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"consumer\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"fromGroup\": \"g\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"source\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+    "mislocated": false,
+    "nested": true,
+    "ordinal": 0,
+    "scope": "actual current-state apps/envgroups/secrets methods with fake store/Kubernetes; no hosted apply/process or security probe",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"consumer\": envVars[\"COPY\"]: fromService.envVarKey references env \"VALUE\" on existing service \"source\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint",
+          "line": 21,
+          "column": 17,
+          "path": "projects[0].environments[0].services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "actual_path": "projects[0].environments[0].services[0].envVars[0]",
+    "case": "own override over group nested=true ordinal=1",
+    "expected_path": "projects[0].environments[0].services[0].envVars[1]",
+    "family": "own override over group",
+    "manifest": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"group\"\n        }\n      ],\n      \"name\": \"g\"\n    }\n  ],\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"COPY\",\n                  \"value\": \"unrelated literal\"\n                },\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"source\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"consumer\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"fromGroup\": \"g\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"source\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+    "mislocated": true,
+    "nested": true,
+    "ordinal": 1,
+    "scope": "actual current-state apps/envgroups/secrets methods with fake store/Kubernetes; no hosted apply/process or security probe",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"consumer\": envVars[\"COPY\"]: fromService.envVarKey references env \"VALUE\" on existing service \"source\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint",
+          "line": 21,
+          "column": 17,
+          "path": "projects[0].environments[0].services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  }
+]

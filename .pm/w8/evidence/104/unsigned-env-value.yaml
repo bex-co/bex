@@ -1,0 +1,19 @@
+{
+  "services": [
+    {
+      "envVars": [
+        {
+          "key": "VALUE",
+          "value": 9223372036854775808
+        }
+      ],
+      "image": {
+        "url": "nginx:1"
+      },
+      "name": "qa-local-source",
+      "plan": "free",
+      "runtime": "image",
+      "type": "web"
+    }
+  ]
+}

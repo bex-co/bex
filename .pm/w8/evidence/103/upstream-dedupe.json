@@ -1,0 +1,21 @@
+{
+  "official_main_sha": "28b233e29812a911c7c0f30594c419cf10714fca",
+  "targeted_readonly_issue_searches": [
+    {
+      "query": "repo:render-oss/cli \"secret-file\" \"space\"",
+      "total_count": 0,
+      "titles": []
+    },
+    {
+      "query": "repo:render-oss/cli \"ParseSecretFileRef\"",
+      "total_count": 0,
+      "titles": []
+    },
+    {
+      "query": "repo:render-oss/cli \"secret-file\" \"whitespace\"",
+      "total_count": 0,
+      "titles": []
+    }
+  ],
+  "qualification": "not an exhaustive issue census; no external issue or message submitted"
+}

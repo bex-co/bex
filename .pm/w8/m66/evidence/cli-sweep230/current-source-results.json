@@ -1,0 +1,38 @@
+[
+  {
+    "CR_patch_reaches_desired": true,
+    "canonical_intent_writes": 0,
+    "deploy_rows_opened": 1,
+    "field": "source",
+    "managed_id": "srv-db7kjh9jg4rbk7lgkp70",
+    "qualification": "actual patchChangedStackService with fake Kubernetes and recording IntentStore; no paid resources, live sibling changes or fixed regression claim",
+    "source_head": "232f5b90eddfacb21f2e7eb1bd8db051eda8d73a"
+  },
+  {
+    "CR_patch_reaches_desired": true,
+    "canonical_intent_writes": 0,
+    "deploy_rows_opened": 1,
+    "field": "tier",
+    "managed_id": "srv-db7kjh9jg4rbk7lgkp7g",
+    "qualification": "actual patchChangedStackService with fake Kubernetes and recording IntentStore; no paid resources, live sibling changes or fixed regression claim",
+    "source_head": "232f5b90eddfacb21f2e7eb1bd8db051eda8d73a"
+  },
+  {
+    "CR_patch_reaches_desired": true,
+    "canonical_intent_writes": 0,
+    "deploy_rows_opened": 1,
+    "field": "replicas",
+    "managed_id": "srv-db7kjh9jg4rbk7lgkp80",
+    "qualification": "actual patchChangedStackService with fake Kubernetes and recording IntentStore; no paid resources, live sibling changes or fixed regression claim",
+    "source_head": "232f5b90eddfacb21f2e7eb1bd8db051eda8d73a"
+  },
+  {
+    "CR_patch_reaches_desired": true,
+    "canonical_intent_writes": 0,
+    "deploy_rows_opened": 1,
+    "field": "idleTTL",
+    "managed_id": "srv-db7kjh9jg4rbk7lgkp8g",
+    "qualification": "actual patchChangedStackService with fake Kubernetes and recording IntentStore; no paid resources, live sibling changes or fixed regression claim",
+    "source_head": "232f5b90eddfacb21f2e7eb1bd8db051eda8d73a"
+  }
+]

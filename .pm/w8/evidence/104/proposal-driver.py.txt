@@ -1,0 +1,15 @@
+from pathlib import Path
+import json,subprocess,os,re
+p=Path(__file__).parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');overlay=p/'sweep243-proposal-overlay.json';overlay.write_text(json.dumps({'Replace':{str(root/'lego/backend/internal/apps/blueprint_compiler.go'):str(p/'sweep243-compiler-proposal.go'),str(root/'lego/backend/internal/apps/qa243_numeric_probe_test.go'):str(p/'sweep243-numeric-probe_test.go')}}))
+env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_','PG','REDISCLI_'))};env.update(GOWORK='off',GOTOOLCHAIN='go1.26.8');head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()
+with (p/'sweep243-proposal-events.jsonl').open('w') as out,(p/'sweep243-stderr.log').open('w') as err:r=subprocess.run(['go','test','-overlay',str(overlay),'./internal/apps','-run','^(TestQA243UnsignedNumericEnvironment|TestQA243UnsignedNumberOtherFields|TestQA243UnsignedContainerPaths|TestBlueprintEnvValueAcceptsNumbers|TestBlueprintEnvGroupAndNestedServiceAcceptNumbers|TestBlueprintEnvValueStillRefusesBooleans)$','-count=1','-json'],cwd=root/'lego/backend',env=env,text=True,stdout=out,stderr=err)
+assert r.returncode==0,'Inspect private diagnostic output'
+combined={}
+for line in (p/'sweep243-proposal-events.jsonl').read_text().splitlines():
+ e=json.loads(line)
+ if e.get('Action')=='output':k=e.get('Test','');combined[k]=combined.get(k,'')+e.get('Output','')
+rows=[]
+for output in combined.values():
+ for match in re.finditer(r'QA243_NUMERIC (\{[^\n]+\})',output):rows.append({**json.loads(match[1]),'source_head':head})
+assert len(rows)==12;(p/'sweep243-proposal-results.json').write_text(json.dumps(rows,indent=2)+'\n')
+for row in rows:print(json.dumps({k:row[k] for k in ['shape','value','pinned_schema_valid','compiler_valid','compiler_problems']}),flush=True)

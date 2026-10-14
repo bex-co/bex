@@ -1,0 +1,20 @@
+from pathlib import Path
+import json,subprocess,os,re
+p=Path(__file__).parent;root=Path('$REPO');overlay=p/'sweep230-blueprint-store-overlay.json'
+overlay.write_text(json.dumps({'Replace':{str(root/'lego/backend/internal/apps/qa230_store_probe_test.go'):str(p/'sweep230-blueprint-store-probe_test.go')}}))
+env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_','PG','REDISCLI_'))};env.update(GOWORK='off',GOTOOLCHAIN='go1.26.8')
+with (p/'sweep230-blueprint-store-events.jsonl').open('w') as out,(p/'sweep230-blueprint-store-stderr.log').open('w') as err:
+ r=subprocess.run(['go','test','-overlay',str(overlay),'./internal/apps','-run','^TestQA230BlueprintOwnedIntentPersistence$','-count=1','-json'],cwd=root/'lego/backend',env=env,stdout=out,stderr=err,timeout=240)
+assert r.returncode==0,'Inspect private diagnostic output'
+combined={}
+for line in (p/'sweep230-blueprint-store-events.jsonl').read_text().splitlines():
+ e=json.loads(line)
+ if e.get('Action')=='output':name=e.get('Test','');combined[name]=combined.get(name,'')+e.get('Output','')
+rows=[]
+for output in combined.values():
+ for m in re.finditer(r'QA230_STORE (\{[^\n]+\})',output):rows.append(json.loads(m[1]))
+assert len(rows)==4
+head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()
+for row in rows:row['source_head']=head
+(p/'sweep230-blueprint-store-results.json').write_text(json.dumps(rows,indent=2)+'\n')
+for row in rows:print(json.dumps({k:row[k] for k in ['field','CR_patch_reaches_desired','canonical_intent_writes','deploy_rows_opened']}),flush=True)

@@ -1,0 +1,50 @@
+from pathlib import Path
+import json,yaml,datetime,subprocess,sys,urllib.parse
+p=Path(__file__).parent;root=Path('$REPO');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json'
+c=json.loads(cp.read_text());assert c['sync230_result']==0 and not c.get('active_sync_stash')
+ws='tea-daif693dqjvc73e7as3g';mode=sys.argv[1]
+x=next(v for v in c['resources'] if v.get('sweep')==230 and v.get('case')=='distinct')
+assert x['workspace']==ws and x['API_create_result']['status']=='200' and not x['state'].startswith('deleted:')
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,indent=2));cp.chmod(0o600)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True))
+def inventory():
+ r=wire('/v1/blueprints?ownerId='+ws);assert r['status']=='200';rows=[v.get('blueprint',v) for v in json.loads(r['response'])]
+ return [{'id':v['id'],'name':v.get('name'),'repo':v.get('repo'),'branch':v.get('branch'),'path':v.get('path')} for v in rows]
+def api(method,path,body=None):
+ cfg=yaml.safe_load((p/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token
+ auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: render-cli/2.27.0 (macOS - 26.5.1)"\nheader = "X-Bex-Workspace: '+ws+'"\n'
+ file=p/'sweep230-persistent-body.json';args=['curl','--disable','-sS','--max-time','35','--config','-','-X',method]
+ if body is not None:file.write_text(json.dumps(body));file.chmod(0o600);args+=['-H','Content-Type: application/json','--data-binary','@'+str(file)]
+ try:
+  r=subprocess.run([*args,'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=40);payload,_,status=r.stdout.rpartition('\n');assert token not in payload
+  return {'request':{'method':method,'path':path,'body':body,'authorization':'[REDACTED]'},'status':status,'curl_exit':r.returncode,'response':payload,'stderr':r.stderr,'qualification':'owned API setup/sync/disconnect; not native CLI coverage'}
+ finally:file.unlink(missing_ok=True)
+if mode=='register':
+ assert not any(v.get('sweep')==230 and v.get('type')=='blueprint' for v in c['resources'])
+ before=inventory();assert not any(v['repo']=='https://github.com/expressjs/express' and v['branch']=='master' and v['path']=='render.yaml' for v in before)
+ doc=yaml.safe_load(x['manifest']);assert len(doc['services'])==1 and doc['services'][0]['name']==x['name']
+ s=doc['services'][0];s.update(repo='https://github.com/expressjs/express',branch='master',rootDir='')
+ manifest=yaml.safe_dump(doc,sort_keys=False);body={'ownerId':ws,'repo':s['repo'],'branch':s['branch'],'bexYaml':manifest}
+ b={'sweep':230,'type':'blueprint','workspace':ws,'case':'persistent','name':'express','desired_QA_name':x['name']+'-bp','time':now(),'dependency_ids':[x['id']],'before_inventory':before,'repo':s['repo'],'branch':s['branch'],'path':'render.yaml','manifest':manifest,'state':'automatic Blueprint registration intent persisted','API_registration_body':body}
+ c['resources'].append(b);x['persistent_setup_intent']={'at':now(),'body':body,'qualification':'only this exact-owned service changes repository/root; commands, literals and counter remain unchanged'};save()
+ r=api('POST','/v1/blueprints/deploy',body);b['registration_result']=r;x['persistent_setup_result']=r;save();assert r['status']=='200' and r['curl_exit']==0
+ v=json.loads(r['response']);assert [z['id'] for z in v['services']]==[x['id']] and all(not v.get(k) for k in ['databases','keyValues','envGroups'])
+ x['persistent_setup_deploy_id']=v['services'][0].get('latestDeployId');save()
+ after=inventory();old_ids={v['id'] for v in before};new=[v for v in after if v['id'] not in old_ids];assert len(new)==1
+ row=new[0];assert (row['repo'],row['branch'],row['path'])==(b['repo'],b['branch'],b['path'])
+ b.update(id=row['id'],after_inventory=after,state='created: own automatic Blueprint; detail ownership reconciliation pending');(p/'sweep230-blueprint-id.txt').write_text(row['id']);save()
+ detail=wire('/v1/blueprints/'+b['id']+'?ownerId='+ws);assert detail['status']=='200';view=json.loads(detail['response']);assert view['id']==b['id'] and view['manifest']==manifest
+ created=datetime.datetime.fromisoformat(view['createdAt'].replace('Z','+00:00'));started=datetime.datetime.fromisoformat(b['time']);assert created>=started-datetime.timedelta(seconds=5)
+ b['creation_detail']=detail;b['create_response']=view;b['state']='created: exact response/metadata/manifest/time ownership verified';save()
+ patch={'ownerId':ws,'name':b['desired_QA_name'],'autoSync':False};b['owned_update_intent']={'at':now(),'body':patch};save();r=api('PATCH','/v1/blueprints/'+b['id'],patch);b['owned_update_result']=r;save();assert r['status']=='200';b['name']=b['desired_QA_name'];x['persistent_manifest']=manifest;save();print(json.dumps({'owned_Blueprint':b['id'],'QA_name':b['name'],'owned_service':x['id'],'setup_status':'200','autoSync':False}),flush=True)
+elif mode=='sync':
+ b=next(v for v in c['resources'] if v.get('sweep')==230 and v.get('type')=='blueprint');assert b['workspace']==ws and b['registration_result']['status']=='200' and not b['state'].startswith('deleted:')
+ before=wire('/v1/blueprints/'+b['id']+'?ownerId='+ws);assert before['status']=='200';view=json.loads(before['response']);assert {v['id'] for v in view.get('resources',[])}<={x['id']}
+ b.setdefault('sync_intents',[]).append({'at':now(),'before_detail':before,'body':{'ownerId':ws,'bexYaml':b['manifest']}});save();r=api('POST','/v1/blueprints/'+b['id']+'/sync',b['sync_intents'][-1]['body']);b['sync_intents'][-1]['result']=r;save();assert r['status']=='200'
+ after=wire('/v1/blueprints/'+b['id']+'?ownerId='+ws);assert after['status']=='200';view=json.loads(after['response']);assert {v['id'] for v in view.get('resources',[])}<={x['id']};b['after_sync_detail']=after;save();print(json.dumps({'owned_Blueprint_sync_status':r['status'],'id':b['id'],'resource_ids':[v['id'] for v in view.get('resources',[])]}),flush=True)
+elif mode=='disconnect':
+ b=next(v for v in c['resources'] if v.get('sweep')==230 and v.get('type')=='blueprint');assert b['workspace']==ws and b['registration_result']['status']=='200' and not b['state'].startswith('deleted:')
+ before=wire('/v1/blueprints/'+b['id']+'?ownerId='+ws);assert before['status']=='200';view=json.loads(before['response']);assert {v['id'] for v in view.get('resources',[])}<={x['id']}
+ b['disconnect_intent']={'at':now(),'before_detail':before,'qualification':'disconnect metadata/claims only; service deletion is separately performed by exact owned ID'};save();r=api('DELETE','/v1/blueprints/'+b['id']+'?ownerId='+ws);b['disconnect_result']=r;save();assert r['status']=='204';after=wire('/v1/blueprints/'+b['id']+'?ownerId='+ws);assert after['status']=='404';b['after_disconnect_detail']=after;b['after_disconnect_inventory']=inventory();assert b['id'] not in {v['id'] for v in b['after_disconnect_inventory']};assert {v['id'] for v in b['before_inventory']}<={v['id'] for v in b['after_disconnect_inventory']};b['state']='deleted: own metadata disconnected; detail404/listabsent/baseline Blueprint preserved';save();print(json.dumps({'owned_Blueprint_disconnected':b['id'],'status':r['status'],'baseline_preserved':True}),flush=True)
+else:raise ValueError(mode)

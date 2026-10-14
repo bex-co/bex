@@ -1,0 +1,2295 @@
+[
+  {
+    "case": "literal then seed",
+    "consumer_COPY": "fixed",
+    "existing_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "syncFalseVars": [
+          "VALUE"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0",
+            "resourceId": "consumer"
+          },
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1",
+            "resourceId": "source"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "existing_validation_error": null,
+    "expected_source_VALUE": "fixed",
+    "first_apply_error": null,
+    "first_apply_mismatch": false,
+    "fresh_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "syncFalseVars": [
+          "VALUE"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "fresh_validation_error": null,
+    "immutable_literal_declared": true,
+    "immutable_literal_false_refusal": false,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"source\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"consumer\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"fixed\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"sync\": false,\n          \"value\": \"seed\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "nested_cases": [
+      {
+        "existing_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "syncFalseVars": [
+              "VALUE"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0",
+                "resourceId": "consumer"
+              },
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/0/services/1",
+                "resourceId": "source"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "existing_validation_error": null,
+        "expected_existing_valid": true,
+        "fresh_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "syncFalseVars": [
+              "VALUE"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0"
+              },
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/0/services/1"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "fresh_validation_error": null,
+        "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"source\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"consumer\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"source\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+        "placement": "same environment",
+        "qualification": "nested validation against actual root-created fake state only; no nested apply/hosted/shared-surface execution"
+      },
+      {
+        "existing_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "syncFalseVars": [
+              "VALUE"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0",
+                "resourceId": "consumer"
+              },
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/1/services/0",
+                "resourceId": "source"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "existing_validation_error": null,
+        "expected_existing_valid": true,
+        "fresh_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "syncFalseVars": [
+              "VALUE"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0"
+              },
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/1/services/0"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "fresh_validation_error": null,
+        "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"source\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"consumer\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"source\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+        "placement": "split environments",
+        "qualification": "nested validation against actual root-created fake state only; no nested apply/hosted/shared-surface execution"
+      }
+    ],
+    "persisted_consumer": {
+      "metadata": {
+        "name": "consumer",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db7obr1jg4r3vs87daag"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T13:38:52.642394Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "COPY",
+            "value": "fixed"
+          }
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "persisted_source": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "2",
+        "labels": {
+          "bex.co/app-id": "srv-db7obr1jg4r3vs87dabg"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T13:38:52.643656Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "VALUE",
+            "value": "fixed"
+          }
+        ],
+        "envFromSecret": "source-env",
+        "notifyOnFail": "default",
+        "restartedAt": "2026-10-14T13:38:52.646771Z",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "reapply_error": null,
+    "scope": "actual apps/secrets methods with fake Kubernetes/versioned storage; effective source inferred from persisted Secret order and explicit Env priority; no hosted apply/runtime/auth claim",
+    "source_VALUE": "fixed",
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "case": "seed then literal",
+    "consumer_COPY": "fixed",
+    "existing_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "syncFalseVars": [
+          "VALUE"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0",
+            "resourceId": "consumer"
+          },
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1",
+            "resourceId": "source"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "existing_validation_error": null,
+    "expected_source_VALUE": "fixed",
+    "first_apply_error": null,
+    "first_apply_mismatch": false,
+    "fresh_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "syncFalseVars": [
+          "VALUE"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "fresh_validation_error": null,
+    "immutable_literal_declared": true,
+    "immutable_literal_false_refusal": false,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"source\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"consumer\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"sync\": false,\n          \"value\": \"seed\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"fixed\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "nested_cases": [
+      {
+        "existing_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "syncFalseVars": [
+              "VALUE"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0",
+                "resourceId": "consumer"
+              },
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/0/services/1",
+                "resourceId": "source"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "existing_validation_error": null,
+        "expected_existing_valid": true,
+        "fresh_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "syncFalseVars": [
+              "VALUE"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0"
+              },
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/0/services/1"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "fresh_validation_error": null,
+        "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"source\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"consumer\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"source\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+        "placement": "same environment",
+        "qualification": "nested validation against actual root-created fake state only; no nested apply/hosted/shared-surface execution"
+      },
+      {
+        "existing_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "syncFalseVars": [
+              "VALUE"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0",
+                "resourceId": "consumer"
+              },
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/1/services/0",
+                "resourceId": "source"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "existing_validation_error": null,
+        "expected_existing_valid": true,
+        "fresh_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "syncFalseVars": [
+              "VALUE"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0"
+              },
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/1/services/0"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "fresh_validation_error": null,
+        "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"source\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"consumer\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"source\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+        "placement": "split environments",
+        "qualification": "nested validation against actual root-created fake state only; no nested apply/hosted/shared-surface execution"
+      }
+    ],
+    "persisted_consumer": {
+      "metadata": {
+        "name": "consumer",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db7obr1jg4r3vs87dafg"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T13:38:52.651138Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "COPY",
+            "value": "fixed"
+          }
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "persisted_source": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "2",
+        "labels": {
+          "bex.co/app-id": "srv-db7obr1jg4r3vs87dagg"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T13:38:52.652976Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "VALUE",
+            "value": "fixed"
+          }
+        ],
+        "envFromSecret": "source-env",
+        "notifyOnFail": "default",
+        "restartedAt": "2026-10-14T13:38:52.654748Z",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "reapply_error": null,
+    "scope": "actual apps/secrets methods with fake Kubernetes/versioned storage; effective source inferred from persisted Secret order and explicit Env priority; no hosted apply/runtime/auth claim",
+    "source_VALUE": "fixed",
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "case": "empty literal then seed",
+    "consumer_COPY": "",
+    "existing_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "syncFalseVars": [
+          "VALUE"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0",
+            "resourceId": "consumer"
+          },
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1",
+            "resourceId": "source"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "existing_validation_error": null,
+    "expected_source_VALUE": "",
+    "first_apply_error": null,
+    "first_apply_mismatch": false,
+    "fresh_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "syncFalseVars": [
+          "VALUE"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "fresh_validation_error": null,
+    "immutable_literal_declared": true,
+    "immutable_literal_false_refusal": false,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"source\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"consumer\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"sync\": false,\n          \"value\": \"seed\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "nested_cases": [
+      {
+        "existing_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "syncFalseVars": [
+              "VALUE"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0",
+                "resourceId": "consumer"
+              },
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/0/services/1",
+                "resourceId": "source"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "existing_validation_error": null,
+        "expected_existing_valid": true,
+        "fresh_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "syncFalseVars": [
+              "VALUE"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0"
+              },
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/0/services/1"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "fresh_validation_error": null,
+        "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"source\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"consumer\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"source\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+        "placement": "same environment",
+        "qualification": "nested validation against actual root-created fake state only; no nested apply/hosted/shared-surface execution"
+      },
+      {
+        "existing_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "syncFalseVars": [
+              "VALUE"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0",
+                "resourceId": "consumer"
+              },
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/1/services/0",
+                "resourceId": "source"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "existing_validation_error": null,
+        "expected_existing_valid": true,
+        "fresh_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "syncFalseVars": [
+              "VALUE"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0"
+              },
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/1/services/0"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "fresh_validation_error": null,
+        "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"source\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"consumer\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"source\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+        "placement": "split environments",
+        "qualification": "nested validation against actual root-created fake state only; no nested apply/hosted/shared-surface execution"
+      }
+    ],
+    "persisted_consumer": {
+      "metadata": {
+        "name": "consumer",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db7obr1jg4r3vs87dakg"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T13:38:52.659258Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "COPY"
+          }
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "persisted_source": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "2",
+        "labels": {
+          "bex.co/app-id": "srv-db7obr1jg4r3vs87dalg"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T13:38:52.660126Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "VALUE"
+          }
+        ],
+        "envFromSecret": "source-env",
+        "notifyOnFail": "default",
+        "restartedAt": "2026-10-14T13:38:52.661824Z",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "reapply_error": null,
+    "scope": "actual apps/secrets methods with fake Kubernetes/versioned storage; effective source inferred from persisted Secret order and explicit Env priority; no hosted apply/runtime/auth claim",
+    "source_VALUE": "",
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "case": "seed then empty literal",
+    "consumer_COPY": "",
+    "existing_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "syncFalseVars": [
+          "VALUE"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0",
+            "resourceId": "consumer"
+          },
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1",
+            "resourceId": "source"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "existing_validation_error": null,
+    "expected_source_VALUE": "",
+    "first_apply_error": null,
+    "first_apply_mismatch": false,
+    "fresh_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "syncFalseVars": [
+          "VALUE"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "fresh_validation_error": null,
+    "immutable_literal_declared": true,
+    "immutable_literal_false_refusal": false,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"source\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"consumer\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"sync\": false,\n          \"value\": \"seed\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "nested_cases": [
+      {
+        "existing_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "syncFalseVars": [
+              "VALUE"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0",
+                "resourceId": "consumer"
+              },
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/0/services/1",
+                "resourceId": "source"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "existing_validation_error": null,
+        "expected_existing_valid": true,
+        "fresh_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "syncFalseVars": [
+              "VALUE"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0"
+              },
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/0/services/1"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "fresh_validation_error": null,
+        "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"source\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"consumer\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"source\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+        "placement": "same environment",
+        "qualification": "nested validation against actual root-created fake state only; no nested apply/hosted/shared-surface execution"
+      },
+      {
+        "existing_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "syncFalseVars": [
+              "VALUE"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0",
+                "resourceId": "consumer"
+              },
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/1/services/0",
+                "resourceId": "source"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "existing_validation_error": null,
+        "expected_existing_valid": true,
+        "fresh_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "syncFalseVars": [
+              "VALUE"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0"
+              },
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/1/services/0"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "fresh_validation_error": null,
+        "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"source\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"consumer\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"source\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+        "placement": "split environments",
+        "qualification": "nested validation against actual root-created fake state only; no nested apply/hosted/shared-surface execution"
+      }
+    ],
+    "persisted_consumer": {
+      "metadata": {
+        "name": "consumer",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db7obr1jg4r3vs87dapg"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T13:38:52.666429Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "COPY"
+          }
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "persisted_source": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "2",
+        "labels": {
+          "bex.co/app-id": "srv-db7obr1jg4r3vs87daqg"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T13:38:52.66722Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "VALUE"
+          }
+        ],
+        "envFromSecret": "source-env",
+        "notifyOnFail": "default",
+        "restartedAt": "2026-10-14T13:38:52.66994Z",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "reapply_error": null,
+    "scope": "actual apps/secrets methods with fake Kubernetes/versioned storage; effective source inferred from persisted Secret order and explicit Env priority; no hosted apply/runtime/auth claim",
+    "source_VALUE": "",
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "case": "literal then generated control",
+    "consumer_COPY": "fixed",
+    "existing_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0",
+            "resourceId": "consumer"
+          },
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1",
+            "resourceId": "source"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "existing_validation_error": null,
+    "expected_source_VALUE": "fixed",
+    "first_apply_error": null,
+    "first_apply_mismatch": false,
+    "fresh_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "fresh_validation_error": null,
+    "immutable_literal_declared": true,
+    "immutable_literal_false_refusal": false,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"source\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"consumer\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"fixed\"\n        },\n        {\n          \"generateValue\": true,\n          \"key\": \"VALUE\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "nested_cases": [
+      {
+        "existing_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0",
+                "resourceId": "consumer"
+              },
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/0/services/1",
+                "resourceId": "source"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "existing_validation_error": null,
+        "expected_existing_valid": true,
+        "fresh_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0"
+              },
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/0/services/1"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "fresh_validation_error": null,
+        "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"source\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"consumer\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                },\n                {\n                  \"generateValue\": true,\n                  \"key\": \"VALUE\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"source\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+        "placement": "same environment",
+        "qualification": "nested validation against actual root-created fake state only; no nested apply/hosted/shared-surface execution"
+      },
+      {
+        "existing_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0",
+                "resourceId": "consumer"
+              },
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/1/services/0",
+                "resourceId": "source"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "existing_validation_error": null,
+        "expected_existing_valid": true,
+        "fresh_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0"
+              },
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/1/services/0"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "fresh_validation_error": null,
+        "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"source\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"consumer\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                },\n                {\n                  \"generateValue\": true,\n                  \"key\": \"VALUE\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"source\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+        "placement": "split environments",
+        "qualification": "nested validation against actual root-created fake state only; no nested apply/hosted/shared-surface execution"
+      }
+    ],
+    "persisted_consumer": {
+      "metadata": {
+        "name": "consumer",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db7obr1jg4r3vs87daug"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T13:38:52.674657Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "COPY",
+            "value": "fixed"
+          }
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "persisted_source": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "2",
+        "labels": {
+          "bex.co/app-id": "srv-db7obr1jg4r3vs87davg"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T13:38:52.675501Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "VALUE",
+            "value": "fixed"
+          }
+        ],
+        "envFromSecret": "source-env",
+        "notifyOnFail": "default",
+        "restartedAt": "2026-10-14T13:38:52.67706Z",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "reapply_error": null,
+    "scope": "actual apps/secrets methods with fake Kubernetes/versioned storage; effective source inferred from persisted Secret order and explicit Env priority; no hosted apply/runtime/auth claim",
+    "source_VALUE": "fixed",
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "case": "generated then literal control",
+    "consumer_COPY": "fixed",
+    "existing_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0",
+            "resourceId": "consumer"
+          },
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1",
+            "resourceId": "source"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "existing_validation_error": null,
+    "expected_source_VALUE": "fixed",
+    "first_apply_error": null,
+    "first_apply_mismatch": false,
+    "fresh_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "fresh_validation_error": null,
+    "immutable_literal_declared": true,
+    "immutable_literal_false_refusal": false,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"source\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"consumer\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"generateValue\": true,\n          \"key\": \"VALUE\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"fixed\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "nested_cases": [
+      {
+        "existing_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0",
+                "resourceId": "consumer"
+              },
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/0/services/1",
+                "resourceId": "source"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "existing_validation_error": null,
+        "expected_existing_valid": true,
+        "fresh_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0"
+              },
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/0/services/1"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "fresh_validation_error": null,
+        "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"source\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"consumer\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"generateValue\": true,\n                  \"key\": \"VALUE\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"source\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+        "placement": "same environment",
+        "qualification": "nested validation against actual root-created fake state only; no nested apply/hosted/shared-surface execution"
+      },
+      {
+        "existing_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0",
+                "resourceId": "consumer"
+              },
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/1/services/0",
+                "resourceId": "source"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "existing_validation_error": null,
+        "expected_existing_valid": true,
+        "fresh_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0"
+              },
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/1/services/0"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "fresh_validation_error": null,
+        "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"source\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"consumer\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"generateValue\": true,\n                  \"key\": \"VALUE\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"source\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+        "placement": "split environments",
+        "qualification": "nested validation against actual root-created fake state only; no nested apply/hosted/shared-surface execution"
+      }
+    ],
+    "persisted_consumer": {
+      "metadata": {
+        "name": "consumer",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db7obr1jg4r3vs87db3g"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T13:38:52.681677Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "COPY",
+            "value": "fixed"
+          }
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "persisted_source": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "2",
+        "labels": {
+          "bex.co/app-id": "srv-db7obr1jg4r3vs87db4g"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T13:38:52.682398Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "VALUE",
+            "value": "fixed"
+          }
+        ],
+        "envFromSecret": "source-env",
+        "notifyOnFail": "default",
+        "restartedAt": "2026-10-14T13:38:52.685108Z",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "reapply_error": null,
+    "scope": "actual apps/secrets methods with fake Kubernetes/versioned storage; effective source inferred from persisted Secret order and explicit Env priority; no hosted apply/runtime/auth claim",
+    "source_VALUE": "fixed",
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "case": "literal only control",
+    "consumer_COPY": "fixed",
+    "existing_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0",
+            "resourceId": "consumer"
+          },
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1",
+            "resourceId": "source"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "existing_validation_error": null,
+    "expected_source_VALUE": "fixed",
+    "first_apply_error": null,
+    "first_apply_mismatch": false,
+    "fresh_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "fresh_validation_error": null,
+    "immutable_literal_declared": true,
+    "immutable_literal_false_refusal": false,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"source\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"consumer\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"fixed\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "nested_cases": [
+      {
+        "existing_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0",
+                "resourceId": "consumer"
+              },
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/0/services/1",
+                "resourceId": "source"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "existing_validation_error": null,
+        "expected_existing_valid": true,
+        "fresh_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0"
+              },
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/0/services/1"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "fresh_validation_error": null,
+        "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"source\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"consumer\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"source\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+        "placement": "same environment",
+        "qualification": "nested validation against actual root-created fake state only; no nested apply/hosted/shared-surface execution"
+      },
+      {
+        "existing_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0",
+                "resourceId": "consumer"
+              },
+              {
+                "operation": "noop",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/1/services/0",
+                "resourceId": "source"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "existing_validation_error": null,
+        "expected_existing_valid": true,
+        "fresh_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0"
+              },
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/1/services/0"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "fresh_validation_error": null,
+        "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"source\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"consumer\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"source\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+        "placement": "split environments",
+        "qualification": "nested validation against actual root-created fake state only; no nested apply/hosted/shared-surface execution"
+      }
+    ],
+    "persisted_consumer": {
+      "metadata": {
+        "name": "consumer",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db7obr1jg4r3vs87db8g"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T13:38:52.690066Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "COPY",
+            "value": "fixed"
+          }
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "persisted_source": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db7obr1jg4r3vs87db9g"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T13:38:52.691006Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "VALUE",
+            "value": "fixed"
+          }
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "reapply_error": null,
+    "scope": "actual apps/secrets methods with fake Kubernetes/versioned storage; effective source inferred from persisted Secret order and explicit Env priority; no hosted apply/runtime/auth claim",
+    "source_VALUE": "fixed",
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "case": "seed only control",
+    "consumer_COPY": "seed",
+    "existing_validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"consumer\": envVars[\"COPY\"]: fromService.envVarKey references env \"VALUE\" on existing service \"source\", which is a sync:false value seeded once, so its current value is not knowable from the Blueprint",
+          "line": 5,
+          "column": 9,
+          "path": "services[0].envVars[0]"
+        }
+      ]
+    },
+    "existing_validation_error": null,
+    "expected_source_VALUE": "seed",
+    "first_apply_error": null,
+    "first_apply_mismatch": false,
+    "fresh_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "syncFalseVars": [
+          "VALUE"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "fresh_validation_error": null,
+    "immutable_literal_declared": false,
+    "immutable_literal_false_refusal": false,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"source\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"consumer\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"sync\": false,\n          \"value\": \"seed\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "nested_cases": [
+      {
+        "existing_validation": {
+          "valid": false,
+          "errors": [
+            {
+              "error": "service \"consumer\": envVars[\"COPY\"]: fromService.envVarKey references env \"VALUE\" on existing service \"source\", which is a sync:false value seeded once, so its current value is not knowable from the Blueprint",
+              "line": 10,
+              "column": 17,
+              "path": "projects[0].environments[0].services[0].envVars[0]"
+            }
+          ]
+        },
+        "existing_validation_error": null,
+        "expected_existing_valid": false,
+        "fresh_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "syncFalseVars": [
+              "VALUE"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0"
+              },
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/0/services/1"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "fresh_validation_error": null,
+        "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"source\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"consumer\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"source\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+        "placement": "same environment",
+        "qualification": "nested validation against actual root-created fake state only; no nested apply/hosted/shared-surface execution"
+      },
+      {
+        "existing_validation": {
+          "valid": false,
+          "errors": [
+            {
+              "error": "service \"consumer\": envVars[\"COPY\"]: fromService.envVarKey references env \"VALUE\" on existing service \"source\", which is a sync:false value seeded once, so its current value is not knowable from the Blueprint",
+              "line": 10,
+              "column": 17,
+              "path": "projects[0].environments[0].services[0].envVars[0]"
+            }
+          ]
+        },
+        "existing_validation_error": null,
+        "expected_existing_valid": false,
+        "fresh_validation": {
+          "valid": true,
+          "plan": {
+            "mode": "current_state",
+            "services": [
+              "consumer",
+              "source"
+            ],
+            "syncFalseVars": [
+              "VALUE"
+            ],
+            "totalActions": 2,
+            "actions": [
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "consumer",
+                "sourcePath": "#/projects/0/environments/0/services/0"
+              },
+              {
+                "operation": "create",
+                "kind": "service",
+                "name": "source",
+                "sourcePath": "#/projects/0/environments/1/services/0"
+              }
+            ]
+          },
+          "estimatedPricing": {
+            "totalUsd": "0.00",
+            "lines": [],
+            "variable": []
+          }
+        },
+        "fresh_validation_error": null,
+        "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"source\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"consumer\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"source\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+        "placement": "split environments",
+        "qualification": "nested validation against actual root-created fake state only; no nested apply/hosted/shared-surface execution"
+      }
+    ],
+    "persisted_consumer": {
+      "metadata": {
+        "name": "consumer",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db7obr1jg4r3vs87dbdg"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T13:38:52.694797Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "COPY",
+            "value": "seed"
+          }
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "persisted_source": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "2",
+        "labels": {
+          "bex.co/app-id": "srv-db7obr1jg4r3vs87dbeg"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T13:38:52.695713Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "envFromSecret": "source-env",
+        "notifyOnFail": "default",
+        "restartedAt": "2026-10-14T13:38:52.697365Z",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "scope": "actual apps/secrets methods with fake Kubernetes/versioned storage; effective source inferred from persisted Secret order and explicit Env priority; no hosted apply/runtime/auth claim",
+    "source_VALUE": "seed",
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  }
+]

@@ -1,0 +1,36 @@
+{
+  "source_head": "36ec7a4f6602a66d8a03c4c359a5493906a1a019",
+  "deployed_revision": "unknown",
+  "native_creates": 1,
+  "Bex_normal_same_commit_deploys": 1,
+  "Render_clear_cache_same_commit_deploys": 1,
+  "live_builds": {
+    "dep-db7prm1llfps73emudeg": {
+      "build_marker": "7ddd0e2efa2e1394423f1f84868ea74c",
+      "built_at": "2026-10-14T15:22:31.389Z",
+      "commit": "36ec7a4f6602a66d8a03c4c359a5493906a1a019"
+    },
+    "dep-db7ptimt41sc7388ocag": {
+      "build_marker": "96a261bfc49ca924abe2ced694f08fef",
+      "built_at": "2026-10-14T15:25:35.340Z",
+      "commit": "36ec7a4f6602a66d8a03c4c359a5493906a1a019"
+    },
+    "dep-db7pv49llfps73emudfg": {
+      "build_marker": "8f4676aa7fafec32ddec6f27f6ac4e42",
+      "built_at": "2026-10-14T15:28:58.617Z",
+      "commit": "36ec7a4f6602a66d8a03c4c359a5493906a1a019"
+    }
+  },
+  "normal_redeploy_reused_marker": false,
+  "active_cache_baseline_established": false,
+  "owned_deleted": 1,
+  "deploy_children": 3,
+  "new_bug_filed": false,
+  "unverified": [
+    "native POSTs not intercepted",
+    "runtime cache-gate setting/withdrawal status and actual cache import behavior",
+    "clear-cache effectiveness against a demonstrated reusable cache",
+    "deployed toolchain/OCI artifact",
+    "non-REST surfaces/full suites"
+  ]
+}

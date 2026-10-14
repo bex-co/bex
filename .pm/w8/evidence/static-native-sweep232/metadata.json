@@ -1,0 +1,27 @@
+{
+  "source_head": "a11a77272e9a85debb788c4c6eb1aa53f7e8ac54",
+  "deployed_revision": "unknown",
+  "native_creates": 2,
+  "captured_native_POSTs": 2,
+  "native_directory_updates": 4,
+  "native_request_log_queries": 2,
+  "native_request_filter_controls": 8,
+  "all_filters_exact": true,
+  "owned_services_deleted": 2,
+  "recorded_deploy_children": 6,
+  "operator_parent_tests": [
+    "TestNativeDockerfileKeepsToolchainPATH",
+    "TestNativeStaticSiteBuild",
+    "TestNativeEnvironmentKeepsApplicationPATH",
+    "TestPublishJobShape"
+  ],
+  "new_bug_filed": false,
+  "excluded_local_argument_refusals": 2,
+  "remaining": [
+    "no tenant runtime PATH assertion for a static site",
+    "no browser cache replay, HEAD or explicit cache-header override",
+    "ETag/Last-Modified not advertised on observed success responses; conditional checks not run",
+    "no live GraphQL/MCP/dashboard parity",
+    "no full operator suite, Docker integration suite or deployed artifact identity"
+  ]
+}

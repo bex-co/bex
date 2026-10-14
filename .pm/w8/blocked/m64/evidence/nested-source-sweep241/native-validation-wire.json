@@ -1,0 +1,1586 @@
+[
+  {
+    "client": "bex",
+    "case": "literal then seed / same environment",
+    "fixture": "sweep241-0.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-0.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.969,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-0-0\",\n      \"qa-20261014-9e35f0-0-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=c9fd1c7e771692f2166df9ceaf0a1fd4a6206d349278a95bdf8ff4fb89f8",
+          "body": "--c9fd1c7e771692f2166df9ceaf0a1fd4a6206d349278a95bdf8ff4fb89f8\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--c9fd1c7e771692f2166df9ceaf0a1fd4a6206d349278a95bdf8ff4fb89f8\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-0.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-0-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-0-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-0-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-0-project\"\n    }\n  ]\n}\n\r\n--c9fd1c7e771692f2166df9ceaf0a1fd4a6206d349278a95bdf8ff4fb89f8--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-0-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-0-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-0-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-0-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-0-0\",\"qa-20261014-9e35f0-0-1\"],\"syncFalseVars\":[\"VALUE\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-0-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-0-1\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fde67813943e-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "render",
+    "case": "literal then seed / same environment",
+    "fixture": "sweep241-0.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-0.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.779,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-0-0\",\n      \"qa-20261014-9e35f0-0-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=de5927bf83b64b6a87549d310f698a8141d2722695094cb8082a6ecf7493",
+          "body": "--de5927bf83b64b6a87549d310f698a8141d2722695094cb8082a6ecf7493\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--de5927bf83b64b6a87549d310f698a8141d2722695094cb8082a6ecf7493\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-0.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-0-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-0-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-0-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-0-project\"\n    }\n  ]\n}\n\r\n--de5927bf83b64b6a87549d310f698a8141d2722695094cb8082a6ecf7493--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-0-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-0-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-0-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-0-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-0-0\",\"qa-20261014-9e35f0-0-1\"],\"syncFalseVars\":[\"VALUE\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-0-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-0-1\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fded4bceebf3-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "literal then seed / split environments",
+    "fixture": "sweep241-1.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-1.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.388,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-1-0\",\n      \"qa-20261014-9e35f0-1-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=3e73f5d2dd600367999da32341c1528f9a425929a45cc0df4458b9e9070c",
+          "body": "--3e73f5d2dd600367999da32341c1528f9a425929a45cc0df4458b9e9070c\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--3e73f5d2dd600367999da32341c1528f9a425929a45cc0df4458b9e9070c\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-1.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-1-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-1-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-1-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-1-project\"\n    }\n  ]\n}\n\r\n--3e73f5d2dd600367999da32341c1528f9a425929a45cc0df4458b9e9070c--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-1-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-1-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-1-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-1-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-1-0\",\"qa-20261014-9e35f0-1-1\"],\"syncFalseVars\":[\"VALUE\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-1-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-1-1\",\"sourcePath\":\"#/projects/0/environments/1/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fdf3e8678183-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "render",
+    "case": "literal then seed / split environments",
+    "fixture": "sweep241-1.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-1.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.327,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-1-0\",\n      \"qa-20261014-9e35f0-1-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=22ab23583e281a40fdf92f1c5e396474ad28c9ca23e4f36a29ce63cf9723",
+          "body": "--22ab23583e281a40fdf92f1c5e396474ad28c9ca23e4f36a29ce63cf9723\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--22ab23583e281a40fdf92f1c5e396474ad28c9ca23e4f36a29ce63cf9723\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-1.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-1-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-1-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-1-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-1-project\"\n    }\n  ]\n}\n\r\n--22ab23583e281a40fdf92f1c5e396474ad28c9ca23e4f36a29ce63cf9723--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-1-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-1-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-1-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-1-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-1-0\",\"qa-20261014-9e35f0-1-1\"],\"syncFalseVars\":[\"VALUE\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-1-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-1-1\",\"sourcePath\":\"#/projects/0/environments/1/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fdf75f22ed38-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "seed then literal / same environment",
+    "fixture": "sweep241-2.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-2.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.434,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-2-0\",\n      \"qa-20261014-9e35f0-2-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=af20a82dddf4edc29da74b8fdefc8dad827607189f0feb5c271e30981c50",
+          "body": "--af20a82dddf4edc29da74b8fdefc8dad827607189f0feb5c271e30981c50\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--af20a82dddf4edc29da74b8fdefc8dad827607189f0feb5c271e30981c50\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-2.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-2-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-2-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-2-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-2-project\"\n    }\n  ]\n}\n\r\n--af20a82dddf4edc29da74b8fdefc8dad827607189f0feb5c271e30981c50--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-2-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-2-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-2-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-2-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-2-0\",\"qa-20261014-9e35f0-2-1\"],\"syncFalseVars\":[\"VALUE\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-2-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-2-1\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fdfacbe0c79e-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "render",
+    "case": "seed then literal / same environment",
+    "fixture": "sweep241-2.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-2.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.349,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-2-0\",\n      \"qa-20261014-9e35f0-2-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=d8b56e18cca3dac0d915abad409a102e03955725a83ba9bec19f81f57caf",
+          "body": "--d8b56e18cca3dac0d915abad409a102e03955725a83ba9bec19f81f57caf\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--d8b56e18cca3dac0d915abad409a102e03955725a83ba9bec19f81f57caf\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-2.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-2-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-2-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-2-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-2-project\"\n    }\n  ]\n}\n\r\n--d8b56e18cca3dac0d915abad409a102e03955725a83ba9bec19f81f57caf--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-2-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-2-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-2-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-2-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-2-0\",\"qa-20261014-9e35f0-2-1\"],\"syncFalseVars\":[\"VALUE\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-2-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-2-1\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fdfe49df37c1-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "seed then literal / split environments",
+    "fixture": "sweep241-3.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-3.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.437,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-3-0\",\n      \"qa-20261014-9e35f0-3-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=b99440d13abd24e39bd8d388f2577249b2252a16f07280fe862498ab6cd1",
+          "body": "--b99440d13abd24e39bd8d388f2577249b2252a16f07280fe862498ab6cd1\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--b99440d13abd24e39bd8d388f2577249b2252a16f07280fe862498ab6cd1\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-3.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-3-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-3-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-3-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-3-project\"\n    }\n  ]\n}\n\r\n--b99440d13abd24e39bd8d388f2577249b2252a16f07280fe862498ab6cd1--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-3-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-3-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-3-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-3-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-3-0\",\"qa-20261014-9e35f0-3-1\"],\"syncFalseVars\":[\"VALUE\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-3-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-3-1\",\"sourcePath\":\"#/projects/0/environments/1/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe01cda88183-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "render",
+    "case": "seed then literal / split environments",
+    "fixture": "sweep241-3.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-3.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.348,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-3-0\",\n      \"qa-20261014-9e35f0-3-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=9938c95f0d4abcf9150cc69c6e2fc61d6eb446cb72e425f66dde43cb42fa",
+          "body": "--9938c95f0d4abcf9150cc69c6e2fc61d6eb446cb72e425f66dde43cb42fa\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--9938c95f0d4abcf9150cc69c6e2fc61d6eb446cb72e425f66dde43cb42fa\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-3.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-3-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-3-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-3-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-3-project\"\n    }\n  ]\n}\n\r\n--9938c95f0d4abcf9150cc69c6e2fc61d6eb446cb72e425f66dde43cb42fa--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-3-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-3-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-3-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-3-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-3-0\",\"qa-20261014-9e35f0-3-1\"],\"syncFalseVars\":[\"VALUE\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-3-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-3-1\",\"sourcePath\":\"#/projects/0/environments/1/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe055ff0545f-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "empty literal then seed / same environment",
+    "fixture": "sweep241-4.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-4.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.365,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-4-0\",\n      \"qa-20261014-9e35f0-4-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=ad8c0c23167e9de08d9dbbf4f243da74c4a559ed64a09118e150beef25bc",
+          "body": "--ad8c0c23167e9de08d9dbbf4f243da74c4a559ed64a09118e150beef25bc\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--ad8c0c23167e9de08d9dbbf4f243da74c4a559ed64a09118e150beef25bc\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-4.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-4-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-4-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-4-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-4-project\"\n    }\n  ]\n}\n\r\n--ad8c0c23167e9de08d9dbbf4f243da74c4a559ed64a09118e150beef25bc--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-4-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-4-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-4-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-4-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-4-0\",\"qa-20261014-9e35f0-4-1\"],\"syncFalseVars\":[\"VALUE\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-4-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-4-1\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe08cf8d2510-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "render",
+    "case": "empty literal then seed / same environment",
+    "fixture": "sweep241-4.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-4.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.777,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-4-0\",\n      \"qa-20261014-9e35f0-4-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=249b191886097fe863eb2aabd9949de92d9673bc1ee76acf0ab21875082a",
+          "body": "--249b191886097fe863eb2aabd9949de92d9673bc1ee76acf0ab21875082a\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--249b191886097fe863eb2aabd9949de92d9673bc1ee76acf0ab21875082a\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-4.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-4-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-4-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-4-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-4-project\"\n    }\n  ]\n}\n\r\n--249b191886097fe863eb2aabd9949de92d9673bc1ee76acf0ab21875082a--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-4-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-4-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-4-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-4-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-4-0\",\"qa-20261014-9e35f0-4-1\"],\"syncFalseVars\":[\"VALUE\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-4-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-4-1\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe0c290db976-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "empty literal then seed / split environments",
+    "fixture": "sweep241-5.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-5.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.414,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-5-0\",\n      \"qa-20261014-9e35f0-5-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=88b16bb98e249cf535073caa13e77dd810fd5ac5d847e20e2ea753a8fdfc",
+          "body": "--88b16bb98e249cf535073caa13e77dd810fd5ac5d847e20e2ea753a8fdfc\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--88b16bb98e249cf535073caa13e77dd810fd5ac5d847e20e2ea753a8fdfc\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-5.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-5-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-5-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-5-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-5-project\"\n    }\n  ]\n}\n\r\n--88b16bb98e249cf535073caa13e77dd810fd5ac5d847e20e2ea753a8fdfc--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-5-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-5-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-5-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-5-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-5-0\",\"qa-20261014-9e35f0-5-1\"],\"syncFalseVars\":[\"VALUE\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-5-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-5-1\",\"sourcePath\":\"#/projects/0/environments/1/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe12db50b873-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "render",
+    "case": "empty literal then seed / split environments",
+    "fixture": "sweep241-5.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-5.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.312,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-5-0\",\n      \"qa-20261014-9e35f0-5-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=4fa815846a37de9bb9b8921b1fbf729af465d3da99a95f9c2321826d1a44",
+          "body": "--4fa815846a37de9bb9b8921b1fbf729af465d3da99a95f9c2321826d1a44\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--4fa815846a37de9bb9b8921b1fbf729af465d3da99a95f9c2321826d1a44\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-5.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-5-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-5-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-5-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-5-project\"\n    }\n  ]\n}\n\r\n--4fa815846a37de9bb9b8921b1fbf729af465d3da99a95f9c2321826d1a44--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-5-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-5-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-5-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-5-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-5-0\",\"qa-20261014-9e35f0-5-1\"],\"syncFalseVars\":[\"VALUE\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-5-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-5-1\",\"sourcePath\":\"#/projects/0/environments/1/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe163a6bcf12-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "seed then empty literal / same environment",
+    "fixture": "sweep241-6.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-6.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.389,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-6-0\",\n      \"qa-20261014-9e35f0-6-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=513780299753284bac68d3801582204cfe753dabbf7fc3a59c382627d271",
+          "body": "--513780299753284bac68d3801582204cfe753dabbf7fc3a59c382627d271\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--513780299753284bac68d3801582204cfe753dabbf7fc3a59c382627d271\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-6.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-6-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-6-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-6-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-6-project\"\n    }\n  ]\n}\n\r\n--513780299753284bac68d3801582204cfe753dabbf7fc3a59c382627d271--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-6-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-6-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-6-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-6-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-6-0\",\"qa-20261014-9e35f0-6-1\"],\"syncFalseVars\":[\"VALUE\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-6-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-6-1\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe19a88ff9c5-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "render",
+    "case": "seed then empty literal / same environment",
+    "fixture": "sweep241-6.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-6.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.329,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-6-0\",\n      \"qa-20261014-9e35f0-6-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=a5d4f6b5ad1edd0569be0da52ff3216fbb57ce5bfd21e78ff5b60c7c9150",
+          "body": "--a5d4f6b5ad1edd0569be0da52ff3216fbb57ce5bfd21e78ff5b60c7c9150\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--a5d4f6b5ad1edd0569be0da52ff3216fbb57ce5bfd21e78ff5b60c7c9150\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-6.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-6-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-6-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-6-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-6-project\"\n    }\n  ]\n}\n\r\n--a5d4f6b5ad1edd0569be0da52ff3216fbb57ce5bfd21e78ff5b60c7c9150--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-6-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-6-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-6-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-6-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-6-0\",\"qa-20261014-9e35f0-6-1\"],\"syncFalseVars\":[\"VALUE\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-6-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-6-1\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe1d1de15e49-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "seed then empty literal / split environments",
+    "fixture": "sweep241-7.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-7.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.405,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-7-0\",\n      \"qa-20261014-9e35f0-7-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=5e4df727be8b8fb5e40ceb0531c60e85f694cb35f3e2315edeaba1d0db11",
+          "body": "--5e4df727be8b8fb5e40ceb0531c60e85f694cb35f3e2315edeaba1d0db11\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--5e4df727be8b8fb5e40ceb0531c60e85f694cb35f3e2315edeaba1d0db11\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-7.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-7-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-7-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-7-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-7-project\"\n    }\n  ]\n}\n\r\n--5e4df727be8b8fb5e40ceb0531c60e85f694cb35f3e2315edeaba1d0db11--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-7-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-7-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-7-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-7-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-7-0\",\"qa-20261014-9e35f0-7-1\"],\"syncFalseVars\":[\"VALUE\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-7-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-7-1\",\"sourcePath\":\"#/projects/0/environments/1/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe209fbe7aec-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "render",
+    "case": "seed then empty literal / split environments",
+    "fixture": "sweep241-7.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-7.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.335,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-7-0\",\n      \"qa-20261014-9e35f0-7-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=08b20a62f565873b29654c84a36a0e61d8092705cbe86ea41b8bb37bdd39",
+          "body": "--08b20a62f565873b29654c84a36a0e61d8092705cbe86ea41b8bb37bdd39\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--08b20a62f565873b29654c84a36a0e61d8092705cbe86ea41b8bb37bdd39\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-7.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-7-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-7-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-7-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-7-project\"\n    }\n  ]\n}\n\r\n--08b20a62f565873b29654c84a36a0e61d8092705cbe86ea41b8bb37bdd39--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-7-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-7-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-7-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-7-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-7-0\",\"qa-20261014-9e35f0-7-1\"],\"syncFalseVars\":[\"VALUE\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-7-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-7-1\",\"sourcePath\":\"#/projects/0/environments/1/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe24081f67f3-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "literal then generated control / same environment",
+    "fixture": "sweep241-8.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-8.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.336,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-8-0\",\n      \"qa-20261014-9e35f0-8-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=c9b8cf7bb7aa302399910f8193fc76671a91272c46baa2582954ba823f46",
+          "body": "--c9b8cf7bb7aa302399910f8193fc76671a91272c46baa2582954ba823f46\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--c9b8cf7bb7aa302399910f8193fc76671a91272c46baa2582954ba823f46\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-8.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-8-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-8-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                },\n                {\n                  \"generateValue\": true,\n                  \"key\": \"VALUE\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-8-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-8-project\"\n    }\n  ]\n}\n\r\n--c9b8cf7bb7aa302399910f8193fc76671a91272c46baa2582954ba823f46--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-8-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-8-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                },\n                {\n                  \"generateValue\": true,\n                  \"key\": \"VALUE\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-8-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-8-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-8-0\",\"qa-20261014-9e35f0-8-1\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-8-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-8-1\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe2788cbf579-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "render",
+    "case": "literal then generated control / same environment",
+    "fixture": "sweep241-8.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-8.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.349,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-8-0\",\n      \"qa-20261014-9e35f0-8-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=9b314e69f227b3c491147bae0248ebdf2259e4b5734c511c2111b6aa2fd1",
+          "body": "--9b314e69f227b3c491147bae0248ebdf2259e4b5734c511c2111b6aa2fd1\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--9b314e69f227b3c491147bae0248ebdf2259e4b5734c511c2111b6aa2fd1\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-8.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-8-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-8-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                },\n                {\n                  \"generateValue\": true,\n                  \"key\": \"VALUE\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-8-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-8-project\"\n    }\n  ]\n}\n\r\n--9b314e69f227b3c491147bae0248ebdf2259e4b5734c511c2111b6aa2fd1--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-8-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-8-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                },\n                {\n                  \"generateValue\": true,\n                  \"key\": \"VALUE\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-8-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-8-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-8-0\",\"qa-20261014-9e35f0-8-1\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-8-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-8-1\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe2afbbc5527-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "literal then generated control / split environments",
+    "fixture": "sweep241-9.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-9.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.387,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-9-0\",\n      \"qa-20261014-9e35f0-9-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=48c2937b30c92be627ef57edeee05df39db2a5c622d8532f7444b94b1867",
+          "body": "--48c2937b30c92be627ef57edeee05df39db2a5c622d8532f7444b94b1867\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--48c2937b30c92be627ef57edeee05df39db2a5c622d8532f7444b94b1867\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-9.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-9-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-9-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                },\n                {\n                  \"generateValue\": true,\n                  \"key\": \"VALUE\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-9-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-9-project\"\n    }\n  ]\n}\n\r\n--48c2937b30c92be627ef57edeee05df39db2a5c622d8532f7444b94b1867--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-9-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-9-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                },\n                {\n                  \"generateValue\": true,\n                  \"key\": \"VALUE\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-9-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-9-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-9-0\",\"qa-20261014-9e35f0-9-1\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-9-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-9-1\",\"sourcePath\":\"#/projects/0/environments/1/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe2e6f8bd029-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "render",
+    "case": "literal then generated control / split environments",
+    "fixture": "sweep241-9.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-9.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.313,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-9-0\",\n      \"qa-20261014-9e35f0-9-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=0858328eb2cf8a17c74914868afa329254870d4fe0eda9b84d0c58a8b6af",
+          "body": "--0858328eb2cf8a17c74914868afa329254870d4fe0eda9b84d0c58a8b6af\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--0858328eb2cf8a17c74914868afa329254870d4fe0eda9b84d0c58a8b6af\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-9.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-9-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-9-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                },\n                {\n                  \"generateValue\": true,\n                  \"key\": \"VALUE\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-9-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-9-project\"\n    }\n  ]\n}\n\r\n--0858328eb2cf8a17c74914868afa329254870d4fe0eda9b84d0c58a8b6af--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-9-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-9-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                },\n                {\n                  \"generateValue\": true,\n                  \"key\": \"VALUE\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-9-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-9-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-9-0\",\"qa-20261014-9e35f0-9-1\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-9-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-9-1\",\"sourcePath\":\"#/projects/0/environments/1/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe31efbccf22-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "generated then literal control / same environment",
+    "fixture": "sweep241-10.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-10.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.376,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-10-0\",\n      \"qa-20261014-9e35f0-10-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=29e6eed89df1ed8a824174696cd3dca8e7d8bbc627e936f14dff48b06da5",
+          "body": "--29e6eed89df1ed8a824174696cd3dca8e7d8bbc627e936f14dff48b06da5\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--29e6eed89df1ed8a824174696cd3dca8e7d8bbc627e936f14dff48b06da5\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-10.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-10-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-10-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"generateValue\": true,\n                  \"key\": \"VALUE\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-10-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-10-project\"\n    }\n  ]\n}\n\r\n--29e6eed89df1ed8a824174696cd3dca8e7d8bbc627e936f14dff48b06da5--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-10-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-10-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"generateValue\": true,\n                  \"key\": \"VALUE\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-10-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-10-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-10-0\",\"qa-20261014-9e35f0-10-1\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-10-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-10-1\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe355af4270a-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "render",
+    "case": "generated then literal control / same environment",
+    "fixture": "sweep241-10.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-10.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.33,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-10-0\",\n      \"qa-20261014-9e35f0-10-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=8d039a0184adbc22584c410b66503439234a23b24b58ea9e8794cd8411f3",
+          "body": "--8d039a0184adbc22584c410b66503439234a23b24b58ea9e8794cd8411f3\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--8d039a0184adbc22584c410b66503439234a23b24b58ea9e8794cd8411f3\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-10.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-10-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-10-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"generateValue\": true,\n                  \"key\": \"VALUE\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-10-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-10-project\"\n    }\n  ]\n}\n\r\n--8d039a0184adbc22584c410b66503439234a23b24b58ea9e8794cd8411f3--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-10-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-10-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"generateValue\": true,\n                  \"key\": \"VALUE\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-10-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-10-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-10-0\",\"qa-20261014-9e35f0-10-1\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-10-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-10-1\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe38d9fc4e48-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "generated then literal control / split environments",
+    "fixture": "sweep241-11.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-11.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.4,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-11-0\",\n      \"qa-20261014-9e35f0-11-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=7eacf5d91c0bb14ff3c45fe4b189b06155f27350979db7009340b4e15db2",
+          "body": "--7eacf5d91c0bb14ff3c45fe4b189b06155f27350979db7009340b4e15db2\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--7eacf5d91c0bb14ff3c45fe4b189b06155f27350979db7009340b4e15db2\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-11.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-11-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-11-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"generateValue\": true,\n                  \"key\": \"VALUE\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-11-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-11-project\"\n    }\n  ]\n}\n\r\n--7eacf5d91c0bb14ff3c45fe4b189b06155f27350979db7009340b4e15db2--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-11-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-11-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"generateValue\": true,\n                  \"key\": \"VALUE\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-11-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-11-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-11-0\",\"qa-20261014-9e35f0-11-1\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-11-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-11-1\",\"sourcePath\":\"#/projects/0/environments/1/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe3c5f0498ce-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "render",
+    "case": "generated then literal control / split environments",
+    "fixture": "sweep241-11.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-11.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.334,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-11-0\",\n      \"qa-20261014-9e35f0-11-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=0e33949892f2f8463f8157bc80229d2287be4b824fb2fc24c87f29cd088b",
+          "body": "--0e33949892f2f8463f8157bc80229d2287be4b824fb2fc24c87f29cd088b\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--0e33949892f2f8463f8157bc80229d2287be4b824fb2fc24c87f29cd088b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-11.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-11-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-11-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"generateValue\": true,\n                  \"key\": \"VALUE\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-11-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-11-project\"\n    }\n  ]\n}\n\r\n--0e33949892f2f8463f8157bc80229d2287be4b824fb2fc24c87f29cd088b--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-11-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-11-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"generateValue\": true,\n                  \"key\": \"VALUE\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-11-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-11-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-11-0\",\"qa-20261014-9e35f0-11-1\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-11-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-11-1\",\"sourcePath\":\"#/projects/0/environments/1/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe3fbef5e612-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "literal only control / same environment",
+    "fixture": "sweep241-12.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-12.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.364,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-12-0\",\n      \"qa-20261014-9e35f0-12-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=5b7f2c8011910af64eb7f48a5a2dbf79d2872a880cf56b20abac0913b464",
+          "body": "--5b7f2c8011910af64eb7f48a5a2dbf79d2872a880cf56b20abac0913b464\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--5b7f2c8011910af64eb7f48a5a2dbf79d2872a880cf56b20abac0913b464\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-12.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-12-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-12-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-12-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-12-project\"\n    }\n  ]\n}\n\r\n--5b7f2c8011910af64eb7f48a5a2dbf79d2872a880cf56b20abac0913b464--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-12-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-12-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-12-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-12-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-12-0\",\"qa-20261014-9e35f0-12-1\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-12-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-12-1\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe432fa2eb2a-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "render",
+    "case": "literal only control / same environment",
+    "fixture": "sweep241-12.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-12.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.377,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-12-0\",\n      \"qa-20261014-9e35f0-12-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=137abaef6b9a75d0979345034a20fd2807dd3071dc0f8b765b65c698606a",
+          "body": "--137abaef6b9a75d0979345034a20fd2807dd3071dc0f8b765b65c698606a\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--137abaef6b9a75d0979345034a20fd2807dd3071dc0f8b765b65c698606a\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-12.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-12-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-12-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-12-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-12-project\"\n    }\n  ]\n}\n\r\n--137abaef6b9a75d0979345034a20fd2807dd3071dc0f8b765b65c698606a--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-12-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-12-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-12-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-12-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-12-0\",\"qa-20261014-9e35f0-12-1\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-12-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-12-1\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe46a98e37c1-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "literal only control / split environments",
+    "fixture": "sweep241-13.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-13.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.348,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-13-0\",\n      \"qa-20261014-9e35f0-13-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=23907a3322fbeef8df1fb3e3c0875d0d72ee25e505b11b63376898af0722",
+          "body": "--23907a3322fbeef8df1fb3e3c0875d0d72ee25e505b11b63376898af0722\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--23907a3322fbeef8df1fb3e3c0875d0d72ee25e505b11b63376898af0722\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-13.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-13-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-13-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-13-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-13-project\"\n    }\n  ]\n}\n\r\n--23907a3322fbeef8df1fb3e3c0875d0d72ee25e505b11b63376898af0722--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-13-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-13-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-13-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-13-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-13-0\",\"qa-20261014-9e35f0-13-1\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-13-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-13-1\",\"sourcePath\":\"#/projects/0/environments/1/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe4a2c7ce8d8-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "render",
+    "case": "literal only control / split environments",
+    "fixture": "sweep241-13.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-13.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.325,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-13-0\",\n      \"qa-20261014-9e35f0-13-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=2a6efbf644be7fcdb3389ce57940c7249c43556890c11ace1d10639aa037",
+          "body": "--2a6efbf644be7fcdb3389ce57940c7249c43556890c11ace1d10639aa037\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--2a6efbf644be7fcdb3389ce57940c7249c43556890c11ace1d10639aa037\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-13.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-13-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-13-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-13-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-13-project\"\n    }\n  ]\n}\n\r\n--2a6efbf644be7fcdb3389ce57940c7249c43556890c11ace1d10639aa037--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-13-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-13-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"fixed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-13-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-13-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-13-0\",\"qa-20261014-9e35f0-13-1\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-13-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-13-1\",\"sourcePath\":\"#/projects/0/environments/1/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe4d9b921d99-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "seed only control / same environment",
+    "fixture": "sweep241-14.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-14.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.338,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-14-0\",\n      \"qa-20261014-9e35f0-14-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=eed26426b5828bec107d5a1da4e2e5643b4b0ecb0d229de4efcd0277f4c7",
+          "body": "--eed26426b5828bec107d5a1da4e2e5643b4b0ecb0d229de4efcd0277f4c7\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--eed26426b5828bec107d5a1da4e2e5643b4b0ecb0d229de4efcd0277f4c7\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-14.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-14-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-14-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-14-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-14-project\"\n    }\n  ]\n}\n\r\n--eed26426b5828bec107d5a1da4e2e5643b4b0ecb0d229de4efcd0277f4c7--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-14-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-14-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-14-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-14-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-14-0\",\"qa-20261014-9e35f0-14-1\"],\"syncFalseVars\":[\"VALUE\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-14-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-14-1\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe512abacf2b-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "render",
+    "case": "seed only control / same environment",
+    "fixture": "sweep241-14.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-14.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.355,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-14-0\",\n      \"qa-20261014-9e35f0-14-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=183ff239f3d2819adeab965102f870cd390d83697879ae7cbb4939552ea9",
+          "body": "--183ff239f3d2819adeab965102f870cd390d83697879ae7cbb4939552ea9\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--183ff239f3d2819adeab965102f870cd390d83697879ae7cbb4939552ea9\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-14.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-14-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-14-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-14-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-14-project\"\n    }\n  ]\n}\n\r\n--183ff239f3d2819adeab965102f870cd390d83697879ae7cbb4939552ea9--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-14-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-14-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-14-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-14-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-14-0\",\"qa-20261014-9e35f0-14-1\"],\"syncFalseVars\":[\"VALUE\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-14-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-14-1\",\"sourcePath\":\"#/projects/0/environments/0/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe549a5edac8-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "seed only control / split environments",
+    "fixture": "sweep241-15.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-15.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.423,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-15-0\",\n      \"qa-20261014-9e35f0-15-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=da558fbdc5b83ea7e009049c8475c2bb4fd7dc8ec30f5bf4c8eabf0ecf0b",
+          "body": "--da558fbdc5b83ea7e009049c8475c2bb4fd7dc8ec30f5bf4c8eabf0ecf0b\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--da558fbdc5b83ea7e009049c8475c2bb4fd7dc8ec30f5bf4c8eabf0ecf0b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-15.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-15-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-15-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-15-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-15-project\"\n    }\n  ]\n}\n\r\n--da558fbdc5b83ea7e009049c8475c2bb4fd7dc8ec30f5bf4c8eabf0ecf0b--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-15-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-15-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-15-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-15-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-15-0\",\"qa-20261014-9e35f0-15-1\"],\"syncFalseVars\":[\"VALUE\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-15-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-15-1\",\"sourcePath\":\"#/projects/0/environments/1/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe58280415f7-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "render",
+    "case": "seed only control / split environments",
+    "fixture": "sweep241-15.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep241-15.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.321,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-9e35f0-15-0\",\n      \"qa-20261014-9e35f0-15-1\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=9eef89fd90926262ba22a8e7e7812dc23b7dd45ff4126b7a5fe4842c06e1",
+          "body": "--9eef89fd90926262ba22a8e7e7812dc23b7dd45ff4126b7a5fe4842c06e1\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--9eef89fd90926262ba22a8e7e7812dc23b7dd45ff4126b7a5fe4842c06e1\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep241-15.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-15-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-15-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-15-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-15-project\"\n    }\n  ]\n}\n\r\n--9eef89fd90926262ba22a8e7e7812dc23b7dd45ff4126b7a5fe4842c06e1--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"VALUE\",\n                    \"name\": \"qa-20261014-9e35f0-15-1\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"COPY\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-15-0\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        },\n        {\n          \"name\": \"two\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"sync\": false,\n                  \"value\": \"seed\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-9e35f0-15-1\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-9e35f0-15-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-9e35f0-15-0\",\"qa-20261014-9e35f0-15-1\"],\"syncFalseVars\":[\"VALUE\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-15-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-9e35f0-15-1\",\"sourcePath\":\"#/projects/0/environments/1/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a6fe5b8d085527-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  }
+]

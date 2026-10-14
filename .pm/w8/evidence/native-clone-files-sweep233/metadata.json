@@ -1,0 +1,26 @@
+{
+  "source_head": "a69dd557da840358a7defb7a43bf49814eafbc2a",
+  "deployed_revision": "unknown",
+  "native_creates": 4,
+  "captured_native_clone_requests": 6,
+  "file_only_API_setups": 2,
+  "native_same_commit_deploys": 2,
+  "Bex_native_wait": "QA bound240s timed out while queued for platform capacity; the same recorded deploy later reaches Live with exact new file",
+  "Render_native_create": "async exit0 then passive Live/exact-file reconciliation",
+  "native_instance_reads": 2,
+  "operator_parent_tests": [
+    "TestNativeDockerfileEnvRevisionBustsCacheKey",
+    "TestNativeSecretFilesTransport"
+  ],
+  "owned_services_deleted": 4,
+  "recorded_deploy_children": 6,
+  "new_bug_filed": false,
+  "unverified": [
+    "no SSH session or registered QA SSH credential verification",
+    "no hidden env/file inheritance expected from the pin",
+    "no production deployment artifact SHA",
+    "no live browser/GraphQL/MCP parity",
+    "no full operator or backend suite",
+    "no full m61 closeout"
+  ]
+}

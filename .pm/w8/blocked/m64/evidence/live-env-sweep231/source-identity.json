@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-14T10:04:09.259459+00:00",
+  "source_head": "a11a77272e9a85debb788c4c6eb1aa53f7e8ac54",
+  "deployed_revision": "unknown",
+  "cli_tree_equal_to_labeled_checkout": true,
+  "files": {
+    "lego/backend/internal/apps/deploy.go": "6dd8418d4239eb1a6c231fbc698c92559669e0af",
+    "lego/backend/internal/apps/blueprint_copy_state_test.go": "4c0a80dbc0eed09dd8910cb81eec09f5dbadb473",
+    "lego/backend/internal/envgroups/initial_links.go": "2b18a4ee06be73d71e73de0aa6442aebf8c3cc4d",
+    "lego/backend/internal/envgroups/service.go": "cbaa0d64015e4c41b57024052ac58fed14c077e7",
+    "lego/backend/internal/secrets/service.go": "8ccff7d30504d2857a99a064ff57b3e207ce8221",
+    "lego/operator/internal/controller/app_controller.go": "fb4780ba3549411b48f822284234fbf2b00ff779"
+  },
+  "scope": "functional Blueprint env reapply QA; no product source edit, commit, push or external filing"
+}

@@ -1,0 +1,32 @@
+{
+  "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b",
+  "deployed_revision": "unknown",
+  "pinned_schema_SHA256": "a0d4e8a3eb119a1b63657741757e3c25c091b3ce463c4be8c90e8026678d8163",
+  "source_cases": 12,
+  "source_refusals": 6,
+  "native_matrix_commands_and_captures": 24,
+  "native_refusals": 12,
+  "native_signed_quoted_controls": 12,
+  "extra_helper_diagnostic_requests": 2,
+  "native_error_projection": "column/error/line/path; wire code is ignored by the pinned consumer",
+  "private_proposal_cases": 12,
+  "proposal_all_exact": true,
+  "proposal_parent_tests": [
+    "TestBlueprintEnvValueAcceptsNumbers",
+    "TestBlueprintEnvGroupAndNestedServiceAcceptNumbers",
+    "TestBlueprintEnvValueStillRefusesBooleans"
+  ],
+  "hosted_resources_created": 0,
+  "unverified": [
+    "Render production numeric formatting",
+    "Blueprint apply/actual process env",
+    "live GraphQL/MCP/dashboard",
+    "other numeric field range neighbors; previewValue remains unsupported",
+    "numbers beyond uint64 and float precision",
+    "full suites/deployed artifact identity"
+  ],
+  "implementation_status": "research-only private overlay; no product source edit/ship",
+  "private_proposal_container_cases": 8,
+  "private_proposal_non_env_bounds_controls": 5,
+  "proposal_unsigned_fallback_scope": "supported service/group envVars.value source pointers; root, ungrouped and nested containers"
+}

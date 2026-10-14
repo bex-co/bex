@@ -1,0 +1,21 @@
+{
+  "binary": "released v0.3.2",
+  "command": [
+    "bex",
+    "logs",
+    "--resources",
+    "srv-db7i7mut41sc7388o49g",
+    "--type",
+    "predeploy",
+    "--tail=false",
+    "--limit",
+    "100",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "exit": 1,
+  "elapsed": 0.035,
+  "stdout": "",
+  "stderr": "Error: invalid argument \"predeploy\" for \"--type\" flag: must be one of \"app\", \"request\", \"build\"\nUsage:\n  bex logs [flags]\n\nExamples:\n  # Tail logs for a service\n  bex logs --resources srv-abc123 --tail\n\n  # Query logs in a time range\n  bex logs --resources srv-abc123 --start 2026-03-01T00:00:00Z --end 2026-03-01T01:00:00Z\n\n  # Output logs as JSON in non-interactive mode\n  bex logs --resources srv-abc123 --output json\n\nFlags:\n      --direction enum        Set log query direction (backward or forward)\n      --end time              Filter logs at or before the specified end time\n  -h, --help                  help for logs\n      --host strings          Filter logs by comma-separated host values\n      --instance strings      Filter logs by comma-separated instance IDs\n      --level enum            Filter logs by comma-separated log levels\n      --limit int             Limit the number of logs returned (default 100)\n      --method enum           Filter logs by comma-separated HTTP methods\n      --path strings          Filter logs by comma-separated request paths\n  -r, --resources strings     Filter logs by comma-separated resource IDs (Required in non-interactive mode)\n      --start time            Filter logs at or after the specified start time\n      --status-code strings   Filter logs by comma-separated status codes\n      --tail                  Stream new logs\n      --task-id strings       Filter logs by comma-separated task IDs\n      --task-run-id strings   Filter logs by comma-separated task run IDs\n      --text strings          Filter logs by comma-separated text values\n      --type enum             Filter logs by comma-separated log types\n\nGlobal Flags:\n      --confirm         Skip all confirmation prompts\n  -o, --output string   Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default \"interactive\")\n\n"
+}

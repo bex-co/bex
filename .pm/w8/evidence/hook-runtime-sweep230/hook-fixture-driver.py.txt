@@ -1,0 +1,128 @@
+from pathlib import Path
+import json,subprocess,datetime,secrets,shlex,shutil,yaml,sys,time,urllib.parse,re
+p=Path(__file__).parent;root=Path('$REPO');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json'
+c=json.loads(cp.read_text());assert c['sync230_result']==0 and not c.get('active_sync_stash')
+mode,case=sys.argv[1:3];assert case in ['distinct','empty','equal'];ws='tea-daif693dqjvc73e7as3g';idfile=p/('sweep230-'+case+'-id.txt')
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,indent=2,ensure_ascii=False));cp.chmod(0o600)
+def cli(args,client='bex',bound=45):
+ cfg=p/'render-config/cli.yaml'
+ try:
+  if client=='render':
+   assert not cfg.exists();shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  runner=['python3',str(p/'run-render.py')] if client=='render' else ['python3',str(p/'run216.py')] if client=='current' else ['python3',str(p/'run.py'),'--release']
+  return json.loads(subprocess.check_output([*runner,'--bound='+str(bound),*args],text=True))
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True))
+def api_apply(body):
+ cfg=yaml.safe_load((p/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token
+ file=p/('sweep230-'+case+'-apply-body.json');file.write_text(json.dumps(body));file.chmod(0o600)
+ auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: render-cli/2.27.0 (macOS - 26.5.1)"\nheader = "X-Bex-Workspace: '+ws+'"\n'
+ try:
+  r=subprocess.run(['curl','--disable','-sS','--max-time','35','--config','-','-X','POST','-H','Content-Type: application/json','--data-binary','@'+str(file),'-w','\n%{http_code}','https://api.bex.co/v1/blueprints/deploy'],input=auth,text=True,capture_output=True,timeout=40)
+  payload,_,status=r.stdout.rpartition('\n');assert token not in payload
+  return {'request':{'method':'POST','path':'/v1/blueprints/deploy','body':body,'authorization':'[REDACTED]'},'status':status,'curl_exit':r.returncode,'response':payload,'stderr':r.stderr,'qualification':'owned inline Blueprint setup/reapply through API; pinned CLI has validation but no apply command'}
+ finally:file.unlink(missing_ok=True)
+def decoded_many(raw):
+ out=[];decoder=json.JSONDecoder();at=0
+ while at<len(raw):
+  while at<len(raw) and raw[at].isspace():at+=1
+  if at==len(raw):break
+  try:value,at=decoder.raw_decode(raw,at)
+  except ValueError:
+   match=re.search(r'[\{\[]',raw[at+1:])
+   if not match:break
+   at=at+1+match.start();continue
+  out.extend(value if isinstance(value,list) else [value])
+ return out
+if mode=='create':
+ assert not idfile.exists() and not any(x.get('sweep')==230 and x.get('case')==case for x in c['resources'])
+ nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-hook';marker='QA230_'+nonce
+ snap="function snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}"
+ build="const fs=require('fs');"+snap+"fs.writeFileSync('qa-built.json',JSON.stringify(snap()));"
+ program="const fs=require('fs'),http=require('http');"+snap+"const built=JSON.parse(fs.readFileSync('qa-built.json'));http.createServer((q,r)=>{const b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'Content-Type':'application/json'});r.end(b);}).listen(Number(process.env.PORT||3000),'0.0.0.0');"
+ collector=next(v for v in c['resources'] if v.get('sweep')==230 and v.get('case')=='collector')
+ assert collector.get('ready') and collector['workspace']==ws and collector['create_result']['exit']==0 and not collector['state'].startswith('deleted:')
+ initial=marker+'_INITIAL';regular=initial if case=='equal' else marker+'_REGULAR'
+ def command(value):
+  role='initial' if case=='equal' else ('initial' if value==initial else 'regular')
+  payload={'marker':collector['marker'],'fixture':name,'role':role}
+  javascript='fetch('+json.dumps(collector['create_response']['serviceDetails']['url']+'/hit')+',{method:"POST",headers:{"Content-Type":"application/json"},body:'+json.dumps(json.dumps(payload))+'}).then(async r=>{if(!r.ok)throw new Error("counter status "+r.status);console.log(JSON.stringify(await r.json()));}).catch(e=>{console.error(e.message);process.exit(1);});'
+  return '/usr/local/bin/node -e '+shlex.quote(javascript)
+ service={'name':name,'type':'web','runtime':'node','plan':'free','repo':'https://github.com/bex-co/bex','branch':'main','rootDir':'examples/hello-go','autoDeploy':False,'buildCommand':'/usr/local/bin/node -e '+shlex.quote(build),'startCommand':'/usr/local/bin/node -e '+shlex.quote(program),'healthCheckPath':'/','initialDeployHook':command(initial),'preDeployCommand':'' if case=='empty' else command(regular),'envVars':[{'key':'PATH','value':'/usr/bin:/bin'},{'key':'QA_LITERAL','value':marker+'\n☃=literal'}]}
+ manifest=yaml.safe_dump({'services':[service]},sort_keys=False);fixture=p/('sweep230-'+case+'.yaml');fixture.write_text(manifest);fixture.chmod(0o600)
+ # Per-service repo selection leaves this inline setup without a persistent
+ # Blueprint row or any project/environment grouping to clean up.
+ body={'ownerId':ws,'bexYaml':manifest}
+ x={'sweep':230,'case':case,'workspace':ws,'type':'web_service','name':name,'nonce':nonce,'time':now(),'source_head':c['head'],'marker':marker,'initial_marker':initial,'regular_marker':regular,'dependency_ids':[collector['id']],'collector_id':collector['id'],'state':'preflight intent persisted','role':'one-time hook lifecycle and literal Blueprint env','manifest':manifest,'API_apply_body':body,'expected_snapshot':{'path':'/usr/bin:/bin','marker':marker+'\n☃=literal'}}
+ c['resources'].append(x);save()
+ q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';limits=json.loads(q['response']);assert limits['services']['used']+limits['services']['terminating']<limits['services']['limit'];x['capacity_proof']=q;save()
+ inventory=cli(['services','--confirm','-o','json']);assert inventory['exit']==0;existing=json.loads(inventory['stdout']) or [];assert not any(v.get('service',v)['name']==name for v in existing);x['pre_create_inventory']=inventory;save()
+ for client in ['bex','render']:
+  r=cli(['blueprints','validate',str(fixture),'--confirm','-o','json'],client);x.setdefault('native_validations',[]).append({'client':client,'result':r});save();assert r['exit']==0 and json.loads(r['stdout'])['valid']
+ x['state']='inline Blueprint create intent persisted';save();r=api_apply(body);x['API_create_result']=r;x['state']='API result received; reconcile before any retry';save()
+ assert r['status']=='200' and r['curl_exit']==0
+ v=json.loads(r['response']);assert len(v['services'])==1 and not v.get('databases') and not v.get('keyValues') and not v.get('envGroups')
+ returned=v['services'][0];assert returned['name']==name and returned['ownerId']==ws
+ baseline={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']};assert returned['id'] not in baseline
+ x.update(id=returned['id'],API_create_appview=returned,state='created: canonical detail reconciliation pending',recorded_child_ids=[returned['latestDeployId']] if returned.get('latestDeployId') else [])
+ idfile.write_text(returned['id']);save()
+ # The inline stack adapter returns AppView; fetch the Render-shaped detail
+ # without repeating the successful mutation.
+ detail=wire('/v1/services/'+returned['id']);assert detail['status']=='200'
+ s=json.loads(detail['response']);assert s['id']==returned['id'] and s['name']==name and s['ownerId']==ws and s['serviceDetails']['plan']=='free'
+ x['API_create_appview']=returned;x['canonical_create_detail']=detail
+ assert s['id'] not in baseline
+ x.update(id=s['id'],create_response=s,state='created: inline Blueprint initial hook pending',create_result={'exit':0,'qualification':'API setup after both native validations; not a native services create'})
+ idfile.write_text(s['id']);save();print(json.dumps({'case':case,'id':s['id'],'native_validations':2,'API_setup_status':r['status'],'name':name}),flush=True);raise SystemExit(0)
+sid=idfile.read_text().strip();x=next(v for v in c['resources'] if v.get('id')==sid);baseline={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']}
+assert x['sweep']==230 and x['workspace']==ws and sid not in baseline and x['API_create_result']['status']=='200' and x['create_response']['id']==sid and not x['state'].startswith('deleted:')
+if mode=='observe':
+ for attempt in range(3):
+  r=cli(['deploys','list',sid,'--confirm','-o','json']);assert r['exit']==0;ds=json.loads(r['stdout']);target=ds[0];x['deploy_children']=ds
+  file=p/('sweep230-'+case+'-runtime.json');http=subprocess.run(['curl','--disable','-sS','--max-time','8','-o',str(file),'-w','%{http_code}',x['create_response']['serviceDetails']['url']+'/'],capture_output=True,text=True,timeout=12)
+  raw=file.read_text() if file.exists() else ''
+  try:body=json.loads(raw)
+  except ValueError:body=raw
+  expected=x['expected_snapshot'];ok=target['status']=='live' and http.stdout=='200' and isinstance(body,dict) and body.get('built')==body.get('runtime')==expected
+  x.setdefault('observations',[]).append({'at':now(),'native_history':r,'target':target,'runtime':{'exit':http.returncode,'http':http.stdout,'body':body,'stderr':http.stderr},'exact_literal_PATH_and_marker':ok});save()
+  print(json.dumps({'case':case,'attempt':attempt,'status':target['status'],'http':http.stdout,'exact_literal_PATH_and_marker':ok}),flush=True)
+  if ok:x['latest_acceptance']=True;x['initial_commit']=x.get('initial_commit') or target['commit']['id'];save();break
+  if target['status'] in ['build_failed','pre_deploy_failed','update_failed','canceled']:break
+  if attempt<2:time.sleep(6)
+elif mode=='counts':
+ collector=next(v for v in c['resources'] if v.get('id')==x['collector_id']);assert collector.get('ready') and not collector['state'].startswith('deleted:')
+ file=p/('sweep230-'+case+'-counter.json')
+ http=subprocess.run(['curl','--disable','-sS','--max-time','10','-o',str(file),'-w','%{http_code}',collector['create_response']['serviceDetails']['url']+'/'],capture_output=True,text=True,timeout=15)
+ assert http.returncode==0 and http.stdout=='200'
+ body=json.loads(file.read_text());assert body['marker']==collector['marker'] and body['instance']==collector['collector_instance'],'Counter instance changed; do not interpret total counts'
+ retained=collector.get('verified_records',[])
+ assert body['records'][:len(retained)]==retained,'Counter record history reset; reconcile before interpreting counts'
+ collector['verified_records']=body['records']
+ records=[v for v in body['records'] if v['fixture']==x['name']]
+ observation={'at':now(),'collector_id':collector['id'],'HTTP':http.stdout,'instance':body['instance'],'complete_body':body,'fixture_records':records,'initial_count':None if case=='equal' else sum(v['role']=='initial' for v in records),'regular_count':None if case=='equal' else sum(v['role']=='regular' for v in records),'common_count':len(records) if case=='equal' else 0,'qualification':'actual owned runtime marker counter; stable collector instance required; equal-text commands send the same payload tag; common counts do not identify their selected role'}
+ x.setdefault('hook_count_observations',[]).append(observation);save();print(json.dumps({k:observation[k] for k in ['initial_count','regular_count','common_count','instance','HTTP']}),flush=True)
+elif mode in ['deploy-bex','deploy-render','deploy-current','deploy-bex-latest','deploy-render-latest','deploy-current-latest']:
+ assert x.get('latest_acceptance') and x.get('initial_commit')
+ before=cli(['deploys','list',sid,'--confirm','-o','json']);assert before['exit']==0
+ current=json.loads(before['stdout']);retry_owned_canceled=mode.endswith('-latest') and current[0]['status']=='canceled' and x.get('persistent_setup_result',{}).get('status')=='200';assert current[0]['status']=='live' or retry_owned_canceled,'Observe/reconcile the previous deploy before another mutation'
+ x['deploy_children']=current;save()
+ client=mode.removeprefix('deploy-').removesuffix('-latest');x.setdefault('manual_deploy_intents',[]).append({'at':now(),'client':client,'commit':x['initial_commit'],'state':'native mutation intent persisted'});save()
+ x['manual_deploy_intents'][-1]['before_deploy_ids']=[v['id'] for v in current];save()
+ args=['deploys','create',sid]
+ if not mode.endswith('-latest'):args+=['--commit',x['initial_commit']]
+ else:x['manual_deploy_intents'][-1].update(commit=None,qualification='default current source after owned persistent Blueprint setup/sync; original commit remains in historical controls');save()
+ args+=['--wait','--confirm','-o','json']
+ r=cli(args,client,bound=240)
+ x['manual_deploy_intents'][-1]['result']=r;x['manual_deploy_intents'][-1]['state']='native result received; reconcile history before any retry';save()
+ objects=decoded_many(r['stdout']);x['manual_deploy_intents'][-1]['decoded_objects']=objects;save();print(json.dumps({'case':case,'client':client,'exit':r['exit'],'elapsed':r['elapsed'],'stderr':r['stderr'],'decoded_objects':len(objects)}),flush=True)
+elif mode=='reapply':
+ assert x.get('latest_acceptance')
+ before=cli(['deploys','list',sid,'--confirm','-o','json']);assert before['exit']==0
+ before_rows=json.loads(before['stdout']);assert before_rows[0]['status']=='live','Settle prior deployment before reapply'
+ x['deploy_children']=before_rows;save()
+ x.setdefault('reapply_intents',[]).append({'at':now(),'body':x['API_apply_body'],'before_deploy_ids':[v['id'] for v in before_rows],'state':'exact-owned inline reapply intent persisted'});save();r=api_apply(x['API_apply_body']);x['reapply_intents'][-1]['result']=r;save();assert r['status']=='200';v=json.loads(r['response']);assert [s['id'] for s in v['services']]==[sid]
+ x['reapply_intents'][-1]['returned_latest_deploy_id']=v['services'][0].get('latestDeployId');save()
+ print(json.dumps({'case':case,'inline_reapply_status':r['status'],'same_owned_service':True}),flush=True)
+else:raise ValueError(mode)

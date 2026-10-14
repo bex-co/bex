@@ -1,0 +1,148 @@
+[
+  {
+    "at": "2026-10-14T11:36:08.766364+00:00",
+    "variant": "deploy-implicit",
+    "command": [
+      "bex",
+      "deploys",
+      "create",
+      "srv-db7mhepllfps73emu9e0",
+      "--wait",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "before_ids": [
+      "dep-db7mhepllfps73emu9eg"
+    ],
+    "result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "create",
+        "srv-db7mhepllfps73emu9e0",
+        "--wait",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 20.977,
+      "stdout": "{\n  \"createdAt\": \"2026-10-14T11:36:09.216335Z\",\n  \"finishedAt\": \"2026-10-14T11:36:22.017256Z\",\n  \"id\": \"dep-db7mia9llfps73emu9hg\",\n  \"image\": {\n    \"ref\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n  },\n  \"status\": \"live\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-14T11:36:22.017257Z\"\n}",
+      "stderr": "Waiting for deploy dep-db7mia9llfps73emu9hg to complete...\n\n"
+    }
+  },
+  {
+    "at": "2026-10-14T11:37:50.960163+00:00",
+    "variant": "deploy-explicit",
+    "command": [
+      "bex",
+      "deploys",
+      "create",
+      "srv-db7mhepllfps73emu9e0",
+      "--image",
+      "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592",
+      "--wait",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "before_ids": [
+      "dep-db7mia9llfps73emu9hg",
+      "dep-db7mhepllfps73emu9eg"
+    ],
+    "result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "create",
+        "srv-db7mhepllfps73emu9e0",
+        "--image",
+        "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592",
+        "--wait",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 31.668,
+      "stdout": "{\n  \"createdAt\": \"2026-10-14T11:37:51.468582Z\",\n  \"finishedAt\": \"2026-10-14T11:38:22.357332Z\",\n  \"id\": \"dep-db7mj3ut41sc7388o8j0\",\n  \"image\": {\n    \"ref\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n  },\n  \"startedAt\": \"2026-10-14T11:37:51.940487Z\",\n  \"status\": \"live\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-14T11:38:22.357333Z\"\n}",
+      "stderr": "Waiting for deploy dep-db7mj3ut41sc7388o8j0 to complete...\n\n"
+    }
+  },
+  {
+    "at": "2026-10-14T11:38:50.557165+00:00",
+    "variant": "deploy-implicit",
+    "command": [
+      "render",
+      "deploys",
+      "create",
+      "srv-db7mhiet41sc7388o8fg",
+      "--wait",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "before_ids": [
+      "dep-db7mhiet41sc7388o8g0"
+    ],
+    "result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "deploys",
+        "create",
+        "srv-db7mhiet41sc7388o8fg",
+        "--wait",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 16.071,
+      "stdout": "{\n  \"createdAt\": \"2026-10-14T11:38:50.991519Z\",\n  \"finishedAt\": \"2026-10-14T11:39:04.660059Z\",\n  \"id\": \"dep-db7mjimt41sc7388o8k0\",\n  \"image\": {\n    \"ref\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n  },\n  \"startedAt\": \"2026-10-14T11:38:51.943886Z\",\n  \"status\": \"live\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-14T11:39:04.66006Z\"\n}",
+      "stderr": "Waiting for deploy dep-db7mjimt41sc7388o8k0 to complete...\n\n"
+    }
+  },
+  {
+    "at": "2026-10-14T11:40:29.166372+00:00",
+    "variant": "deploy-explicit",
+    "command": [
+      "render",
+      "deploys",
+      "create",
+      "srv-db7mhiet41sc7388o8fg",
+      "--image",
+      "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592",
+      "--wait",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "before_ids": [
+      "dep-db7mjimt41sc7388o8k0",
+      "dep-db7mhiet41sc7388o8g0"
+    ],
+    "result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "deploys",
+        "create",
+        "srv-db7mhiet41sc7388o8fg",
+        "--image",
+        "docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592",
+        "--wait",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 26.903,
+      "stdout": "{\n  \"createdAt\": \"2026-10-14T11:40:29.990391Z\",\n  \"finishedAt\": \"2026-10-14T11:40:51.93267Z\",\n  \"id\": \"dep-db7mkb9llfps73emu9ig\",\n  \"image\": {\n    \"ref\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\"\n  },\n  \"startedAt\": \"2026-10-14T11:40:34.7022Z\",\n  \"status\": \"live\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-14T11:40:51.932671Z\"\n}",
+      "stderr": "Waiting for deploy dep-db7mkb9llfps73emu9ig to complete...\n\n"
+    }
+  }
+]

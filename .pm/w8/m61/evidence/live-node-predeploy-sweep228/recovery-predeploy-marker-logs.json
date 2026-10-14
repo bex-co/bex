@@ -1,0 +1,48 @@
+[
+  {
+    "case": "empty-pre-bex",
+    "API_diagnostic": {
+      "at": "2026-10-14T06:50:09.322985+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/logs?resource=srv-db7i7mut41sc7388o49g&type=predeploy&text=QA228_89292a_PRE&direction=forward&limit=100&ownerId=tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.283,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a4a5eecbaded38-SJC"
+      },
+      "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-14T06:48:29.070853312Z\",\"nextEndTime\":\"2026-10-14T06:50:09.225196928Z\",\"logs\":[{\"id\":\"srv-db7i7mut41sc7388o49g-ainejppm1tipoi5hspnj-2026-10-14T06:48:29.070853311Z-bc20fd6f\",\"message\":\"QA228_89292a_PRE\",\"timestamp\":\"2026-10-14T06:48:29.070853311Z\",\"labels\":[{\"name\":\"type\",\"value\":\"predeploy\"},{\"name\":\"resource\",\"value\":\"srv-db7i7mut41sc7388o49g\"},{\"name\":\"instance\",\"value\":\"srv-db7i7mut41sc7388o49g-ainejppm1tipoi5hspnj\"},{\"name\":\"container\",\"value\":\"predeploy\"}]}]}\n"
+    },
+    "qualification": "REST predeploy marker readback; not native CLI log-type coverage"
+  },
+  {
+    "case": "empty-pre-render",
+    "API_diagnostic": {
+      "at": "2026-10-14T06:50:09.718054+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/logs?resource=srv-db7i7t9llfps73emu5dg&type=predeploy&text=QA228_13f46b_PRE&direction=forward&limit=100&ownerId=tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.327,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a4a5f13b7b238d-SJC"
+      },
+      "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-14T06:48:47.085873501Z\",\"nextEndTime\":\"2026-10-14T06:50:09.620771073Z\",\"logs\":[{\"id\":\"srv-db7i7t9llfps73emu5dg-f2tfha2bj9jjsq42vs1k-2026-10-14T06:48:47.0858735Z-e61399d6\",\"message\":\"QA228_13f46b_PRE\",\"timestamp\":\"2026-10-14T06:48:47.0858735Z\",\"labels\":[{\"name\":\"type\",\"value\":\"predeploy\"},{\"name\":\"resource\",\"value\":\"srv-db7i7t9llfps73emu5dg\"},{\"name\":\"instance\",\"value\":\"srv-db7i7t9llfps73emu5dg-f2tfha2bj9jjsq42vs1k\"},{\"name\":\"container\",\"value\":\"predeploy\"}]}]}\n"
+    },
+    "qualification": "REST predeploy marker readback; not native CLI log-type coverage"
+  }
+]

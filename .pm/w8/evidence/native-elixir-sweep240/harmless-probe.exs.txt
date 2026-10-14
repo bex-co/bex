@@ -1,0 +1,30 @@
+defmodule Probe do
+ def snap do
+  b=File.read!("/etc/secrets/qa-note.txt")
+  marker=System.fetch_env!("QA_MARKER")
+  path=System.fetch_env!("QA_INHERITED_PATH")
+  launcher=System.fetch_env!("PATH")
+  # These owned marker/PATH fixtures contain no JSON metacharacters.
+  hex=Base.encode16(b,case: :lower)
+  ~s({"marker":"#{marker}","path":"#{path}","fileHex":"#{hex}","launcherPath":"#{launcher}"})
+ end
+ def serve(listener,built) do
+  {:ok,socket}=:gen_tcp.accept(listener)
+  case :gen_tcp.recv(socket,0,5000) do
+   {:ok,_request}->
+    payload = ~s({"built":#{built},"runtime":#{snap()}})
+    :gen_tcp.send(socket,"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: #{byte_size(payload)}\r\nConnection: close\r\n\r\n"<>payload)
+   _->:ok
+  end
+  :gen_tcp.close(socket)
+  serve(listener,built)
+ end
+end
+if System.argv()==["--snapshot"] do
+ IO.puts(Probe.snap())
+else
+ built=File.read!("qa-built.json") |> String.trim()
+ port=System.get_env("PORT","3000") |> String.to_integer()
+ {:ok,listener}=:gen_tcp.listen(port,[:binary,active: false,reuseaddr: true,packet: :raw])
+ Probe.serve(listener,built)
+end

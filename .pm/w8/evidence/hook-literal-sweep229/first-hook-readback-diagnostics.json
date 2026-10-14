@@ -1,0 +1,79 @@
+{
+  "distinct_initial_events": {
+    "at": "2026-10-14T07:12:27.734643+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/services/srv-db7ijrhllfps73emu5ng/events?limit=30",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.636,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4a4c699cd4367a1-SJC"
+    },
+    "response": "[{\"event\":{\"id\":\"evt-n5lk7grub8p2410jragh\",\"timestamp\":\"2026-10-14T07:08:51Z\",\"serviceId\":\"srv-db7ijrhllfps73emu5ng\",\"type\":\"deploy_ended\",\"details\":{\"deployId\":\"dep-db7ijrhllfps73emu5o0\",\"deployStatus\":\"succeeded\",\"preDeployStatus\":\"succeeded\",\"commitId\":\"98e1ea62db91b7d8215abdf07bd025441514895d\",\"commitMessage\":\"docs(pm): file small Metrics readings rounded to zero in w4/296\",\"startedAt\":\"2026-10-14T07:07:34Z\",\"finishedAt\":\"2026-10-14T07:08:51Z\",\"triggeredByUser\":\"c73bb20d-40ff-42df-8597-c9a428697d12\"}},\"cursor\":\"MjAyNi0xMC0xNFQwNzowODo1MS45MTYwNjdafGRlcC1kYjdpanJobGxmcHM3M2VtdTVvMDplbmRlZA\"},{\"event\":{\"id\":\"evt-va6pattjkje5eheunlkd\",\"timestamp\":\"2026-10-14T07:08:35Z\",\"serviceId\":\"srv-db7ijrhllfps73emu5ng\",\"type\":\"build_ended\",\"details\":{\"deployId\":\"dep-db7ijrhllfps73emu5o0\",\"status\":\"succeeded\"}},\"cursor\":\"MjAyNi0xMC0xNFQwNzowODozNS40NTkwNjJafGZhY3Q6ZGVwbG95OmRlcC1kYjdpanJobGxmcHM3M2VtdTVvMDpidWlsZF9lbmRlZA\"},{\"event\":{\"id\":\"evt-0qe4tgt629e8767gkiq2\",\"timestamp\":\"2026-10-14T07:08:28Z\",\"serviceId\":\"srv-db7ijrhllfps73emu5ng\",\"type\":\"pre_deploy_ended\",\"details\":{\"deployId\":\"dep-db7ijrhllfps73emu5o0\",\"status\":\"succeeded\"}},\"cursor\":\"MjAyNi0xMC0xNFQwNzowODoyOFp8ZmFjdDpkZXBsb3k6ZGVwLWRiN2lqcmhsbGZwczczZW11NW8wOnByZV9kZXBsb3lfZW5kZWQ\"},{\"event\":{\"id\":\"evt-jtmkmckgajl0hgue73go\",\"timestamp\":\"2026-10-14T07:08:24Z\",\"serviceId\":\"srv-db7ijrhllfps73emu5ng\",\"type\":\"pre_deploy_started\",\"details\":{\"deployId\":\"dep-db7ijrhllfps73emu5o0\"}},\"cursor\":\"MjAyNi0xMC0xNFQwNzowODoyNFp8ZmFjdDpkZXBsb3k6ZGVwLWRiN2lqcmhsbGZwczczZW11NW8wOnByZV9kZXBsb3lfc3RhcnRlZA\"},{\"event\":{\"id\":\"evt-dhuf00i26r1m311kne2c\",\"timestamp\":\"2026-10-14T07:07:34Z\",\"serviceId\":\"srv-db7ijrhllfps73emu5ng\",\"type\":\"build_started\",\"details\":{\"deployId\":\"dep-db7ijrhllfps73emu5o0\"}},\"cursor\":\"MjAyNi0xMC0xNFQwNzowNzozNC43OTEzMzdafGZhY3Q6ZGVwbG95OmRlcC1kYjdpanJobGxmcHM3M2VtdTVvMDpidWlsZF9zdGFydGVk\"},{\"event\":{\"id\":\"evt-50kefifr5n5hi7fu8hf3\",\"timestamp\":\"2026-10-14T07:06:22Z\",\"serviceId\":\"srv-db7ijrhllfps73emu5ng\",\"type\":\"deploy_started\",\"details\":{\"deployId\":\"dep-db7ijrhllfps73emu5o0\",\"trigger\":{\"firstBuild\":true,\"envUpdated\":false,\"manual\":false,\"deployedByRender\":false,\"clearCache\":false,\"rollback\":false,\"deployHook\":false},\"commitId\":\"98e1ea62db91b7d8215abdf07bd025441514895d\",\"commitMessage\":\"docs(pm): file small Metrics readings rounded to zero in w4/296\",\"startedAt\":\"2026-10-14T07:07:34Z\",\"finishedAt\":\"2026-10-14T07:08:51Z\",\"triggeredByUser\":\"c73bb20d-40ff-42df-8597-c9a428697d12\"}},\"cursor\":\"MjAyNi0xMC0xNFQwNzowNjoyMi4xNDI2MThafGRlcC1kYjdpanJobGxmcHM3M2VtdTVvMDpzdGFydGVk\"}]\n"
+  },
+  "empty_initial_events": {
+    "at": "2026-10-14T07:24:11.129063+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/services/srv-db7iknut41sc7388o4mg/events?limit=30",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.314,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4a4d7c80a2aed36-SJC"
+    },
+    "response": "[{\"event\":{\"id\":\"evt-632cddksgei1b562fukm\",\"timestamp\":\"2026-10-14T07:10:51Z\",\"serviceId\":\"srv-db7iknut41sc7388o4mg\",\"type\":\"deploy_ended\",\"details\":{\"deployId\":\"dep-db7iknut41sc7388o4n0\",\"deployStatus\":\"succeeded\",\"preDeployStatus\":\"succeeded\",\"commitId\":\"98e1ea62db91b7d8215abdf07bd025441514895d\",\"commitMessage\":\"docs(pm): file small Metrics readings rounded to zero in w4/296\",\"startedAt\":\"2026-10-14T07:09:21Z\",\"finishedAt\":\"2026-10-14T07:10:51Z\",\"triggeredByUser\":\"c73bb20d-40ff-42df-8597-c9a428697d12\"}},\"cursor\":\"MjAyNi0xMC0xNFQwNzoxMDo1MS45Mjc3OTNafGRlcC1kYjdpa251dDQxc2M3Mzg4bzRuMDplbmRlZA\"},{\"event\":{\"id\":\"evt-jeare0mjffkaqikaa8lm\",\"timestamp\":\"2026-10-14T07:10:34Z\",\"serviceId\":\"srv-db7iknut41sc7388o4mg\",\"type\":\"build_ended\",\"details\":{\"deployId\":\"dep-db7iknut41sc7388o4n0\",\"status\":\"succeeded\"}},\"cursor\":\"MjAyNi0xMC0xNFQwNzoxMDozNC43NTc1NTRafGZhY3Q6ZGVwbG95OmRlcC1kYjdpa251dDQxc2M3Mzg4bzRuMDpidWlsZF9lbmRlZA\"},{\"event\":{\"id\":\"evt-p6obsds84bkldmv7c5iq\",\"timestamp\":\"2026-10-14T07:10:34Z\",\"serviceId\":\"srv-db7iknut41sc7388o4mg\",\"type\":\"pre_deploy_ended\",\"details\":{\"deployId\":\"dep-db7iknut41sc7388o4n0\",\"status\":\"succeeded\"}},\"cursor\":\"MjAyNi0xMC0xNFQwNzoxMDozNFp8ZmFjdDpkZXBsb3k6ZGVwLWRiN2lrbnV0NDFzYzczODhvNG4wOnByZV9kZXBsb3lfZW5kZWQ\"},{\"event\":{\"id\":\"evt-fe86dkn65fk4lkjd80k9\",\"timestamp\":\"2026-10-14T07:10:27Z\",\"serviceId\":\"srv-db7iknut41sc7388o4mg\",\"type\":\"pre_deploy_started\",\"details\":{\"deployId\":\"dep-db7iknut41sc7388o4n0\"}},\"cursor\":\"MjAyNi0xMC0xNFQwNzoxMDoyN1p8ZmFjdDpkZXBsb3k6ZGVwLWRiN2lrbnV0NDFzYzczODhvNG4wOnByZV9kZXBsb3lfc3RhcnRlZA\"},{\"event\":{\"id\":\"evt-k8ugk6k017g8fnc9iiv5\",\"timestamp\":\"2026-10-14T07:09:21Z\",\"serviceId\":\"srv-db7iknut41sc7388o4mg\",\"type\":\"build_started\",\"details\":{\"deployId\":\"dep-db7iknut41sc7388o4n0\"}},\"cursor\":\"MjAyNi0xMC0xNFQwNzowOToyMS45ODcyMjhafGZhY3Q6ZGVwbG95OmRlcC1kYjdpa251dDQxc2M3Mzg4bzRuMDpidWlsZF9zdGFydGVk\"},{\"event\":{\"id\":\"evt-tl211t9cbpv5q1g53ft2\",\"timestamp\":\"2026-10-14T07:08:15Z\",\"serviceId\":\"srv-db7iknut41sc7388o4mg\",\"type\":\"deploy_started\",\"details\":{\"deployId\":\"dep-db7iknut41sc7388o4n0\",\"trigger\":{\"firstBuild\":true,\"envUpdated\":false,\"manual\":false,\"deployedByRender\":false,\"clearCache\":false,\"rollback\":false,\"deployHook\":false},\"commitId\":\"98e1ea62db91b7d8215abdf07bd025441514895d\",\"commitMessage\":\"docs(pm): file small Metrics readings rounded to zero in w4/296\",\"startedAt\":\"2026-10-14T07:09:21Z\",\"finishedAt\":\"2026-10-14T07:10:51Z\",\"triggeredByUser\":\"c73bb20d-40ff-42df-8597-c9a428697d12\"}},\"cursor\":\"MjAyNi0xMC0xNFQwNzowODoxNS43ODIzNzRafGRlcC1kYjdpa251dDQxc2M3Mzg4bzRuMDpzdGFydGVk\"}]\n"
+  },
+  "broader_window_predeploy_query": {
+    "at": "2026-10-14T07:13:27.505184+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/logs?resource=srv-db7ijrhllfps73emu5ng&type=predeploy&direction=forward&limit=100&ownerId=tea-daif693dqjvc73e7as3g&startTime=2026-10-14T04%3A13%3A27.163866Z",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.289,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4a4c8118af96af7-SJC"
+    },
+    "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-14T04:13:27Z\",\"nextEndTime\":\"2026-10-14T07:13:27Z\",\"logs\":[]}\n"
+  },
+  "exact_own_name_predeploy_query": {
+    "at": "2026-10-14T07:19:11.108648+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/logs?resource=qa-20261014-874487-hook&type=predeploy&direction=forward&limit=100&ownerId=tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.724,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4a4d0725bfdd883-SJC"
+    },
+    "response": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-14T07:17:03.82713864Z\",\"nextEndTime\":\"2026-10-14T07:19:10.967422235Z\",\"logs\":[{\"id\":\"srv-db7ijrhllfps73emu5ng-gl3de7f9ckr5f03hoi5o-2026-10-14T07:17:03.827138639Z-eba5b0f4\",\"message\":\"QA229_874487_REGULAR\",\"timestamp\":\"2026-10-14T07:17:03.827138639Z\",\"labels\":[{\"name\":\"type\",\"value\":\"predeploy\"},{\"name\":\"resource\",\"value\":\"srv-db7ijrhllfps73emu5ng\"},{\"name\":\"instance\",\"value\":\"srv-db7ijrhllfps73emu5ng-gl3de7f9ckr5f03hoi5o\"},{\"name\":\"container\",\"value\":\"predeploy\"}]}]}\n"
+  },
+  "interpretation": "initial hook events report success, but no initial marker is available in these post-rollout reads; absence is not an execution-count proof or new bug by itself"
+}

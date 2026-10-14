@@ -1,0 +1,17 @@
+{
+  "source_head": "c3d6aa86b0e4c814a992446d0fdfa629db6ee3fa",
+  "priority_cases": 8,
+  "wrong_copies": 0,
+  "false_literal_refusals": 0,
+  "location_cases": 6,
+  "location_mismatches": 0,
+  "own_override_cases": 5,
+  "intended_refusals": 2,
+  "controls": 3,
+  "build_tests": [
+    "TestNativeDockerfileClearsTheToolchainEntrypoint",
+    "TestNativeEnvironmentKeepsApplicationPATH"
+  ],
+  "scope": "actual feature-method diagnostics over fake Kubernetes/versioned stores and two focused generator tests; no deployed-revision, live existing-state/apply, Docker runtime or full-suite claim",
+  "source_fixes": "02a4d4f07 / 7648f3e99 / c3d6aa86b; existing production acceptance gates retained"
+}

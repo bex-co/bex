@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-14T10:41:23.485412+00:00",
+  "head": "a11a77272e9a85debb788c4c6eb1aa53f7e8ac54",
+  "files": {
+    "lego/operator/internal/build/native.go": "9c39d59390ca328099986d0fbc47dd4da173f4e3",
+    "lego/operator/internal/publish/publish.go": "c37a99fa674b998d5f88422d15cb943843253eb3",
+    "lego/backend/internal/apps/service.go": "b97912f79d7dd129c7a2dcc477653bffbb7a8c5e"
+  },
+  "deployed_revision": "unknown"
+}

@@ -1,0 +1,1284 @@
+[
+  {
+    "client": "bex",
+    "case": "root service / 9223372036854775807",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-0.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-0.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.482,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-8682e1-0-0\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=f111062211a3cbed9f58f9c1ab57078ca0694fdca376d7d4c443cf60d9a1",
+          "body": "--f111062211a3cbed9f58f9c1ab57078ca0694fdca376d7d4c443cf60d9a1\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--f111062211a3cbed9f58f9c1ab57078ca0694fdca376d7d4c443cf60d9a1\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-0.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775807\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-8682e1-0-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--f111062211a3cbed9f58f9c1ab57078ca0694fdca376d7d4c443cf60d9a1--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775807\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-8682e1-0-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-8682e1-0-0\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-8682e1-0-0\",\"sourcePath\":\"#/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a71ce3fc282a0c-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "render",
+    "case": "root service / 9223372036854775807",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-0.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-0.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.759,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-8682e1-0-0\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=b7886474f7a11d60015fddc59ece515c64d19d4dc74363025f3fef930052",
+          "body": "--b7886474f7a11d60015fddc59ece515c64d19d4dc74363025f3fef930052\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--b7886474f7a11d60015fddc59ece515c64d19d4dc74363025f3fef930052\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-0.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775807\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-8682e1-0-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--b7886474f7a11d60015fddc59ece515c64d19d4dc74363025f3fef930052--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775807\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-8682e1-0-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-8682e1-0-0\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-8682e1-0-0\",\"sourcePath\":\"#/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a71ce7ad3acf8b-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_wire": true,
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged native multipart validation only; no hosted apply or resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "root service / 9223372036854775808",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-0.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-0.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "services[0].envVars[0].value",
+    "actual_path": "services[0].envVars[0].value",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.333,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"Blueprint contains an invalid integer\",\n      \"line\": 7,\n      \"path\": \"services[0].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=937c6fbdd008069103a852cce5622cbbed8ecfcdfff1a13662f12435cbb9",
+          "body": "--937c6fbdd008069103a852cce5622cbbed8ecfcdfff1a13662f12435cbb9\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--937c6fbdd008069103a852cce5622cbbed8ecfcdfff1a13662f12435cbb9\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-0.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775808\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-0-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--937c6fbdd008069103a852cce5622cbbed8ecfcdfff1a13662f12435cbb9--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775808\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-0-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":false,\"errors\":[{\"code\":\"BLUEPRINT_YAML_SCALAR\",\"error\":\"Blueprint contains an invalid integer\",\"line\":7,\"column\":20,\"path\":\"services[0].envVars[0].value\"}]}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a7207d891b1354-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [
+      [
+        "code"
+      ]
+    ],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  },
+  {
+    "client": "render",
+    "case": "root service / 9223372036854775808",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-0.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-0.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "services[0].envVars[0].value",
+    "actual_path": "services[0].envVars[0].value",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.373,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"Blueprint contains an invalid integer\",\n      \"line\": 7,\n      \"path\": \"services[0].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=b25be1f4166e2011a14d062732ae007faf199ba62de51c8547c0960b4076",
+          "body": "--b25be1f4166e2011a14d062732ae007faf199ba62de51c8547c0960b4076\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--b25be1f4166e2011a14d062732ae007faf199ba62de51c8547c0960b4076\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-0.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775808\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-0-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--b25be1f4166e2011a14d062732ae007faf199ba62de51c8547c0960b4076--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775808\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-0-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":false,\"errors\":[{\"code\":\"BLUEPRINT_YAML_SCALAR\",\"error\":\"Blueprint contains an invalid integer\",\"line\":7,\"column\":20,\"path\":\"services[0].envVars[0].value\"}]}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a720813c16cf12-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [
+      [
+        "code"
+      ]
+    ],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "root service / 18446744073709551615",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-1.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-1.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "services[0].envVars[0].value",
+    "actual_path": "services[0].envVars[0].value",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.341,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"Blueprint contains an invalid integer\",\n      \"line\": 7,\n      \"path\": \"services[0].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=16e5a28c000f12d200efd7a8261504509e6ddbab43d41148197373647d20",
+          "body": "--16e5a28c000f12d200efd7a8261504509e6ddbab43d41148197373647d20\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--16e5a28c000f12d200efd7a8261504509e6ddbab43d41148197373647d20\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-1.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 18446744073709551615\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-1-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--16e5a28c000f12d200efd7a8261504509e6ddbab43d41148197373647d20--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 18446744073709551615\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-1-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":false,\"errors\":[{\"code\":\"BLUEPRINT_YAML_SCALAR\",\"error\":\"Blueprint contains an invalid integer\",\"line\":7,\"column\":20,\"path\":\"services[0].envVars[0].value\"}]}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a72084afa08a19-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [
+      [
+        "code"
+      ]
+    ],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  },
+  {
+    "client": "render",
+    "case": "root service / 18446744073709551615",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-1.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-1.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "services[0].envVars[0].value",
+    "actual_path": "services[0].envVars[0].value",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.381,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"Blueprint contains an invalid integer\",\n      \"line\": 7,\n      \"path\": \"services[0].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=1870e878186190313ff6ef1a680997bf1d5aa3f889aa9b56815eb97c9365",
+          "body": "--1870e878186190313ff6ef1a680997bf1d5aa3f889aa9b56815eb97c9365\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--1870e878186190313ff6ef1a680997bf1d5aa3f889aa9b56815eb97c9365\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-1.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 18446744073709551615\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-1-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--1870e878186190313ff6ef1a680997bf1d5aa3f889aa9b56815eb97c9365--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 18446744073709551615\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-1-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":false,\"errors\":[{\"code\":\"BLUEPRINT_YAML_SCALAR\",\"error\":\"Blueprint contains an invalid integer\",\"line\":7,\"column\":20,\"path\":\"services[0].envVars[0].value\"}]}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a72088ad07eb34-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [
+      [
+        "code"
+      ]
+    ],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "root service / \"18446744073709551615\"",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-2.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-2.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.356,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-85eca5-2-0\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=6bc12e3ccc54173f06265d7713b3c448deaa3656da08326aec14e8426e88",
+          "body": "--6bc12e3ccc54173f06265d7713b3c448deaa3656da08326aec14e8426e88\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--6bc12e3ccc54173f06265d7713b3c448deaa3656da08326aec14e8426e88\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-2.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"18446744073709551615\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-2-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--6bc12e3ccc54173f06265d7713b3c448deaa3656da08326aec14e8426e88--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"18446744073709551615\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-2-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-85eca5-2-0\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-85eca5-2-0\",\"sourcePath\":\"#/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a7208c1c7fb8e7-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  },
+  {
+    "client": "render",
+    "case": "root service / \"18446744073709551615\"",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-2.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-2.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.747,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-85eca5-2-0\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=ff46552c521f1fbdc4d76b103ad06149ec07270416cf67a086efcf3ae4fd",
+          "body": "--ff46552c521f1fbdc4d76b103ad06149ec07270416cf67a086efcf3ae4fd\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--ff46552c521f1fbdc4d76b103ad06149ec07270416cf67a086efcf3ae4fd\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-2.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"18446744073709551615\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-2-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--ff46552c521f1fbdc4d76b103ad06149ec07270416cf67a086efcf3ae4fd--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"18446744073709551615\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-2-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-85eca5-2-0\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-85eca5-2-0\",\"sourcePath\":\"#/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a720921a5025cf-CPH"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "nested service / 9223372036854775807",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-3.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-3.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.675,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-85eca5-3-0\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=29c89861a64a6789b2eb6d2a4de68ebf815d7a036d01f5fc3c64384fdd70",
+          "body": "--29c89861a64a6789b2eb6d2a4de68ebf815d7a036d01f5fc3c64384fdd70\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--29c89861a64a6789b2eb6d2a4de68ebf815d7a036d01f5fc3c64384fdd70\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-3.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": 9223372036854775807\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-85eca5-3-0\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-3-project\"\n    }\n  ]\n}\n\r\n--29c89861a64a6789b2eb6d2a4de68ebf815d7a036d01f5fc3c64384fdd70--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": 9223372036854775807\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-85eca5-3-0\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-3-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-85eca5-3-0\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-85eca5-3-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a7209639c04f08-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  },
+  {
+    "client": "render",
+    "case": "nested service / 9223372036854775807",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-3.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-3.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.314,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-85eca5-3-0\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=1832af2b9501fe1352669fb3e7f234b1bf8acc8d943637559f9cb496fdf5",
+          "body": "--1832af2b9501fe1352669fb3e7f234b1bf8acc8d943637559f9cb496fdf5\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--1832af2b9501fe1352669fb3e7f234b1bf8acc8d943637559f9cb496fdf5\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-3.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": 9223372036854775807\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-85eca5-3-0\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-3-project\"\n    }\n  ]\n}\n\r\n--1832af2b9501fe1352669fb3e7f234b1bf8acc8d943637559f9cb496fdf5--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": 9223372036854775807\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-85eca5-3-0\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-3-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-85eca5-3-0\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-85eca5-3-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a7209cce7f17ea-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "nested service / 9223372036854775808",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-4.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-4.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "projects[0].environments[0].services[0].envVars[0].value",
+    "actual_path": "projects[0].environments[0].services[0].envVars[0].value",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.288,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 28,\n      \"error\": \"Blueprint contains an invalid integer\",\n      \"line\": 12,\n      \"path\": \"projects[0].environments[0].services[0].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=37fc479623b99229f91e86509c1f20341e85fa899e12f1a635871934f991",
+          "body": "--37fc479623b99229f91e86509c1f20341e85fa899e12f1a635871934f991\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--37fc479623b99229f91e86509c1f20341e85fa899e12f1a635871934f991\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-4.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": 9223372036854775808\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-85eca5-4-0\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-4-project\"\n    }\n  ]\n}\n\r\n--37fc479623b99229f91e86509c1f20341e85fa899e12f1a635871934f991--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": 9223372036854775808\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-85eca5-4-0\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-4-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":false,\"errors\":[{\"code\":\"BLUEPRINT_YAML_SCALAR\",\"error\":\"Blueprint contains an invalid integer\",\"line\":12,\"column\":28,\"path\":\"projects[0].environments[0].services[0].envVars[0].value\"}]}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a720a03bd9720c-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [
+      [
+        "code"
+      ]
+    ],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  },
+  {
+    "client": "render",
+    "case": "nested service / 9223372036854775808",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-4.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-4.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "projects[0].environments[0].services[0].envVars[0].value",
+    "actual_path": "projects[0].environments[0].services[0].envVars[0].value",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.682,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 28,\n      \"error\": \"Blueprint contains an invalid integer\",\n      \"line\": 12,\n      \"path\": \"projects[0].environments[0].services[0].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=fc2f1d4c93c2cd38a3a325362b96c9305f8637318b466c5f75742eaa982b",
+          "body": "--fc2f1d4c93c2cd38a3a325362b96c9305f8637318b466c5f75742eaa982b\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--fc2f1d4c93c2cd38a3a325362b96c9305f8637318b466c5f75742eaa982b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-4.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": 9223372036854775808\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-85eca5-4-0\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-4-project\"\n    }\n  ]\n}\n\r\n--fc2f1d4c93c2cd38a3a325362b96c9305f8637318b466c5f75742eaa982b--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": 9223372036854775808\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-85eca5-4-0\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-4-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":false,\"errors\":[{\"code\":\"BLUEPRINT_YAML_SCALAR\",\"error\":\"Blueprint contains an invalid integer\",\"line\":12,\"column\":28,\"path\":\"projects[0].environments[0].services[0].envVars[0].value\"}]}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a720a579f39e52-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [
+      [
+        "code"
+      ]
+    ],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "nested service / 18446744073709551615",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-5.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-5.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "projects[0].environments[0].services[0].envVars[0].value",
+    "actual_path": "projects[0].environments[0].services[0].envVars[0].value",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.623,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 28,\n      \"error\": \"Blueprint contains an invalid integer\",\n      \"line\": 12,\n      \"path\": \"projects[0].environments[0].services[0].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=7d59f5fb81b389a370bb917cfe4d3f6ab5d50b4dbfa320b72f95dc5dd9f2",
+          "body": "--7d59f5fb81b389a370bb917cfe4d3f6ab5d50b4dbfa320b72f95dc5dd9f2\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--7d59f5fb81b389a370bb917cfe4d3f6ab5d50b4dbfa320b72f95dc5dd9f2\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-5.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": 18446744073709551615\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-85eca5-5-0\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-5-project\"\n    }\n  ]\n}\n\r\n--7d59f5fb81b389a370bb917cfe4d3f6ab5d50b4dbfa320b72f95dc5dd9f2--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": 18446744073709551615\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-85eca5-5-0\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-5-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":false,\"errors\":[{\"code\":\"BLUEPRINT_YAML_SCALAR\",\"error\":\"Blueprint contains an invalid integer\",\"line\":12,\"column\":28,\"path\":\"projects[0].environments[0].services[0].envVars[0].value\"}]}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a720aca97bb893-CPH"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [
+      [
+        "code"
+      ]
+    ],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  },
+  {
+    "client": "render",
+    "case": "nested service / 18446744073709551615",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-5.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-5.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "projects[0].environments[0].services[0].envVars[0].value",
+    "actual_path": "projects[0].environments[0].services[0].envVars[0].value",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.296,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 28,\n      \"error\": \"Blueprint contains an invalid integer\",\n      \"line\": 12,\n      \"path\": \"projects[0].environments[0].services[0].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=e4b07152a01cd6d2bb2ec94f72b7cb7ea7500999994a4170a8d4ef1859c3",
+          "body": "--e4b07152a01cd6d2bb2ec94f72b7cb7ea7500999994a4170a8d4ef1859c3\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--e4b07152a01cd6d2bb2ec94f72b7cb7ea7500999994a4170a8d4ef1859c3\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-5.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": 18446744073709551615\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-85eca5-5-0\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-5-project\"\n    }\n  ]\n}\n\r\n--e4b07152a01cd6d2bb2ec94f72b7cb7ea7500999994a4170a8d4ef1859c3--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": 18446744073709551615\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-85eca5-5-0\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-5-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":false,\"errors\":[{\"code\":\"BLUEPRINT_YAML_SCALAR\",\"error\":\"Blueprint contains an invalid integer\",\"line\":12,\"column\":28,\"path\":\"projects[0].environments[0].services[0].envVars[0].value\"}]}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a720b0ddf315a8-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [
+      [
+        "code"
+      ]
+    ],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "nested service / \"18446744073709551615\"",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-6.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-6.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.325,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-85eca5-6-0\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=3dcf1425a262ffd0a03bd27d488b2556e446d2eb4c5ac6f86dd46f3315f0",
+          "body": "--3dcf1425a262ffd0a03bd27d488b2556e446d2eb4c5ac6f86dd46f3315f0\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--3dcf1425a262ffd0a03bd27d488b2556e446d2eb4c5ac6f86dd46f3315f0\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-6.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"18446744073709551615\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-85eca5-6-0\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-6-project\"\n    }\n  ]\n}\n\r\n--3dcf1425a262ffd0a03bd27d488b2556e446d2eb4c5ac6f86dd46f3315f0--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"18446744073709551615\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-85eca5-6-0\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-6-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-85eca5-6-0\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-85eca5-6-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a720b43c6f67ab-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  },
+  {
+    "client": "render",
+    "case": "nested service / \"18446744073709551615\"",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-6.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-6.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.307,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-85eca5-6-0\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=287029fcb47024d43a04c8b52b74e874f61816f7f1d24dc3757e542afc99",
+          "body": "--287029fcb47024d43a04c8b52b74e874f61816f7f1d24dc3757e542afc99\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--287029fcb47024d43a04c8b52b74e874f61816f7f1d24dc3757e542afc99\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-6.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"18446744073709551615\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-85eca5-6-0\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-6-project\"\n    }\n  ]\n}\n\r\n--287029fcb47024d43a04c8b52b74e874f61816f7f1d24dc3757e542afc99--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"18446744073709551615\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-20261014-85eca5-6-0\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-6-project\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-85eca5-6-0\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-85eca5-6-0\",\"sourcePath\":\"#/projects/0/environments/0/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a720b7b915c6bb-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "group / 9223372036854775807",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-7.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-7.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.905,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-85eca5-7-group\"\n    ],\n    \"services\": [\n      \"qa-20261014-85eca5-7-0\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=ef9420ad921a4010ad06a7e969d7f5c81811bb4ce35be7103a5753b0ae24",
+          "body": "--ef9420ad921a4010ad06a7e969d7f5c81811bb4ce35be7103a5753b0ae24\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--ef9420ad921a4010ad06a7e969d7f5c81811bb4ce35be7103a5753b0ae24\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-7.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775807\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-7-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-85eca5-7-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-7-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--ef9420ad921a4010ad06a7e969d7f5c81811bb4ce35be7103a5753b0ae24--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775807\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-7-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-85eca5-7-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-7-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-85eca5-7-0\"],\"envGroups\":[\"qa-20261014-85eca5-7-group\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa-20261014-85eca5-7-group\",\"sourcePath\":\"#/envVarGroups/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-85eca5-7-0\",\"sourcePath\":\"#/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a720bb3da5dc3c-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  },
+  {
+    "client": "render",
+    "case": "group / 9223372036854775807",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-7.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-7.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.93,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-85eca5-7-group\"\n    ],\n    \"services\": [\n      \"qa-20261014-85eca5-7-0\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=98759924d4581609cc52dc4c0132c974b33c515edc86ffcf0afebcddb56a",
+          "body": "--98759924d4581609cc52dc4c0132c974b33c515edc86ffcf0afebcddb56a\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--98759924d4581609cc52dc4c0132c974b33c515edc86ffcf0afebcddb56a\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-7.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775807\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-7-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-85eca5-7-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-7-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--98759924d4581609cc52dc4c0132c974b33c515edc86ffcf0afebcddb56a--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775807\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-7-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-85eca5-7-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-7-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-85eca5-7-0\"],\"envGroups\":[\"qa-20261014-85eca5-7-group\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa-20261014-85eca5-7-group\",\"sourcePath\":\"#/envVarGroups/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-85eca5-7-0\",\"sourcePath\":\"#/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a720c1ced434c3-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "group / 9223372036854775808",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-8.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-8.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "envVarGroups[0].envVars[0].value",
+    "actual_path": "envVarGroups[0].envVars[0].value",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.299,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"Blueprint contains an invalid integer\",\n      \"line\": 7,\n      \"path\": \"envVarGroups[0].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=c30e0ec99805a7f4b2628f28e4b211d59db88661533c5eaa311946c57dc2",
+          "body": "--c30e0ec99805a7f4b2628f28e4b211d59db88661533c5eaa311946c57dc2\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--c30e0ec99805a7f4b2628f28e4b211d59db88661533c5eaa311946c57dc2\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-8.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775808\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-8-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-85eca5-8-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-8-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--c30e0ec99805a7f4b2628f28e4b211d59db88661533c5eaa311946c57dc2--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775808\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-8-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-85eca5-8-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-8-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":false,\"errors\":[{\"code\":\"BLUEPRINT_YAML_SCALAR\",\"error\":\"Blueprint contains an invalid integer\",\"line\":7,\"column\":20,\"path\":\"envVarGroups[0].envVars[0].value\"}]}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a720c85f1b2702-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [
+      [
+        "code"
+      ]
+    ],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  },
+  {
+    "client": "render",
+    "case": "group / 9223372036854775808",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-8.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-8.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "envVarGroups[0].envVars[0].value",
+    "actual_path": "envVarGroups[0].envVars[0].value",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.76,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"Blueprint contains an invalid integer\",\n      \"line\": 7,\n      \"path\": \"envVarGroups[0].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=bba0fdb589d31c39fe55a986cc3111a58c38b93cb5bcc45a57ba51d0c85a",
+          "body": "--bba0fdb589d31c39fe55a986cc3111a58c38b93cb5bcc45a57ba51d0c85a\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--bba0fdb589d31c39fe55a986cc3111a58c38b93cb5bcc45a57ba51d0c85a\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-8.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775808\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-8-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-85eca5-8-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-8-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--bba0fdb589d31c39fe55a986cc3111a58c38b93cb5bcc45a57ba51d0c85a--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775808\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-8-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-85eca5-8-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-8-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":false,\"errors\":[{\"code\":\"BLUEPRINT_YAML_SCALAR\",\"error\":\"Blueprint contains an invalid integer\",\"line\":7,\"column\":20,\"path\":\"envVarGroups[0].envVars[0].value\"}]}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a720ce7fff4474-CPH"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [
+      [
+        "code"
+      ]
+    ],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "group / 18446744073709551615",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-9.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-9.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "envVarGroups[0].envVars[0].value",
+    "actual_path": "envVarGroups[0].envVars[0].value",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.347,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"Blueprint contains an invalid integer\",\n      \"line\": 7,\n      \"path\": \"envVarGroups[0].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=a376c2dbf5fd0d25626347391a32d3575a46a668ce3043358942206fa4c7",
+          "body": "--a376c2dbf5fd0d25626347391a32d3575a46a668ce3043358942206fa4c7\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--a376c2dbf5fd0d25626347391a32d3575a46a668ce3043358942206fa4c7\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-9.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 18446744073709551615\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-9-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-85eca5-9-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-9-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--a376c2dbf5fd0d25626347391a32d3575a46a668ce3043358942206fa4c7--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 18446744073709551615\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-9-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-85eca5-9-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-9-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":false,\"errors\":[{\"code\":\"BLUEPRINT_YAML_SCALAR\",\"error\":\"Blueprint contains an invalid integer\",\"line\":7,\"column\":20,\"path\":\"envVarGroups[0].envVars[0].value\"}]}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a720d2c89f327e-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [
+      [
+        "code"
+      ]
+    ],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  },
+  {
+    "client": "render",
+    "case": "group / 18446744073709551615",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-9.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-9.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "envVarGroups[0].envVars[0].value",
+    "actual_path": "envVarGroups[0].envVars[0].value",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.65,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"Blueprint contains an invalid integer\",\n      \"line\": 7,\n      \"path\": \"envVarGroups[0].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=c067bd9ebd9439f3ac479a79b733d157b30c5db116da9e1636291086ef26",
+          "body": "--c067bd9ebd9439f3ac479a79b733d157b30c5db116da9e1636291086ef26\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--c067bd9ebd9439f3ac479a79b733d157b30c5db116da9e1636291086ef26\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-9.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 18446744073709551615\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-9-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-85eca5-9-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-9-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--c067bd9ebd9439f3ac479a79b733d157b30c5db116da9e1636291086ef26--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 18446744073709551615\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-9-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-85eca5-9-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-9-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":false,\"errors\":[{\"code\":\"BLUEPRINT_YAML_SCALAR\",\"error\":\"Blueprint contains an invalid integer\",\"line\":7,\"column\":20,\"path\":\"envVarGroups[0].envVars[0].value\"}]}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a720d5de7112a1-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [
+      [
+        "code"
+      ]
+    ],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  },
+  {
+    "client": "bex",
+    "case": "group / \"18446744073709551615\"",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-10.yaml",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-10.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.885,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-85eca5-10-group\"\n    ],\n    \"services\": [\n      \"qa-20261014-85eca5-10-0\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=6a2595393e63c5741d3127face0329deebbfb6a60c197b7c58f4268ad3c0",
+          "body": "--6a2595393e63c5741d3127face0329deebbfb6a60c197b7c58f4268ad3c0\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--6a2595393e63c5741d3127face0329deebbfb6a60c197b7c58f4268ad3c0\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-10.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"18446744073709551615\"\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-10-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-85eca5-10-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-10-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--6a2595393e63c5741d3127face0329deebbfb6a60c197b7c58f4268ad3c0--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"18446744073709551615\"\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-10-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-85eca5-10-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-10-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-85eca5-10-0\"],\"envGroups\":[\"qa-20261014-85eca5-10-group\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa-20261014-85eca5-10-group\",\"sourcePath\":\"#/envVarGroups/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-85eca5-10-0\",\"sourcePath\":\"#/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a720dc8d32b586-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  },
+  {
+    "client": "render",
+    "case": "group / \"18446744073709551615\"",
+    "pinned_schema_expected_valid": true,
+    "fixture": "sweep243-10.yaml",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep243-10.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "expected_path": "",
+    "actual_path": "",
+    "location_or_valid_control_pass": true,
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.836,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-85eca5-10-group\"\n    ],\n    \"services\": [\n      \"qa-20261014-85eca5-10-0\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=cfc967bb01e6c9fade3c80cc3417d27e4877c64a6b318d6165cc080a60c8",
+          "body": "--cfc967bb01e6c9fade3c80cc3417d27e4877c64a6b318d6165cc080a60c8\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--cfc967bb01e6c9fade3c80cc3417d27e4877c64a6b318d6165cc080a60c8\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep243-10.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"18446744073709551615\"\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-10-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-85eca5-10-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-10-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n\r\n--cfc967bb01e6c9fade3c80cc3417d27e4877c64a6b318d6165cc080a60c8--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"18446744073709551615\"\n        }\n      ],\n      \"name\": \"qa-20261014-85eca5-10-group\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"qa-20261014-85eca5-10-group\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-20261014-85eca5-10-0\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261014-85eca5-10-0\"],\"envGroups\":[\"qa-20261014-85eca5-10-group\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa-20261014-85eca5-10-group\",\"sourcePath\":\"#/envVarGroups/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261014-85eca5-10-0\",\"sourcePath\":\"#/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4a720e31fe3fa26-SJC"
+        }
+      }
+    ],
+    "validation_errors_equal_pinned_projection": true,
+    "wire_error_extras": [],
+    "full_decoded_object_equal_wire": false,
+    "scope": "unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation"
+  }
+]
