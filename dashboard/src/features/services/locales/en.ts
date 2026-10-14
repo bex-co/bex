@@ -2772,6 +2772,11 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't load this run's detail.",
     description: "Shown when the single-run detail read fails (e.g. stale id)",
   },
+  "services.cronRunDetailLoading": {
+    message: "Loading run detail…",
+    description:
+      "Screen-reader status while an expanded run's detail read is in flight; the visible fields are masked placeholders (w4/305)",
+  },
   "services.cronRunDetailStarted": {
     message: "Started",
     description: "Run detail: absolute start timestamp label",

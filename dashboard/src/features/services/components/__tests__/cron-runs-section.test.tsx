@@ -319,6 +319,113 @@ describe("CronRunsSection", () => {
     expect(names[3]).toContain("Run details, started crr-pending");
   });
 
+  // w4/305: the first detail read showed one full-width h-16 block, so the
+  // expanded row (and the table's columns) jumped to the five-field grid when
+  // the read settled. The pending detail must be that same grid, sized by the
+  // history row's own values but masked. jsdom has no layout, so this pins the
+  // structural mapping; pixel bounds at 1440/390 px need live verification.
+  it.each<[string, CronRunView]>([
+    [
+      "successful",
+      {
+        id: "crr-qsndkqj2819t9urkambm",
+        startedAt: "2026-10-14T18:19:41Z",
+        finishedAt: "2026-10-14T18:19:46Z",
+        status: "successful",
+      },
+    ],
+    [
+      "running (no finish or duration)",
+      {
+        id: "crr-running",
+        startedAt: "2026-10-14T18:19:41Z",
+        finishedAt: null,
+        status: "running",
+      },
+    ],
+    [
+      "failed",
+      {
+        id: "crr-failed",
+        startedAt: "2026-10-14T18:19:41Z",
+        finishedAt: "2026-10-14T18:21:03Z",
+        status: "unsuccessful",
+      },
+    ],
+    [
+      "canceled",
+      {
+        id: "crr-canceled",
+        startedAt: "2026-10-14T18:19:41Z",
+        finishedAt: "2026-10-14T18:19:42Z",
+        status: "canceled",
+      },
+    ],
+  ])(
+    "previews a %s run's detail with the ready five-field grid, values masked (w4/305)",
+    async (_, row) => {
+      runs = [row];
+      detailLoading = true;
+      const user = userEvent.setup();
+      const { container, rerender } = render(
+        <CronRunsSection serviceId="nightly" />,
+      );
+      await user.click(
+        screen.getByRole("button", { name: /Run details, started/ }),
+      );
+
+      // A truthful loading affordance; no resolved value is exposed.
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Loading run detail…",
+      );
+      const pending = container.querySelector("dl");
+      expect(pending).not.toBeNull();
+      expect(pending).toHaveAttribute("aria-busy", "true");
+      const pendingValues = Array.from(pending!.querySelectorAll("dd"));
+      for (const dd of pendingValues) {
+        const hidden = dd.querySelector(":scope > span.invisible");
+        expect(hidden).toHaveAttribute("aria-hidden", "true");
+        expect(
+          dd.querySelector(':scope > [data-slot="skeleton"]'),
+        ).toHaveAttribute("aria-hidden", "true");
+      }
+
+      const shape = (dl: HTMLElement) => ({
+        className: dl.className,
+        labels: Array.from(dl.querySelectorAll("dt")).map(
+          (dt) => dt.textContent,
+        ),
+        fieldClasses: Array.from(dl.children).map((field) => field.className),
+      });
+      const pendingShape = shape(pending!);
+      const pendingContent = pendingValues.map(
+        (dd) => dd.querySelector(":scope > span.invisible")!.innerHTML,
+      );
+
+      // The same run settles: the ready grid matches the preview field for
+      // field, and its values are exactly what sized the masked cells.
+      detailLoading = false;
+      detailRun = { ...row };
+      rerender(<CronRunsSection serviceId="nightly" />);
+
+      expect(screen.queryByRole("status")).toBeNull();
+      const ready = container.querySelector("dl")!;
+      expect(ready).not.toHaveAttribute("aria-busy");
+      expect(shape(ready)).toEqual(pendingShape);
+      expect(pendingShape.labels).toEqual([
+        "Status",
+        "Started",
+        "Finished",
+        "Duration",
+        "Run ID",
+      ]);
+      expect(
+        Array.from(ready.querySelectorAll("dd")).map((dd) => dd.innerHTML),
+      ).toEqual(pendingContent);
+      expect(within(ready).getByText(row.id)).toBeVisible();
+    },
+  );
+
   it("renders an explicit error when a run's detail read fails", async () => {
     runs = [
       {

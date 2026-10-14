@@ -2715,6 +2715,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法加载该运行的详情。",
     description: "Shown when the single-run detail read fails (e.g. stale id)",
   },
+  "services.cronRunDetailLoading": {
+    message: "正在加载运行详情…",
+    description:
+      "Screen-reader status while an expanded run's detail read is in flight; the visible fields are masked placeholders (w4/305)",
+  },
   "services.cronRunDetailStarted": {
     message: "开始时间",
     description: "Run detail: absolute start timestamp label",
