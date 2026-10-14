@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { useTranslations } from "@/common/hooks/use-translations";
 import { formatMetricShort } from "@/features/metrics/lib/format";
 import {
   CHART_WIDTH as WIDTH,
@@ -51,6 +52,7 @@ export function SvgLineChart({
   markers,
   markersServiceId,
 }: SvgLineChartProps) {
+  const { t } = useTranslations();
   const [activeFrame, setActiveFrame] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -105,7 +107,7 @@ export function SvgLineChart({
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         className="w-full"
         role="img"
-        aria-label={`Line chart with ${frames.length} data points`}
+        aria-label={t("metrics.lineChartLabel", { count: frames.length })}
         tabIndex={0}
         onPointerMove={(e) => setActiveFrame(nearestFrameForClientX(e.clientX))}
         onPointerLeave={() => setActiveFrame(null)}
@@ -254,18 +256,20 @@ export function ChartTooltip({
 
 export function EmptyChart({
   height,
-  message = "No data in range",
+  message,
 }: {
   /** Overrides the chart's responsive ratio with a fixed height. */
   height?: number;
+  /** Defaults to the localized "no data in range" copy when omitted. */
   message?: string;
 }) {
+  const { t } = useTranslations();
   return (
     <div
       className="flex w-full items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground"
       style={chartFrameStyle(height)}
     >
-      {message}
+      {message ?? t("metrics.chartEmpty")}
     </div>
   );
 }

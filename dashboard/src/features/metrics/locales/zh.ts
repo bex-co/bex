@@ -55,6 +55,26 @@ const zhMetrics: Record<string, TranslationEntry> = {
     description:
       "Accessible label for a clustered chart event marker (count badge)",
   },
+  "metrics.lineChartLabel_other": {
+    message: "包含 {count} 个数据点的折线图",
+    description:
+      "Accessible name of a metrics line chart; count is the number of distinct sample times",
+  },
+  "metrics.barChartLabel_other": {
+    message: "包含 {count} 个数据点的柱状图",
+    description:
+      "Accessible name of a metrics bar chart; count is the number of time buckets",
+  },
+  "metrics.barValueAt": {
+    message: "{time}：{value}",
+    description:
+      "Accessible name of one focusable bar: its formatted value (e.g. 42 or 1.2K) and its local sample time",
+  },
+  "metrics.chartEmpty": {
+    message: "此时间范围内暂无数据",
+    description:
+      "Default empty state of a metrics chart when the settled query returned no samples in the selected time range",
+  },
   "metrics.eventMarkerHint": {
     message: "点击查看详情",
     description: "Footer line of the chart event-marker hover tooltip",
