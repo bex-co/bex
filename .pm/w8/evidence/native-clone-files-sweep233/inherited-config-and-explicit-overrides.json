@@ -1,0 +1,38 @@
+[
+  {
+    "case": "bex-clone",
+    "GET_statuses": [
+      200,
+      200
+    ],
+    "POST_status": 201,
+    "repo_preserved": true,
+    "branch_preserved": true,
+    "rootDir_preserved": true,
+    "rootDir": "examples/hello-go",
+    "marker_exact": true,
+    "PATH_exact": true,
+    "file_exact": true,
+    "native_commands_preserved": true,
+    "source_snapshot_key": "file_only_update.original_expected_snapshot",
+    "final_current_snapshot_key": "observations[-1].runtime.body"
+  },
+  {
+    "case": "render-clone",
+    "GET_statuses": [
+      200,
+      200
+    ],
+    "POST_status": 201,
+    "repo_preserved": true,
+    "branch_preserved": true,
+    "rootDir_preserved": true,
+    "rootDir": "examples/hello-go",
+    "marker_exact": true,
+    "PATH_exact": true,
+    "file_exact": true,
+    "native_commands_preserved": true,
+    "source_snapshot_key": "file_only_update.original_expected_snapshot",
+    "final_current_snapshot_key": "observations[-1].runtime.body"
+  }
+]

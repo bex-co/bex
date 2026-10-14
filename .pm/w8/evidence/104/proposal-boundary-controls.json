@@ -1,0 +1,108 @@
+{
+  "QA243_OTHER_NUMBER": [
+    {
+      "compiler_valid": true,
+      "field": "numInstances",
+      "number": "1",
+      "problems": null
+    },
+    {
+      "compiler_valid": false,
+      "field": "numInstances",
+      "number": "18446744073709551615",
+      "problems": [
+        {
+          "Code": "BLUEPRINT_YAML_SCALAR",
+          "Path": "#/services/0/numInstances",
+          "Message": "Blueprint contains an invalid integer",
+          "Line": 8,
+          "Column": 23
+        }
+      ]
+    },
+    {
+      "compiler_valid": true,
+      "field": "maxShutdownDelaySeconds",
+      "number": "300",
+      "problems": null
+    },
+    {
+      "compiler_valid": false,
+      "field": "maxShutdownDelaySeconds",
+      "number": "301",
+      "problems": [
+        {
+          "Code": "BLUEPRINT_SCHEMA_INVALID",
+          "Path": "#/services/0/maxShutdownDelaySeconds",
+          "Message": "at '/services/0/maxShutdownDelaySeconds': maximum: got 301, want 300",
+          "Line": 7,
+          "Column": 34
+        }
+      ]
+    },
+    {
+      "compiler_valid": false,
+      "field": "maxShutdownDelaySeconds",
+      "number": "18446744073709551615",
+      "problems": [
+        {
+          "Code": "BLUEPRINT_YAML_SCALAR",
+          "Path": "#/services/0/maxShutdownDelaySeconds",
+          "Message": "Blueprint contains an invalid integer",
+          "Line": 7,
+          "Column": 34
+        }
+      ]
+    }
+  ],
+  "QA243_CONTAINER_NUMBER": [
+    {
+      "container": "ungrouped",
+      "exact_typed_value": "9223372036854775808",
+      "kind": "service",
+      "number": "9223372036854775808"
+    },
+    {
+      "container": "ungrouped",
+      "exact_typed_value": "18446744073709551615",
+      "kind": "service",
+      "number": "18446744073709551615"
+    },
+    {
+      "container": "ungrouped",
+      "exact_typed_value": "9223372036854775808",
+      "kind": "group",
+      "number": "9223372036854775808"
+    },
+    {
+      "container": "ungrouped",
+      "exact_typed_value": "18446744073709551615",
+      "kind": "group",
+      "number": "18446744073709551615"
+    },
+    {
+      "container": "nested",
+      "exact_typed_value": "9223372036854775808",
+      "kind": "service",
+      "number": "9223372036854775808"
+    },
+    {
+      "container": "nested",
+      "exact_typed_value": "18446744073709551615",
+      "kind": "service",
+      "number": "18446744073709551615"
+    },
+    {
+      "container": "nested",
+      "exact_typed_value": "9223372036854775808",
+      "kind": "group",
+      "number": "9223372036854775808"
+    },
+    {
+      "container": "nested",
+      "exact_typed_value": "18446744073709551615",
+      "kind": "group",
+      "number": "18446744073709551615"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+[
+  {
+    "client": "bex",
+    "restart_exit": 0,
+    "one_replacement_instance": true,
+    "runtime_exact_marker": true,
+    "image_configuration_retained": true,
+    "final_history_ids": [
+      "dep-db7mr5pllfps73emu9ng",
+      "dep-db7mqc9llfps73emu9m0"
+    ]
+  },
+  {
+    "client": "render",
+    "restart_exit": 0,
+    "one_replacement_instance": true,
+    "runtime_exact_marker": true,
+    "image_configuration_retained": true,
+    "final_history_ids": [
+      "dep-db7mrahllfps73emu9og",
+      "dep-db7mqget41sc7388o8sg"
+    ]
+  }
+]

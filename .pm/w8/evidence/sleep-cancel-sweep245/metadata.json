@@ -1,0 +1,24 @@
+{
+  "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b",
+  "deployed_revision": "unknown",
+  "owned_creates": 1,
+  "idle_setting_setup": "own GraphQL idleTTLSeconds=30; no shared setting/CLI counterpart",
+  "native_Bex_override": 1,
+  "native_Render_cancel": 1,
+  "bounded_wake_marker_elapsed_seconds": 11.649,
+  "canceled_row_retained": true,
+  "saved_image_retained": true,
+  "preflight_wrong_repository_refusals": 2,
+  "wrong_repository_deploys_allocated": 0,
+  "services_deleted": 1,
+  "deploy_rows_enumerated": 2,
+  "runtime_bug_confirmed": false,
+  "filing": "w8/105 documentation only",
+  "unverified": [
+    "native mutation wire not intercepted",
+    "running OCI image identity/pod-template/ReplicaSet not inspected",
+    "latency measured only within the bounded wake series, not from earlier standalone wake sample",
+    "failed-rollout/failed-build verdict variants are historical leads, not replayed",
+    "live dashboard/MCP/full parity or suites"
+  ]
+}

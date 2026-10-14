@@ -1,0 +1,374 @@
+lego/backend/internal/apps/deploy.go:3081
+3081: 	// this apply makes. The host index is the apply's (withHostClaimScope).
+3082: 	ctx = withRequestMemo(ctx)
+3083: 	if effectiveType(existing.Spec.Type) != effectiveType(desired.Type) {
+3084: 		return AppView{}, fmt.Errorf("%w: spec.type is immutable; delete and recreate the service to change type", core.ErrBadRequest)
+3085: 	}
+3086: 	markHookRan, initialHookChanged := initialDeployHookState(req, existing, &desired)
+3087: 	final := existing.DeepCopy()
+3088: 	specChanged, err := applyBlueprintServiceSpec(&final.Spec, desired, fields)
+3089: 	if err != nil {
+3090: 		return AppView{}, fmt.Errorf("%w: %s", core.ErrBadRequest, err)
+3091: 	}
+3092: 	domainsChanged := existing.Spec.Host != final.Spec.Host ||
+3093: 		!slices.Equal(existing.Spec.Hosts, final.Spec.Hosts) ||
+3094: 		!maps.Equal(existing.Spec.HostRedirects, final.Spec.HostRedirects)
+3095: 	// A pending declaration is intentionally absent from serving spec. Compare
+3096: 	// the Blueprint's declaration set to durable claims before deciding a repeat
+3097: 	// sync changed anything; otherwise every re-apply would spuriously require a
+3098: 	// protected-environment confirmation and open a deploy.
+3099: 	if domainsChanged {
+3100: 		if claims, appID, ok := s.managedDomainClaims(existing); ok {
+3101: 			rows, claimErr := claims.ListDomainClaims(ctx, appID)
+3102: 			if claimErr != nil {
+3103: 				return AppView{}, claimErr
+3104: 			}
+3105: 			declarations := domainDeclarations(final.Spec.Host, final.Spec.Hosts, final.Spec.HostRedirects)
+3106: 			if sameDomainDeclarations(rows, declarations) {
+3107: 				applyVerifiedDomainClaims(&final.Spec, rows)
+3108: 				domainsChanged = false
+3109: 				specChanged = !reflect.DeepEqual(existing.Spec, final.Spec)
+3110: 			}
+3111: 		}
+3112: 	}
+3113: 	if final.Spec.MaintenanceMode != nil {
+3114: 		if err := s.validateMaintenanceMode(ctx, final, maintenanceModeView(final.Spec.MaintenanceMode)); err != nil {
+3115: 			return AppView{}, err
+3116: 		}
+3117: 	}
+3118: 	assignment, environmentChanged, err := s.stackEnvironmentChange(ctx, req, existing)
+3119: 	if err != nil {
+3120: 		return AppView{}, err
+3121: 	}
+3122: 	// Idempotent update: short-circuit when both create-owned spec and explicit
+3123: 	// Blueprint grouping already match and no ran-once annotation needs writing.
+3124: 	if !specChanged && !environmentChanged && !markHookRan && !initialHookChanged {
+3125: 		return s.view(existing), nil
+3126: 	}
+3127: 	// A real change to an EXISTING service via the stack-apply path is the
+3128: 	// "direct-deploy-override" w6/m19 names: a manual apply overriding what's
+3129: 	// already running, as opposed to the git-push auto-deploy pipeline
+3130: 	// (unexported redeploy, webhook-triggered, not guarded). Guarded here, not
+3131: 	// at deployStack's top, so an unchanged re-apply and a brand-new service
+3132: 	// (createFromStack above) never need a confirmation.
+3133: 	if err := s.requireUnprotected(ctx, existing, "deploy"); err != nil {
+3134: 		return AppView{}, err
+3135: 	}
+3136: 	return s.patchChangedStackService(ctx, req, existing, final, stackChanges{
+3137: 		specChanged:        specChanged,
+3138: 		environmentChanged: environmentChanged,
+3139: 		markHookRan:        markHookRan,
+3140: 		initialHookChanged: initialHookChanged,
+3141: 		assignment:         assignment,
+3142: 		domainsChanged:     domainsChanged,
+3143: 	})
+
+lego/backend/internal/apps/deploy.go:3236
+3236: // patchChangedStackService stages and patches an existing service the stack
+3237: // apply changed: a maintenance-only spec change delegates to
+3238: // ConfigureMaintenanceMode; everything else lands in one merge patch, with the
+3239: // deploy record, clone Secret, and restartedAt bump reserved for a
+3240: // deploy-worthy spec change.
+3241: func (s *Service) patchChangedStackService(ctx context.Context, req CreateRequest, existing, final *appv1alpha1.App, changes stackChanges) (AppView, error) {
+3242: 	if changes.domainsChanged {
+3243: 		if err := s.ensureHostsClaimable(ctx, final); err != nil {
+3244: 			return AppView{}, err
+3245: 		}
+3246: 		if appID := managedAppID(existing); appID != "" && s.Store != nil {
+3247: 			if claims, _, ok := s.managedDomainClaims(existing); ok {
+3248: 				declarations := domainDeclarations(final.Spec.Host, final.Spec.Hosts, final.Spec.HostRedirects)
+3249: 				rows, err := claims.ReplaceDomainClaims(ctx, appID, declarations)
+3250: 				if errors.Is(err, store.ErrConflict) {
+3251: 					return AppView{}, errDomainInUse()
+3252: 				}
+3253: 				if err != nil {
+3254: 					return AppView{}, fmt.Errorf("claim Blueprint domains: %w", err)
+3255: 				}
+3256: 				applyVerifiedDomainClaims(&final.Spec, rows)
+3257: 			} else if err := s.Store.ReplaceDomains(ctx, appID, final.Spec.Host, final.Spec.Hosts); err != nil {
+3258: 				if errors.Is(err, store.ErrConflict) {
+3259: 					return AppView{}, errDomainInUse()
+3260: 				}
+3261: 				return AppView{}, fmt.Errorf("claim Blueprint domains: %w", err)
+3262: 			}
+3263: 		}
+3264: 	}
+3265: 	actualSpecChanged := !reflect.DeepEqual(existing.Spec, final.Spec)
+3266: 	maintenanceOnly := actualSpecChanged && serviceSpecChangedOnlyByMaintenance(existing.Spec, final.Spec)
+3267: 	if maintenanceOnly && !changes.environmentChanged {
+3268: 		verbCtx, ref := stackServiceTarget(ctx, existing)
+3269: 		return s.ConfigureMaintenanceMode(verbCtx, ref, maintenanceModeView(final.Spec.MaintenanceMode))
+3270: 	}
+3271: 	maintenanceChanged := !reflect.DeepEqual(existing.Spec.MaintenanceMode, final.Spec.MaintenanceMode)
+3272: 	var currentMaintenance *appv1alpha1.MaintenanceModeSpec
+3273: 	if existing.Spec.MaintenanceMode != nil {
+3274: 		currentMaintenance = existing.Spec.MaintenanceMode.DeepCopy()
+3275: 	}
+3276: 	deploySpecChanged := actualSpecChanged && !maintenanceOnly
+3277: 	base := client.MergeFrom(existing.DeepCopy())
+3278: 	if deploySpecChanged {
+3279: 		metav1.SetMetaDataAnnotation(&existing.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration, strconv.FormatInt(existing.Generation+1, 10))
+3280: 		// final already holds desired applied over existing (the change probe
+3281: 		// above), so adopt it instead of running a second apply pass.
+3282: 		existing.Spec = final.Spec
+3283: 		if maintenanceChanged {
+3284: 			existing.Spec.MaintenanceMode = currentMaintenance
+3285: 		}
+3286: 	}
+3287: 	if changes.initialHookChanged {
+3288: 		metav1.SetMetaDataAnnotation(&existing.ObjectMeta, initialDeployHookAnnotation, req.InitialDeployHook)
+3289: 	}
+3290: 	if changes.environmentChanged {
+3291: 		if err := s.applyEnvironmentChange(ctx, existing, changes.assignment); err != nil {
+3292: 			return AppView{}, err
+3293: 		}
+3294: 	}
+3295: 	if deploySpecChanged {
+3296: 		// The redeploy builds the branch tip its deploy row records, as a
+3297: 		// deploy trigger does, never a commit an earlier deploy pinned; an
+3298: 		// unresolved tip builds the branch (w5/138).
+3299: 		commit := s.resolveDeployCommit(ctx, s.AppWorkspace(ctx, existing), existing.Spec.Repo, existing.Spec.Branch)
+3300: 		existing.Spec.BuildCommit = commit.Hash
+3301: 		if err := s.recordBlueprintRedeploy(ctx, existing, commit); err != nil {
+3302: 			return AppView{}, err
+3303: 		}
+3304: 		secretName, err := s.ensureCloneSecret(ctx, existing)
+3305: 		if err != nil {
+3306: 			return AppView{}, err
+3307: 		}
+3308: 		if secretName != "" {
+3309: 			existing.Spec.CloneSecret = secretName
+3310: 		}
+3311: 		existing.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
+3312: 	}
+3313: 	// Mark the initialDeployHook as ran so subsequent syncs skip it (w2/m45).
+3314: 	if changes.markHookRan {
+3315: 		metav1.SetMetaDataAnnotation(&existing.ObjectMeta, initialDeployHookRanAnnotation, "true")
+3316: 	}
+3317: 	resourcemeta.Touch(existing, s.Now())
+3318: 	if err := s.Client.Patch(ctx, existing, base); err != nil {
+3319: 		return AppView{}, err
+3320: 	}
+3321: 	recordHostClaims(ctx, existing)
+3322: 	if s.Kick != nil {
+3323: 		s.Kick()
+3324: 	}
+3325: 	if maintenanceChanged {
+3326: 		verbCtx, ref := stackServiceTarget(ctx, existing)
+3327: 		return s.ConfigureMaintenanceMode(verbCtx, ref, maintenanceModeView(final.Spec.MaintenanceMode))
+3328: 	}
+3329: 	return s.view(existing), nil
+3330: }
+3331: 
+3332: // recordBlueprintRedeploy records the blueprint redeploy row, building commit,
+3333: // for a changed existing service; a nil Store or an unmanaged App records
+3334: // nothing.
+3335: func (s *Service) recordBlueprintRedeploy(ctx context.Context, existing *appv1alpha1.App, commit store.CommitInfo) error {
+3336: 	if s.Store == nil {
+3337: 		return nil
+3338: 	}
+3339: 	if id := managedAppID(existing); id != "" {
+3340: 		if _, err := s.Store.CreateDeploy(ctx, id, "blueprint", existing.Spec.Image, existing.Generation+1, commit, core.SubjectFrom(ctx)); err != nil {
+3341: 			return fmt.Errorf("recording redeploy: %w", err)
+3342: 		}
+3343: 	}
+3344: 	return nil
+3345: }
+3346: 
+
+lego/backend/internal/apps/deploy.go:3404
+3404: 		return false
+3405: 	}
+3406: 	probe := want.DeepCopy()
+3407: 	probe.MaintenanceMode = cur.MaintenanceMode
+3408: 	return reflect.DeepEqual(*probe, cur)
+3409: }
+3410: 
+3411: func applyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec, fields map[string]BlueprintField) (bool, error) {
+3412: 	if fields == nil {
+3413: 		before := *dst
+3414: 		applyCreateToSpec(dst, want)
+3415: 		return !reflect.DeepEqual(*dst, before), nil
+3416: 	}
+3417: 	return ApplyBlueprintServiceSpec(dst, want, fields)
+3418: }
+3419: 
+3420: func blueprintDatabaseSpecChanged(cur *appv1alpha1.Database, want appv1alpha1.DatabaseSpec, fields map[string]BlueprintField) (bool, error) {
+3421: 	return ApplyBlueprintDatabaseSpec(cur.DeepCopy(), want, fields)
+3422: }
+3423: 
+3424: func blueprintKeyValueSpecChanged(cur, want appv1alpha1.KeyValueSpec, fields map[string]BlueprintField) bool {
+3425: 	probe := cur
+3426: 	return ApplyBlueprintKeyValueSpec(&probe, want, fields)
+3427: }
+3428: 
+
+lego/backend/internal/apps/service.go:334
+334: 	SetAppSuspended(ctx context.Context, id string, suspended bool) error
+335: 	SetAppTier(ctx context.Context, id string, tier string) error
+336: 	SetAppPort(ctx context.Context, id string, port int32, mode string) error
+337: 	SetAppReplicas(ctx context.Context, id string, replicas int32) error
+338: 	// SetAppIdleTTL updates the row's idle-TTL — the single write path for the
+339: 	// idle-timeout verb on store-managed Apps, same row-first rationale as
+340: 	// SetAppReplicas (the projector owns spec.idleTTLSeconds).
+341: 	SetAppIdleTTL(ctx context.Context, id string, seconds int32) error
+342: 	// SetAppDisplayName mirrors spec.displayName onto the row. The CR stays the
+343: 	// writer of truth (the projector doesn't own the field) — this is the read
+344: 	// projection the workspace-wide webhook feed joins, so a renamed service's
+345: 	// deliveries carry the same label the dashboard shows (w6/m101).
+346: 	SetAppDisplayName(ctx context.Context, id string, displayName string) error
+347: 	// SetAppSource updates the projector-owned repo/image/branch tuple in one
+348: 	// row write so a source PATCH cannot be reverted on the next resync.
+349: 	SetAppSource(ctx context.Context, id, repo, image, branch string, registryCredentialID *string) error
+350: 	// SetAppImage updates the projector-owned image field. Source redeploys use
+351: 	// it to clear the exact-image override a prior rollback installed.
+352: 	SetAppImage(ctx context.Context, id string, image string) error
+353: 	// AddDomain appends or updates a custom-domain row. redirectForName is empty
+354: 	// for a directly-served host and names the canonical host for an auto-paired
+355: 	// redirect. The projector carries both into the App spec on the next resync.
+
+lego/backend/internal/apps/service.go:4120
+4120: 	if !changed {
+4121: 		return s.view(a), nil
+4122: 	}
+4123: 	// Stamp the pending generation before writing the projector-owned source
+4124: 	// row. If the following CR patch loses a race or the API becomes unavailable,
+4125: 	// a later projector resync still cannot deploy the new source accidentally.
+4126: 	markerBase := client.MergeFrom(a.DeepCopy())
+4127: 	metav1.SetMetaDataAnnotation(
+4128: 		&a.ObjectMeta,
+4129: 		appv1alpha1.AnnotationPendingSourceGeneration,
+4130: 		strconv.FormatInt(a.Generation+1, 10),
+4131: 	)
+4132: 	if err := s.Client.Patch(ctx, a, markerBase); err != nil {
+4133: 		return AppView{}, err
+4134: 	}
+4135: 	if s.Store != nil {
+4136: 		if id := managedAppID(a); id != "" {
+4137: 			if err := s.Store.SetAppSource(ctx, id, next.repo, next.image, next.branch, clonePtr(next.registryCredentialID)); err != nil {
+4138: 				return AppView{}, fmt.Errorf("update source of truth: %w", err)
+4139: 			}
+4140: 		}
+4141: 	}
+4142: 	previousBranch := a.Spec.Branch
+
+lego/backend/internal/store/store.go:1975
+1975: // SetAppSource atomically updates repo/image/branch and the explicit registry
+1976: // credential binding so the projector never observes mismatched source/auth.
+1977: func (s *PGStore) SetAppSource(ctx context.Context, id, repo, image, branch string, registryCredentialID *string) error {
+1978: 	tag, err := s.Pool.Exec(ctx,
+1979: 		`UPDATE apps SET repo = NULLIF($2, ''), image = NULLIF($3, ''), branch = $4, registry_credential_id = $5, updated_at = now() WHERE id = $1`,
+1980: 		id, repo, image, branch, registryCredentialID)
+1981: 	if err != nil {
+1982: 		return classify("app", err)
+1983: 	}
+1984: 	if tag.RowsAffected() == 0 {
+1985: 		return fmt.Errorf("app: %w", ErrNotFound)
+1986: 	}
+1987: 	return nil
+1988: }
+1989: 
+1990: // BackfillAppType heals a pre-w6/m46 row that predates the type column. Only
+1991: // matching an empty type is the whole safety story: it makes the write
+1992: // idempotent, race-free between concurrent projector passes, and incapable of
+1993: // changing a type the create path already recorded (spec.type is immutable, so
+1994: // a disagreement would be corruption, not an update).
+
+lego/backend/internal/store/reconciler.go:669
+669: 		}
+670: 		// A row created before the type column existed (migration 0095) learns
+671: 		// its type from its own live CR, which has carried spec.type all along —
+672: 		// so the projector's create path can rebuild it correctly if the CR ever
+673: 		// goes missing. One write per row, ever: the healed row comes back typed
+674: 		// on the next pass. Failures are logged, not fatal.
+675: 		if d.Type == "" && cur.Spec.Type != "" {
+676: 			if _, err := r.Store.BackfillAppType(ctx, d.ID, cur.Spec.Type); err != nil {
+677: 				log.Printf("controlplane: backfill type for %s: %v", cur.Name, err)
+678: 			}
+679: 		}
+680: 		// Project desired spec only; observed status (phase/url) is read from
+681: 		// the CR by bex-api, never copied back into Postgres. Labels are
+682: 		// re-stamped so a LabelTenant value change migrates without a relabel.
+683: 		specChanged := applyOwnedSpec(&cur.Spec, projectSpec(d))
+684: 		labelsChanged := stampLabels(cur, d, r.identity())
+685: 		if specChanged || labelsChanged {
+686: 			if err := r.Client.Update(ctx, cur); err != nil {
+687: 				errs = append(errs, fmt.Errorf("update App %s: %w", cur.Name, err))
+688: 				r.settleAbandonedDeploys(ctx, d, open)
+689: 				continue
+690: 			}
+691: 		}
+
+lego/backend/internal/store/reconciler.go:2072
+2072: // a live CR to get wrong. Two things follow. A pre-0095 row, whose type is
+2073: // still empty, can never downgrade a running web service's exposure while it
+2074: // waits for its backfill. And a resync of an unchanged app writes nothing,
+2075: // which matters beyond exposure: every Update bumps metadata.generation, and a
+2076: // bump between a deploy row opening and the operator first stamping
+2077: // status.releaseGeneration reads as a supersede, closing that deploy canceled
+2078: // (w6/m46 t004 — the same overwrite caused both bugs).
+2079: func applyOwnedSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) bool {
+2080: 	changed := false
+2081: 	set := func(cur *string, want string) {
+2082: 		if *cur != want {
+2083: 			*cur = want
+2084: 			changed = true
+2085: 		}
+2086: 	}
+2087: 	set(&dst.ContainerPolicy, want.ContainerPolicy)
+2088: 	set(&dst.PortMode, want.PortMode)
+2089: 	set(&dst.Repo, want.Repo)
+2090: 	set(&dst.Image, want.Image)
+2091: 	if !equalStringPtrs(dst.RegistryCredentialID, want.RegistryCredentialID) {
+2092: 		dst.RegistryCredentialID = copyStringPtr(want.RegistryCredentialID)
+2093: 		changed = true
+2094: 	}
+2095: 	// A non-nil binding is explicit, so the projector owns the corresponding
+2096: 	// deterministic Secret reference (including explicit-empty => clear). nil
+2097: 	// retains legacy host auto-resolution, whose reference is API-managed.
+2098: 	if want.RegistryCredentialID != nil && dst.ExternalRegistryPullSecret != want.ExternalRegistryPullSecret {
+2099: 		dst.ExternalRegistryPullSecret = want.ExternalRegistryPullSecret
+2100: 		changed = true
+2101: 	}
+2102: 	set(&dst.Branch, want.Branch)
+2103: 	set(&dst.Tier, want.Tier)
+2104: 	set(&dst.Host, want.Host)
+2105: 	set(&dst.Subdomain, want.Subdomain)
+2106: 	if dst.Replicas != want.Replicas {
+2107: 		dst.Replicas, changed = want.Replicas, true
+2108: 	}
+2109: 	if dst.Port != want.Port {
+2110: 		dst.Port, changed = want.Port, true
+2111: 	}
+2112: 	if dst.IdleTTLSeconds != want.IdleTTLSeconds {
+2113: 		dst.IdleTTLSeconds, changed = want.IdleTTLSeconds, true
+2114: 	}
+2115: 	if dst.Suspended != want.Suspended {
+2116: 		dst.Suspended, changed = want.Suspended, true
+2117: 	}
+2118: 	if !slices.Equal(dst.Hosts, want.Hosts) {
+2119: 		dst.Hosts, changed = slices.Clone(want.Hosts), true
+2120: 	}
+2121: 	if !maps.Equal(dst.HostRedirects, want.HostRedirects) {
+2122: 		dst.HostRedirects, changed = maps.Clone(want.HostRedirects), true
+2123: 	}
+2124: 	// The disk is projector-owned in both directions: attaching one has to
+2125: 	// reach an existing CR, and detaching one has to clear it, or the operator
+2126: 	// would keep a volume the control plane no longer knows about.
+2127: 	if !equalDiskSpecs(dst.Disk, want.Disk) {
+2128: 		dst.Disk, changed = want.Disk.DeepCopy(), true
+2129: 	}
+2130: 	return changed
+2131: }
+2132: 
+2133: func projectDisk(d *Disk) *appv1alpha1.DiskSpec {
+2134: 	if d == nil {
+2135: 		return nil
+2136: 	}
+2137: 	return &appv1alpha1.DiskSpec{Name: d.Name, MountPath: d.MountPath, SizeGB: d.SizeGB}
+2138: }
+2139: 
+2140: func equalDiskSpecs(a, b *appv1alpha1.DiskSpec) bool {
+2141: 	if a == nil || b == nil {
+2142: 		return a == b
+2143: 	}

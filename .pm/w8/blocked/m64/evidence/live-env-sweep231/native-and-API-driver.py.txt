@@ -1,0 +1,162 @@
+from pathlib import Path
+import json, subprocess, datetime, secrets, shlex, shutil, yaml, sys, time
+p=Path(__file__).parent; root=Path('/Volumes/nvme4tbfish/projects/bex8'); cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json'
+c=json.loads(cp.read_text()); assert c['sync231_result']==0 and not c.get('active_sync_stash')
+ws='tea-daif693dqjvc73e7as3g'; mode=sys.argv[1]; statefile=p/'sweep231-state.json'
+def now(): return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():
+ c['last_updated']=now(); cp.write_text(json.dumps(c,indent=2,ensure_ascii=False)); cp.chmod(0o600)
+ if 'st' in globals(): statefile.write_text(json.dumps(st,indent=2,ensure_ascii=False)); statefile.chmod(0o600)
+def cli(args,client='bex',bound=45):
+ f=p/'render-config/cli.yaml'
+ try:
+  if client=='render':
+   assert not f.exists(); shutil.copyfile(p/'config/cli.yaml',f); f.chmod(0o600)
+  runner=['python3',str(p/'run-render.py')] if client=='render' else ['python3',str(p/'run.py'),'--release']
+  return json.loads(subprocess.check_output([*runner,'--bound='+str(bound),*args],text=True))
+ finally:
+  if client=='render': f.unlink(missing_ok=True)
+def wire(path): return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True))
+def api(method,path,body=None):
+ cfg=yaml.safe_load((p/'config/cli.yaml').read_text()); token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token'); assert token
+ auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: render-cli/2.27.0 (macOS - 26.5.1)"\nheader = "X-Bex-Workspace: '+ws+'"\n'
+ f=p/'sweep231-request.json'; args=['curl','--disable','-sS','--max-time','40','--config','-','-X',method]
+ try:
+  if body is not None:
+   f.write_text(json.dumps(body)); f.chmod(0o600); args+=['-H','Content-Type: application/json','--data-binary','@'+str(f)]
+  r=subprocess.run([*args,'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=45)
+  payload,_,status=r.stdout.rpartition('\n'); assert token not in payload
+  return {'request':{'method':method,'path':path,'body':body,'authorization':'[REDACTED]'},'status':status,'curl_exit':r.returncode,'response':payload,'stderr':r.stderr}
+ finally: f.unlink(missing_ok=True)
+def own(role):
+ x=next(v for v in c['resources'] if v.get('sweep')==231 and v.get('case')==role)
+ base={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']}
+ assert x['workspace']==ws and x['id'] not in base and x['create_result']['exit']==0 and not x['state'].startswith('deleted:')
+ return x
+def manifest(variant):
+ source=json.loads(json.dumps(st['source_template'])); consumer=json.loads(json.dumps(st['consumer_template']))
+ links=st['groups']; vals=['A','B','C']; groups=[{'name':g,'envVars':[{'key':'QA_VALUE','value':st['marker']+'_'+vals[i]}]} for i,g in enumerate(links[:2])]
+ source['envVars']=[{'fromGroup':links[0]},{'fromGroup':links[1]},{'fromGroup':links[0]}]
+ expected=st['marker']+'_B'; valid=True
+ if variant=='reordered': source['envVars']=[{'fromGroup':links[1]},{'fromGroup':links[0]}]
+ elif variant=='omitted-link': source['envVars']=[]
+ elif variant=='omitted-one-link': source['envVars']=[{'fromGroup':links[0]}]
+ elif variant=='new-link':
+  groups.append({'name':links[2],'envVars':[{'key':'QA_VALUE','value':st['marker']+'_C'}]}); source['envVars']=[{'fromGroup':links[2]},{'fromGroup':links[0]}]; expected=st['marker']+'_C'
+ elif variant=='undeclared-link': groups=groups[:1]; valid=False
+ elif variant in ['own-refusal','own-empty-refusal']: valid=False
+ elif variant in ['literal-seed','seed-literal','empty-literal-seed','empty-seed-literal']:
+  expected='' if variant.startswith('empty-') else st['marker']+'_LITERAL'
+  literal={'key':'QA_VALUE','value':expected}; seed={'key':'QA_VALUE','value':st['marker']+'_SEED','sync':False}
+  source['envVars'] += [seed,literal] if variant.endswith('seed-literal') else [literal,seed]
+ elif variant!='initial': raise ValueError(variant)
+ return yaml.safe_dump({'envVarGroups':groups,'services':[source,consumer]},sort_keys=False),expected,valid
+def record_deploys(x):
+ r=cli(['deploys','list',x['id'],'--confirm','-o','json']); assert r['exit']==0
+ rows=json.loads(r['stdout']); x['deploy_children']=rows; x.setdefault('recorded_child_ids',[])
+ for row in rows:
+  if row['id'] not in x['recorded_child_ids']: x['recorded_child_ids'].append(row['id'])
+ save(); return r,rows
+if mode=='create':
+ assert not statefile.exists() and not any(x.get('sweep')==231 for x in c['resources'])
+ nonce=secrets.token_hex(4); prefix='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce
+ st={'nonce':nonce,'marker':'QA231_'+nonce,'source_name':prefix+'-src','consumer_name':prefix+'-copy','groups':[prefix+'-a',prefix+'-b',prefix+'-c'],'source_head':c['head'],'created_at':now()}
+ snap='function snap(){return {marker:process.env.QA_MARKER,value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}'
+ build='const fs=require("fs");'+snap+'fs.writeFileSync("qa-built.json",JSON.stringify(snap()));'
+ program='const fs=require("fs"),http=require("http");'+snap+'const built=JSON.parse(fs.readFileSync("qa-built.json"));http.createServer((q,r)=>{r.writeHead(200,{"Content-Type":"application/json"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),"0.0.0.0");'
+ common={'type':'web','runtime':'node','plan':'free','repo':'https://github.com/bex-co/bex','branch':'main','rootDir':'examples/hello-go','autoDeploy':False,'buildCommand':'/usr/local/bin/node -e '+shlex.quote(build),'startCommand':'/usr/local/bin/node -e '+shlex.quote(program),'healthCheckPath':'/'}
+ st['source_template']={**common,'name':st['source_name']}
+ st['consumer_template']={**common,'name':st['consumer_name'],'envVars':[{'key':'QA_COPY','fromService':{'type':'web','name':st['source_name'],'envVarKey':'QA_VALUE'}}]}
+ # Marker is written by the program rather than appended to group-link shapes.
+ st['source_template']['buildCommand']=st['source_template']['buildCommand'].replace('process.env.QA_MARKER',json.dumps(st['marker']))
+ st['source_template']['startCommand']=st['source_template']['startCommand'].replace('process.env.QA_MARKER',json.dumps(st['marker']))
+ st['consumer_template']['buildCommand']=st['consumer_template']['buildCommand'].replace('process.env.QA_MARKER',json.dumps(st['marker']))
+ st['consumer_template']['startCommand']=st['consumer_template']['startCommand'].replace('process.env.QA_MARKER',json.dumps(st['marker']))
+ # The marker contains only ASCII alphanumerics/underscore, so replacing it
+ # inside the shell-quoted program does not change its quoting.
+ save()
+ quota=wire('/v1/owners/'+ws+'/limits'); assert quota['status']=='200'; q=json.loads(quota['response']); assert q['services']['used']+q['services']['terminating']+2<=q['services']['limit']; st['quota_before']=quota
+ inv=cli(['services','--confirm','-o','json']); assert inv['exit']==0; rows=json.loads(inv['stdout']) or []; assert not any(x.get('service',x)['name'] in [st['source_name'],st['consumer_name']] for x in rows); st['service_inventory_before']=inv
+ groups=wire('/v1/env-groups?ownerId='+ws+'&limit=100'); assert groups['status']=='200'; grows=json.loads(groups['response']); assert not any(x['envGroup']['name'] in st['groups'] for x in grows); st['group_inventory_before']=groups
+ bp=wire('/v1/blueprints?ownerId='+ws+'&limit=100'); assert bp['status']=='200'; st['blueprint_inventory_before']=bp; save()
+ variant='initial'
+else:
+ st=json.loads(statefile.read_text()); variant=sys.argv[2] if len(sys.argv)>2 else st['last_apply']['variant']
+if mode in ['create','apply','validate']:
+ text,expected,valid=manifest(variant); f=p/('sweep231-'+variant+'.yaml'); f.write_text(text); f.chmod(0o600)
+ receipt={'variant':variant,'at':now(),'manifest':text,'expected':expected,'expected_valid':valid,'qualification':'native validation; inline apply is API setup because pinned CLI has no Blueprint apply command'}
+ st.setdefault('journeys',[]).append(receipt); save()
+ for client in ['bex','render']:
+  r=cli(['blueprints','validate',str(f),'--confirm','-o','json'],client); receipt.setdefault('native_validations',[]).append({'client':client,'result':r}); save()
+  decoded=json.loads(r['stdout']); print(json.dumps({'variant':variant,'client':client,'exit':r['exit'],'valid':decoded.get('valid'),'errors':decoded.get('errors',[])}),flush=True)
+ if mode!='validate':
+  if mode=='apply':
+   for role in ['source','consumer']: record_deploys(own(role))
+  receipt['apply_intent_at']=now(); save(); result=api('POST','/v1/blueprints/deploy',{'ownerId':ws,'bexYaml':text}); receipt['apply_result']=result; st['last_apply']=receipt; save()
+  print(json.dumps({'variant':variant,'apply_status':result['status'],'curl_exit':result['curl_exit']}),flush=True)
+  if result['status']=='200':
+   body=json.loads(result['response']); assert len(body['services'])==2 and not body.get('databases') and not body.get('keyValues')
+   if mode=='create':
+    for role,name in [('source',st['source_name']),('consumer',st['consumer_name'])]:
+     app=next(x for x in body['services'] if x['name']==name); assert app['ownerId']==ws
+     assert app['id'] not in {x.get('service',x)['id'] for x in rows}
+     x={'sweep':231,'case':role,'workspace':ws,'type':'web_service','id':app['id'],'name':name,'nonce':st['nonce'],'time':now(),'state':'created: initial env snapshot pending','API_create_appview':app,'API_create_result':result,'create_result':{'exit':0,'qualification':'API-owned setup after two native validations'},'recorded_child_ids':[app['latestDeployId']] if app.get('latestDeployId') else [],'dependency_ids':[]}
+     c['resources'].append(x); save(); detail=wire('/v1/services/'+app['id']); assert detail['status']=='200'; v=json.loads(detail['response']); assert v['name']==name and v['ownerId']==ws and v['serviceDetails']['plan']=='free'; x['create_response']=v; x['canonical_create_detail']=detail; save()
+    for group in body.get('envGroups',[]):
+     assert group['name'] in st['groups'] and group['id'] not in {v['envGroup']['id'] for v in grows}
+     c['resources'].append({'sweep':231,'case':'group-'+group['name'].rsplit('-',1)[-1],'workspace':ws,'type':'env_group','id':group['id'],'name':group['name'],'time':now(),'state':'created: linked to exact own source','API_create_result':result,'created_view':group,'dependency_ids':[own('source')['id']]}); save()
+   else:
+    assert {x['id'] for x in body['services']}=={own('source')['id'],own('consumer')['id']}
+    for app in body['services']:
+     x=next(v for v in c['resources'] if v.get('id')==app['id']); did=app.get('latestDeployId')
+     if did and did not in x['recorded_child_ids']: x['recorded_child_ids'].append(did)
+    for group in body.get('envGroups',[]):
+     if not any(x.get('id')==group['id'] for x in c['resources']):
+      assert group['name']==st['groups'][2] and group['id'] not in {v['envGroup']['id'] for v in json.loads(st['group_inventory_before']['response'])}
+      c['resources'].append({'sweep':231,'case':'group-c','workspace':ws,'type':'env_group','id':group['id'],'name':group['name'],'time':now(),'state':'created: linked to exact own source','API_create_result':result,'created_view':group,'dependency_ids':[own('source')['id']]})
+    save()
+elif mode=='observe':
+ for role in ['source','consumer']:
+  x=own(role); native,rows=record_deploys(x); target=rows[0]; f=p/('sweep231-'+role+'-runtime.json')
+  r=subprocess.run(['curl','--disable','-sS','--max-time','12','-o',str(f),'-w','%{http_code}',x['create_response']['serviceDetails']['url']+'/'],capture_output=True,text=True,timeout=16)
+  try: body=json.loads(f.read_text())
+  except (ValueError,FileNotFoundError): body=None
+  expected=st['last_apply']['expected']
+  if role=='source' and st['last_apply']['variant'] in ['own-refusal','own-empty-refusal']: expected=st['own_edits'][-1]['value']
+  key='value' if role=='source' else 'copy'; exact=r.stdout=='200' and isinstance(body,dict) and body.get('runtime',{}).get('marker')==st['marker'] and body.get('runtime',{}).get(key)==expected
+  obs={'at':now(),'variant':st['last_apply']['variant'],'native_history':native,'target':target,'runtime':{'HTTP':r.stdout,'exit':r.returncode,'body':body,'stderr':r.stderr},'expected':expected,'exact_runtime':exact}; x.setdefault('observations',[]).append(obs); save()
+  print(json.dumps({'role':role,'variant':obs['variant'],'status':target['status'],'HTTP':r.stdout,'runtime':body,'exact_runtime':exact}),flush=True)
+elif mode=='edit-own':
+ x=own('source'); value='' if variant=='empty' else st['marker']+'_OWN'; record_deploys(x)
+ receipt={'at':now(),'value':value,'intent':'same-key own mutable override on exact-owned source, save_only'}; st.setdefault('own_edits',[]).append(receipt); save()
+ receipt['result']=api('PATCH','/v1/services/'+x['id']+'/environment',{'envVars':[{'key':'QA_VALUE','value':value}],'saveMode':'save_only'}); save(); assert receipt['result']['status']=='200'; assert not json.loads(receipt['result']['response'])['rolledOut']; print(json.dumps({'own_value':value,'status':receipt['result']['status'],'save_only':True}),flush=True)
+elif mode=='deploy':
+ role=variant; client=sys.argv[3]; x=own(role); before,rows=record_deploys(x); assert rows[0]['status'] in ['live','canceled']; commit=rows[0]['commit']['id']
+ receipt={'at':now(),'client':client,'args':['deploys','create',x['id'],'--commit',commit,'--wait','--confirm','-o','json'],'before_ids':[d['id'] for d in rows],'intent':'exact-owned native same-commit deploy after current state settled'}; x.setdefault('manual_deploy_intents',[]).append(receipt); save(); result=cli(receipt['args'],client,240); receipt['result']=result; save(); record_deploys(x); print(json.dumps({'role':role,'client':client,'exit':result['exit'],'elapsed':result['elapsed'],'stderr':result['stderr']}),flush=True)
+elif mode=='delete-service':
+ x=own(variant); record_deploys(x); assert x['create_response']['serviceDetails']['plan']=='free'
+ groups=wire('/v1/env-groups?ownerId='+ws+'&limit=100'); assert groups['status']=='200'
+ owned={v['id'] for v in c['resources'] if v.get('sweep')==231 and v.get('type')=='env_group'}
+ for group in json.loads(groups['response']):
+  g=group['envGroup']
+  if any(link['id']==x['id'] for link in g['serviceLinks']): assert g['id'] in owned
+ x['delete_link_census']=groups; x['state']='exact-owned native delete intent persisted'; save(); r=cli(['services','delete',x['id'],'--confirm','-o','json']); x['delete_result']=r; save(); print(json.dumps({'role':variant,'native_delete_exit':r['exit']}),flush=True)
+elif mode=='delete-groups':
+ assert all(v.get('state','').startswith('deleted:') for v in c['resources'] if v.get('sweep')==231 and v.get('type')=='web_service')
+ for x in c['resources']:
+  if x.get('sweep')!=231 or x.get('type')!='env_group' or x['state'].startswith('deleted:'): continue
+  assert x['workspace']==ws and x['API_create_result']['status']=='200' and x['created_view']['id']==x['id']
+  detail=wire('/v1/env-groups/'+x['id']); x['detail_before_delete']=detail; save(); assert detail['status']=='200'; g=json.loads(detail['response']); assert g['ownerId']==ws and g['name']==x['name'] and not g['serviceLinks']
+  assert 'delete_result' not in x,'Reconcile acknowledged deletion rather than repeat it'
+  x['state']='exact-owned unlinked group delete intent persisted'; save(); result=api('DELETE','/v1/env-groups/'+x['id']); x['delete_result']=result; save(); assert result['status']=='204'; x['detail_after_delete']=wire('/v1/env-groups/'+x['id']); save(); assert x['detail_after_delete']['status']=='404'; x['state']='deleted: API204/API404/unlinked'; save(); print(json.dumps({'group':x['id'],'delete':result['status'],'detail':x['detail_after_delete']['status']}),flush=True)
+elif mode=='reconcile-cleanup':
+ listing=cli(['services','--confirm','-o','json']); assert listing['exit']==0; ids={v.get('service',v)['id'] for v in json.loads(listing['stdout']) or []}; baseline={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']}; assert baseline<=ids
+ q=wire('/v1/owners/'+ws+'/limits'); assert q['status']=='200'; quota=json.loads(q['response'])
+ for x in c['resources']:
+  if x.get('sweep')!=231 or x.get('type')!='web_service' or 'delete_result' not in x: continue
+  detail=wire('/v1/services/'+x['id']); r=subprocess.run(['curl','--disable','-sS','--max-time','10','-o','/dev/null','-w','%{http_code}',x['create_response']['serviceDetails']['url']],capture_output=True,text=True,timeout=14)
+  proof={'at':now(),'detail':detail,'list_ids':sorted(ids),'baseline_present':True,'runtime':{'exit':r.returncode,'HTTP':r.stdout,'stderr':r.stderr},'quota':q}; x.setdefault('cleanup_reconciliations',[]).append(proof)
+  complete=detail['status']=='404' and x['id'] not in ids and r.returncode==0 and r.stdout=='404' and quota['services']['terminating']==0
+  x['state']='deleted: nativeack/API404/listabsent/runtime404/baseline present/quota termination0' if complete else 'delete acknowledged: passive detail/runtime/quota reconciliation pending'; save(); print(json.dumps({'role':x['case'],'detail':detail['status'],'runtime':r.stdout,'terminating':quota['services']['terminating'],'complete':complete}),flush=True)
+ st['cleanup_group_inventory']=wire('/v1/env-groups?ownerId='+ws+'&limit=100'); st['cleanup_blueprint_inventory']=wire('/v1/blueprints?ownerId='+ws+'&limit=100'); save()
+else: raise ValueError(mode)

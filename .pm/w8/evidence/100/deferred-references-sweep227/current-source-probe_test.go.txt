@@ -1,0 +1,87 @@
+package apps
+
+import (
+	"context"
+	"encoding/json"
+	"github.com/bex-co/bex/lego/backend/internal/core"
+	"testing"
+)
+
+func TestQA227DeferredReferenceLocation(t *testing.T) {
+	for _, family := range []string{"missing sibling key", "pool unavailable", "type mismatch", "no address"} {
+		for _, nested := range []bool{false, true} {
+			for _, mode := range []string{"second invalid", "first invalid", "both valid"} {
+				label := family + "/" + mode
+				prefix := ""
+				if nested {
+					label = "nested " + label
+					prefix = "projects[0].environments[0]."
+				}
+				t.Run(label, func(t *testing.T) {
+					target := map[string]any{"name": "own-target", "type": "web", "runtime": "image", "image": map[string]any{"url": "nginx:1"}, "envVars": []any{map[string]any{"key": "GOOD", "value": "good"}}}
+					ref := map[string]any{"name": "own-target", "type": "web", "envVarKey": "MISSING"}
+					bad := map[string]any{"key": "VALUE", "fromService": ref}
+					switch family {
+					case "pool unavailable":
+						bad = map[string]any{"key": "VALUE", "fromDatabase": map[string]any{"name": "own-db", "property": "connectionPoolString"}}
+					case "type mismatch":
+						ref["type"] = "worker"
+						ref["envVarKey"] = "GOOD"
+					case "no address":
+						target["type"] = "worker"
+						target["plan"] = "starter"
+						delete(ref, "envVarKey")
+						ref["type"] = "worker"
+						ref["property"] = "host"
+					}
+					envs := []any{map[string]any{"key": "VALUE", "value": "first"}, map[string]any{"key": "VALUE", "value": "second"}}
+					index := 1
+					if mode == "first invalid" {
+						index = 0
+					}
+					if mode != "both valid" {
+						envs[index] = bad
+					}
+					caller := map[string]any{"name": "own-caller", "type": "web", "runtime": "image", "image": map[string]any{"url": "nginx:1"}, "envVars": envs}
+					doc := map[string]any{"services": []any{caller, target}}
+					if family == "pool unavailable" {
+						doc["databases"] = []any{map[string]any{"name": "own-db", "plan": "free"}}
+					}
+					if nested {
+						environment := map[string]any{"name": "own-env", "services": doc["services"], "databases": doc["databases"]}
+						project := map[string]any{"name": "own-project", "environments": []any{environment}}
+						doc = map[string]any{"projects": []any{project}}
+					}
+					// Do not add an absent databases field as a null schema member.
+					if nested && family != "pool unavailable" {
+						delete(doc["projects"].([]any)[0].(map[string]any)["environments"].([]any)[0].(map[string]any), "databases")
+					}
+					body, err := json.MarshalIndent(doc, "", "  ")
+					if err != nil {
+						t.Fatal(err)
+					}
+					svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+					v, err := svc.ValidateBlueprint(context.Background(), "", string(body), "")
+					if err != nil {
+						t.Fatal(err)
+					}
+					expected := prefix + "services[0].envVars[" + string(rune('0'+index)) + "]"
+					if family == "type mismatch" {
+						expected += ".fromService.type"
+					}
+					got := ""
+					if len(v.Errors) > 0 && v.Errors[0].Path != nil {
+						got = *v.Errors[0].Path
+					}
+					expectValid := mode == "both valid"
+					if v.Valid != expectValid {
+						t.Fatalf("unexpected decision: %+v", v)
+					}
+					out := map[string]any{"case": label, "manifest": string(body), "expect_valid": expectValid, "expected_path": expected, "actual_path": got, "validation": v, "location_or_valid_control_pass": expectValid || got == expected, "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix"}
+					b, _ := json.Marshal(out)
+					t.Log("QA227_DEFERRED " + string(b))
+				})
+			}
+		}
+	}
+}

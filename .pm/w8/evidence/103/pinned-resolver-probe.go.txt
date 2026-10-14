@@ -1,0 +1,12 @@
+package main
+import("encoding/json";"fmt";"os";"path/filepath";"github.com/render-oss/cli/pkg/service";types "github.com/render-oss/cli/pkg/types/service")
+func main(){dir:=os.Args[1];cases:=[]struct{name,path,expected string}{
+ {"plain control","neighbor.txt","NEIGHBOR_A\n"},
+ {"trailing space selects neighbor","neighbor.txt ","INTENDED_SPACE_B\n"},
+ {"trailing tab selects neighbor","neighbor.txt\t","INTENDED_TAB_C\n"},
+ {"trailing newline selects neighbor","neighbor.txt\n","INTENDED_NEWLINE_D\n"},
+ {"interior space control","interior name.txt","INTERIOR_E\n"},
+ {"no trimmed neighbor","standalone.txt ","INTENDED_ONLY_F\n"},
+ };for _,tc:=range cases{path:=filepath.Join(dir,tc.path);if err:=os.WriteFile(path,[]byte(tc.expected),0600);err!=nil{panic(err)}}
+ for _,tc:=range cases{path:=filepath.Join(dir,tc.path);arg:="qa-note.txt:"+path;parsed,parseErr:=types.ParseSecretFileRef(arg);resolved,err:=service.ResolveSecretFileInputs([]string{arg});actual:="";if len(resolved)>0{actual=resolved[0].Content};var errorText any;if err!=nil{errorText=err.Error()};b,_:=json.Marshal(map[string]any{"case":tc.name,"literal_argument":arg,"original_path":path,"parsed_path":parsed.Path,"parse_error":parseErr,"resolution_error":errorText,"expected_content":tc.expected,"actual_content":actual,"pass":err==nil&&actual==tc.expected,"scope":"actual pinned parser and CLI request-builder resolver; local harmless files only; no hosted request or resource"});fmt.Println(string(b))}
+}

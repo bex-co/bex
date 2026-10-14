@@ -1,0 +1,31 @@
+package apps
+import (
+ "context"
+ "encoding/json"
+ "fmt"
+ "testing"
+ "github.com/bex-co/bex/lego/backend/internal/core"
+ "github.com/bex-co/bex/lego/backend/internal/envgroups"
+ "github.com/bex-co/bex/lego/backend/internal/secrets"
+)
+func TestQA242CurrentStateReferenceLocation(t *testing.T){
+ for _,family:=range []string{"existing seed","own override over group"}{for _,nested:=range []bool{false,true}{for _,ordinal:=range []int{0,1}{
+  name:=fmt.Sprintf("%s nested=%v ordinal=%d",family,nested,ordinal)
+  t.Run(name,func(t *testing.T){
+   ctx:=context.Background();base:=&core.Base{Client:fakeClient(),Namespace:"default"};kv:=newMemKV();own:=&secrets.Service{Base:base,Store:kv};groups:=&envgroups.Service{Base:base,Store:kv};svc:=&Service{Base:base,EnvGroups:groups,EnvSeeder:own,EnvNames:own}
+   ref:=map[string]any{"key":"COPY","fromService":map[string]any{"type":"web","name":"source","envVarKey":"VALUE"}}
+   literal:=map[string]any{"key":"COPY","value":"unrelated literal"};entries:=[]any{ref,literal};if ordinal==1{entries=[]any{literal,ref}}
+   sourceEnv:=[]any{map[string]any{"key":"VALUE","value":"seed","sync":false}}
+   if family=="own override over group"{sourceEnv=[]any{map[string]any{"fromGroup":"g"}}}
+   services:=[]any{map[string]any{"name":"consumer","type":"web","runtime":"image","image":map[string]any{"url":"nginx:1"},"envVars":entries},map[string]any{"name":"source","type":"web","runtime":"image","image":map[string]any{"url":"nginx:1"},"envVars":sourceEnv}}
+   doc:=map[string]any{"services":services};if family=="own override over group"{doc["envVarGroups"]=[]any{map[string]any{"name":"g","envVars":[]any{map[string]any{"key":"VALUE","value":"group"}}}}}
+   raw,_:=json.MarshalIndent(doc,"","  ");rootManifest:=string(raw)
+   if _,err:=svc.DeployStack(ctx,DeployRequest{Manifest:rootManifest});err!=nil{t.Fatal(err)}
+   if family=="own override over group"{if _,err:=own.SetEnvVar(ctx,"source","VALUE",secrets.EnvVarWrite{Value:"own edited value"});err!=nil{t.Fatal(err)}}
+   if nested{delete(doc,"services");doc["projects"]=[]any{map[string]any{"name":"qa-local-project","environments":[]any{map[string]any{"name":"one","services":services}}}}}
+   raw,_=json.MarshalIndent(doc,"","  ");manifest:=string(raw);v,err:=svc.ValidateBlueprint(ctx,"",manifest,"");if err!=nil||v.Valid||len(v.Errors)!=1||v.Errors[0].Path==nil{t.Fatalf("expected one current-state refusal: %+v, %v",v,err)}
+   prefix:="services[0]";if nested{prefix="projects[0].environments[0].services[0]"};expected:=fmt.Sprintf("%s.envVars[%d]",prefix,ordinal)
+   output,_:=json.Marshal(map[string]any{"case":name,"family":family,"nested":nested,"ordinal":ordinal,"manifest":manifest,"validation":v,"expected_path":expected,"actual_path":*v.Errors[0].Path,"mislocated":*v.Errors[0].Path!=expected,"scope":"actual current-state apps/envgroups/secrets methods with fake store/Kubernetes; no hosted apply/process or security probe"});t.Log("QA242_STATE_LOCATION "+string(output))
+  })
+ }}}
+}

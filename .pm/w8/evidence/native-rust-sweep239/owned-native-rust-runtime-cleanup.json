@@ -1,0 +1,1173 @@
+[
+  {
+    "sweep": 239,
+    "case": "bex",
+    "client": "bex",
+    "role": "source",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "web_service",
+    "name": "qa-20261014-7c8ce4ca-source",
+    "nonce": "7c8ce4ca",
+    "marker": "QA239_7c8ce4ca_source",
+    "time": "2026-10-14T13:09:39.170679+00:00",
+    "source_head": "17e9aada3ac5daaa40cbd84cf2975cb910aa08a5",
+    "state": "deleted: nativeack/API404/listabsent/runtime404/baseline present/quota termination0",
+    "create_command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261014-7c8ce4ca-source",
+      "--type",
+      "web_service",
+      "--runtime",
+      "rust",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/hello-go",
+      "--build-command",
+      "/bin/cat > qa_probe.rs <<'QA239_RUST'\nuse std::{env,fs,io::{Read,Write},net::TcpListener};\nfn quote(s:&str)->String { let mut o=String::from(\"\\\"\"); for c in s.chars(){match c{'\"'=>o.push_str(\"\\\\\\\"\"),'\\\\'=>o.push_str(\"\\\\\\\\\"),'\\n'=>o.push_str(\"\\\\n\"),'\\r'=>o.push_str(\"\\\\r\"),'\\t'=>o.push_str(\"\\\\t\"),c if c<' '=>o.push_str(&format!(\"\\\\u{:04x}\",c as u32)),c=>o.push(c)}} o.push('\"');o }\nfn snap()->String {let b=fs::read(\"/etc/secrets/qa-note.txt\").unwrap();let h:String=b.iter().map(|v|format!(\"{:02x}\",v)).collect();format!(\"{{\\\"marker\\\":{},\\\"path\\\":{},\\\"fileHex\\\":{}}}\",quote(&env::var(\"QA_MARKER\").unwrap()),quote(&env::var(\"PATH\").unwrap()),quote(&h))}\nfn main(){if env::args().nth(1).as_deref()==Some(\"--snapshot\"){println!(\"{}\",snap());return}let built=fs::read_to_string(\"qa-built.json\").unwrap();let port=env::var(\"PORT\").unwrap_or(\"3000\".into());let listener=TcpListener::bind(format!(\"0.0.0.0:{}\",port)).unwrap();for incoming in listener.incoming(){let mut client=incoming.unwrap();let mut req=[0u8;4096];if client.read(&mut req).is_err(){continue}let payload=format!(\"{{\\\"built\\\":{},\\\"runtime\\\":{}}}\",built.trim(),snap());let response=format!(\"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: {}\\r\\nConnection: close\\r\\n\\r\\n{}\",payload.len(),payload);let _=client.write_all(response.as_bytes());}}\nQA239_RUST\n/usr/local/cargo/bin/rustc -C linker=/usr/bin/gcc -C link-arg=-B/usr/bin qa_probe.rs -o qa-http\n/opt/render/project/src/qa-http --snapshot > qa-built.json",
+      "--start-command",
+      "/opt/render/project/src/qa-http",
+      "--health-check-path",
+      "/",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--env-var",
+      "QA_MARKER=QA239_7c8ce4ca_source",
+      "--env-var",
+      "PATH=",
+      "--secret-file",
+      "qa-note.txt:/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep239-bex-note.txt",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "capacity_proof": {
+      "at": "2026-10-14T13:09:38.035381+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.348,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a6d1cefc556e82-SJC"
+      },
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "pre_create_inventory": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.076,
+      "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-14T13:09:04Z\",\n        \"nextRunAt\": \"2026-10-14T13:10:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-14T13:09:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-14T13:09:06Z\",\n        \"nextRunAt\": \"2026-10-14T13:10:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-14T13:09:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-14T13:09:04Z\",\n        \"nextRunAt\": \"2026-10-14T13:10:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-14T13:09:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T13:00:36Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:33Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:28Z\"\n    }\n  }\n]",
+      "stderr": ""
+    },
+    "expected_snapshot": {
+      "marker": "QA239_7c8ce4ca_source",
+      "fileHex": "51413233395f37633863653463615f736f757263650ae298833d66696c650a7365636f6e64206c696e650a"
+    },
+    "expected_path": "",
+    "harmless_file_contents": "QA239_7c8ce4ca_source\n☃=file\nsecond line\n",
+    "harmless_file": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep239-bex-note.txt",
+    "dependency_ids": [],
+    "source_id": null,
+    "recorded_child_ids": [
+      "dep-db7nu56t41sc7388oa6g",
+      "dep-db7nvipllfps73emub30"
+    ],
+    "build_program": "/bin/cat > qa_probe.rs <<'QA239_RUST'\nuse std::{env,fs,io::{Read,Write},net::TcpListener};\nfn quote(s:&str)->String { let mut o=String::from(\"\\\"\"); for c in s.chars(){match c{'\"'=>o.push_str(\"\\\\\\\"\"),'\\\\'=>o.push_str(\"\\\\\\\\\"),'\\n'=>o.push_str(\"\\\\n\"),'\\r'=>o.push_str(\"\\\\r\"),'\\t'=>o.push_str(\"\\\\t\"),c if c<' '=>o.push_str(&format!(\"\\\\u{:04x}\",c as u32)),c=>o.push(c)}} o.push('\"');o }\nfn snap()->String {let b=fs::read(\"/etc/secrets/qa-note.txt\").unwrap();let h:String=b.iter().map(|v|format!(\"{:02x}\",v)).collect();format!(\"{{\\\"marker\\\":{},\\\"path\\\":{},\\\"fileHex\\\":{}}}\",quote(&env::var(\"QA_MARKER\").unwrap()),quote(&env::var(\"PATH\").unwrap()),quote(&h))}\nfn main(){if env::args().nth(1).as_deref()==Some(\"--snapshot\"){println!(\"{}\",snap());return}let built=fs::read_to_string(\"qa-built.json\").unwrap();let port=env::var(\"PORT\").unwrap_or(\"3000\".into());let listener=TcpListener::bind(format!(\"0.0.0.0:{}\",port)).unwrap();for incoming in listener.incoming(){let mut client=incoming.unwrap();let mut req=[0u8;4096];if client.read(&mut req).is_err(){continue}let payload=format!(\"{{\\\"built\\\":{},\\\"runtime\\\":{}}}\",built.trim(),snap());let response=format!(\"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: {}\\r\\nConnection: close\\r\\n\\r\\n{}\",payload.len(),payload);let _=client.write_all(response.as_bytes());}}\nQA239_RUST\n/usr/local/cargo/bin/rustc -C linker=/usr/bin/gcc -C link-arg=-B/usr/bin qa_probe.rs -o qa-http\n/opt/render/project/src/qa-http --snapshot > qa-built.json",
+    "generated_rust_program": "use std::{env,fs,io::{Read,Write},net::TcpListener};\nfn quote(s:&str)->String { let mut o=String::from(\"\\\"\"); for c in s.chars(){match c{'\"'=>o.push_str(\"\\\\\\\"\"),'\\\\'=>o.push_str(\"\\\\\\\\\"),'\\n'=>o.push_str(\"\\\\n\"),'\\r'=>o.push_str(\"\\\\r\"),'\\t'=>o.push_str(\"\\\\t\"),c if c<' '=>o.push_str(&format!(\"\\\\u{:04x}\",c as u32)),c=>o.push(c)}} o.push('\"');o }\nfn snap()->String {let b=fs::read(\"/etc/secrets/qa-note.txt\").unwrap();let h:String=b.iter().map(|v|format!(\"{:02x}\",v)).collect();format!(\"{{\\\"marker\\\":{},\\\"path\\\":{},\\\"fileHex\\\":{}}}\",quote(&env::var(\"QA_MARKER\").unwrap()),quote(&env::var(\"PATH\").unwrap()),quote(&h))}\nfn main(){if env::args().nth(1).as_deref()==Some(\"--snapshot\"){println!(\"{}\",snap());return}let built=fs::read_to_string(\"qa-built.json\").unwrap();let port=env::var(\"PORT\").unwrap_or(\"3000\".into());let listener=TcpListener::bind(format!(\"0.0.0.0:{}\",port)).unwrap();for incoming in listener.incoming(){let mut client=incoming.unwrap();let mut req=[0u8;4096];if client.read(&mut req).is_err(){continue}let payload=format!(\"{{\\\"built\\\":{},\\\"runtime\\\":{}}}\",built.trim(),snap());let response=format!(\"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: {}\\r\\nConnection: close\\r\\n\\r\\n{}\",payload.len(),payload);let _=client.write_all(response.as_bytes());}}\n",
+    "start_program": "/opt/render/project/src/qa-http",
+    "qualification": "native Rust fixture with explicit PATH and harmless file bytes; absolute compiler/linker and standard-library app; no product source edit",
+    "create_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "qa-20261014-7c8ce4ca-source",
+        "--type",
+        "web_service",
+        "--runtime",
+        "rust",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--branch",
+        "main",
+        "--root-directory",
+        "examples/hello-go",
+        "--build-command",
+        "/bin/cat > qa_probe.rs <<'QA239_RUST'\nuse std::{env,fs,io::{Read,Write},net::TcpListener};\nfn quote(s:&str)->String { let mut o=String::from(\"\\\"\"); for c in s.chars(){match c{'\"'=>o.push_str(\"\\\\\\\"\"),'\\\\'=>o.push_str(\"\\\\\\\\\"),'\\n'=>o.push_str(\"\\\\n\"),'\\r'=>o.push_str(\"\\\\r\"),'\\t'=>o.push_str(\"\\\\t\"),c if c<' '=>o.push_str(&format!(\"\\\\u{:04x}\",c as u32)),c=>o.push(c)}} o.push('\"');o }\nfn snap()->String {let b=fs::read(\"/etc/secrets/qa-note.txt\").unwrap();let h:String=b.iter().map(|v|format!(\"{:02x}\",v)).collect();format!(\"{{\\\"marker\\\":{},\\\"path\\\":{},\\\"fileHex\\\":{}}}\",quote(&env::var(\"QA_MARKER\").unwrap()),quote(&env::var(\"PATH\").unwrap()),quote(&h))}\nfn main(){if env::args().nth(1).as_deref()==Some(\"--snapshot\"){println!(\"{}\",snap());return}let built=fs::read_to_string(\"qa-built.json\").unwrap();let port=env::var(\"PORT\").unwrap_or(\"3000\".into());let listener=TcpListener::bind(format!(\"0.0.0.0:{}\",port)).unwrap();for incoming in listener.incoming(){let mut client=incoming.unwrap();let mut req=[0u8;4096];if client.read(&mut req).is_err(){continue}let payload=format!(\"{{\\\"built\\\":{},\\\"runtime\\\":{}}}\",built.trim(),snap());let response=format!(\"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: {}\\r\\nConnection: close\\r\\n\\r\\n{}\",payload.len(),payload);let _=client.write_all(response.as_bytes());}}\nQA239_RUST\n/usr/local/cargo/bin/rustc -C linker=/usr/bin/gcc -C link-arg=-B/usr/bin qa_probe.rs -o qa-http\n/opt/render/project/src/qa-http --snapshot > qa-built.json",
+        "--start-command",
+        "/opt/render/project/src/qa-http",
+        "--health-check-path",
+        "/",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--auto-deploy=false",
+        "--env-var",
+        "QA_MARKER=QA239_7c8ce4ca_source",
+        "--env-var",
+        "PATH=",
+        "--secret-file",
+        "qa-note.txt:/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep239-bex-note.txt",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.922,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-14T13:09:41Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db7nu56t41sc7388oa60\",\n  \"id\": \"srv-db7nu56t41sc7388oa60\",\n  \"name\": \"qa-20261014-7c8ce4ca-source\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-go\",\n  \"serviceDetails\": {\n    \"env\": \"rust\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"/bin/cat \\u003e qa_probe.rs \\u003c\\u003c'QA239_RUST'\\nuse std::{env,fs,io::{Read,Write},net::TcpListener};\\nfn quote(s:\\u0026str)-\\u003eString { let mut o=String::from(\\\"\\\\\\\"\\\"); for c in s.chars(){match c{'\\\"'=\\u003eo.push_str(\\\"\\\\\\\\\\\\\\\"\\\"),'\\\\\\\\'=\\u003eo.push_str(\\\"\\\\\\\\\\\\\\\\\\\"),'\\\\n'=\\u003eo.push_str(\\\"\\\\\\\\n\\\"),'\\\\r'=\\u003eo.push_str(\\\"\\\\\\\\r\\\"),'\\\\t'=\\u003eo.push_str(\\\"\\\\\\\\t\\\"),c if c\\u003c' '=\\u003eo.push_str(\\u0026format!(\\\"\\\\\\\\u{:04x}\\\",c as u32)),c=\\u003eo.push(c)}} o.push('\\\"');o }\\nfn snap()-\\u003eString {let b=fs::read(\\\"/etc/secrets/qa-note.txt\\\").unwrap();let h:String=b.iter().map(|v|format!(\\\"{:02x}\\\",v)).collect();format!(\\\"{{\\\\\\\"marker\\\\\\\":{},\\\\\\\"path\\\\\\\":{},\\\\\\\"fileHex\\\\\\\":{}}}\\\",quote(\\u0026env::var(\\\"QA_MARKER\\\").unwrap()),quote(\\u0026env::var(\\\"PATH\\\").unwrap()),quote(\\u0026h))}\\nfn main(){if env::args().nth(1).as_deref()==Some(\\\"--snapshot\\\"){println!(\\\"{}\\\",snap());return}let built=fs::read_to_string(\\\"qa-built.json\\\").unwrap();let port=env::var(\\\"PORT\\\").unwrap_or(\\\"3000\\\".into());let listener=TcpListener::bind(format!(\\\"0.0.0.0:{}\\\",port)).unwrap();for incoming in listener.incoming(){let mut client=incoming.unwrap();let mut req=[0u8;4096];if client.read(\\u0026mut req).is_err(){continue}let payload=format!(\\\"{{\\\\\\\"built\\\\\\\":{},\\\\\\\"runtime\\\\\\\":{}}}\\\",built.trim(),snap());let response=format!(\\\"HTTP/1.1 200 OK\\\\r\\\\nContent-Type: application/json\\\\r\\\\nContent-Length: {}\\\\r\\\\nConnection: close\\\\r\\\\n\\\\r\\\\n{}\\\",payload.len(),payload);let _=client.write_all(response.as_bytes());}}\\nQA239_RUST\\n/usr/local/cargo/bin/rustc -C linker=/usr/bin/gcc -C link-arg=-B/usr/bin qa_probe.rs -o qa-http\\n/opt/render/project/src/qa-http --snapshot \\u003e qa-built.json\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"/opt/render/project/src/qa-http\"\n    },\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261014-7c8ce4ca-source:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"rust\",\n    \"url\": \"https://qa-20261014-7c8ce4ca-source.onbex.co\"\n  },\n  \"slug\": \"qa-20261014-7c8ce4ca-source\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-14T13:09:41Z\"\n}",
+      "stderr": ""
+    },
+    "id": "srv-db7nu56t41sc7388oa60",
+    "create_response": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "main",
+      "createdAt": "2026-10-14T13:09:41Z",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db7nu56t41sc7388oa60",
+      "id": "srv-db7nu56t41sc7388oa60",
+      "name": "qa-20261014-7c8ce4ca-source",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/bex-co/bex",
+      "rootDir": "examples/hello-go",
+      "serviceDetails": {
+        "env": "rust",
+        "envSpecificDetails": {
+          "buildCommand": "/bin/cat > qa_probe.rs <<'QA239_RUST'\nuse std::{env,fs,io::{Read,Write},net::TcpListener};\nfn quote(s:&str)->String { let mut o=String::from(\"\\\"\"); for c in s.chars(){match c{'\"'=>o.push_str(\"\\\\\\\"\"),'\\\\'=>o.push_str(\"\\\\\\\\\"),'\\n'=>o.push_str(\"\\\\n\"),'\\r'=>o.push_str(\"\\\\r\"),'\\t'=>o.push_str(\"\\\\t\"),c if c<' '=>o.push_str(&format!(\"\\\\u{:04x}\",c as u32)),c=>o.push(c)}} o.push('\"');o }\nfn snap()->String {let b=fs::read(\"/etc/secrets/qa-note.txt\").unwrap();let h:String=b.iter().map(|v|format!(\"{:02x}\",v)).collect();format!(\"{{\\\"marker\\\":{},\\\"path\\\":{},\\\"fileHex\\\":{}}}\",quote(&env::var(\"QA_MARKER\").unwrap()),quote(&env::var(\"PATH\").unwrap()),quote(&h))}\nfn main(){if env::args().nth(1).as_deref()==Some(\"--snapshot\"){println!(\"{}\",snap());return}let built=fs::read_to_string(\"qa-built.json\").unwrap();let port=env::var(\"PORT\").unwrap_or(\"3000\".into());let listener=TcpListener::bind(format!(\"0.0.0.0:{}\",port)).unwrap();for incoming in listener.incoming(){let mut client=incoming.unwrap();let mut req=[0u8;4096];if client.read(&mut req).is_err(){continue}let payload=format!(\"{{\\\"built\\\":{},\\\"runtime\\\":{}}}\",built.trim(),snap());let response=format!(\"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: {}\\r\\nConnection: close\\r\\n\\r\\n{}\",payload.len(),payload);let _=client.write_all(response.as_bytes());}}\nQA239_RUST\n/usr/local/cargo/bin/rustc -C linker=/usr/bin/gcc -C link-arg=-B/usr/bin qa_probe.rs -o qa-http\n/opt/render/project/src/qa-http --snapshot > qa-built.json",
+          "preDeployCommand": "",
+          "startCommand": "/opt/render/project/src/qa-http"
+        },
+        "healthCheckPath": "/",
+        "internalAddress": "qa-20261014-7c8ce4ca-source:3000",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "free",
+        "port": 3000,
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "rust",
+        "url": "https://qa-20261014-7c8ce4ca-source.onbex.co"
+      },
+      "slug": "qa-20261014-7c8ce4ca-source",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "web_service",
+      "updatedAt": "2026-10-14T13:09:41Z"
+    },
+    "deploy_children": [
+      {
+        "commit": {
+          "createdAt": "2026-10-14T13:05:09Z",
+          "id": "4ea15f074e583cd6efda132ace6452f9018ac3bf",
+          "message": "docs(pm): file missing mobile language and theme controls (w4/302)"
+        },
+        "createdAt": "2026-10-14T13:12:43.984586Z",
+        "finishedAt": "2026-10-14T13:14:04.699052Z",
+        "id": "dep-db7nvipllfps73emub30",
+        "startedAt": "2026-10-14T13:12:51.92041Z",
+        "status": "live",
+        "trigger": "api",
+        "updatedAt": "2026-10-14T13:14:04.699053Z"
+      },
+      {
+        "commit": {
+          "id": "4ea15f074e583cd6efda132ace6452f9018ac3bf",
+          "message": "docs(pm): file missing mobile language and theme controls (w4/302)"
+        },
+        "createdAt": "2026-10-14T13:09:40.875976Z",
+        "finishedAt": "2026-10-14T13:12:04.866363Z",
+        "id": "dep-db7nu56t41sc7388oa6g",
+        "startedAt": "2026-10-14T13:10:51.940961Z",
+        "status": "deactivated",
+        "trigger": "other",
+        "updatedAt": "2026-10-14T13:14:04.702408Z"
+      }
+    ],
+    "observations": [
+      {
+        "at": "2026-10-14T13:10:07.847376+00:00",
+        "native_history": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db7nu56t41sc7388oa60",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.679,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"4ea15f074e583cd6efda132ace6452f9018ac3bf\",\n      \"message\": \"docs(pm): file missing mobile language and theme controls (w4/302)\"\n    },\n    \"createdAt\": \"2026-10-14T13:09:40.875976Z\",\n    \"id\": \"dep-db7nu56t41sc7388oa6g\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T13:09:51.948262Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "4ea15f074e583cd6efda132ace6452f9018ac3bf",
+            "message": "docs(pm): file missing mobile language and theme controls (w4/302)"
+          },
+          "createdAt": "2026-10-14T13:09:40.875976Z",
+          "id": "dep-db7nu56t41sc7388oa6g",
+          "status": "queued",
+          "trigger": "other",
+          "updatedAt": "2026-10-14T13:09:51.948262Z"
+        },
+        "runtime": {
+          "HTTP": "404",
+          "exit": 0,
+          "body": null,
+          "raw_body": "404 page not found\n",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": false
+      },
+      {
+        "at": "2026-10-14T13:11:07.776433+00:00",
+        "native_history": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db7nu56t41sc7388oa60",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.328,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"4ea15f074e583cd6efda132ace6452f9018ac3bf\",\n      \"message\": \"docs(pm): file missing mobile language and theme controls (w4/302)\"\n    },\n    \"createdAt\": \"2026-10-14T13:09:40.875976Z\",\n    \"id\": \"dep-db7nu56t41sc7388oa6g\",\n    \"startedAt\": \"2026-10-14T13:10:51.940961Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T13:10:51.940963Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "4ea15f074e583cd6efda132ace6452f9018ac3bf",
+            "message": "docs(pm): file missing mobile language and theme controls (w4/302)"
+          },
+          "createdAt": "2026-10-14T13:09:40.875976Z",
+          "id": "dep-db7nu56t41sc7388oa6g",
+          "startedAt": "2026-10-14T13:10:51.940961Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-14T13:10:51.940963Z"
+        },
+        "runtime": {
+          "HTTP": "404",
+          "exit": 0,
+          "body": null,
+          "raw_body": "404 page not found\n",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": false
+      },
+      {
+        "at": "2026-10-14T13:12:22.166479+00:00",
+        "native_history": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db7nu56t41sc7388oa60",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.335,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"4ea15f074e583cd6efda132ace6452f9018ac3bf\",\n      \"message\": \"docs(pm): file missing mobile language and theme controls (w4/302)\"\n    },\n    \"createdAt\": \"2026-10-14T13:09:40.875976Z\",\n    \"finishedAt\": \"2026-10-14T13:12:04.866363Z\",\n    \"id\": \"dep-db7nu56t41sc7388oa6g\",\n    \"startedAt\": \"2026-10-14T13:10:51.940961Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T13:12:04.866364Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "4ea15f074e583cd6efda132ace6452f9018ac3bf",
+            "message": "docs(pm): file missing mobile language and theme controls (w4/302)"
+          },
+          "createdAt": "2026-10-14T13:09:40.875976Z",
+          "finishedAt": "2026-10-14T13:12:04.866363Z",
+          "id": "dep-db7nu56t41sc7388oa6g",
+          "startedAt": "2026-10-14T13:10:51.940961Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-14T13:12:04.866364Z"
+        },
+        "runtime": {
+          "HTTP": "200",
+          "exit": 0,
+          "body": {
+            "built": {
+              "marker": "QA239_7c8ce4ca_source",
+              "path": "",
+              "fileHex": "51413233395f37633863653463615f736f757263650ae298833d66696c650a7365636f6e64206c696e650a"
+            },
+            "runtime": {
+              "marker": "QA239_7c8ce4ca_source",
+              "path": "",
+              "fileHex": "51413233395f37633863653463615f736f757263650ae298833d66696c650a7365636f6e64206c696e650a"
+            }
+          },
+          "raw_body": "{\"built\":{\"marker\":\"QA239_7c8ce4ca_source\",\"path\":\"\",\"fileHex\":\"51413233395f37633863653463615f736f757263650ae298833d66696c650a7365636f6e64206c696e650a\"},\"runtime\":{\"marker\":\"QA239_7c8ce4ca_source\",\"path\":\"\",\"fileHex\":\"51413233395f37633863653463615f736f757263650ae298833d66696c650a7365636f6e64206c696e650a\"}}",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": true
+      },
+      {
+        "at": "2026-10-14T13:14:02.776051+00:00",
+        "native_history": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db7nu56t41sc7388oa60",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.42,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-14T13:05:09Z\",\n      \"id\": \"4ea15f074e583cd6efda132ace6452f9018ac3bf\",\n      \"message\": \"docs(pm): file missing mobile language and theme controls (w4/302)\"\n    },\n    \"createdAt\": \"2026-10-14T13:12:43.984586Z\",\n    \"id\": \"dep-db7nvipllfps73emub30\",\n    \"startedAt\": \"2026-10-14T13:12:51.92041Z\",\n    \"status\": \"update_in_progress\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-14T13:13:51.941178Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"4ea15f074e583cd6efda132ace6452f9018ac3bf\",\n      \"message\": \"docs(pm): file missing mobile language and theme controls (w4/302)\"\n    },\n    \"createdAt\": \"2026-10-14T13:09:40.875976Z\",\n    \"finishedAt\": \"2026-10-14T13:12:04.866363Z\",\n    \"id\": \"dep-db7nu56t41sc7388oa6g\",\n    \"startedAt\": \"2026-10-14T13:10:51.940961Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T13:12:04.866364Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "createdAt": "2026-10-14T13:05:09Z",
+            "id": "4ea15f074e583cd6efda132ace6452f9018ac3bf",
+            "message": "docs(pm): file missing mobile language and theme controls (w4/302)"
+          },
+          "createdAt": "2026-10-14T13:12:43.984586Z",
+          "id": "dep-db7nvipllfps73emub30",
+          "startedAt": "2026-10-14T13:12:51.92041Z",
+          "status": "update_in_progress",
+          "trigger": "api",
+          "updatedAt": "2026-10-14T13:13:51.941178Z"
+        },
+        "runtime": {
+          "HTTP": "200",
+          "exit": 0,
+          "body": {
+            "built": {
+              "marker": "QA239_7c8ce4ca_source",
+              "path": "",
+              "fileHex": "51413233395f37633863653463615f736f757263650ae298833d66696c650a7365636f6e64206c696e650a"
+            },
+            "runtime": {
+              "marker": "QA239_7c8ce4ca_source",
+              "path": "",
+              "fileHex": "51413233395f37633863653463615f736f757263650ae298833d66696c650a7365636f6e64206c696e650a"
+            }
+          },
+          "raw_body": "{\"built\":{\"marker\":\"QA239_7c8ce4ca_source\",\"path\":\"\",\"fileHex\":\"51413233395f37633863653463615f736f757263650ae298833d66696c650a7365636f6e64206c696e650a\"},\"runtime\":{\"marker\":\"QA239_7c8ce4ca_source\",\"path\":\"\",\"fileHex\":\"51413233395f37633863653463615f736f757263650ae298833d66696c650a7365636f6e64206c696e650a\"}}",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": true
+      },
+      {
+        "at": "2026-10-14T13:15:21.412737+00:00",
+        "native_history": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db7nu56t41sc7388oa60",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.415,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-14T13:05:09Z\",\n      \"id\": \"4ea15f074e583cd6efda132ace6452f9018ac3bf\",\n      \"message\": \"docs(pm): file missing mobile language and theme controls (w4/302)\"\n    },\n    \"createdAt\": \"2026-10-14T13:12:43.984586Z\",\n    \"finishedAt\": \"2026-10-14T13:14:04.699052Z\",\n    \"id\": \"dep-db7nvipllfps73emub30\",\n    \"startedAt\": \"2026-10-14T13:12:51.92041Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-14T13:14:04.699053Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"4ea15f074e583cd6efda132ace6452f9018ac3bf\",\n      \"message\": \"docs(pm): file missing mobile language and theme controls (w4/302)\"\n    },\n    \"createdAt\": \"2026-10-14T13:09:40.875976Z\",\n    \"finishedAt\": \"2026-10-14T13:12:04.866363Z\",\n    \"id\": \"dep-db7nu56t41sc7388oa6g\",\n    \"startedAt\": \"2026-10-14T13:10:51.940961Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T13:14:04.702408Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "createdAt": "2026-10-14T13:05:09Z",
+            "id": "4ea15f074e583cd6efda132ace6452f9018ac3bf",
+            "message": "docs(pm): file missing mobile language and theme controls (w4/302)"
+          },
+          "createdAt": "2026-10-14T13:12:43.984586Z",
+          "finishedAt": "2026-10-14T13:14:04.699052Z",
+          "id": "dep-db7nvipllfps73emub30",
+          "startedAt": "2026-10-14T13:12:51.92041Z",
+          "status": "live",
+          "trigger": "api",
+          "updatedAt": "2026-10-14T13:14:04.699053Z"
+        },
+        "runtime": {
+          "HTTP": "200",
+          "exit": 0,
+          "body": {
+            "built": {
+              "marker": "QA239_7c8ce4ca_source",
+              "path": "",
+              "fileHex": "51413233395f37633863653463615f736f757263650ae298833d66696c650a7365636f6e64206c696e650a"
+            },
+            "runtime": {
+              "marker": "QA239_7c8ce4ca_source",
+              "path": "",
+              "fileHex": "51413233395f37633863653463615f736f757263650ae298833d66696c650a7365636f6e64206c696e650a"
+            }
+          },
+          "raw_body": "{\"built\":{\"marker\":\"QA239_7c8ce4ca_source\",\"path\":\"\",\"fileHex\":\"51413233395f37633863653463615f736f757263650ae298833d66696c650a7365636f6e64206c696e650a\"},\"runtime\":{\"marker\":\"QA239_7c8ce4ca_source\",\"path\":\"\",\"fileHex\":\"51413233395f37633863653463615f736f757263650ae298833d66696c650a7365636f6e64206c696e650a\"}}",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": true
+      }
+    ],
+    "build_log_queries": [
+      {
+        "at": "2026-10-14T13:12:09.585153+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "srv-db7nu56t41sc7388oa60",
+            "--type",
+            "build",
+            "--limit",
+            "100",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.376,
+          "stdout": "{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:10:59.567268062Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-14T13:10:59.567268062Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:10:59.567273182Z-8a0c0572\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 [stage-0 1/5] FROM docker.io/library/rust:1-bookworm@sha256:114c7a4425406451c2866b6aafe69fe29b1b298832db1277d411ac73c82d04d6\",\n  \"timestamp\": \"2026-10-14T13:10:59.567273182Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:10:59.567277299Z-5f886061\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 resolve docker.io/library/rust:1-bookworm@sha256:114c7a4425406451c2866b6aafe69fe29b1b298832db1277d411ac73c82d04d6 0.0s done\",\n  \"timestamp\": \"2026-10-14T13:10:59.567277299Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:10:59.567282108Z-15036ed4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 DONE 0.1s\",\n  \"timestamp\": \"2026-10-14T13:10:59.567282108Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:10:59.722376325Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-14T13:10:59.722376325Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:10:59.722430257Z-8a0c0572\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 [stage-0 1/5] FROM docker.io/library/rust:1-bookworm@sha256:114c7a4425406451c2866b6aafe69fe29b1b298832db1277d411ac73c82d04d6\",\n  \"timestamp\": \"2026-10-14T13:10:59.722430257Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:10:59.730694275Z-d386fce2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:1936058e26243a0253bdf59dc7050f07d6644f9f8b862ced4681e67a65d6a971 3.15MB / 221.79MB 0.2s\",\n  \"timestamp\": \"2026-10-14T13:10:59.730694275Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:10:59.880442639Z-9706431d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:1936058e26243a0253bdf59dc7050f07d6644f9f8b862ced4681e67a65d6a971 34.60MB / 221.79MB 0.3s\",\n  \"timestamp\": \"2026-10-14T13:10:59.880442639Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:10:59.88048582Z-f30b8d57\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 0B / 211.71MB 0.2s\",\n  \"timestamp\": \"2026-10-14T13:10:59.88048582Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:10:59.880491921Z-7ad6547d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:c6c71fff0869aa9bd48cf80d66e30b83adc9a3fe5e77dd9aaf266282c6ec64ff 0B / 66.72MB 0.2s\",\n  \"timestamp\": \"2026-10-14T13:10:59.880491921Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:10:59.880497612Z-83f5e5f1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:a4edf9c328e814bd91b20c8e2211065489ebf15a16c7663d68a880660dfc897d 0B / 23.87MB 0.2s\",\n  \"timestamp\": \"2026-10-14T13:10:59.880497612Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.030853503Z-ac9d4bb4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:1936058e26243a0253bdf59dc7050f07d6644f9f8b862ced4681e67a65d6a971 65.01MB / 221.79MB 0.5s\",\n  \"timestamp\": \"2026-10-14T13:11:00.030853503Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.180764942Z-bdef27a6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 26.21MB / 211.71MB 0.5s\",\n  \"timestamp\": \"2026-10-14T13:11:00.180764942Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.180789789Z-90a35222\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:a4edf9c328e814bd91b20c8e2211065489ebf15a16c7663d68a880660dfc897d 5.24MB / 23.87MB 0.5s\",\n  \"timestamp\": \"2026-10-14T13:11:00.180789789Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.330393281Z-efdec6c8\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:1936058e26243a0253bdf59dc7050f07d6644f9f8b862ced4681e67a65d6a971 91.23MB / 221.79MB 0.8s\",\n  \"timestamp\": \"2026-10-14T13:11:00.330393281Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.330422796Z-845ec223\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 39.85MB / 211.71MB 0.6s\",\n  \"timestamp\": \"2026-10-14T13:11:00.330422796Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.33042504Z-f0b9f811\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:c6c71fff0869aa9bd48cf80d66e30b83adc9a3fe5e77dd9aaf266282c6ec64ff 19.92MB / 66.72MB 0.6s\",\n  \"timestamp\": \"2026-10-14T13:11:00.33042504Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.330427164Z-37b533ec\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:a4edf9c328e814bd91b20c8e2211065489ebf15a16c7663d68a880660dfc897d 23.87MB / 23.87MB 0.6s done\",\n  \"timestamp\": \"2026-10-14T13:11:00.330427164Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.480477634Z-f9d14749\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:1936058e26243a0253bdf59dc7050f07d6644f9f8b862ced4681e67a65d6a971 106.95MB / 221.79MB 0.9s\",\n  \"timestamp\": \"2026-10-14T13:11:00.480477634Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.480507791Z-665ae8bb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 56.62MB / 211.71MB 0.8s\",\n  \"timestamp\": \"2026-10-14T13:11:00.480507791Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.480510436Z-4199ce28\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:c6c71fff0869aa9bd48cf80d66e30b83adc9a3fe5e77dd9aaf266282c6ec64ff 36.70MB / 66.72MB 0.8s\",\n  \"timestamp\": \"2026-10-14T13:11:00.480510436Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.48051296Z-fa2ea8ea\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:8cb71386cfcfc55b27b559f73c6d5c0cdcb93b83be8281314116e271cc42cea6 0B / 48.52MB 0.2s\",\n  \"timestamp\": \"2026-10-14T13:11:00.48051296Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.63081972Z-23a24c40\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:1936058e26243a0253bdf59dc7050f07d6644f9f8b862ced4681e67a65d6a971 120.59MB / 221.79MB 1.1s\",\n  \"timestamp\": \"2026-10-14T13:11:00.63081972Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.630858693Z-5a1feda0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 72.35MB / 211.71MB 0.9s\",\n  \"timestamp\": \"2026-10-14T13:11:00.630858693Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.630861538Z-974ad761\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:c6c71fff0869aa9bd48cf80d66e30b83adc9a3fe5e77dd9aaf266282c6ec64ff 52.43MB / 66.72MB 0.9s\",\n  \"timestamp\": \"2026-10-14T13:11:00.630861538Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.630863602Z-7b0bb2fe\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:8cb71386cfcfc55b27b559f73c6d5c0cdcb93b83be8281314116e271cc42cea6 15.73MB / 48.52MB 0.3s\",\n  \"timestamp\": \"2026-10-14T13:11:00.630863602Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.780606145Z-0b31902c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:1936058e26243a0253bdf59dc7050f07d6644f9f8b862ced4681e67a65d6a971 136.31MB / 221.79MB 1.2s\",\n  \"timestamp\": \"2026-10-14T13:11:00.780606145Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.780632494Z-3dc4895c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 87.03MB / 211.71MB 1.1s\",\n  \"timestamp\": \"2026-10-14T13:11:00.780632494Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.780635981Z-1e185ff9\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:c6c71fff0869aa9bd48cf80d66e30b83adc9a3fe5e77dd9aaf266282c6ec64ff 66.72MB / 66.72MB 1.1s done\",\n  \"timestamp\": \"2026-10-14T13:11:00.780635981Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.780638195Z-5d4849bf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:8cb71386cfcfc55b27b559f73c6d5c0cdcb93b83be8281314116e271cc42cea6 27.26MB / 48.52MB 0.5s\",\n  \"timestamp\": \"2026-10-14T13:11:00.780638195Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.930317229Z-de407ffe\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:1936058e26243a0253bdf59dc7050f07d6644f9f8b862ced4681e67a65d6a971 156.24MB / 221.79MB 1.4s\",\n  \"timestamp\": \"2026-10-14T13:11:00.930317229Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.930353637Z-96308f3b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 102.76MB / 211.71MB 1.2s\",\n  \"timestamp\": \"2026-10-14T13:11:00.930353637Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:00.930355501Z-582e7f9b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:8cb71386cfcfc55b27b559f73c6d5c0cdcb93b83be8281314116e271cc42cea6 44.04MB / 48.52MB 0.6s\",\n  \"timestamp\": \"2026-10-14T13:11:00.930355501Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:01.095509229Z-58898a0c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:1936058e26243a0253bdf59dc7050f07d6644f9f8b862ced4681e67a65d6a971 180.35MB / 221.79MB 1.5s\",\n  \"timestamp\": \"2026-10-14T13:11:01.095509229Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:01.095540066Z-132af521\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 146.80MB / 211.71MB 1.5s\",\n  \"timestamp\": \"2026-10-14T13:11:01.095540066Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:01.09554227Z-97d30835\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:8cb71386cfcfc55b27b559f73c6d5c0cdcb93b83be8281314116e271cc42cea6 48.52MB / 48.52MB 0.7s done\",\n  \"timestamp\": \"2026-10-14T13:11:01.09554227Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:01.095545407Z-08c96df3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 extracting sha256:8cb71386cfcfc55b27b559f73c6d5c0cdcb93b83be8281314116e271cc42cea6\",\n  \"timestamp\": \"2026-10-14T13:11:01.095545407Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:01.230801055Z-90e067b2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:1936058e26243a0253bdf59dc7050f07d6644f9f8b862ced4681e67a65d6a971 201.33MB / 221.79MB 1.7s\",\n  \"timestamp\": \"2026-10-14T13:11:01.230801055Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:01.394587533Z-4f903cbd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 171.97MB / 211.71MB 1.7s\",\n  \"timestamp\": \"2026-10-14T13:11:01.394587533Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:01.394613461Z-363a64a0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 198.18MB / 211.71MB 1.8s\",\n  \"timestamp\": \"2026-10-14T13:11:01.394613461Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:01.530126231Z-5bc364ce\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:1936058e26243a0253bdf59dc7050f07d6644f9f8b862ced4681e67a65d6a971 221.79MB / 221.79MB 2.0s\",\n  \"timestamp\": \"2026-10-14T13:11:01.530126231Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:01.693831667Z-1d68d8cc\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 211.71MB / 211.71MB 2.0s\",\n  \"timestamp\": \"2026-10-14T13:11:01.693831667Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:01.845268042Z-4546d620\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:1936058e26243a0253bdf59dc7050f07d6644f9f8b862ced4681e67a65d6a971 221.79MB / 221.79MB 2.2s done\",\n  \"timestamp\": \"2026-10-14T13:11:01.845268042Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:01.993098494Z-97bd7528\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 211.71MB / 211.71MB 2.4s done\",\n  \"timestamp\": \"2026-10-14T13:11:01.993098494Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:02.85352483Z-bc007f9a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 extracting sha256:8cb71386cfcfc55b27b559f73c6d5c0cdcb93b83be8281314116e271cc42cea6 1.9s done\",\n  \"timestamp\": \"2026-10-14T13:11:02.85352483Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:02.853565887Z-db41b662\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 DONE 3.4s\",\n  \"timestamp\": \"2026-10-14T13:11:02.853565887Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:03.004141761Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-14T13:11:03.004141761Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:03.004202574Z-8a0c0572\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 [stage-0 1/5] FROM docker.io/library/rust:1-bookworm@sha256:114c7a4425406451c2866b6aafe69fe29b1b298832db1277d411ac73c82d04d6\",\n  \"timestamp\": \"2026-10-14T13:11:03.004202574Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:03.004206372Z-eb6c5285\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 extracting sha256:a4edf9c328e814bd91b20c8e2211065489ebf15a16c7663d68a880660dfc897d\",\n  \"timestamp\": \"2026-10-14T13:11:03.004206372Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:04.057258704Z-5b2b449d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 extracting sha256:a4edf9c328e814bd91b20c8e2211065489ebf15a16c7663d68a880660dfc897d 1.2s done\",\n  \"timestamp\": \"2026-10-14T13:11:04.057258704Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:04.057285385Z-837bd58b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 DONE 4.6s\",\n  \"timestamp\": \"2026-10-14T13:11:04.057285385Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:04.207802297Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-14T13:11:04.207802297Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:04.207834829Z-8a0c0572\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 [stage-0 1/5] FROM docker.io/library/rust:1-bookworm@sha256:114c7a4425406451c2866b6aafe69fe29b1b298832db1277d411ac73c82d04d6\",\n  \"timestamp\": \"2026-10-14T13:11:04.207834829Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:04.207840429Z-34803b4a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 extracting sha256:c6c71fff0869aa9bd48cf80d66e30b83adc9a3fe5e77dd9aaf266282c6ec64ff\",\n  \"timestamp\": \"2026-10-14T13:11:04.207840429Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:07.111887756Z-e70d29e1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 extracting sha256:c6c71fff0869aa9bd48cf80d66e30b83adc9a3fe5e77dd9aaf266282c6ec64ff 3.1s done\",\n  \"timestamp\": \"2026-10-14T13:11:07.111887756Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:07.111920377Z-1f774ac9\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 DONE 7.7s\",\n  \"timestamp\": \"2026-10-14T13:11:07.111920377Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:07.262283201Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-14T13:11:07.262283201Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:07.262315562Z-8a0c0572\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 [stage-0 1/5] FROM docker.io/library/rust:1-bookworm@sha256:114c7a4425406451c2866b6aafe69fe29b1b298832db1277d411ac73c82d04d6\",\n  \"timestamp\": \"2026-10-14T13:11:07.262315562Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:07.262319539Z-ac386a65\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 extracting sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03\",\n  \"timestamp\": \"2026-10-14T13:11:07.262319539Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:13.708563537Z-e88f77a8\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 extracting sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03 6.6s done\",\n  \"timestamp\": \"2026-10-14T13:11:13.708563537Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:13.708597511Z-ea4763f4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 DONE 14.2s\",\n  \"timestamp\": \"2026-10-14T13:11:13.708597511Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:13.859256781Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-14T13:11:13.859256781Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:13.859298479Z-8a0c0572\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 [stage-0 1/5] FROM docker.io/library/rust:1-bookworm@sha256:114c7a4425406451c2866b6aafe69fe29b1b298832db1277d411ac73c82d04d6\",\n  \"timestamp\": \"2026-10-14T13:11:13.859298479Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:13.859303618Z-5d0c2fb9\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 extracting sha256:1936058e26243a0253bdf59dc7050f07d6644f9f8b862ced4681e67a65d6a971\",\n  \"timestamp\": \"2026-10-14T13:11:13.859303618Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:18.321564779Z-1484af96\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 extracting sha256:1936058e26243a0253bdf59dc7050f07d6644f9f8b862ced4681e67a65d6a971 4.6s done\",\n  \"timestamp\": \"2026-10-14T13:11:18.321564779Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:18.321596779Z-6670898f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#8 DONE 18.9s\",\n  \"timestamp\": \"2026-10-14T13:11:18.321596779Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:18.42967841Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-14T13:11:18.42967841Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:18.42976369Z-2a2406fc\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#9 [stage-0 2/5] WORKDIR /opt/render/project/src\",\n  \"timestamp\": \"2026-10-14T13:11:18.42976369Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:18.429771614Z-ebbd71e6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#9 DONE 0.0s\",\n  \"timestamp\": \"2026-10-14T13:11:18.429771614Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:18.429776303Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-14T13:11:18.429776303Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:18.429781924Z-05323528\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#10 [stage-0 3/5] COPY . .\",\n  \"timestamp\": \"2026-10-14T13:11:18.429781924Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:18.429786742Z-3a92bf70\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#10 DONE 0.0s\",\n  \"timestamp\": \"2026-10-14T13:11:18.429786742Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:18.42979097Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-14T13:11:18.42979097Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:18.42979616Z-842dfcb1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#11 [stage-0 4/5] COPY \\u003c\\u003cBEX_LOAD_ENV /opt/bex/load-env\",\n  \"timestamp\": \"2026-10-14T13:11:18.42979616Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:18.42980148Z-073270cf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#11 DONE 0.0s\",\n  \"timestamp\": \"2026-10-14T13:11:18.42980148Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:18.583049359Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-14T13:11:18.583049359Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:18.583107878Z-bc678f56\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#12 [stage-0 5/5] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env --mount=type=secret,id=bex-file-0,target=/etc/secrets/qa-note.txt,required=true [\\\"/bin/bash\\\",\\\"-c\\\",\\\". /opt/bex/load-env\\\\n/bin/cat \\u003e qa_probe.rs \\u003c\\u003c'QA239_RUST'\\\\nuse std::{env,fs,io::{Read,Write},net::TcpListener};\\\\nfn quote(s:\\u0026str)-\\u003eString { let mut o=String::from(\\\"\\\\\\\"\\\"); for c in s.chars(){match c{'\\\"'=\\u003eo.push_str(\\\"\\\\\\\\\\\\\\\"\\\"),'\\\\\\\\'=\\u003eo.push_str(\\\"\\\\\\\\\\\\\\\\\\\"),'\\\\n'=\\u003eo.push_str(\\\"\\\\\\\\n\\\"),'\\\\r'=\\u003eo.push_str(\\\"\\\\\\\\r\\\"),'\\\\t'=\\u003eo.push_str(\\\"\\\\\\\\t\\\"),c if c\\u003c' '=\\u003eo.push_str(\\u0026format!(\\\"\\\\\\\\u{:04x}\\\",c as u32)),c=\\u003eo.push(c)}} o.push('\\\"');o }\\\\nfn snap()-\\u003eString {let b=fs::read(\\\"/etc/secrets/qa-note.txt\\\").unwrap();let h:String=b.iter().map(|v|format!(\\\"{:02x}\\\",v)).collect();format!(\\\"{{\\\\\\\"marker\\\\\\\":{},\\\\\\\"path\\\\\\\":{},\\\\\\\"fileHex\\\\\\\":{}}}\\\",quote(\\u0026env::var(\\\"QA_MARKER\\\").unwrap()),quote(\\u0026env::var(\\\"PATH\\\").unwrap()),quote(\\u0026h))}\\\\nfn main(){if env::args().nth(1).as_deref()==Some(\\\"--snapshot\\\"){println!(\\\"{}\\\",snap());return}let built=fs::read_to_string(\\\"qa-built.json\\\").unwrap();let port=env::var(\\\"PORT\\\").unwrap_or(\\\"3000\\\".into());let listener=TcpListener::bind(format!(\\\"0.0.0.0:{}\\\",port)).unwrap();for incoming in listener.incoming(){let mut client=incoming.unwrap();let mut req=[0u8;4096];if client.read(\\u0026mut req).is_err(){continue}let payload=format!(\\\"{{\\\\\\\"built\\\\\\\":{},\\\\\\\"runtime\\\\\\\":{}}}\\\",built.trim(),snap());let response=format!(\\\"HTTP/1.1 200 OK\\\\r\\\\nContent-Type: application/json\\\\r\\\\nContent-Length: {}\\\\r\\\\nConnection: close\\\\r\\\\n\\\\r\\\\n{}\\\",payload.len(),payload);let _=client.write_all(response.as_bytes());}}\\\\nQA239_RUST\\\\n/usr/local/cargo/bin/rustc -C linker=/usr/bin/gcc -C link-arg=-B/usr/bin qa_probe.rs -o qa-http\\\\n/opt/render/project/src/qa-http --snapshot \\u003e qa-built.json\\\"]\",\n  \"timestamp\": \"2026-10-14T13:11:18.583107878Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:18.834513439Z-8da4350a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#12 DONE 0.4s\",\n  \"timestamp\": \"2026-10-14T13:11:18.834513439Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:18.989071852Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-14T13:11:18.989071852Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:18.989126644Z-4c1ff8ac\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#13 exporting to oci image format\",\n  \"timestamp\": \"2026-10-14T13:11:18.989126644Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:18.989132886Z-271e0a52\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#13 exporting layers\",\n  \"timestamp\": \"2026-10-14T13:11:18.989132886Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:19.120741835Z-fa1e028e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#13 exporting layers 0.3s done\",\n  \"timestamp\": \"2026-10-14T13:11:19.120741835Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:19.300661289Z-7919ffad\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#13 exporting manifest sha256:2f3fd224aadb0c1d692b47f632ef30e55f22cbe7c78438b0c84732f070f44292 0.0s done\",\n  \"timestamp\": \"2026-10-14T13:11:19.300661289Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:19.300732743Z-ba300b6d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#13 exporting config sha256:28e334532930153091baea9bb7f31f2bd7e3e0a3be1d4e23d060fcfe8b87ce2e 0.0s done\",\n  \"timestamp\": \"2026-10-14T13:11:19.300732743Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:19.300737782Z-b38b1b02\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#13 sending tarball\",\n  \"timestamp\": \"2026-10-14T13:11:19.300737782Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:24.54112604Z-e32acd40\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#13 sending tarball 5.4s done\",\n  \"timestamp\": \"2026-10-14T13:11:24.54112604Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:24.541154484Z-44e2d53f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#13 DONE 5.7s\",\n  \"timestamp\": \"2026-10-14T13:11:24.541154484Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:26.345281121Z-60bcdd46\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"push\"\n    }\n  ],\n  \"message\": \"Getting image source signatures\",\n  \"timestamp\": \"2026-10-14T13:11:26.345281121Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:26.345370298Z-267e682d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"push\"\n    }\n  ],\n  \"message\": \"Copying blob sha256:8cb71386cfcfc55b27b559f73c6d5c0cdcb93b83be8281314116e271cc42cea6\",\n  \"timestamp\": \"2026-10-14T13:11:26.345370298Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:28.038319236Z-acce5227\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"push\"\n    }\n  ],\n  \"message\": \"Copying blob sha256:a4edf9c328e814bd91b20c8e2211065489ebf15a16c7663d68a880660dfc897d\",\n  \"timestamp\": \"2026-10-14T13:11:28.038319236Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:29.089107738Z-2d63c16c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"push\"\n    }\n  ],\n  \"message\": \"Copying blob sha256:c6c71fff0869aa9bd48cf80d66e30b83adc9a3fe5e77dd9aaf266282c6ec64ff\",\n  \"timestamp\": \"2026-10-14T13:11:29.089107738Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:30.982369379Z-3fc99957\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"push\"\n    }\n  ],\n  \"message\": \"Copying blob sha256:610dc773fbd71198e96c7a8710abfd1661f14d776d7169b4ef525d8eb30e1b03\",\n  \"timestamp\": \"2026-10-14T13:11:30.982369379Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:35.80691557Z-ccfa8bbf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"push\"\n    }\n  ],\n  \"message\": \"Copying blob sha256:1936058e26243a0253bdf59dc7050f07d6644f9f8b862ced4681e67a65d6a971\",\n  \"timestamp\": \"2026-10-14T13:11:35.80691557Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:40.613913972Z-b0f74f7d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"push\"\n    }\n  ],\n  \"message\": \"Copying blob sha256:2a87b93c113b817c73f6910d8ae2fdff6346e8fbddf4de96653d6d4757f4271c\",\n  \"timestamp\": \"2026-10-14T13:11:40.613913972Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:41.207214434Z-08d99c61\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"push\"\n    }\n  ],\n  \"message\": \"Copying blob sha256:0706d5354ac3406eecbba81f5430e3ed3cbdbf0714f7cbc836c189b743a85fe6\",\n  \"timestamp\": \"2026-10-14T13:11:41.207214434Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:41.839007051Z-095bbd2b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"push\"\n    }\n  ],\n  \"message\": \"Copying blob sha256:00c5b5a4a15782bb5ed101c77a891063a1914e6cdb4870400b88d86991a3f3c2\",\n  \"timestamp\": \"2026-10-14T13:11:41.839007051Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:42.406458416Z-f2d6fa69\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"push\"\n    }\n  ],\n  \"message\": \"Copying blob sha256:b64ba45b348f883c9123302b38f26ea5a0d0740ced47f3d9471a63d8a3470217\",\n  \"timestamp\": \"2026-10-14T13:11:42.406458416Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:42.9933803Z-0d0fbc00\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"push\"\n    }\n  ],\n  \"message\": \"Copying config sha256:28e334532930153091baea9bb7f31f2bd7e3e0a3be1d4e23d060fcfe8b87ce2e\",\n  \"timestamp\": \"2026-10-14T13:11:42.9933803Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk-2026-10-14T13:11:43.521101568Z-47904c74\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-cd7ia8d1jr4am1814utk\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"push\"\n    }\n  ],\n  \"message\": \"Writing manifest to image destination\",\n  \"timestamp\": \"2026-10-14T13:11:43.521101568Z\"\n}{\n  \"id\": \"srv-db7nu56t41sc7388oa60-beajta7pmfq5nmto8ieq-2026-10-14T13:12:04.866363Z-78da67b1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db7nu56t41sc7388oa60\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db7nu56t41sc7388oa60-beajta7pmfq5nmto8ieq\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Your service is live 🎉\",\n  \"timestamp\": \"2026-10-14T13:12:04.866363Z\"\n}",
+          "stderr": ""
+        }
+      }
+    ],
+    "ready": true,
+    "accepted_snapshot": {
+      "built": {
+        "marker": "QA239_7c8ce4ca_source",
+        "path": "",
+        "fileHex": "51413233395f37633863653463615f736f757263650ae298833d66696c650a7365636f6e64206c696e650a"
+      },
+      "runtime": {
+        "marker": "QA239_7c8ce4ca_source",
+        "path": "",
+        "fileHex": "51413233395f37633863653463615f736f757263650ae298833d66696c650a7365636f6e64206c696e650a"
+      }
+    },
+    "manual_deploy_intents": [
+      {
+        "at": "2026-10-14T13:12:43.229856+00:00",
+        "command": [
+          "bex",
+          "deploys",
+          "create",
+          "srv-db7nu56t41sc7388oa60",
+          "--commit",
+          "4ea15f074e583cd6efda132ace6452f9018ac3bf",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "before_ids": [
+          "dep-db7nu56t41sc7388oa6g"
+        ],
+        "same_commit": "4ea15f074e583cd6efda132ace6452f9018ac3bf",
+        "wait": false,
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "create",
+            "srv-db7nu56t41sc7388oa60",
+            "--commit",
+            "4ea15f074e583cd6efda132ace6452f9018ac3bf",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.696,
+          "stdout": "{\n  \"commit\": {\n    \"createdAt\": \"2026-10-14T13:05:09Z\",\n    \"id\": \"4ea15f074e583cd6efda132ace6452f9018ac3bf\",\n    \"message\": \"docs(pm): file missing mobile language and theme controls (w4/302)\"\n  },\n  \"createdAt\": \"2026-10-14T13:12:43.984586Z\",\n  \"id\": \"dep-db7nvipllfps73emub30\",\n  \"status\": \"created\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-14T13:12:43.984586Z\"\n}",
+          "stderr": ""
+        }
+      }
+    ],
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db7nu56t41sc7388oa60",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.122,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-14T13:09:41Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db7nu56t41sc7388oa60\",\n    \"id\": \"srv-db7nu56t41sc7388oa60\",\n    \"name\": \"qa-20261014-7c8ce4ca-source\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-go\",\n    \"serviceDetails\": {\n      \"env\": \"rust\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"/bin/cat \\u003e qa_probe.rs \\u003c\\u003c'QA239_RUST'\\nuse std::{env,fs,io::{Read,Write},net::TcpListener};\\nfn quote(s:\\u0026str)-\\u003eString { let mut o=String::from(\\\"\\\\\\\"\\\"); for c in s.chars(){match c{'\\\"'=\\u003eo.push_str(\\\"\\\\\\\\\\\\\\\"\\\"),'\\\\\\\\'=\\u003eo.push_str(\\\"\\\\\\\\\\\\\\\\\\\"),'\\\\n'=\\u003eo.push_str(\\\"\\\\\\\\n\\\"),'\\\\r'=\\u003eo.push_str(\\\"\\\\\\\\r\\\"),'\\\\t'=\\u003eo.push_str(\\\"\\\\\\\\t\\\"),c if c\\u003c' '=\\u003eo.push_str(\\u0026format!(\\\"\\\\\\\\u{:04x}\\\",c as u32)),c=\\u003eo.push(c)}} o.push('\\\"');o }\\nfn snap()-\\u003eString {let b=fs::read(\\\"/etc/secrets/qa-note.txt\\\").unwrap();let h:String=b.iter().map(|v|format!(\\\"{:02x}\\\",v)).collect();format!(\\\"{{\\\\\\\"marker\\\\\\\":{},\\\\\\\"path\\\\\\\":{},\\\\\\\"fileHex\\\\\\\":{}}}\\\",quote(\\u0026env::var(\\\"QA_MARKER\\\").unwrap()),quote(\\u0026env::var(\\\"PATH\\\").unwrap()),quote(\\u0026h))}\\nfn main(){if env::args().nth(1).as_deref()==Some(\\\"--snapshot\\\"){println!(\\\"{}\\\",snap());return}let built=fs::read_to_string(\\\"qa-built.json\\\").unwrap();let port=env::var(\\\"PORT\\\").unwrap_or(\\\"3000\\\".into());let listener=TcpListener::bind(format!(\\\"0.0.0.0:{}\\\",port)).unwrap();for incoming in listener.incoming(){let mut client=incoming.unwrap();let mut req=[0u8;4096];if client.read(\\u0026mut req).is_err(){continue}let payload=format!(\\\"{{\\\\\\\"built\\\\\\\":{},\\\\\\\"runtime\\\\\\\":{}}}\\\",built.trim(),snap());let response=format!(\\\"HTTP/1.1 200 OK\\\\r\\\\nContent-Type: application/json\\\\r\\\\nContent-Length: {}\\\\r\\\\nConnection: close\\\\r\\\\n\\\\r\\\\n{}\\\",payload.len(),payload);let _=client.write_all(response.as_bytes());}}\\nQA239_RUST\\n/usr/local/cargo/bin/rustc -C linker=/usr/bin/gcc -C link-arg=-B/usr/bin qa_probe.rs -o qa-http\\n/opt/render/project/src/qa-http --snapshot \\u003e qa-built.json\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"/opt/render/project/src/qa-http\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261014-7c8ce4ca-source:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"rust\",\n      \"url\": \"https://qa-20261014-7c8ce4ca-source.onbex.co\"\n    },\n    \"slug\": \"qa-20261014-7c8ce4ca-source\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-14T13:13:56Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "cleanup_reconciliations": [
+      {
+        "at": "2026-10-14T13:16:18.403652+00:00",
+        "detail": {
+          "at": "2026-10-14T13:16:16.853355+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db7nu56t41sc7388oa60",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "404",
+          "elapsed": 0.291,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4a6db8bee8033fc-SJC"
+          },
+          "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+        },
+        "list_ids": [
+          "srv-daif6dsmg29s73d1umvg",
+          "srv-dap3r714dm7c7390q91g",
+          "srv-dap3umrbdpcs73f5eeug",
+          "srv-dap3v694dm7c7390q930",
+          "srv-db09u90ehcmc739j12cg",
+          "srv-db09vbgehcmc739j12i0"
+        ],
+        "baseline_present": true,
+        "runtime": {
+          "exit": 0,
+          "HTTP": "404",
+          "stderr": ""
+        },
+        "quota": {
+          "at": "2026-10-14T13:16:18.395826+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "200",
+          "elapsed": 0.272,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4a6db95ad59cf72-SJC"
+          },
+          "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+        }
+      }
+    ]
+  },
+  {
+    "sweep": 239,
+    "case": "render",
+    "client": "render",
+    "role": "source",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "web_service",
+    "name": "qa-20261014-02290535-source",
+    "nonce": "02290535",
+    "marker": "QA239_02290535_source",
+    "time": "2026-10-14T13:09:51.869177+00:00",
+    "source_head": "17e9aada3ac5daaa40cbd84cf2975cb910aa08a5",
+    "state": "deleted: nativeack/API404/listabsent/runtime404/baseline present/quota termination0",
+    "create_command": [
+      "render",
+      "services",
+      "create",
+      "--name",
+      "qa-20261014-02290535-source",
+      "--type",
+      "web_service",
+      "--runtime",
+      "rust",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/hello-go",
+      "--build-command",
+      "/bin/cat > qa_probe.rs <<'QA239_RUST'\nuse std::{env,fs,io::{Read,Write},net::TcpListener};\nfn quote(s:&str)->String { let mut o=String::from(\"\\\"\"); for c in s.chars(){match c{'\"'=>o.push_str(\"\\\\\\\"\"),'\\\\'=>o.push_str(\"\\\\\\\\\"),'\\n'=>o.push_str(\"\\\\n\"),'\\r'=>o.push_str(\"\\\\r\"),'\\t'=>o.push_str(\"\\\\t\"),c if c<' '=>o.push_str(&format!(\"\\\\u{:04x}\",c as u32)),c=>o.push(c)}} o.push('\"');o }\nfn snap()->String {let b=fs::read(\"/etc/secrets/qa-note.txt\").unwrap();let h:String=b.iter().map(|v|format!(\"{:02x}\",v)).collect();format!(\"{{\\\"marker\\\":{},\\\"path\\\":{},\\\"fileHex\\\":{}}}\",quote(&env::var(\"QA_MARKER\").unwrap()),quote(&env::var(\"PATH\").unwrap()),quote(&h))}\nfn main(){if env::args().nth(1).as_deref()==Some(\"--snapshot\"){println!(\"{}\",snap());return}let built=fs::read_to_string(\"qa-built.json\").unwrap();let port=env::var(\"PORT\").unwrap_or(\"3000\".into());let listener=TcpListener::bind(format!(\"0.0.0.0:{}\",port)).unwrap();for incoming in listener.incoming(){let mut client=incoming.unwrap();let mut req=[0u8;4096];if client.read(&mut req).is_err(){continue}let payload=format!(\"{{\\\"built\\\":{},\\\"runtime\\\":{}}}\",built.trim(),snap());let response=format!(\"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: {}\\r\\nConnection: close\\r\\n\\r\\n{}\",payload.len(),payload);let _=client.write_all(response.as_bytes());}}\nQA239_RUST\n/usr/local/cargo/bin/rustc -C linker=/usr/bin/gcc -C link-arg=-B/usr/bin qa_probe.rs -o qa-http\n/opt/render/project/src/qa-http --snapshot > qa-built.json",
+      "--start-command",
+      "/opt/render/project/src/qa-http",
+      "--health-check-path",
+      "/",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--env-var",
+      "QA_MARKER=QA239_02290535_source",
+      "--env-var",
+      "PATH=/usr/bin:/bin",
+      "--secret-file",
+      "qa-note.txt:/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep239-render-note.txt",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "capacity_proof": {
+      "at": "2026-10-14T13:09:50.128281+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.247,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a6d21b2e56e8d8-SJC"
+      },
+      "response": "{\"services\":{\"used\":7,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "pre_create_inventory": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.697,
+      "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-14T13:09:04Z\",\n        \"nextRunAt\": \"2026-10-14T13:10:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-14T13:09:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-14T13:09:06Z\",\n        \"nextRunAt\": \"2026-10-14T13:10:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-14T13:09:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-14T13:09:04Z\",\n        \"nextRunAt\": \"2026-10-14T13:10:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-14T13:09:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T13:00:36Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:33Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:28Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-10-14T13:09:41Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db7nu56t41sc7388oa60\",\n      \"id\": \"srv-db7nu56t41sc7388oa60\",\n      \"name\": \"qa-20261014-7c8ce4ca-source\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"rust\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"/bin/cat \\u003e qa_probe.rs \\u003c\\u003c'QA239_RUST'\\nuse std::{env,fs,io::{Read,Write},net::TcpListener};\\nfn quote(s:\\u0026str)-\\u003eString { let mut o=String::from(\\\"\\\\\\\"\\\"); for c in s.chars(){match c{'\\\"'=\\u003eo.push_str(\\\"\\\\\\\\\\\\\\\"\\\"),'\\\\\\\\'=\\u003eo.push_str(\\\"\\\\\\\\\\\\\\\\\\\"),'\\\\n'=\\u003eo.push_str(\\\"\\\\\\\\n\\\"),'\\\\r'=\\u003eo.push_str(\\\"\\\\\\\\r\\\"),'\\\\t'=\\u003eo.push_str(\\\"\\\\\\\\t\\\"),c if c\\u003c' '=\\u003eo.push_str(\\u0026format!(\\\"\\\\\\\\u{:04x}\\\",c as u32)),c=\\u003eo.push(c)}} o.push('\\\"');o }\\nfn snap()-\\u003eString {let b=fs::read(\\\"/etc/secrets/qa-note.txt\\\").unwrap();let h:String=b.iter().map(|v|format!(\\\"{:02x}\\\",v)).collect();format!(\\\"{{\\\\\\\"marker\\\\\\\":{},\\\\\\\"path\\\\\\\":{},\\\\\\\"fileHex\\\\\\\":{}}}\\\",quote(\\u0026env::var(\\\"QA_MARKER\\\").unwrap()),quote(\\u0026env::var(\\\"PATH\\\").unwrap()),quote(\\u0026h))}\\nfn main(){if env::args().nth(1).as_deref()==Some(\\\"--snapshot\\\"){println!(\\\"{}\\\",snap());return}let built=fs::read_to_string(\\\"qa-built.json\\\").unwrap();let port=env::var(\\\"PORT\\\").unwrap_or(\\\"3000\\\".into());let listener=TcpListener::bind(format!(\\\"0.0.0.0:{}\\\",port)).unwrap();for incoming in listener.incoming(){let mut client=incoming.unwrap();let mut req=[0u8;4096];if client.read(\\u0026mut req).is_err(){continue}let payload=format!(\\\"{{\\\\\\\"built\\\\\\\":{},\\\\\\\"runtime\\\\\\\":{}}}\\\",built.trim(),snap());let response=format!(\\\"HTTP/1.1 200 OK\\\\r\\\\nContent-Type: application/json\\\\r\\\\nContent-Length: {}\\\\r\\\\nConnection: close\\\\r\\\\n\\\\r\\\\n{}\\\",payload.len(),payload);let _=client.write_all(response.as_bytes());}}\\nQA239_RUST\\n/usr/local/cargo/bin/rustc -C linker=/usr/bin/gcc -C link-arg=-B/usr/bin qa_probe.rs -o qa-http\\n/opt/render/project/src/qa-http --snapshot \\u003e qa-built.json\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"/opt/render/project/src/qa-http\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261014-7c8ce4ca-source:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"rust\",\n        \"url\": \"https://qa-20261014-7c8ce4ca-source.onbex.co\"\n      },\n      \"slug\": \"qa-20261014-7c8ce4ca-source\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T13:09:41Z\"\n    }\n  }\n]",
+      "stderr": ""
+    },
+    "expected_snapshot": {
+      "marker": "QA239_02290535_source",
+      "fileHex": "51413233395f30323239303533355f736f757263650ae298833d66696c650a7365636f6e64206c696e650a"
+    },
+    "expected_path": "/usr/bin:/bin",
+    "harmless_file_contents": "QA239_02290535_source\n☃=file\nsecond line\n",
+    "harmless_file": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep239-render-note.txt",
+    "dependency_ids": [],
+    "source_id": null,
+    "recorded_child_ids": [
+      "dep-db7nu86t41sc7388oa8g",
+      "dep-db7nvm9llfps73emub40"
+    ],
+    "build_program": "/bin/cat > qa_probe.rs <<'QA239_RUST'\nuse std::{env,fs,io::{Read,Write},net::TcpListener};\nfn quote(s:&str)->String { let mut o=String::from(\"\\\"\"); for c in s.chars(){match c{'\"'=>o.push_str(\"\\\\\\\"\"),'\\\\'=>o.push_str(\"\\\\\\\\\"),'\\n'=>o.push_str(\"\\\\n\"),'\\r'=>o.push_str(\"\\\\r\"),'\\t'=>o.push_str(\"\\\\t\"),c if c<' '=>o.push_str(&format!(\"\\\\u{:04x}\",c as u32)),c=>o.push(c)}} o.push('\"');o }\nfn snap()->String {let b=fs::read(\"/etc/secrets/qa-note.txt\").unwrap();let h:String=b.iter().map(|v|format!(\"{:02x}\",v)).collect();format!(\"{{\\\"marker\\\":{},\\\"path\\\":{},\\\"fileHex\\\":{}}}\",quote(&env::var(\"QA_MARKER\").unwrap()),quote(&env::var(\"PATH\").unwrap()),quote(&h))}\nfn main(){if env::args().nth(1).as_deref()==Some(\"--snapshot\"){println!(\"{}\",snap());return}let built=fs::read_to_string(\"qa-built.json\").unwrap();let port=env::var(\"PORT\").unwrap_or(\"3000\".into());let listener=TcpListener::bind(format!(\"0.0.0.0:{}\",port)).unwrap();for incoming in listener.incoming(){let mut client=incoming.unwrap();let mut req=[0u8;4096];if client.read(&mut req).is_err(){continue}let payload=format!(\"{{\\\"built\\\":{},\\\"runtime\\\":{}}}\",built.trim(),snap());let response=format!(\"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: {}\\r\\nConnection: close\\r\\n\\r\\n{}\",payload.len(),payload);let _=client.write_all(response.as_bytes());}}\nQA239_RUST\n/usr/local/cargo/bin/rustc -C linker=/usr/bin/gcc -C link-arg=-B/usr/bin qa_probe.rs -o qa-http\n/opt/render/project/src/qa-http --snapshot > qa-built.json",
+    "generated_rust_program": "use std::{env,fs,io::{Read,Write},net::TcpListener};\nfn quote(s:&str)->String { let mut o=String::from(\"\\\"\"); for c in s.chars(){match c{'\"'=>o.push_str(\"\\\\\\\"\"),'\\\\'=>o.push_str(\"\\\\\\\\\"),'\\n'=>o.push_str(\"\\\\n\"),'\\r'=>o.push_str(\"\\\\r\"),'\\t'=>o.push_str(\"\\\\t\"),c if c<' '=>o.push_str(&format!(\"\\\\u{:04x}\",c as u32)),c=>o.push(c)}} o.push('\"');o }\nfn snap()->String {let b=fs::read(\"/etc/secrets/qa-note.txt\").unwrap();let h:String=b.iter().map(|v|format!(\"{:02x}\",v)).collect();format!(\"{{\\\"marker\\\":{},\\\"path\\\":{},\\\"fileHex\\\":{}}}\",quote(&env::var(\"QA_MARKER\").unwrap()),quote(&env::var(\"PATH\").unwrap()),quote(&h))}\nfn main(){if env::args().nth(1).as_deref()==Some(\"--snapshot\"){println!(\"{}\",snap());return}let built=fs::read_to_string(\"qa-built.json\").unwrap();let port=env::var(\"PORT\").unwrap_or(\"3000\".into());let listener=TcpListener::bind(format!(\"0.0.0.0:{}\",port)).unwrap();for incoming in listener.incoming(){let mut client=incoming.unwrap();let mut req=[0u8;4096];if client.read(&mut req).is_err(){continue}let payload=format!(\"{{\\\"built\\\":{},\\\"runtime\\\":{}}}\",built.trim(),snap());let response=format!(\"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: {}\\r\\nConnection: close\\r\\n\\r\\n{}\",payload.len(),payload);let _=client.write_all(response.as_bytes());}}\n",
+    "start_program": "/opt/render/project/src/qa-http",
+    "qualification": "native Rust fixture with explicit PATH and harmless file bytes; absolute compiler/linker and standard-library app; no product source edit",
+    "create_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "create",
+        "--name",
+        "qa-20261014-02290535-source",
+        "--type",
+        "web_service",
+        "--runtime",
+        "rust",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--branch",
+        "main",
+        "--root-directory",
+        "examples/hello-go",
+        "--build-command",
+        "/bin/cat > qa_probe.rs <<'QA239_RUST'\nuse std::{env,fs,io::{Read,Write},net::TcpListener};\nfn quote(s:&str)->String { let mut o=String::from(\"\\\"\"); for c in s.chars(){match c{'\"'=>o.push_str(\"\\\\\\\"\"),'\\\\'=>o.push_str(\"\\\\\\\\\"),'\\n'=>o.push_str(\"\\\\n\"),'\\r'=>o.push_str(\"\\\\r\"),'\\t'=>o.push_str(\"\\\\t\"),c if c<' '=>o.push_str(&format!(\"\\\\u{:04x}\",c as u32)),c=>o.push(c)}} o.push('\"');o }\nfn snap()->String {let b=fs::read(\"/etc/secrets/qa-note.txt\").unwrap();let h:String=b.iter().map(|v|format!(\"{:02x}\",v)).collect();format!(\"{{\\\"marker\\\":{},\\\"path\\\":{},\\\"fileHex\\\":{}}}\",quote(&env::var(\"QA_MARKER\").unwrap()),quote(&env::var(\"PATH\").unwrap()),quote(&h))}\nfn main(){if env::args().nth(1).as_deref()==Some(\"--snapshot\"){println!(\"{}\",snap());return}let built=fs::read_to_string(\"qa-built.json\").unwrap();let port=env::var(\"PORT\").unwrap_or(\"3000\".into());let listener=TcpListener::bind(format!(\"0.0.0.0:{}\",port)).unwrap();for incoming in listener.incoming(){let mut client=incoming.unwrap();let mut req=[0u8;4096];if client.read(&mut req).is_err(){continue}let payload=format!(\"{{\\\"built\\\":{},\\\"runtime\\\":{}}}\",built.trim(),snap());let response=format!(\"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: {}\\r\\nConnection: close\\r\\n\\r\\n{}\",payload.len(),payload);let _=client.write_all(response.as_bytes());}}\nQA239_RUST\n/usr/local/cargo/bin/rustc -C linker=/usr/bin/gcc -C link-arg=-B/usr/bin qa_probe.rs -o qa-http\n/opt/render/project/src/qa-http --snapshot > qa-built.json",
+        "--start-command",
+        "/opt/render/project/src/qa-http",
+        "--health-check-path",
+        "/",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--auto-deploy=false",
+        "--env-var",
+        "QA_MARKER=QA239_02290535_source",
+        "--env-var",
+        "PATH=/usr/bin:/bin",
+        "--secret-file",
+        "qa-note.txt:/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep239-render-note.txt",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.738,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-14T13:09:52Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db7nu86t41sc7388oa80\",\n  \"id\": \"srv-db7nu86t41sc7388oa80\",\n  \"name\": \"qa-20261014-02290535-source\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-go\",\n  \"serviceDetails\": {\n    \"env\": \"rust\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"/bin/cat \\u003e qa_probe.rs \\u003c\\u003c'QA239_RUST'\\nuse std::{env,fs,io::{Read,Write},net::TcpListener};\\nfn quote(s:\\u0026str)-\\u003eString { let mut o=String::from(\\\"\\\\\\\"\\\"); for c in s.chars(){match c{'\\\"'=\\u003eo.push_str(\\\"\\\\\\\\\\\\\\\"\\\"),'\\\\\\\\'=\\u003eo.push_str(\\\"\\\\\\\\\\\\\\\\\\\"),'\\\\n'=\\u003eo.push_str(\\\"\\\\\\\\n\\\"),'\\\\r'=\\u003eo.push_str(\\\"\\\\\\\\r\\\"),'\\\\t'=\\u003eo.push_str(\\\"\\\\\\\\t\\\"),c if c\\u003c' '=\\u003eo.push_str(\\u0026format!(\\\"\\\\\\\\u{:04x}\\\",c as u32)),c=\\u003eo.push(c)}} o.push('\\\"');o }\\nfn snap()-\\u003eString {let b=fs::read(\\\"/etc/secrets/qa-note.txt\\\").unwrap();let h:String=b.iter().map(|v|format!(\\\"{:02x}\\\",v)).collect();format!(\\\"{{\\\\\\\"marker\\\\\\\":{},\\\\\\\"path\\\\\\\":{},\\\\\\\"fileHex\\\\\\\":{}}}\\\",quote(\\u0026env::var(\\\"QA_MARKER\\\").unwrap()),quote(\\u0026env::var(\\\"PATH\\\").unwrap()),quote(\\u0026h))}\\nfn main(){if env::args().nth(1).as_deref()==Some(\\\"--snapshot\\\"){println!(\\\"{}\\\",snap());return}let built=fs::read_to_string(\\\"qa-built.json\\\").unwrap();let port=env::var(\\\"PORT\\\").unwrap_or(\\\"3000\\\".into());let listener=TcpListener::bind(format!(\\\"0.0.0.0:{}\\\",port)).unwrap();for incoming in listener.incoming(){let mut client=incoming.unwrap();let mut req=[0u8;4096];if client.read(\\u0026mut req).is_err(){continue}let payload=format!(\\\"{{\\\\\\\"built\\\\\\\":{},\\\\\\\"runtime\\\\\\\":{}}}\\\",built.trim(),snap());let response=format!(\\\"HTTP/1.1 200 OK\\\\r\\\\nContent-Type: application/json\\\\r\\\\nContent-Length: {}\\\\r\\\\nConnection: close\\\\r\\\\n\\\\r\\\\n{}\\\",payload.len(),payload);let _=client.write_all(response.as_bytes());}}\\nQA239_RUST\\n/usr/local/cargo/bin/rustc -C linker=/usr/bin/gcc -C link-arg=-B/usr/bin qa_probe.rs -o qa-http\\n/opt/render/project/src/qa-http --snapshot \\u003e qa-built.json\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"/opt/render/project/src/qa-http\"\n    },\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261014-02290535-source:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"rust\",\n    \"url\": \"https://qa-20261014-02290535-source.onbex.co\"\n  },\n  \"slug\": \"qa-20261014-02290535-source\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-14T13:09:52.385863559Z\"\n}",
+      "stderr": ""
+    },
+    "id": "srv-db7nu86t41sc7388oa80",
+    "create_response": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "main",
+      "createdAt": "2026-10-14T13:09:52Z",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db7nu86t41sc7388oa80",
+      "id": "srv-db7nu86t41sc7388oa80",
+      "name": "qa-20261014-02290535-source",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/bex-co/bex",
+      "rootDir": "examples/hello-go",
+      "serviceDetails": {
+        "env": "rust",
+        "envSpecificDetails": {
+          "buildCommand": "/bin/cat > qa_probe.rs <<'QA239_RUST'\nuse std::{env,fs,io::{Read,Write},net::TcpListener};\nfn quote(s:&str)->String { let mut o=String::from(\"\\\"\"); for c in s.chars(){match c{'\"'=>o.push_str(\"\\\\\\\"\"),'\\\\'=>o.push_str(\"\\\\\\\\\"),'\\n'=>o.push_str(\"\\\\n\"),'\\r'=>o.push_str(\"\\\\r\"),'\\t'=>o.push_str(\"\\\\t\"),c if c<' '=>o.push_str(&format!(\"\\\\u{:04x}\",c as u32)),c=>o.push(c)}} o.push('\"');o }\nfn snap()->String {let b=fs::read(\"/etc/secrets/qa-note.txt\").unwrap();let h:String=b.iter().map(|v|format!(\"{:02x}\",v)).collect();format!(\"{{\\\"marker\\\":{},\\\"path\\\":{},\\\"fileHex\\\":{}}}\",quote(&env::var(\"QA_MARKER\").unwrap()),quote(&env::var(\"PATH\").unwrap()),quote(&h))}\nfn main(){if env::args().nth(1).as_deref()==Some(\"--snapshot\"){println!(\"{}\",snap());return}let built=fs::read_to_string(\"qa-built.json\").unwrap();let port=env::var(\"PORT\").unwrap_or(\"3000\".into());let listener=TcpListener::bind(format!(\"0.0.0.0:{}\",port)).unwrap();for incoming in listener.incoming(){let mut client=incoming.unwrap();let mut req=[0u8;4096];if client.read(&mut req).is_err(){continue}let payload=format!(\"{{\\\"built\\\":{},\\\"runtime\\\":{}}}\",built.trim(),snap());let response=format!(\"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: {}\\r\\nConnection: close\\r\\n\\r\\n{}\",payload.len(),payload);let _=client.write_all(response.as_bytes());}}\nQA239_RUST\n/usr/local/cargo/bin/rustc -C linker=/usr/bin/gcc -C link-arg=-B/usr/bin qa_probe.rs -o qa-http\n/opt/render/project/src/qa-http --snapshot > qa-built.json",
+          "preDeployCommand": "",
+          "startCommand": "/opt/render/project/src/qa-http"
+        },
+        "healthCheckPath": "/",
+        "internalAddress": "qa-20261014-02290535-source:3000",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "free",
+        "port": 3000,
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "rust",
+        "url": "https://qa-20261014-02290535-source.onbex.co"
+      },
+      "slug": "qa-20261014-02290535-source",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "web_service",
+      "updatedAt": "2026-10-14T13:09:52.385863559Z"
+    },
+    "deploy_children": [
+      {
+        "commit": {
+          "createdAt": "2026-10-14T13:05:09Z",
+          "id": "4ea15f074e583cd6efda132ace6452f9018ac3bf",
+          "message": "docs(pm): file missing mobile language and theme controls (w4/302)"
+        },
+        "createdAt": "2026-10-14T13:12:57.775273Z",
+        "finishedAt": "2026-10-14T13:14:21.999086Z",
+        "id": "dep-db7nvm9llfps73emub40",
+        "startedAt": "2026-10-14T13:13:04.837131Z",
+        "status": "live",
+        "trigger": "api",
+        "updatedAt": "2026-10-14T13:14:21.999087Z"
+      },
+      {
+        "commit": {
+          "id": "4ea15f074e583cd6efda132ace6452f9018ac3bf",
+          "message": "docs(pm): file missing mobile language and theme controls (w4/302)"
+        },
+        "createdAt": "2026-10-14T13:09:52.352158Z",
+        "finishedAt": "2026-10-14T13:12:21.992201Z",
+        "id": "dep-db7nu86t41sc7388oa8g",
+        "startedAt": "2026-10-14T13:10:34.777705Z",
+        "status": "deactivated",
+        "trigger": "other",
+        "updatedAt": "2026-10-14T13:14:22.001157Z"
+      }
+    ],
+    "observations": [
+      {
+        "at": "2026-10-14T13:10:28.226061+00:00",
+        "native_history": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db7nu86t41sc7388oa80",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.303,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"4ea15f074e583cd6efda132ace6452f9018ac3bf\",\n      \"message\": \"docs(pm): file missing mobile language and theme controls (w4/302)\"\n    },\n    \"createdAt\": \"2026-10-14T13:09:52.352158Z\",\n    \"id\": \"dep-db7nu86t41sc7388oa8g\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T13:10:04.769088Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "4ea15f074e583cd6efda132ace6452f9018ac3bf",
+            "message": "docs(pm): file missing mobile language and theme controls (w4/302)"
+          },
+          "createdAt": "2026-10-14T13:09:52.352158Z",
+          "id": "dep-db7nu86t41sc7388oa8g",
+          "status": "queued",
+          "trigger": "other",
+          "updatedAt": "2026-10-14T13:10:04.769088Z"
+        },
+        "runtime": {
+          "HTTP": "404",
+          "exit": 0,
+          "body": null,
+          "raw_body": "404 page not found\n",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": false
+      },
+      {
+        "at": "2026-10-14T13:11:27.019270+00:00",
+        "native_history": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db7nu86t41sc7388oa80",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.29,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"4ea15f074e583cd6efda132ace6452f9018ac3bf\",\n      \"message\": \"docs(pm): file missing mobile language and theme controls (w4/302)\"\n    },\n    \"createdAt\": \"2026-10-14T13:09:52.352158Z\",\n    \"id\": \"dep-db7nu86t41sc7388oa8g\",\n    \"startedAt\": \"2026-10-14T13:10:34.777705Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T13:10:34.777706Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "4ea15f074e583cd6efda132ace6452f9018ac3bf",
+            "message": "docs(pm): file missing mobile language and theme controls (w4/302)"
+          },
+          "createdAt": "2026-10-14T13:09:52.352158Z",
+          "id": "dep-db7nu86t41sc7388oa8g",
+          "startedAt": "2026-10-14T13:10:34.777705Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-14T13:10:34.777706Z"
+        },
+        "runtime": {
+          "HTTP": "404",
+          "exit": 0,
+          "body": null,
+          "raw_body": "404 page not found\n",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": false
+      },
+      {
+        "at": "2026-10-14T13:12:32.972916+00:00",
+        "native_history": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db7nu86t41sc7388oa80",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.345,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"4ea15f074e583cd6efda132ace6452f9018ac3bf\",\n      \"message\": \"docs(pm): file missing mobile language and theme controls (w4/302)\"\n    },\n    \"createdAt\": \"2026-10-14T13:09:52.352158Z\",\n    \"finishedAt\": \"2026-10-14T13:12:21.992201Z\",\n    \"id\": \"dep-db7nu86t41sc7388oa8g\",\n    \"startedAt\": \"2026-10-14T13:10:34.777705Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T13:12:21.992202Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "4ea15f074e583cd6efda132ace6452f9018ac3bf",
+            "message": "docs(pm): file missing mobile language and theme controls (w4/302)"
+          },
+          "createdAt": "2026-10-14T13:09:52.352158Z",
+          "finishedAt": "2026-10-14T13:12:21.992201Z",
+          "id": "dep-db7nu86t41sc7388oa8g",
+          "startedAt": "2026-10-14T13:10:34.777705Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-14T13:12:21.992202Z"
+        },
+        "runtime": {
+          "HTTP": "200",
+          "exit": 0,
+          "body": {
+            "built": {
+              "marker": "QA239_02290535_source",
+              "path": "/usr/bin:/bin",
+              "fileHex": "51413233395f30323239303533355f736f757263650ae298833d66696c650a7365636f6e64206c696e650a"
+            },
+            "runtime": {
+              "marker": "QA239_02290535_source",
+              "path": "/usr/bin:/bin",
+              "fileHex": "51413233395f30323239303533355f736f757263650ae298833d66696c650a7365636f6e64206c696e650a"
+            }
+          },
+          "raw_body": "{\"built\":{\"marker\":\"QA239_02290535_source\",\"path\":\"/usr/bin:/bin\",\"fileHex\":\"51413233395f30323239303533355f736f757263650ae298833d66696c650a7365636f6e64206c696e650a\"},\"runtime\":{\"marker\":\"QA239_02290535_source\",\"path\":\"/usr/bin:/bin\",\"fileHex\":\"51413233395f30323239303533355f736f757263650ae298833d66696c650a7365636f6e64206c696e650a\"}}",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": true
+      },
+      {
+        "at": "2026-10-14T13:14:18.414778+00:00",
+        "native_history": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db7nu86t41sc7388oa80",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.345,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-14T13:05:09Z\",\n      \"id\": \"4ea15f074e583cd6efda132ace6452f9018ac3bf\",\n      \"message\": \"docs(pm): file missing mobile language and theme controls (w4/302)\"\n    },\n    \"createdAt\": \"2026-10-14T13:12:57.775273Z\",\n    \"id\": \"dep-db7nvm9llfps73emub40\",\n    \"startedAt\": \"2026-10-14T13:13:04.837131Z\",\n    \"status\": \"update_in_progress\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-14T13:14:04.729969Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"4ea15f074e583cd6efda132ace6452f9018ac3bf\",\n      \"message\": \"docs(pm): file missing mobile language and theme controls (w4/302)\"\n    },\n    \"createdAt\": \"2026-10-14T13:09:52.352158Z\",\n    \"finishedAt\": \"2026-10-14T13:12:21.992201Z\",\n    \"id\": \"dep-db7nu86t41sc7388oa8g\",\n    \"startedAt\": \"2026-10-14T13:10:34.777705Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T13:12:21.992202Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "createdAt": "2026-10-14T13:05:09Z",
+            "id": "4ea15f074e583cd6efda132ace6452f9018ac3bf",
+            "message": "docs(pm): file missing mobile language and theme controls (w4/302)"
+          },
+          "createdAt": "2026-10-14T13:12:57.775273Z",
+          "id": "dep-db7nvm9llfps73emub40",
+          "startedAt": "2026-10-14T13:13:04.837131Z",
+          "status": "update_in_progress",
+          "trigger": "api",
+          "updatedAt": "2026-10-14T13:14:04.729969Z"
+        },
+        "runtime": {
+          "HTTP": "200",
+          "exit": 0,
+          "body": {
+            "built": {
+              "marker": "QA239_02290535_source",
+              "path": "/usr/bin:/bin",
+              "fileHex": "51413233395f30323239303533355f736f757263650ae298833d66696c650a7365636f6e64206c696e650a"
+            },
+            "runtime": {
+              "marker": "QA239_02290535_source",
+              "path": "/usr/bin:/bin",
+              "fileHex": "51413233395f30323239303533355f736f757263650ae298833d66696c650a7365636f6e64206c696e650a"
+            }
+          },
+          "raw_body": "{\"built\":{\"marker\":\"QA239_02290535_source\",\"path\":\"/usr/bin:/bin\",\"fileHex\":\"51413233395f30323239303533355f736f757263650ae298833d66696c650a7365636f6e64206c696e650a\"},\"runtime\":{\"marker\":\"QA239_02290535_source\",\"path\":\"/usr/bin:/bin\",\"fileHex\":\"51413233395f30323239303533355f736f757263650ae298833d66696c650a7365636f6e64206c696e650a\"}}",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": true
+      },
+      {
+        "at": "2026-10-14T13:15:35.229336+00:00",
+        "native_history": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db7nu86t41sc7388oa80",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.461,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-14T13:05:09Z\",\n      \"id\": \"4ea15f074e583cd6efda132ace6452f9018ac3bf\",\n      \"message\": \"docs(pm): file missing mobile language and theme controls (w4/302)\"\n    },\n    \"createdAt\": \"2026-10-14T13:12:57.775273Z\",\n    \"finishedAt\": \"2026-10-14T13:14:21.999086Z\",\n    \"id\": \"dep-db7nvm9llfps73emub40\",\n    \"startedAt\": \"2026-10-14T13:13:04.837131Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-14T13:14:21.999087Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"4ea15f074e583cd6efda132ace6452f9018ac3bf\",\n      \"message\": \"docs(pm): file missing mobile language and theme controls (w4/302)\"\n    },\n    \"createdAt\": \"2026-10-14T13:09:52.352158Z\",\n    \"finishedAt\": \"2026-10-14T13:12:21.992201Z\",\n    \"id\": \"dep-db7nu86t41sc7388oa8g\",\n    \"startedAt\": \"2026-10-14T13:10:34.777705Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T13:14:22.001157Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "createdAt": "2026-10-14T13:05:09Z",
+            "id": "4ea15f074e583cd6efda132ace6452f9018ac3bf",
+            "message": "docs(pm): file missing mobile language and theme controls (w4/302)"
+          },
+          "createdAt": "2026-10-14T13:12:57.775273Z",
+          "finishedAt": "2026-10-14T13:14:21.999086Z",
+          "id": "dep-db7nvm9llfps73emub40",
+          "startedAt": "2026-10-14T13:13:04.837131Z",
+          "status": "live",
+          "trigger": "api",
+          "updatedAt": "2026-10-14T13:14:21.999087Z"
+        },
+        "runtime": {
+          "HTTP": "200",
+          "exit": 0,
+          "body": {
+            "built": {
+              "marker": "QA239_02290535_source",
+              "path": "/usr/bin:/bin",
+              "fileHex": "51413233395f30323239303533355f736f757263650ae298833d66696c650a7365636f6e64206c696e650a"
+            },
+            "runtime": {
+              "marker": "QA239_02290535_source",
+              "path": "/usr/bin:/bin",
+              "fileHex": "51413233395f30323239303533355f736f757263650ae298833d66696c650a7365636f6e64206c696e650a"
+            }
+          },
+          "raw_body": "{\"built\":{\"marker\":\"QA239_02290535_source\",\"path\":\"/usr/bin:/bin\",\"fileHex\":\"51413233395f30323239303533355f736f757263650ae298833d66696c650a7365636f6e64206c696e650a\"},\"runtime\":{\"marker\":\"QA239_02290535_source\",\"path\":\"/usr/bin:/bin\",\"fileHex\":\"51413233395f30323239303533355f736f757263650ae298833d66696c650a7365636f6e64206c696e650a\"}}",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": true
+      }
+    ],
+    "ready": true,
+    "accepted_snapshot": {
+      "built": {
+        "marker": "QA239_02290535_source",
+        "path": "/usr/bin:/bin",
+        "fileHex": "51413233395f30323239303533355f736f757263650ae298833d66696c650a7365636f6e64206c696e650a"
+      },
+      "runtime": {
+        "marker": "QA239_02290535_source",
+        "path": "/usr/bin:/bin",
+        "fileHex": "51413233395f30323239303533355f736f757263650ae298833d66696c650a7365636f6e64206c696e650a"
+      }
+    },
+    "manual_deploy_intents": [
+      {
+        "at": "2026-10-14T13:12:57.334933+00:00",
+        "command": [
+          "render",
+          "deploys",
+          "create",
+          "srv-db7nu86t41sc7388oa80",
+          "--commit",
+          "4ea15f074e583cd6efda132ace6452f9018ac3bf",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "before_ids": [
+          "dep-db7nu86t41sc7388oa8g"
+        ],
+        "same_commit": "4ea15f074e583cd6efda132ace6452f9018ac3bf",
+        "wait": false,
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "create",
+            "srv-db7nu86t41sc7388oa80",
+            "--commit",
+            "4ea15f074e583cd6efda132ace6452f9018ac3bf",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.384,
+          "stdout": "{\n  \"commit\": {\n    \"createdAt\": \"2026-10-14T13:05:09Z\",\n    \"id\": \"4ea15f074e583cd6efda132ace6452f9018ac3bf\",\n    \"message\": \"docs(pm): file missing mobile language and theme controls (w4/302)\"\n  },\n  \"createdAt\": \"2026-10-14T13:12:57.775273Z\",\n  \"id\": \"dep-db7nvm9llfps73emub40\",\n  \"status\": \"created\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-14T13:12:57.775273Z\"\n}",
+          "stderr": ""
+        }
+      }
+    ],
+    "delete_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "delete",
+        "srv-db7nu86t41sc7388oa80",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.543,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-14T13:09:52Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db7nu86t41sc7388oa80\",\n    \"id\": \"srv-db7nu86t41sc7388oa80\",\n    \"name\": \"qa-20261014-02290535-source\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-go\",\n    \"serviceDetails\": {\n      \"env\": \"rust\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"/bin/cat \\u003e qa_probe.rs \\u003c\\u003c'QA239_RUST'\\nuse std::{env,fs,io::{Read,Write},net::TcpListener};\\nfn quote(s:\\u0026str)-\\u003eString { let mut o=String::from(\\\"\\\\\\\"\\\"); for c in s.chars(){match c{'\\\"'=\\u003eo.push_str(\\\"\\\\\\\\\\\\\\\"\\\"),'\\\\\\\\'=\\u003eo.push_str(\\\"\\\\\\\\\\\\\\\\\\\"),'\\\\n'=\\u003eo.push_str(\\\"\\\\\\\\n\\\"),'\\\\r'=\\u003eo.push_str(\\\"\\\\\\\\r\\\"),'\\\\t'=\\u003eo.push_str(\\\"\\\\\\\\t\\\"),c if c\\u003c' '=\\u003eo.push_str(\\u0026format!(\\\"\\\\\\\\u{:04x}\\\",c as u32)),c=\\u003eo.push(c)}} o.push('\\\"');o }\\nfn snap()-\\u003eString {let b=fs::read(\\\"/etc/secrets/qa-note.txt\\\").unwrap();let h:String=b.iter().map(|v|format!(\\\"{:02x}\\\",v)).collect();format!(\\\"{{\\\\\\\"marker\\\\\\\":{},\\\\\\\"path\\\\\\\":{},\\\\\\\"fileHex\\\\\\\":{}}}\\\",quote(\\u0026env::var(\\\"QA_MARKER\\\").unwrap()),quote(\\u0026env::var(\\\"PATH\\\").unwrap()),quote(\\u0026h))}\\nfn main(){if env::args().nth(1).as_deref()==Some(\\\"--snapshot\\\"){println!(\\\"{}\\\",snap());return}let built=fs::read_to_string(\\\"qa-built.json\\\").unwrap();let port=env::var(\\\"PORT\\\").unwrap_or(\\\"3000\\\".into());let listener=TcpListener::bind(format!(\\\"0.0.0.0:{}\\\",port)).unwrap();for incoming in listener.incoming(){let mut client=incoming.unwrap();let mut req=[0u8;4096];if client.read(\\u0026mut req).is_err(){continue}let payload=format!(\\\"{{\\\\\\\"built\\\\\\\":{},\\\\\\\"runtime\\\\\\\":{}}}\\\",built.trim(),snap());let response=format!(\\\"HTTP/1.1 200 OK\\\\r\\\\nContent-Type: application/json\\\\r\\\\nContent-Length: {}\\\\r\\\\nConnection: close\\\\r\\\\n\\\\r\\\\n{}\\\",payload.len(),payload);let _=client.write_all(response.as_bytes());}}\\nQA239_RUST\\n/usr/local/cargo/bin/rustc -C linker=/usr/bin/gcc -C link-arg=-B/usr/bin qa_probe.rs -o qa-http\\n/opt/render/project/src/qa-http --snapshot \\u003e qa-built.json\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"/opt/render/project/src/qa-http\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261014-02290535-source:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"rust\",\n      \"url\": \"https://qa-20261014-02290535-source.onbex.co\"\n    },\n    \"slug\": \"qa-20261014-02290535-source\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-14T13:14:05Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "cleanup_reconciliations": [
+      {
+        "at": "2026-10-14T13:17:01.495686+00:00",
+        "detail": {
+          "at": "2026-10-14T13:16:59.670396+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db7nu86t41sc7388oa80",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "404",
+          "elapsed": 0.364,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4a6dc97081014b6-SJC"
+          },
+          "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+        },
+        "list_ids": [
+          "srv-daif6dsmg29s73d1umvg",
+          "srv-dap3r714dm7c7390q91g",
+          "srv-dap3umrbdpcs73f5eeug",
+          "srv-dap3v694dm7c7390q930",
+          "srv-db09u90ehcmc739j12cg",
+          "srv-db09vbgehcmc739j12i0"
+        ],
+        "baseline_present": true,
+        "runtime": {
+          "exit": 0,
+          "HTTP": "404",
+          "stderr": ""
+        },
+        "quota": {
+          "at": "2026-10-14T13:17:01.489371+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "200",
+          "elapsed": 0.272,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4a6dca30ffe15fb-SJC"
+          },
+          "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+        }
+      }
+    ]
+  }
+]

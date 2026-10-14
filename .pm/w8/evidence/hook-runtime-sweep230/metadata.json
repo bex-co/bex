@@ -1,0 +1,16 @@
+{
+  "source_head": "232f5b90eddfacb21f2e7eb1bd8db051eda8d73a",
+  "deployed_revision": "unknown",
+  "published_Bex": "0.3.2 a6350da0d6e451e063143432e06c548ba7b5851b",
+  "unmodified_Render": "2.27.0 a764810a768202704e7206eb7b87a47211fcd98e",
+  "checkout_build": "qa216-fd46f58c0c72; CLI tree identical to current main",
+  "primary_interval": "stable counter process; distinct initial1/regular4, empty initial1/regular0, equal combined4; three unchanged inline reapplies and ten successful native --wait deployments",
+  "counter_restart": "caught by UUID comparison; previous10 records retained; no global total-count inference over repository-switch/first-sync gap; later persistent checks explicitly use epoch2",
+  "persistent_Bp": "own row registered, QA-renamed, autoSync false, two explicit provided-manifest syncs; source declarations revert and deploys cancel; native retries succeed against the restored old source",
+  "focused_tests": "six backend parent tests and one operator parent with six subcases; fake clients, no full suite claim",
+  "cleanup": "four owned services/twenty deploy records, one own Blueprint disconnected; details/lists/public404, baseline service6 and existing Blueprint preserved; quota6/term0; finite keepalive interrupted after measurements",
+  "native_POST_capture": "not intercepted; actual native argv/stdout/stderr/deploy objects retained; exact API setup/sync/disconnect bodies and replies retained",
+  "redactions": "QA identity/credential values replaced; auth omitted; harmless fixtures, UUIDs and marker values retained",
+  "unverified": "live failed-hook/legacy migration, authenticated Render production, direct Kubernetes descendants, uninterrupted total count across the counter restart",
+  "QA_product_fix_commit_push": false
+}

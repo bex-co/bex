@@ -1,0 +1,32 @@
+{
+  "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20",
+  "deployed_revision": "unknown",
+  "published_bex": "0.3.2 a6350da0d6e451e063143432e06c548ba7b5851b",
+  "unmodified_render_pin": "2.27.0 a764810a768202704e7206eb7b87a47211fcd98e",
+  "API_origin": "https://api.bex.co/v1/",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "auth": "isolated QA human grant; Authorization omitted from evidence",
+  "fixed_neighbor_native_requests": 136,
+  "fixed_neighbor_path_or_valid_controls_pass": 136,
+  "expanded_exact_line_column_checks": 100,
+  "expanded_exact_line_column_pass": 100,
+  "deferred_source_states": 24,
+  "deferred_source_mislocations": 8,
+  "deferred_native_requests": 48,
+  "deferred_native_mislocations": 16,
+  "deferred_native_controls": 32,
+  "all_native_validity_and_exit_decisions_correct": true,
+  "all_native_errors_equal_wire": true,
+  "valid_control_decode_qualification": "the pinned native decoder drops server-only estimatedPricing and plan fields; full decoded equality is separately recorded and not asserted for successful controls",
+  "focused_backend_suites": [
+    "TestBlueprintReferenceErrorsLocateTheEnvEntry",
+    "TestBlueprintEnvValueRefusalsLocateTheEntry",
+    "TestBlueprintRepeatedKeyRefusalLocatesTheInvalidEntry",
+    "TestBlueprintStaticRuleErrorsLocateTheRule"
+  ],
+  "all_pass_test_events": 56,
+  "scope": "validation only; fake Kubernetes for source diagnostics; no live apply, generation or non-REST coverage; no full suite",
+  "cleanup": "no hosted resources created; all per-command copied configs and loopback servers closed",
+  "excluded_setup": "private extension generator assertion and initial overlay syntax error occurred before those probes could execute; corrected before reported cases; neither is a product finding",
+  "QA_product_edit_commit_push": false
+}

@@ -1,0 +1,456 @@
+[
+  {
+    "sweep": 236,
+    "case": "project",
+    "type": "project",
+    "id": "prj-db7mvm9llfps73emu9s0",
+    "name": "qa-20261014-77144ca8 Project café ☃",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "time": "2026-10-14T12:04:42.191964+00:00",
+    "API_create_result": {
+      "request": {
+        "method": "POST",
+        "path": "/v1/projects",
+        "body": {
+          "name": "qa-20261014-77144ca8 Project café ☃",
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "environments": [
+            {
+              "name": "qa-20261014-77144ca8 Plain"
+            },
+            {
+              "name": "qa-20261014-77144ca8 café ☃"
+            },
+            {
+              "name": "qa-20261014-77144ca8 comma, stage"
+            }
+          ]
+        },
+        "authorization": "[REDACTED]"
+      },
+      "status": "201",
+      "exit": 0,
+      "response": "{\"id\":\"prj-db7mvm9llfps73emu9s0\",\"name\":\"qa-20261014-77144ca8 Project café ☃\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"QA_PRIVATE_VALUE_REDACTED\",\"type\":\"team\"},\"environmentIds\":[\"evm-db7mvm9llfps73emu9sg\",\"evm-db7mvm9llfps73emu9t0\",\"evm-db7mvm9llfps73emu9tg\"],\"createdAt\":\"2026-10-14T12:04:41.980865Z\",\"updatedAt\":\"2026-10-14T12:04:41.980865Z\"}\n",
+      "stderr": ""
+    },
+    "created_view": {
+      "id": "prj-db7mvm9llfps73emu9s0",
+      "name": "qa-20261014-77144ca8 Project café ☃",
+      "owner": {
+        "id": "tea-daif693dqjvc73e7as3g",
+        "name": "bex-canary",
+        "email": "QA_PRIVATE_VALUE_REDACTED",
+        "type": "team"
+      },
+      "environmentIds": [
+        "evm-db7mvm9llfps73emu9sg",
+        "evm-db7mvm9llfps73emu9t0",
+        "evm-db7mvm9llfps73emu9tg"
+      ],
+      "createdAt": "2026-10-14T12:04:41.980865Z",
+      "updatedAt": "2026-10-14T12:04:41.980865Z"
+    },
+    "state": "deleted: API204/API404/listabsent/baseline projects present",
+    "dependency_ids": [],
+    "grouped_resource_census_before_delete": {
+      "request": {
+        "method": "POST",
+        "path": "/graphql",
+        "body": {
+          "query": "query($id: String!){project(id:$id){id ownerId serviceIds databaseIds keyValueIds}}",
+          "variables": {
+            "id": "prj-db7mvm9llfps73emu9s0"
+          }
+        },
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "exit": 0,
+      "response": "{\"data\":{\"project\":{\"databaseIds\":[],\"id\":\"prj-db7mvm9llfps73emu9s0\",\"keyValueIds\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"serviceIds\":[]}}}\n",
+      "stderr": ""
+    },
+    "children_census_before_delete": {
+      "at": "2026-10-14T12:15:46.597284+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/projects/prj-db7mvm9llfps73emu9s0",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.689,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a682e8c8be50a1-SJC"
+      },
+      "response": "{\"id\":\"prj-db7mvm9llfps73emu9s0\",\"name\":\"qa-20261014-77144ca8 Project café ☃\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"QA_PRIVATE_VALUE_REDACTED\",\"type\":\"team\"},\"environmentIds\":[],\"createdAt\":\"2026-10-14T12:04:41.980865Z\",\"updatedAt\":\"2026-10-14T12:04:41.980865Z\"}\n"
+    },
+    "delete_result": {
+      "request": {
+        "method": "DELETE",
+        "path": "/v1/projects/prj-db7mvm9llfps73emu9s0",
+        "body": null,
+        "authorization": "[REDACTED]"
+      },
+      "status": "204",
+      "exit": 0,
+      "response": "",
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "at": "2026-10-14T12:15:48.398875+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/projects/prj-db7mvm9llfps73emu9s0",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "404",
+      "elapsed": 0.243,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a682f6aa5797d9-SJC"
+      },
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"project not found\",\"id\":\"not_found\",\"message\":\"project not found\",\"params\":null}\n"
+    }
+  },
+  {
+    "sweep": 236,
+    "case": "environment",
+    "type": "environment",
+    "id": "evm-db7mvm9llfps73emu9sg",
+    "name": "qa-20261014-77144ca8 Plain renamed",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "time": "2026-10-14T12:04:43.494346+00:00",
+    "parent_id": "prj-db7mvm9llfps73emu9s0",
+    "API_create_result": {
+      "request": {
+        "method": "POST",
+        "path": "/v1/projects",
+        "body": {
+          "name": "qa-20261014-77144ca8 Project café ☃",
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "environments": [
+            {
+              "name": "qa-20261014-77144ca8 Plain"
+            },
+            {
+              "name": "qa-20261014-77144ca8 café ☃"
+            },
+            {
+              "name": "qa-20261014-77144ca8 comma, stage"
+            }
+          ]
+        },
+        "authorization": "[REDACTED]"
+      },
+      "status": "201",
+      "exit": 0,
+      "response": "{\"id\":\"prj-db7mvm9llfps73emu9s0\",\"name\":\"qa-20261014-77144ca8 Project café ☃\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"QA_PRIVATE_VALUE_REDACTED\",\"type\":\"team\"},\"environmentIds\":[\"evm-db7mvm9llfps73emu9sg\",\"evm-db7mvm9llfps73emu9t0\",\"evm-db7mvm9llfps73emu9tg\"],\"createdAt\":\"2026-10-14T12:04:41.980865Z\",\"updatedAt\":\"2026-10-14T12:04:41.980865Z\"}\n",
+      "stderr": ""
+    },
+    "created_view": {
+      "id": "evm-db7mvm9llfps73emu9sg",
+      "projectId": "prj-db7mvm9llfps73emu9s0",
+      "name": "qa-20261014-77144ca8 Plain",
+      "serviceIds": [],
+      "databaseIds": [],
+      "keyValueIds": [],
+      "databasesIds": [],
+      "redisIds": [],
+      "envGroupIds": [],
+      "protectedStatus": "unprotected",
+      "networkIsolationEnabled": false,
+      "ipAllowList": [
+        {
+          "cidrBlock": "0.0.0.0/0",
+          "description": "Allow all (default)"
+        },
+        {
+          "cidrBlock": "::/0",
+          "description": "Allow all (default)"
+        }
+      ]
+    },
+    "state": "deleted: API204/API404/no children",
+    "dependency_ids": [],
+    "children_census_before_delete": {
+      "at": "2026-10-14T12:12:01.245191+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/environments/evm-db7mvm9llfps73emu9sg",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.833,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a67d674ce17b82-SJC"
+      },
+      "response": "{\"id\":\"evm-db7mvm9llfps73emu9sg\",\"projectId\":\"prj-db7mvm9llfps73emu9s0\",\"name\":\"qa-20261014-77144ca8 Plain renamed\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]}\n"
+    },
+    "delete_result": {
+      "request": {
+        "method": "DELETE",
+        "path": "/v1/environments/evm-db7mvm9llfps73emu9sg",
+        "body": null,
+        "authorization": "[REDACTED]"
+      },
+      "status": "204",
+      "exit": 0,
+      "response": "",
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "at": "2026-10-14T12:12:02.555779+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/environments/evm-db7mvm9llfps73emu9sg",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "404",
+      "elapsed": 0.245,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a67d732c016801-SJC"
+      },
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"environment not found\",\"id\":\"not_found\",\"message\":\"environment not found\",\"params\":null}\n"
+    }
+  },
+  {
+    "sweep": 236,
+    "case": "environment",
+    "type": "environment",
+    "id": "evm-db7mvm9llfps73emu9t0",
+    "name": "qa-20261014-77144ca8 café ☃",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "time": "2026-10-14T12:04:43.494381+00:00",
+    "parent_id": "prj-db7mvm9llfps73emu9s0",
+    "API_create_result": {
+      "request": {
+        "method": "POST",
+        "path": "/v1/projects",
+        "body": {
+          "name": "qa-20261014-77144ca8 Project café ☃",
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "environments": [
+            {
+              "name": "qa-20261014-77144ca8 Plain"
+            },
+            {
+              "name": "qa-20261014-77144ca8 café ☃"
+            },
+            {
+              "name": "qa-20261014-77144ca8 comma, stage"
+            }
+          ]
+        },
+        "authorization": "[REDACTED]"
+      },
+      "status": "201",
+      "exit": 0,
+      "response": "{\"id\":\"prj-db7mvm9llfps73emu9s0\",\"name\":\"qa-20261014-77144ca8 Project café ☃\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"QA_PRIVATE_VALUE_REDACTED\",\"type\":\"team\"},\"environmentIds\":[\"evm-db7mvm9llfps73emu9sg\",\"evm-db7mvm9llfps73emu9t0\",\"evm-db7mvm9llfps73emu9tg\"],\"createdAt\":\"2026-10-14T12:04:41.980865Z\",\"updatedAt\":\"2026-10-14T12:04:41.980865Z\"}\n",
+      "stderr": ""
+    },
+    "created_view": {
+      "id": "evm-db7mvm9llfps73emu9t0",
+      "projectId": "prj-db7mvm9llfps73emu9s0",
+      "name": "qa-20261014-77144ca8 café ☃",
+      "serviceIds": [],
+      "databaseIds": [],
+      "keyValueIds": [],
+      "databasesIds": [],
+      "redisIds": [],
+      "envGroupIds": [],
+      "protectedStatus": "unprotected",
+      "networkIsolationEnabled": false,
+      "ipAllowList": [
+        {
+          "cidrBlock": "0.0.0.0/0",
+          "description": "Allow all (default)"
+        },
+        {
+          "cidrBlock": "::/0",
+          "description": "Allow all (default)"
+        }
+      ]
+    },
+    "state": "deleted: API204/API404/no children",
+    "dependency_ids": [],
+    "children_census_before_delete": {
+      "at": "2026-10-14T12:12:03.629860+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/environments/evm-db7mvm9llfps73emu9t0",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.773,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a67d768cdaf40f-SJC"
+      },
+      "response": "{\"id\":\"evm-db7mvm9llfps73emu9t0\",\"projectId\":\"prj-db7mvm9llfps73emu9s0\",\"name\":\"qa-20261014-77144ca8 café ☃\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]}\n"
+    },
+    "delete_result": {
+      "request": {
+        "method": "DELETE",
+        "path": "/v1/environments/evm-db7mvm9llfps73emu9t0",
+        "body": null,
+        "authorization": "[REDACTED]"
+      },
+      "status": "204",
+      "exit": 0,
+      "response": "",
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "at": "2026-10-14T12:12:05.847479+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/environments/evm-db7mvm9llfps73emu9t0",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "404",
+      "elapsed": 0.236,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a67d87bca31a1f-SJC"
+      },
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"environment not found\",\"id\":\"not_found\",\"message\":\"environment not found\",\"params\":null}\n"
+    }
+  },
+  {
+    "sweep": 236,
+    "case": "environment",
+    "type": "environment",
+    "id": "evm-db7mvm9llfps73emu9tg",
+    "name": "qa-20261014-77144ca8 comma, stage",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "time": "2026-10-14T12:04:43.494389+00:00",
+    "parent_id": "prj-db7mvm9llfps73emu9s0",
+    "API_create_result": {
+      "request": {
+        "method": "POST",
+        "path": "/v1/projects",
+        "body": {
+          "name": "qa-20261014-77144ca8 Project café ☃",
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "environments": [
+            {
+              "name": "qa-20261014-77144ca8 Plain"
+            },
+            {
+              "name": "qa-20261014-77144ca8 café ☃"
+            },
+            {
+              "name": "qa-20261014-77144ca8 comma, stage"
+            }
+          ]
+        },
+        "authorization": "[REDACTED]"
+      },
+      "status": "201",
+      "exit": 0,
+      "response": "{\"id\":\"prj-db7mvm9llfps73emu9s0\",\"name\":\"qa-20261014-77144ca8 Project café ☃\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"QA_PRIVATE_VALUE_REDACTED\",\"type\":\"team\"},\"environmentIds\":[\"evm-db7mvm9llfps73emu9sg\",\"evm-db7mvm9llfps73emu9t0\",\"evm-db7mvm9llfps73emu9tg\"],\"createdAt\":\"2026-10-14T12:04:41.980865Z\",\"updatedAt\":\"2026-10-14T12:04:41.980865Z\"}\n",
+      "stderr": ""
+    },
+    "created_view": {
+      "id": "evm-db7mvm9llfps73emu9tg",
+      "projectId": "prj-db7mvm9llfps73emu9s0",
+      "name": "qa-20261014-77144ca8 comma, stage",
+      "serviceIds": [],
+      "databaseIds": [],
+      "keyValueIds": [],
+      "databasesIds": [],
+      "redisIds": [],
+      "envGroupIds": [],
+      "protectedStatus": "unprotected",
+      "networkIsolationEnabled": false,
+      "ipAllowList": [
+        {
+          "cidrBlock": "0.0.0.0/0",
+          "description": "Allow all (default)"
+        },
+        {
+          "cidrBlock": "::/0",
+          "description": "Allow all (default)"
+        }
+      ]
+    },
+    "state": "deleted: API204/API404/no children",
+    "dependency_ids": [],
+    "children_census_before_delete": {
+      "at": "2026-10-14T12:12:06.884888+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/environments/evm-db7mvm9llfps73emu9tg",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.758,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a67d8af9b03493-SJC"
+      },
+      "response": "{\"id\":\"evm-db7mvm9llfps73emu9tg\",\"projectId\":\"prj-db7mvm9llfps73emu9s0\",\"name\":\"qa-20261014-77144ca8 comma, stage\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]}\n"
+    },
+    "delete_result": {
+      "request": {
+        "method": "DELETE",
+        "path": "/v1/environments/evm-db7mvm9llfps73emu9tg",
+        "body": null,
+        "authorization": "[REDACTED]"
+      },
+      "status": "204",
+      "exit": 0,
+      "response": "",
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "at": "2026-10-14T12:12:08.360440+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/environments/evm-db7mvm9llfps73emu9tg",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "404",
+      "elapsed": 0.238,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a67d977d52eb29-SJC"
+      },
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"environment not found\",\"id\":\"not_found\",\"message\":\"environment not found\",\"params\":null}\n"
+    }
+  }
+]

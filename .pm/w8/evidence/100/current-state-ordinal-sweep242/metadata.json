@@ -1,0 +1,20 @@
+{
+  "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b",
+  "deployed_revision": "unknown",
+  "source_diagnostics": 8,
+  "source_mislocations": 4,
+  "native_commands_and_captures": 32,
+  "native_mislocations": 8,
+  "first_entry_refusal_controls": 8,
+  "fresh_valid_controls": 16,
+  "owned_services_deleted": 1,
+  "owned_deploy_rows": 1,
+  "groups_created_or_linked": 0,
+  "filing": "extend existing w8/100; no duplicate",
+  "unverified": [
+    "Blueprint apply/runtime for proposed declarations",
+    "live GraphQL/MCP/dashboard",
+    "full suites and exact deployed artifact",
+    "native create/delete wire not intercepted"
+  ]
+}

@@ -1,0 +1,98 @@
+from pathlib import Path
+import json,subprocess,datetime,secrets,shlex,shutil,sys,hashlib,base64,time,os,re,http.server,http.client,threading,gzip,yaml
+p=Path(__file__).parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(cp.read_text());assert c.get('sync237_result')==0 and not c.get('active_sync_stash')
+mode,case=sys.argv[1:3];assert case in ['bex','render'];client=case;role='source';ws='tea-daif693dqjvc73e7as3g';idfile=p/('sweep237-'+case+'-id.txt')
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,indent=2,ensure_ascii=False));cp.chmod(0o600)
+def cli(args,bound=45):
+ if args[:2]==['services','create'] and '--from' in args:return captured_clone(args)
+ f=p/'render-config/cli.yaml'
+ try:
+  if client=='render':
+   assert not f.exists();shutil.copyfile(p/'config/cli.yaml',f);f.chmod(0o600)
+  runner=['python3',str(p/'run-render.py')] if client=='render' else ['python3',str(p/'run.py'),'--release'];return json.loads(subprocess.check_output([*runner,'--bound='+str(bound),*args],text=True))
+ finally:
+  if client=='render':f.unlink(missing_ok=True)
+def captured_clone(args):
+ captures=[];source_id=args[args.index('--from')+1];expected_name=args[args.index('--name')+1]
+ source=next(v for v in c['resources'] if v.get('id')==source_id);own(source);assert source['sweep']==237 and source.get('ready')
+ class Handler(http.server.BaseHTTPRequestHandler):
+  def log_message(self,*values):pass
+  def do_GET(self):
+   if self.path!='/v1/services/'+source_id:self.send_error(400);return
+   self.forward('GET',None)
+  def do_POST(self):
+   if self.path!='/v1/services' or any(v['request']['method']=='POST' for v in captures):self.send_error(400);return
+   body=self.rfile.read(int(self.headers.get('Content-Length','0')));request=json.loads(body)
+   if request.get('name')!=expected_name or request.get('ownerId')!=ws or request.get('type')!='web_service':self.send_error(400);return
+   self.forward('POST',body)
+  def forward(self,method,body):
+   headers={k:v for k,v in self.headers.items() if k.lower() not in ['host','connection','content-length']};headers['Host']='api.bex.co';con=http.client.HTTPSConnection('api.bex.co',timeout=35)
+   try:
+    con.request(method,self.path,body=body,headers=headers);reply=con.getresponse();raw=reply.read();decoded=gzip.decompress(raw) if reply.getheader('Content-Encoding')=='gzip' else raw;hs=reply.getheaders();captures.append({'request':{'method':method,'path':self.path,'raw_body':body.decode() if body is not None else None,'body':json.loads(body) if body is not None else None,'headers':{k:v for k,v in headers.items() if k.lower() in ['user-agent','content-type','x-bex-workspace','x-bex-cli-version']},'authorization':'[REDACTED]'},'status':reply.status,'response':decoded.decode(),'response_headers':{k:v for k,v in hs if k.lower() in ['content-type','x-request-id','cf-ray']}});self.send_response(reply.status)
+    for k,v in hs:
+     if k.lower() not in ['transfer-encoding','connection','content-length','keep-alive']:self.send_header(k,v)
+    self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw)
+   finally:con.close()
+ server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler);server.daemon_threads=True;thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start();origin='http://127.0.0.1:'+str(server.server_port)+'/v1/';cfgdir=p/('sweep237-clone-capture-'+client+'-'+str(server.server_port));cfgdir.mkdir(mode=0o700);cfg=cfgdir/'cli.yaml'
+ text,count=re.subn(r'(?m)^(\s+)host:.*$',lambda match:match[1]+'host: '+origin,(p/'config/cli.yaml').read_text());assert count==1;cfg.write_text(text);cfg.chmod(0o600);prefix='BEX' if client=='bex' else 'RENDER';env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_'))};env.update({prefix+'_HOST':origin,prefix+'_CLI_CONFIG_PATH':str(cfg),prefix+'_CLI_CONFIG_DIR':str(cfgdir),prefix+'_WORKSPACE':ws,prefix+'_CLI_DISABLE_ANALYTICS':'1','BEX_NO_UPDATE_NOTIFIER':'1','BROWSER':'/usr/bin/true'});binary=p/'release/bex' if client=='bex' else p/'render-pin';started=time.monotonic()
+ try:
+  try:r=subprocess.run([str(binary),*args],env=env,text=True,capture_output=True,timeout=42);result={'binary':'published Bex 0.3.2' if client=='bex' else 'unmodified Render 2.27.0/a764810a7682','command':[client,*args],'exit':r.returncode,'elapsed':round(time.monotonic()-started,3),'stdout':r.stdout,'stderr':r.stderr}
+  except subprocess.TimeoutExpired:result={'command':[client,*args],'exit':124,'elapsed':round(time.monotonic()-started,3),'stdout':'','stderr':'Bounded native capture timed out; reconcile returned/requested identity before retry'}
+  result['captures']=captures;result['qualification']='actual native own-source GET and clone POST forwarded unchanged to production; owned relay/config cleaned';return result
+ finally:server.shutdown();server.server_close();thread.join(timeout=2);shutil.rmtree(cfgdir)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True))
+def history(x):
+ r=cli(['deploys','list',x['id'],'--confirm','-o','json']);assert r['exit']==0;rows=json.loads(r['stdout']);x['deploy_children']=rows
+ for row in rows:
+  if row['id'] not in x['recorded_child_ids']:x['recorded_child_ids'].append(row['id'])
+ save();return r,rows
+def own(x):
+ base={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']};assert x['workspace']==ws and x['id'] not in base and x['create_result']['exit']==0 and x['create_response']['id']==x['id'] and x['create_response']['serviceDetails']['plan']=='free' and not x['state'].startswith('deleted:')
+if mode=='create':
+ assert not idfile.exists() and not any(x.get('sweep')==237 and x.get('case')==case for x in c['resources']);q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';limits=json.loads(q['response']);assert limits['services']['used']+limits['services']['terminating']<limits['services']['limit']
+ nonce=secrets.token_hex(4);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-'+role;marker='QA237_'+nonce+'_'+role;note=(marker+'\n☃=file\nsecond line\n').encode();file=p/('sweep237-'+case+'-note.txt');file.write_bytes(note);file.chmod(0o600)
+ expected={'marker':marker,'fileBase64':base64.b64encode(note).decode(),'fileSHA256':hashlib.sha256(note).hexdigest()};expected_path='' if client=='bex' else '/usr/bin:/bin'
+ program='package main\nimport("crypto/sha256";"encoding/base64";"encoding/json";"fmt";"log";"net/http";"os")\nfunc snap() map[string]string {b,e:=os.ReadFile("/etc/secrets/qa-note.txt");if e!=nil{log.Fatal(e)};h:=sha256.Sum256(b);return map[string]string{"marker":os.Getenv("QA_MARKER"),"path":os.Getenv("PATH"),"fileBase64":base64.StdEncoding.EncodeToString(b),"fileSHA256":fmt.Sprintf("%x",h)}}\nfunc main(){if len(os.Args)>1&&os.Args[1]=="--snapshot"{if e:=json.NewEncoder(os.Stdout).Encode(snap());e!=nil{log.Fatal(e)};return};b,e:=os.ReadFile("qa-built.json");if e!=nil{log.Fatal(e)};var built map[string]string;if e=json.Unmarshal(b,&built);e!=nil{log.Fatal(e)};http.HandleFunc("/",func(w http.ResponseWriter,r *http.Request){w.Header().Set("Content-Type","application/json");_ = json.NewEncoder(w).Encode(map[string]interface{}{"built":built,"runtime":snap()})});port:=os.Getenv("PORT");if port==""{port="3000"};log.Fatal(http.ListenAndServe(":"+port,nil))}\n'
+ build="/bin/cat > qa_probe.go <<'QA237_GO'\n"+program+"QA237_GO\n/usr/local/go/bin/go build -o qa-http qa_probe.go\n/opt/render/project/src/qa-http --snapshot > qa-built.json"
+ start='/opt/render/project/src/qa-http'
+ if role=='source':
+  args=['services','create','--name',name,'--type','web_service','--runtime','go','--repo','https://github.com/bex-co/bex','--branch','main','--root-directory','examples/hello-go','--build-command',build,'--start-command',start,'--health-check-path','/','--plan','free','--region','frankfurt','--auto-deploy=false','--env-var','QA_MARKER='+marker,'--env-var','PATH='+expected_path,'--env-var','CGO_ENABLED=0','--secret-file','qa-note.txt:'+str(file),'--confirm','-o','json'];source=None
+ else:
+  source=next(v for v in c['resources'] if v.get('sweep')==237 and v.get('case')==client+'-source');own(source);assert source.get('ready');before,rows=history(source);assert rows[0]['status']=='live';source['clone_metadata_before']=wire('/v1/services/'+source['id']);save();assert source['clone_metadata_before']['status']=='200'
+  args=['services','create','--from',source['id'],'--name',name,'--plan','free','--region','frankfurt','--auto-deploy=false','--env-var','QA_MARKER='+marker,'--env-var','PATH='+expected_path,'--secret-file','qa-note.txt:'+str(file),'--confirm','-o','json']
+ inv=cli(['services','--confirm','-o','json']);assert inv['exit']==0;existing=json.loads(inv['stdout']) or [];assert not any(v.get('service',v)['name']==name for v in existing)
+ x={'sweep':237,'case':case,'client':client,'role':role,'workspace':ws,'type':'web_service','name':name,'nonce':nonce,'marker':marker,'time':now(),'source_head':c['head'],'state':'native create intent persisted','create_command':[client,*args],'capacity_proof':q,'pre_create_inventory':inv,'expected_snapshot':expected,'expected_path':expected_path,'harmless_file_contents':note.decode(),'harmless_file':str(file),'dependency_ids':[source['id']] if source else [],'source_id':source['id'] if source else None,'recorded_child_ids':[],'build_program':build if role=='source' else source['build_program'],'generated_go_program':program,'start_program':start if role=='source' else source['start_program'],'qualification':'native Go fixture with explicit PATH and harmless file bytes; absolute compiler/application and CGO_ENABLED=0; no product source edit'};c['resources'].append(x);save();r=cli(args);x['create_result']=r;x['state']='native result received; reconcile before any retry';save();assert r['exit']==0;v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v);assert v['name']==name and v['ownerId']==ws and v['serviceDetails']['plan']=='free' and v['id'] not in {u.get('service',u)['id'] for u in existing};x.update(id=v['id'],create_response=v,state='created: native environment/file build pending');idfile.write_text(v['id']);save();print(json.dumps({'case':case,'id':v['id'],'native_exit':r['exit'],'source_id':x['source_id'],'explicit_PATH':expected_path}),flush=True);raise SystemExit(0)
+sid=idfile.read_text().strip();x=next(v for v in c['resources'] if v.get('id')==sid)
+if mode=='instances':
+ own(x);args=['services','instances',sid,'--confirm','-o','json'];r=cli(args);x.setdefault('instance_queries',[]).append({'at':now(),'command':[client,*args],'result':r});save();assert r['exit']==0;rows=json.loads(r['stdout']);print(json.dumps({'case':case,'native_exit':r['exit'],'count':len(rows),'ids':[v.get('id') for v in rows]},ensure_ascii=False),flush=True)
+elif mode=='observe':
+ own(x);r,rows=history(x);target=rows[0];f=p/('sweep237-'+case+'-runtime.json');http=subprocess.run(['curl','--disable','-sS','--max-time','10','-o',str(f),'-w','%{http_code}',x['create_response']['serviceDetails']['url']+'/'],capture_output=True,text=True,timeout=14)
+ raw=f.read_text() if f.exists() else '';f.unlink(missing_ok=True)
+ try:body=json.loads(raw)
+ except ValueError:body=None
+ exact=False
+ if http.stdout=='200' and isinstance(body,dict):
+  built=body.get('built',{});runtime=body.get('runtime',{});expected=x['expected_snapshot'];exact=all(built.get(k)==runtime.get(k)==v for k,v in expected.items()) and built.get('path')==runtime.get('path') and (x['expected_path'] is None or runtime.get('path')==x['expected_path'])
+ obs={'at':now(),'native_history':r,'target':target,'runtime':{'HTTP':http.stdout,'exit':http.returncode,'body':body,'raw_body':raw,'stderr':http.stderr},'exact_build_runtime_values_and_file':exact};x.setdefault('observations',[]).append(obs)
+ if target['status']=='live' and exact:x['ready']=True;x['accepted_snapshot']=body
+ save();print(json.dumps({'case':case,'status':target['status'],'HTTP':http.stdout,'exact_build_runtime_values_and_file':exact,'PATH':body.get('runtime',{}).get('path') if isinstance(body,dict) else None}),flush=True)
+elif mode in ['deploy','deploy-nowait']:
+ own(x);before,rows=history(x);assert rows[0]['status']=='live' and x.get('ready');commit=rows[0]['commit']['id']
+ if x.get('file_only_update'):assert commit==x['file_only_update']['original_commit'] and rows[0]['id']==x['file_only_update']['before_deploy_ids'][0]
+ args=['deploys','create',sid,'--commit',commit]
+ if mode=='deploy':args+=['--wait']
+ args+=['--confirm','-o','json'];intent={'at':now(),'command':[client,*args],'before_ids':[v['id'] for v in rows],'same_commit':commit,'wait':mode=='deploy'};x.setdefault('manual_deploy_intents',[]).append(intent);save();intent['result']=cli(args,240 if mode=='deploy' else 45);save();history(x);print(json.dumps({'case':case,'native_exit':intent['result']['exit'],'elapsed':intent['result']['elapsed'],'stderr':intent['result']['stderr']}),flush=True)
+elif mode=='update-file':
+ own(x);assert role=='clone' and x.get('ready') and 'file_only_update' not in x;before,rows=history(x);assert rows[0]['status']=='live';content=x['marker']+'\n☃=file-only-update\nretained marker and PATH\n';payload={'secretFiles':[{'name':'qa-note.txt','content':content}],'saveMode':'save_only'};receipt={'at':now(),'request':{'method':'PATCH','path':'/v1/services/'+sid+'/environment','body':payload,'authorization':'[REDACTED]'},'before_deploy_ids':[v['id'] for v in rows],'original_commit':rows[0]['commit']['id'],'original_expected_snapshot':x['expected_snapshot'],'qualification':'API setup of one exact-owned harmless file; pin has no service-update file flag; source, env, commands and original commit are unchanged'};x['file_only_update']=receipt;save()
+ cfg=yaml.safe_load((p/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token;auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: render-cli/2.27.0 (macOS - 26.5.1)"\nheader = "X-Bex-Workspace: '+ws+'"\n';f=p/('sweep237-'+case+'-file-update-body.json');f.write_text(json.dumps(payload));f.chmod(0o600)
+ try:
+  r=subprocess.run(['curl','--disable','-sS','--max-time','30','--config','-','-X','PATCH','-H','Content-Type: application/json','--data-binary','@'+str(f),'-w','\n%{http_code}','https://api.bex.co'+receipt['request']['path']],input=auth,text=True,capture_output=True,timeout=35);raw,_,status=r.stdout.rpartition('\n');assert token not in raw;receipt['result']={'status':status,'exit':r.returncode,'response':raw,'stderr':r.stderr};save();assert status=='200' and not json.loads(raw)['rolledOut']
+ finally:f.unlink(missing_ok=True)
+ b=content.encode();x['expected_snapshot']={**x['expected_snapshot'],'fileBase64':base64.b64encode(b).decode(),'fileSHA256':hashlib.sha256(b).hexdigest()};receipt['new_expected_snapshot']=x['expected_snapshot'];receipt['new_harmless_file_contents']=content;save();print(json.dumps({'case':case,'status':status,'rolled_out':False,'file_only':True}),flush=True)
+elif mode=='delete':
+ own(x);assert not any(v.get('sweep')==237 and sid in v.get('dependency_ids',[]) and not v['state'].startswith('deleted:') for v in c['resources']);assert 'delete_result' not in x;history(x);x['state']='exact-owned native delete intent persisted';save();x['delete_result']=cli(['services','delete',sid,'--confirm','-o','json']);save();print(json.dumps({'case':case,'delete_exit':x['delete_result']['exit']}),flush=True)
+elif mode=='reconcile':
+ assert x['sweep']==237 and x['workspace']==ws and 'delete_result' in x;detail=wire('/v1/services/'+sid);listing=cli(['services','--confirm','-o','json']);assert listing['exit']==0;ids={v.get('service',v)['id'] for v in json.loads(listing['stdout']) or []};baseline={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']};assert baseline<=ids
+ r=subprocess.run(['curl','--disable','-sS','--max-time','10','-o','/dev/null','-w','%{http_code}',x['create_response']['serviceDetails']['url']],capture_output=True,text=True,timeout=14);q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';done=detail['status']=='404' and sid not in ids and r.returncode==0 and r.stdout=='404' and json.loads(q['response'])['services']['terminating']==0;x.setdefault('cleanup_reconciliations',[]).append({'at':now(),'detail':detail,'list_ids':sorted(ids),'baseline_present':True,'runtime':{'exit':r.returncode,'HTTP':r.stdout,'stderr':r.stderr},'quota':q});x['state']='deleted: nativeack/API404/listabsent/runtime404/baseline present/quota termination0' if done else 'delete acknowledged: passive detail/runtime/quota reconciliation pending';save();print(json.dumps({'case':case,'complete':done,'detail':detail['status'],'runtime':r.stdout,'terminating':json.loads(q['response'])['services']['terminating']}),flush=True)
+else:raise ValueError(mode)

@@ -1,0 +1,20 @@
+{
+  "source_head": "232f5b90eddfacb21f2e7eb1bd8db051eda8d73a",
+  "severity": "major",
+  "live_confirmed_fields": [
+    "repo",
+    "branch"
+  ],
+  "source_sibling_fields": [
+    "tier",
+    "replicas",
+    "idleTTL"
+  ],
+  "actual_update_method_states": 4,
+  "canonical_intent_writes": 0,
+  "CR_patches_desired": 4,
+  "focused_diagnostic_exit": "passes while recording the current bug; not a fixed regression or full suite",
+  "API_ownership": "shared service Blueprint update; both inline DeployStack and persistent SyncBlueprint",
+  "deployed_revision": "unknown",
+  "QA_product_fix_commit_push": false
+}

@@ -1,0 +1,144 @@
+from pathlib import Path
+import json, subprocess, datetime, secrets, os, re, shutil, http.server, http.client, threading, email.parser, email.policy, gzip, time
+
+p = Path(__file__).parent
+workspace = (p / 'workspace.txt').read_text().strip()
+nonce = secrets.token_hex(3)
+date = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')
+source = json.loads((p / 'sweep243-numeric-results.json').read_text())[1:]
+cases = json.loads((p / 'sweep243-numeric-native-results.json').read_text());assert len(cases)==2
+mask = []
+for line in (p / 'config/cli.yaml').read_text().splitlines():
+    key, sep, value = line.strip().partition(':')
+    value = value.strip().strip("\"'")
+    if sep and re.search(r'(?i)(token|password|secret|key)', key) and len(value) > 8:
+        mask.append(value)
+for line in Path('/Volumes/nvme4tbfish/projects/bex8/muse.env').read_text().splitlines():
+    key, sep, value = line.partition('=')
+    if sep and key.strip() in ('QA_EMAIL', 'QA_PASSWORD') and value:
+        mask.append(value.strip().strip("\"'"))
+
+def scrub(value):
+    for secret in mask:
+        value = value.replace(secret, '[QA VALUE REDACTED]')
+    return value
+
+for index, row in enumerate(source):
+    doc = json.loads(row['manifest'])
+    services=doc.get('services') or [service for project in doc['projects'] for environment in project['environments'] for service in environment.get('services',[])]
+    if doc.get('projects'):doc['projects'][0]['name']=f'qa-{date}-{nonce}-{index}-project'
+    names = {service['name']: f'qa-{date}-{nonce}-{index}-{ordinal}' for ordinal,service in enumerate(services)}
+    if doc.get('envVarGroups'):
+        group_name=f'qa-{date}-{nonce}-{index}-group'
+        doc['envVarGroups'][0]['name']=group_name
+        for service in services:
+            for entry in service.get('envVars',[]):
+                if entry.get('fromGroup'):entry['fromGroup']=group_name
+    for service in services:
+        service['name'] = names[service['name']]
+        for entry in service.get('envVars',[]):
+            if entry.get('fromService'):
+                entry['fromService']['name'] = names[entry['fromService']['name']]
+    row['expected_path'] = '' if row['compiler_valid'] else re.sub(r'/([0-9]+)',lambda m:'['+m[1]+']',row['compiler_problems'][0]['Path'][2:]).replace('/','.')
+    fixture = p / f'sweep243-{index}.yaml'
+    fixture.write_text(json.dumps(doc, indent=2) + '\n')
+    fixture.chmod(0o600)
+    expected = fixture.read_bytes()
+    for client in ('bex', 'render'):
+        captures = []
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+            def do_GET(self):
+                self.send_error(405)
+            def do_POST(self):
+                if self.path != '/v1/blueprints/validate':
+                    self.send_error(400)
+                    return
+                body = self.rfile.read(int(self.headers.get('Content-Length', '0')))
+                content_type = self.headers.get('Content-Type')
+                message = email.parser.BytesParser(policy=email.policy.default).parsebytes(
+                    ('Content-Type: ' + content_type + '\r\nMIME-Version: 1.0\r\n\r\n').encode() + body)
+                parts = {part.get_param('name', header='content-disposition'): part.get_payload(decode=True)
+                         for part in message.iter_parts()}
+                if parts.get('ownerId') != workspace.encode() or parts.get('file') != expected:
+                    self.send_error(400)
+                    return
+                headers = {k: v for k, v in self.headers.items() if k.lower() not in ('host', 'connection', 'content-length')}
+                headers['Host'] = 'api.bex.co'
+                con = http.client.HTTPSConnection('api.bex.co', timeout=25)
+                try:
+                    con.request('POST', self.path, body=body, headers=headers)
+                    response = con.getresponse()
+                    raw = response.read()
+                    payload = gzip.decompress(raw) if response.getheader('Content-Encoding') == 'gzip' else raw
+                    hs = response.getheaders()
+                    captures.append({'request': {'method': 'POST', 'path': self.path,
+                        'content_type': content_type, 'body': body.decode(),
+                        'decoded_multipart': {'ownerId': workspace, 'file': expected.decode()},
+                        'headers': {k: v for k, v in headers.items() if k.lower() in ('user-agent', 'x-bex-workspace', 'x-bex-cli-version')}},
+                        'status': response.status, 'response': scrub(payload.decode()),
+                        'response_headers': {k: v for k, v in hs if k.lower() in ('content-type', 'cf-ray', 'x-request-id')}})
+                    self.send_response(response.status)
+                    for k, v in hs:
+                        if k.lower() not in ('transfer-encoding', 'connection', 'content-length', 'keep-alive'):
+                            self.send_header(k, v)
+                    self.send_header('Content-Length', str(len(raw)))
+                    self.end_headers()
+                    self.wfile.write(raw)
+                finally:
+                    con.close()
+        server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        server.daemon_threads = True
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        origin = f'http://127.0.0.1:{server.server_port}/v1/'
+        cfgdir = p / f'sweep243-capture-{client}-{server.server_port}'
+        cfgdir.mkdir(mode=0o700)
+        cfg = cfgdir / 'cli.yaml'
+        text, count = re.subn(r'(?m)^(\s+)host:.*$', lambda match: match[1] + 'host: ' + origin,
+                            (p / 'config/cli.yaml').read_text())
+        assert count == 1
+        cfg.write_text(text)
+        cfg.chmod(0o600)
+        prefix = 'BEX' if client == 'bex' else 'RENDER'
+        env = {k: v for k, v in os.environ.items() if not k.startswith(('RENDER_', 'BEX_', 'QA_'))}
+        env.update({prefix + '_HOST': origin, prefix + '_CLI_CONFIG_DIR': str(cfgdir),
+                    prefix + '_CLI_CONFIG_PATH': str(cfg), prefix + '_WORKSPACE': workspace,
+                    prefix + '_CLI_DISABLE_ANALYTICS': '1', 'BEX_NO_UPDATE_NOTIFIER': '1', 'BROWSER': '/usr/bin/true'})
+        binary = p / 'release/bex' if client == 'bex' else p / 'render-pin'
+        args = ['blueprints', 'validate', str(fixture), '--confirm', '-o', 'json']
+        start = time.monotonic()
+        try:
+            result = subprocess.run([str(binary), *args], env=env, text=True, capture_output=True, timeout=40)
+            output = json.loads(result.stdout)
+            validation = output.get('data', output)
+            assert len(captures) == 1 and captures[0]['status'] == 200
+            wire_validation = json.loads(captures[0]['response'])
+            wire_validation = wire_validation.get('data', wire_validation)
+            assert wire_validation['valid'] == validation['valid']
+            projected=[{k:v for k,v in err.items() if k in ['column','error','line','path']} for err in wire_validation.get('errors',[])]
+            assert projected == validation.get('errors',[])
+            actual_path = (validation.get('errors') or [{}])[0].get('path', '')
+            valid_control = row['compiler_valid']
+            assert result.returncode == (0 if valid_control else 1)
+            assert validation['valid'] == valid_control
+            cases.append({'client': client, 'case':row['shape']+' / '+row['value'],'pinned_schema_expected_valid':True, 'fixture': fixture.name,
+                'command': [client, *args], 'expected_path': row['expected_path'], 'actual_path': actual_path,
+                'location_or_valid_control_pass': valid_control or actual_path == row['expected_path'],
+                'native_result': {'exit': result.returncode, 'elapsed': round(time.monotonic() - start, 3),
+                                  'stdout': scrub(result.stdout), 'stderr': scrub(result.stderr)},
+                'captures': captures, 'validation_errors_equal_pinned_projection':True,'wire_error_extras':[sorted(set(err)-{'column','error','line','path'}) for err in wire_validation.get('errors',[])],
+                'full_decoded_object_equal_wire': wire_validation == validation,
+                'scope':'unchanged multipart validation only; pinned error field projection matches wire; no hosted apply/resource creation'})
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+            shutil.rmtree(cfgdir)
+        (p / 'sweep243-numeric-native-results.json').write_text(json.dumps(cases, indent=2, ensure_ascii=False) + '\n')
+        print(json.dumps({'client': client, 'case':row['shape']+' / '+row['value'],'pinned_schema_expected_valid':True, 'exit': result.returncode,
+                          'valid': validation['valid'], 'path': actual_path,
+                          'expected_path': row['expected_path']}), flush=True)
+assert len(cases) == 24
+print('Complete: twenty-four numeric native requests captured; no hosted resources or temporary copied configs remain.', flush=True)

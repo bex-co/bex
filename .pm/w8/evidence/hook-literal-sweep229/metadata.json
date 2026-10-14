@@ -1,0 +1,19 @@
+{
+  "source_head": "2762f18eed265c5e168ffb5ff050c7e14ce55c48",
+  "deployed_revision": "unknown",
+  "published_Bex": "0.3.2 a6350da0d6e451e063143432e06c548ba7b5851b",
+  "unmodified_Render": "2.27.0 a764810a768202704e7206eb7b87a47211fcd98e",
+  "native_validations": 6,
+  "API_inline_setup_calls": 3,
+  "owned_Free_services": 3,
+  "literal_build_runtime_controls_pass": 3,
+  "native_same_commit_manual_wait_passes": 2,
+  "regular_marker_positive_readbacks_after_manual_deploys": 2,
+  "remaining_gate": "first-hook total execution count is not certified by missing post-rollout output; later empty/equal controls, reapply and current-build manual deploy remain unexercised",
+  "native_POST_capture": "not intercepted; original native command stdout/stderr and complete returned deploy objects are preserved; inline API setup request/response is captured",
+  "cleanup": "three own services/five deploy records, detail/list/former HTTP404, baseline6, services quota6/terminating0; temporary config copies removed",
+  "baseline_Blueprint": "blp-db136288mmqc73d4hpug was read only and untouched; inline request has only ownerId/bexYaml, service-level repo and no persistent Blueprint create/upsert request",
+  "excluded_setup": "first successful API create returned AppView, mistakenly decoded as Render-shaped detail; exact returned ID and own canonical detail reconciled without a second POST",
+  "unverified": "initial marker total, GraphQL/MCP/dashboard writes, secret-file literal Blueprint transport, other toolchains, direct Kubernetes descendant teardown",
+  "QA_product_fix_commit_push": false
+}

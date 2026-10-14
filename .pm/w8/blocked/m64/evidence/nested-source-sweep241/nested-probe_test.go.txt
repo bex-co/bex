@@ -1,0 +1,102 @@
+package apps
+
+import (
+    "context"
+    "encoding/json"
+    "testing"
+    "github.com/bex-co/bex/lego/backend/internal/core"
+    "github.com/bex-co/bex/lego/backend/internal/secrets"
+    appv1 "github.com/bex-co/bex/lego/types/v1alpha1"
+    corev1 "k8s.io/api/core/v1"
+    "sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+func TestQA241LiteralSeedPriority(t *testing.T) {
+    literal := func(value string) map[string]any { return map[string]any{"key":"VALUE", "value":value} }
+    seed := func() map[string]any { return map[string]any{"key":"VALUE", "value":"seed", "sync":false} }
+    generated := func() map[string]any { return map[string]any{"key":"VALUE", "generateValue":true} }
+    for _, tc := range []struct { name string; entries []any; want string; immutable bool } {
+        {"literal then seed", []any{literal("fixed"), seed()}, "fixed", true},
+        {"seed then literal", []any{seed(), literal("fixed")}, "fixed", true},
+        {"empty literal then seed", []any{literal(""), seed()}, "", true},
+        {"seed then empty literal", []any{seed(), literal("")}, "", true},
+        {"literal then generated control", []any{literal("fixed"), generated()}, "fixed", true},
+        {"generated then literal control", []any{generated(), literal("fixed")}, "fixed", true},
+        {"literal only control", []any{literal("fixed")}, "fixed", true},
+        {"seed only control", []any{seed()}, "seed", false},
+    } {
+        t.Run(tc.name, func(t *testing.T) {
+            ctx := context.Background()
+            cl := fakeClient()
+            base := &core.Base{Client:cl, Namespace:"default"}
+            kv := &qa213KV{data:map[string]map[string]string{}, versions:map[string]uint64{}}
+            own := &secrets.Service{Base:base, Store:kv}
+            svc := &Service{Base:base, EnvSeeder:own, EnvNames:own}
+            doc := map[string]any{"services":[]any{
+                map[string]any{"name":"consumer", "type":"web", "runtime":"image", "image":map[string]any{"url":"nginx:1"},
+                    "envVars":[]any{map[string]any{"key":"COPY", "fromService":map[string]any{"type":"web", "name":"source", "envVarKey":"VALUE"}}}},
+                map[string]any{"name":"source", "type":"web", "runtime":"image", "image":map[string]any{"url":"nginx:1"}, "envVars":tc.entries},
+            }}
+            raw, _ := json.MarshalIndent(doc, "", "  ")
+            manifest := string(raw)
+            services := doc["services"].([]any)
+            nestedCases := []map[string]any{}
+            for _, placement := range []string{"same environment", "split environments"} {
+                envs := []any{map[string]any{"name":"one", "services":services}}
+                if placement == "split environments" { envs=[]any{map[string]any{"name":"one", "services":[]any{services[0]}},map[string]any{"name":"two", "services":[]any{services[1]}}} }
+                nested := map[string]any{"projects":[]any{map[string]any{"name":"qa-local-project", "environments":envs}}}
+                encoded, _ := json.MarshalIndent(nested,"","  ")
+                nv, ne := svc.ValidateBlueprint(ctx,"",string(encoded),"")
+                nestedCases=append(nestedCases,map[string]any{"placement":placement,"manifest":string(encoded),"fresh_validation":nv,"fresh_validation_error":ne})
+            }
+            validation, validationErr := svc.ValidateBlueprint(ctx, "", manifest, "")
+            record := map[string]any{"case":tc.name, "manifest":manifest, "expected_source_VALUE":tc.want,
+                "immutable_literal_declared":tc.immutable, "fresh_validation":validation, "fresh_validation_error":validationErr,
+                "scope":"actual apps/secrets methods with fake Kubernetes/versioned storage; effective source inferred from persisted Secret order and explicit Env priority; no hosted apply/runtime/auth claim"}
+            record["nested_cases"] = nestedCases
+            if validationErr == nil && validation.Valid {
+                _, applyErr := svc.DeployStack(ctx, DeployRequest{Manifest:manifest})
+                record["first_apply_error"] = applyErr
+                if applyErr == nil {
+                    source, consumer := &appv1.App{}, &appv1.App{}
+                    if err := cl.Get(ctx, client.ObjectKey{Namespace:"default", Name:"source"}, source); err != nil { t.Fatal(err) }
+                    if err := cl.Get(ctx, client.ObjectKey{Namespace:"default", Name:"consumer"}, consumer); err != nil { t.Fatal(err) }
+                    effective, present := "", false
+                    ordered := append([]string{}, source.Spec.EnvFromSecrets...)
+                    if source.Spec.EnvFromSecret != "" { ordered = append(ordered, source.Spec.EnvFromSecret) }
+                    for _, name := range ordered {
+                        secret := &corev1.Secret{}
+                        if err := cl.Get(ctx, client.ObjectKey{Namespace:"default", Name:name}, secret); err != nil { t.Fatal(err) }
+                        if value, ok := secret.Data["VALUE"]; ok { effective, present = string(value), true }
+                    }
+                    for _, entry := range source.Spec.Env { if entry.Name == "VALUE" { effective, present = entry.Value, true } }
+                    copied, copyPresent := "", false
+                    for _, entry := range consumer.Spec.Env { if entry.Name == "COPY" { copied, copyPresent = entry.Value, true } }
+                    if !present || !copyPresent || effective != tc.want { t.Fatalf("producer source=%q present=%v copyPresent=%v want=%q", effective, present, copyPresent, tc.want) }
+                    record["persisted_source"] = source
+                    record["persisted_consumer"] = consumer
+                    record["source_VALUE"] = effective
+                    record["consumer_COPY"] = copied
+                    record["first_apply_mismatch"] = effective != copied
+                    again, againErr := svc.ValidateBlueprint(ctx, "", manifest, "")
+                    record["existing_validation"] = again
+                    record["existing_validation_error"] = againErr
+                    for _, nested := range nestedCases {
+                        nv, ne := svc.ValidateBlueprint(ctx,"",nested["manifest"].(string),"")
+                        nested["existing_validation"]=nv
+                        nested["existing_validation_error"]=ne
+                        nested["expected_existing_valid"]=tc.immutable
+                        nested["qualification"]="nested validation against actual root-created fake state only; no nested apply/hosted/shared-surface execution"
+                    }
+                    record["immutable_literal_false_refusal"] = tc.immutable && againErr == nil && !again.Valid
+                    if againErr == nil && again.Valid {
+                        _, reapplyErr := svc.DeployStack(ctx, DeployRequest{Manifest:manifest})
+                        record["reapply_error"] = reapplyErr
+                    }
+                }
+            }
+            output, _ := json.Marshal(record)
+            t.Log("QA241_PRIORITY " + string(output))
+        })
+    }
+}

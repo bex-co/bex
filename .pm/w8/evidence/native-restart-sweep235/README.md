@@ -1,0 +1,11 @@
+# Native restart and retained image — sweep235
+
+Published Bex 0.3.2 and unchanged Render 2.27.0/a764810a7682 against production, isolated human QA session, workspace bex-canary/tea-daif693dqjvc73e7as3g. Source 195e2ebb1f1a086180bc674928d9c05a45a86153; deployed API/operator revision unknown. No product changes, QA commit/push or external filing.
+
+Each client creates its own fresh Free public prebuilt-image web service, with auto-deploy disabled, using the immutable reference in the [ledger](owned-native-restart-runtime-cleanup.json). Both become Live and echo their exact own path/X-QA-Marker over HTTP 200. After capturing the one current instance ID, each executes native restart <own-id> --confirm -o json. Both exit 0 (about 0.4 seconds), then each exposes exactly one replacement instance with a different ID belonging to the same service. Final runtime preserves the request marker; readback preserves imagePath, no Git repo and runtime/env=image. [Comparisons](restart-comparisons.json), [finite driver](native-restart-driver.py.txt).
+
+The ordinary restart producer is pinned cmd/restart.go → views.RestartResource; Bex POST /v1/services/<id>/restart routes through apps.Restart → deploys.Restart at service.go:541. This current method selects the active release before the fallback trigger. The observed happy path agrees; no staged-config/historical snapshot/cron/static behavior is inferred. Native POSTs were not intercepted, so wire capture is not claimed. This does not close the separate [cron refusal history](../../done/040.md).
+
+Paid maintenance mode and deliberate-non-goal one-off job creation were excluded after inspecting the compatibility ledger; no paid change or job request is made. No new defect is confirmed. [Metadata](metadata.json). No full suite, browser/shared-surface parity, SSH or deployed OCI identity is claimed. Actual credentials/email and incidental client addresses are redacted; harmless markers remain.
+
+Both exact-owned services and 4 recorded deploy rows are removed after enumeration. Detail/list/former runtime are absent, baseline services remain and quota termination reaches zero. No other hosted resource is created. The ongoing hunt retains only its isolated session.

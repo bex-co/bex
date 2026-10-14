@@ -1,0 +1,3 @@
+const fs=require('node:fs'),crypto=require('node:crypto'),http=require('node:http');
+function snap(){const b=fs.readFileSync('/etc/secrets/qa-note.txt');return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString('base64'),fileSHA256:crypto.createHash('sha256').update(b).digest('hex')};}
+if(process.argv[2]==='--snapshot'){console.log(JSON.stringify({...snap(),buildToken:crypto.randomBytes(16).toString('hex'),builtAt:new Date().toISOString()}));}else{const built=JSON.parse(fs.readFileSync('qa-built.json','utf8'));http.createServer((req,res)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),'0.0.0.0');}

@@ -1,0 +1,19 @@
+{
+  "source_head": "195e2ebb1f1a086180bc674928d9c05a45a86153",
+  "deployed_revision": "unknown",
+  "API_setup_project": 1,
+  "API_setup_environments": 3,
+  "native_format_reads": 36,
+  "excluded_first_redaction_diagnostics": 12,
+  "accepted_scalar_redaction_before_after_reads": 24,
+  "API_environment_rename": 1,
+  "owned_deleted": 4,
+  "new_bug_filed": false,
+  "unverified": [
+    "native GET bodies/headers not intercepted",
+    "no native create/rename command exists for these surfaces",
+    "no service/datastore grouping or live membership movement",
+    "GraphQL used only for empty-resource cleanup census, not full shared-surface parity",
+    "no browser/MCP parity or full suites"
+  ]
+}

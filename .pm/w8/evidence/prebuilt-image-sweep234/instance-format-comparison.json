@@ -1,0 +1,24 @@
+[
+  {
+    "client": "bex",
+    "json_instances": 1,
+    "yaml_equals_json": true,
+    "all_ids_in_text": true,
+    "IDs_belong_to_own_service": true,
+    "json_fields": [
+      "createdAt",
+      "id"
+    ]
+  },
+  {
+    "client": "render",
+    "json_instances": 1,
+    "yaml_equals_json": true,
+    "all_ids_in_text": true,
+    "IDs_belong_to_own_service": true,
+    "json_fields": [
+      "createdAt",
+      "id"
+    ]
+  }
+]

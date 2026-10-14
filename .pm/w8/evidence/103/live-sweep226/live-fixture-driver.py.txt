@@ -1,0 +1,134 @@
+from pathlib import Path
+import json, subprocess, datetime, secrets, shutil, shlex, time, sys, csv, io, urllib.parse
+
+p = Path(__file__).parent
+cp = Path('$REPO/.playwright-mcp/cli-qa-w8-checkpoint.json')
+c = json.loads(cp.read_text())
+workspace = (p / 'workspace.txt').read_text().strip()
+mode = sys.argv[1]
+label = sys.argv[2]
+assert label in ('bex_wrong','render_wrong','bex_control')
+selected_client = 'render' if label.startswith('render') else 'bex'
+
+def now():
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+def save():
+    c['last_updated'] = now()
+    cp.write_text(json.dumps(c, indent=2, ensure_ascii=False) + '\n')
+    cp.chmod(0o600)
+
+def cli(args, client='bex'):
+    cfg = p / 'render-config/cli.yaml'
+    try:
+        if client == 'render':
+            assert not cfg.exists()
+            shutil.copyfile(p / 'config/cli.yaml', cfg)
+            cfg.chmod(0o600)
+        runner = ['python3', str(p / 'run-render.py')] if client == 'render' else ['python3', str(p / 'run.py'), '--release']
+        return json.loads(subprocess.check_output([*runner, *args], text=True))
+    finally:
+        if client == 'render':
+            cfg.unlink(missing_ok=True)
+
+def wire(path):
+    return json.loads(subprocess.check_output(['python3', str(p / 'wire.py'), 'GET', path], text=True))
+
+def objects(raw):
+    out = []
+    decoder = json.JSONDecoder()
+    at = 0
+    while at < len(raw):
+        while at < len(raw) and raw[at].isspace():
+            at += 1
+        if at == len(raw):
+            break
+        value, at = decoder.raw_decode(raw, at)
+        out.append(value)
+    return out
+
+def terms(values):
+    out = io.StringIO()
+    csv.writer(out, lineterminator='', quoting=csv.QUOTE_ALL).writerow(values)
+    return out.getvalue()
+
+if mode == 'create':
+    assert c['sync226_result'] == 0 and not c.get('active_sync_stash')
+    assert not (p / ('sweep226-'+label+'-id.txt')).exists()
+    quota = wire('/v1/owners/' + workspace + '/limits')
+    assert quota['status'] == '200'
+    limits = json.loads(quota['response'])
+    assert limits['services']['used'] + limits['services']['terminating'] < limits['services']['limit']
+    nonce = secrets.token_hex(3)
+    date = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')
+    name = f'qa-{date}-{nonce}-file' 
+    marker = 'qa221-' + nonce
+    assert len(name) <= 30
+    source_rows = json.loads((p/'sweep225-path-results.json').read_text())
+    case = next(row for row in source_rows if row['case'] == ('interior space control' if label=='bex_control' else 'trailing space selects neighbor'))
+    expected = case['expected_content']
+    program = 'require("http").createServer((req,res)=>{const fs=require("fs");const body=JSON.stringify({marker:'+json.dumps(marker)+',content:fs.readFileSync("/etc/secrets/qa-note.txt","utf8")});res.writeHead(200,{"Content-Type":"application/json","Content-Length":Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),"0.0.0.0");'
+    image = 'node@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0'
+    args = ['services','create','--name',name,'--type','web_service','--runtime','node','--repo','https://github.com/bex-co/bex','--branch','main','--root-directory','examples/hello-go','--build-command','/usr/local/bin/node --version',
+        '--start-command','/usr/local/bin/node -e '+shlex.quote(program),'--health-check-path','/',
+        '--secret-file',case['literal_argument'],'--plan','free','--region','frankfurt','--auto-deploy=false','--confirm','-o','json']
+    x = {'sweep': 226, 'workspace': workspace, 'type': 'web_service', 'name': name, 'nonce': nonce,
+        'time': now(), 'source_head': c['head'], 'dependency_ids': [], 'marker': marker,
+        'state': 'create intent persisted', 'capacity_proof': quota, 'command': ['bex', *args],
+        'role': 'Live harmless file selection readback', 'label':label, 'client':selected_client, 'expected_file_content':expected, 'local_file_case':case}
+    c['resources'].append(x)
+    save()
+    result = cli(args, selected_client)
+    x['create_result'] = result
+    x['state'] = 'create result received; reconcile before another create'
+    save()
+    if result['exit'] == 0:
+        value = json.loads(result['stdout'])
+        value = value.get('data', value)
+        value = value.get('service', value)
+        x.update(id=value['id'], create_response=value, state='created: runtime pending')
+        (p / ('sweep226-'+label+'-id.txt')).write_text(value['id'])
+        save()
+    print(json.dumps({'id': x.get('id'), 'name': name, 'exit': result['exit'], 'stderr': result['stderr']}), flush=True)
+    raise SystemExit(0 if result['exit'] == 0 else 1)
+
+sid = (p / ('sweep226-'+label+'-id.txt')).read_text().strip()
+x = next(row for row in c['resources'] if row.get('id') == sid)
+baseline = {row if isinstance(row, str) else row.get('service', row)['id'] for row in c['baseline']['services']}
+assert sid not in baseline and x['workspace'] == workspace and x['create_result']['exit'] == 0
+assert x['create_response']['id'] == sid and not x['state'].startswith('deleted:')
+url = x['create_response']['serviceDetails']['url']
+
+def public(path, method='GET'):
+    body = p / 'sweep226-runtime.json'
+    result = subprocess.run(['curl', '--disable', '-sS', '--max-time', '10', '--path-as-is',
+        '-X', method, '-o', str(body), '-w', '%{http_code}', url + path], text=True, capture_output=True)
+    raw = body.read_text() if body.exists() else ''
+    try:
+        value = json.loads(raw)
+    except ValueError:
+        value = raw
+    return {'at': now(), 'path': path, 'method': method, 'exit': result.returncode,
+            'http': result.stdout, 'body': value, 'stderr': result.stderr}
+
+if mode == 'ready':
+    for attempt in range(3):
+        result = cli(['deploys', 'list', sid, '--confirm', '-o', 'json'])
+        assert result['exit'] == 0
+        deploys = json.loads(result['stdout'])
+        runtime = public('/')
+        x.setdefault('runtime_observations', []).append({'native_history': result, 'runtime': runtime})
+        ready = deploys[0]['status'] == 'live' and runtime['http'] == '200' and isinstance(runtime['body'], dict) and runtime['body'].get('marker') == x['marker']
+        if ready:
+            x['runtime_pass'] = True
+            x['deploy_children'] = deploys
+            x['runtime_file_content'] = runtime['body'].get('content')
+            x['file_bytes_preserved'] = x['runtime_file_content'] == x['expected_file_content']
+        save()
+        print(json.dumps({'attempt': attempt, 'deploy_status': deploys[0]['status'], 'http': runtime['http'], 'marker_match': ready, 'intended_file_preserved': x.get('file_bytes_preserved')}), flush=True)
+        if ready or deploys[0]['status'] in ('build_failed', 'update_failed', 'canceled'):
+            break
+        if attempt < 2:
+            time.sleep(6)
+else:
+    raise ValueError(mode)

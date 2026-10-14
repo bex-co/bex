@@ -1,0 +1,18 @@
+{
+  "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b",
+  "deployed_revision": "unknown",
+  "root_actual_feature_states": 8,
+  "fresh_nested_validations": 16,
+  "existing_nested_validations": 16,
+  "native_fresh_validations": 32,
+  "native_captures": 32,
+  "new_bug_filed": false,
+  "hosted_resources_created": 0,
+  "unverified": [
+    "nested apply and hosted current-state/runtime",
+    "public-ID source declarations",
+    "prompt/mixed-source cases",
+    "live non-REST surfaces and snapshots",
+    "complete original099 and full m64 DoD"
+  ]
+}

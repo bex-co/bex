@@ -1,0 +1,17 @@
+{
+  "source_head": "c3d6aa86b0e4c814a992446d0fdfa629db6ee3fa",
+  "published_bex": "0.3.2",
+  "render_pin": "2.27.0 a764810a768202704e7206eb7b87a47211fcd98e",
+  "live_wrong_file_clients": [
+    "bex",
+    "render"
+  ],
+  "live_normal_path_controls": 1,
+  "scope": "real native creates, live HTTP process readback and owned cleanup; native production POST bodies were not captured in this follow-up; exact local POST evidence remains in sweep225",
+  "deployed_API_operator_revision": "unknown",
+  "source_commit": "recorded per actual native deploy history; repository selection is not platform revision",
+  "redactions": "QA values and any token/hook fields omitted; harmless marker contents retained",
+  "excluded_setup": "image + start-command rejected by pinned client before a create; name absent and no ID",
+  "cleanup": "three exact-owned services and initial deploy children deleted, details/list/runtime absent, six baseline services and quota termination0 verified",
+  "QA_product_edit_commit_push": false
+}

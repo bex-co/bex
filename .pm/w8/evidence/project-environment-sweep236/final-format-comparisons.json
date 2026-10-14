@@ -1,0 +1,30 @@
+[
+  {
+    "client": "bex",
+    "surface": "projects",
+    "JSON_YAML_equal": true,
+    "all_own_names_present": true,
+    "text_nonempty": true
+  },
+  {
+    "client": "bex",
+    "surface": "environments",
+    "JSON_YAML_equal": true,
+    "all_own_names_present": true,
+    "text_nonempty": true
+  },
+  {
+    "client": "render",
+    "surface": "projects",
+    "JSON_YAML_equal": true,
+    "all_own_names_present": true,
+    "text_nonempty": true
+  },
+  {
+    "client": "render",
+    "surface": "environments",
+    "JSON_YAML_equal": true,
+    "all_own_names_present": true,
+    "text_nonempty": true
+  }
+]

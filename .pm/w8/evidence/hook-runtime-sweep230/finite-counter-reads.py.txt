@@ -1,0 +1,20 @@
+from pathlib import Path
+import json,subprocess,time,datetime,os
+p=Path(__file__).parent
+c=json.loads(Path('$REPO/.playwright-mcp/cli-qa-w8-checkpoint.json').read_text())
+x=next(v for v in c['resources'] if v.get('sweep')==230 and v.get('case')=='collector')
+assert x['create_result']['exit']==0 and x['workspace']=='tea-daif693dqjvc73e7as3g' and not x['state'].startswith('deleted:')
+(p/'sweep230-keepalive.pid').write_text(str(os.getpid()))
+rows=[]
+for attempt in range(60):
+ file=p/'sweep230-keepalive-body.json'
+ r=subprocess.run(['curl','--disable','-sS','--max-time','8','-o',str(file),'-w','%{http_code}',x['create_response']['serviceDetails']['url']+'/'],capture_output=True,text=True,timeout=12)
+ try:body=json.loads(file.read_text())
+ except ValueError:body=None
+ good=r.returncode==0 and r.stdout=='200' and isinstance(body,dict) and body.get('marker')==x['marker']
+ rows.append({'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'attempt':attempt,'http':r.stdout,'exit':r.returncode,'instance':body.get('instance') if isinstance(body,dict) else None,'records':len(body.get('records',[])) if isinstance(body,dict) else None,'owned_marker_match':good})
+ (p/'sweep230-keepalive-observations.json').write_text(json.dumps(rows,indent=2)+'\n')
+ if not good:print('Bounded owned-counter reads stopped after unavailable response.',flush=True);break
+ if attempt%3==0:print(json.dumps({'owned_counter_read':attempt,'http':'200','records':rows[-1]['records']}),flush=True)
+ if attempt<59:time.sleep(20)
+print('Finite read-only counter keepalive completed.',flush=True)

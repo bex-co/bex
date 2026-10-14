@@ -1,0 +1,23 @@
+{
+  "source_head": "195e2ebb1f1a086180bc674928d9c05a45a86153",
+  "deployed_revision": "unknown",
+  "native_creates": 2,
+  "native_same_commit_async_deploys": 2,
+  "exact_initial_and_redeployed_build_runtime": true,
+  "PATH_variants": [
+    "",
+    "/usr/bin:/bin"
+  ],
+  "CGO_ENABLED": "0",
+  "owned_deleted": 2,
+  "recorded_deploy_children": 4,
+  "new_bug_filed": false,
+  "unverified": [
+    "native POSTs not intercepted",
+    "no deployed toolchain/OCI artifact identity",
+    "no tenant repo/source code changed; generated probe is fixture build output only",
+    "no live browser/GraphQL/MCP parity",
+    "no other language runtime or predeploy Job replay",
+    "no full suites or m61 closeout"
+  ]
+}

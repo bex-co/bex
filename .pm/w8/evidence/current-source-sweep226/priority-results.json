@@ -1,0 +1,1147 @@
+[
+  {
+    "case": "literal then seed",
+    "consumer_COPY": "fixed",
+    "existing_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "syncFalseVars": [
+          "VALUE"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0",
+            "resourceId": "consumer"
+          },
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1",
+            "resourceId": "source"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "existing_validation_error": null,
+    "expected_source_VALUE": "fixed",
+    "first_apply_error": null,
+    "first_apply_mismatch": false,
+    "fresh_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "syncFalseVars": [
+          "VALUE"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "fresh_validation_error": null,
+    "immutable_literal_declared": true,
+    "immutable_literal_false_refusal": false,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"source\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"consumer\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"fixed\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"sync\": false,\n          \"value\": \"seed\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "persisted_consumer": {
+      "metadata": {
+        "name": "consumer",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db7fp2hjg4r7nrgcuveg"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T03:52:42.400739Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "COPY",
+            "value": "fixed"
+          }
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "persisted_source": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "2",
+        "labels": {
+          "bex.co/app-id": "srv-db7fp2hjg4r7nrgcuvfg"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T03:52:42.401997Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "VALUE",
+            "value": "fixed"
+          }
+        ],
+        "envFromSecret": "source-env",
+        "notifyOnFail": "default",
+        "restartedAt": "2026-10-14T03:52:42.404948Z",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "reapply_error": null,
+    "scope": "actual apps/secrets methods with fake Kubernetes/versioned storage; effective source inferred from persisted Secret order and explicit Env priority; no hosted apply/runtime/auth claim",
+    "source_VALUE": "fixed",
+    "source_head": "c3d6aa86b0e4c814a992446d0fdfa629db6ee3fa"
+  },
+  {
+    "case": "seed then literal",
+    "consumer_COPY": "fixed",
+    "existing_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "syncFalseVars": [
+          "VALUE"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0",
+            "resourceId": "consumer"
+          },
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1",
+            "resourceId": "source"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "existing_validation_error": null,
+    "expected_source_VALUE": "fixed",
+    "first_apply_error": null,
+    "first_apply_mismatch": false,
+    "fresh_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "syncFalseVars": [
+          "VALUE"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "fresh_validation_error": null,
+    "immutable_literal_declared": true,
+    "immutable_literal_false_refusal": false,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"source\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"consumer\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"sync\": false,\n          \"value\": \"seed\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"fixed\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "persisted_consumer": {
+      "metadata": {
+        "name": "consumer",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db7fp2hjg4r7nrgcuvhg"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T03:52:42.408467Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "COPY",
+            "value": "fixed"
+          }
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "persisted_source": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "2",
+        "labels": {
+          "bex.co/app-id": "srv-db7fp2hjg4r7nrgcuvig"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T03:52:42.409879Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "VALUE",
+            "value": "fixed"
+          }
+        ],
+        "envFromSecret": "source-env",
+        "notifyOnFail": "default",
+        "restartedAt": "2026-10-14T03:52:42.412015Z",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "reapply_error": null,
+    "scope": "actual apps/secrets methods with fake Kubernetes/versioned storage; effective source inferred from persisted Secret order and explicit Env priority; no hosted apply/runtime/auth claim",
+    "source_VALUE": "fixed",
+    "source_head": "c3d6aa86b0e4c814a992446d0fdfa629db6ee3fa"
+  },
+  {
+    "case": "empty literal then seed",
+    "consumer_COPY": "",
+    "existing_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "syncFalseVars": [
+          "VALUE"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0",
+            "resourceId": "consumer"
+          },
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1",
+            "resourceId": "source"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "existing_validation_error": null,
+    "expected_source_VALUE": "",
+    "first_apply_error": null,
+    "first_apply_mismatch": false,
+    "fresh_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "syncFalseVars": [
+          "VALUE"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "fresh_validation_error": null,
+    "immutable_literal_declared": true,
+    "immutable_literal_false_refusal": false,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"source\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"consumer\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"sync\": false,\n          \"value\": \"seed\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "persisted_consumer": {
+      "metadata": {
+        "name": "consumer",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db7fp2hjg4r7nrgcuvkg"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T03:52:42.41497Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "COPY"
+          }
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "persisted_source": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "2",
+        "labels": {
+          "bex.co/app-id": "srv-db7fp2hjg4r7nrgcuvlg"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T03:52:42.416734Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "VALUE"
+          }
+        ],
+        "envFromSecret": "source-env",
+        "notifyOnFail": "default",
+        "restartedAt": "2026-10-14T03:52:42.418341Z",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "reapply_error": null,
+    "scope": "actual apps/secrets methods with fake Kubernetes/versioned storage; effective source inferred from persisted Secret order and explicit Env priority; no hosted apply/runtime/auth claim",
+    "source_VALUE": "",
+    "source_head": "c3d6aa86b0e4c814a992446d0fdfa629db6ee3fa"
+  },
+  {
+    "case": "seed then empty literal",
+    "consumer_COPY": "",
+    "existing_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "syncFalseVars": [
+          "VALUE"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0",
+            "resourceId": "consumer"
+          },
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1",
+            "resourceId": "source"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "existing_validation_error": null,
+    "expected_source_VALUE": "",
+    "first_apply_error": null,
+    "first_apply_mismatch": false,
+    "fresh_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "syncFalseVars": [
+          "VALUE"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "fresh_validation_error": null,
+    "immutable_literal_declared": true,
+    "immutable_literal_false_refusal": false,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"source\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"consumer\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"sync\": false,\n          \"value\": \"seed\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "persisted_consumer": {
+      "metadata": {
+        "name": "consumer",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db7fp2hjg4r7nrgcuvng"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T03:52:42.422085Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "COPY"
+          }
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "persisted_source": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "2",
+        "labels": {
+          "bex.co/app-id": "srv-db7fp2hjg4r7nrgcuvog"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T03:52:42.422903Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "VALUE"
+          }
+        ],
+        "envFromSecret": "source-env",
+        "notifyOnFail": "default",
+        "restartedAt": "2026-10-14T03:52:42.424431Z",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "reapply_error": null,
+    "scope": "actual apps/secrets methods with fake Kubernetes/versioned storage; effective source inferred from persisted Secret order and explicit Env priority; no hosted apply/runtime/auth claim",
+    "source_VALUE": "",
+    "source_head": "c3d6aa86b0e4c814a992446d0fdfa629db6ee3fa"
+  },
+  {
+    "case": "literal then generated control",
+    "consumer_COPY": "fixed",
+    "existing_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0",
+            "resourceId": "consumer"
+          },
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1",
+            "resourceId": "source"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "existing_validation_error": null,
+    "expected_source_VALUE": "fixed",
+    "first_apply_error": null,
+    "first_apply_mismatch": false,
+    "fresh_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "fresh_validation_error": null,
+    "immutable_literal_declared": true,
+    "immutable_literal_false_refusal": false,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"source\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"consumer\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"fixed\"\n        },\n        {\n          \"generateValue\": true,\n          \"key\": \"VALUE\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "persisted_consumer": {
+      "metadata": {
+        "name": "consumer",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db7fp2hjg4r7nrgcuvqg"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T03:52:42.428253Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "COPY",
+            "value": "fixed"
+          }
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "persisted_source": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "2",
+        "labels": {
+          "bex.co/app-id": "srv-db7fp2hjg4r7nrgcuvrg"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T03:52:42.4291Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "VALUE",
+            "value": "fixed"
+          }
+        ],
+        "envFromSecret": "source-env",
+        "notifyOnFail": "default",
+        "restartedAt": "2026-10-14T03:52:42.431754Z",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "reapply_error": null,
+    "scope": "actual apps/secrets methods with fake Kubernetes/versioned storage; effective source inferred from persisted Secret order and explicit Env priority; no hosted apply/runtime/auth claim",
+    "source_VALUE": "fixed",
+    "source_head": "c3d6aa86b0e4c814a992446d0fdfa629db6ee3fa"
+  },
+  {
+    "case": "generated then literal control",
+    "consumer_COPY": "fixed",
+    "existing_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0",
+            "resourceId": "consumer"
+          },
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1",
+            "resourceId": "source"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "existing_validation_error": null,
+    "expected_source_VALUE": "fixed",
+    "first_apply_error": null,
+    "first_apply_mismatch": false,
+    "fresh_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "fresh_validation_error": null,
+    "immutable_literal_declared": true,
+    "immutable_literal_false_refusal": false,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"source\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"consumer\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"generateValue\": true,\n          \"key\": \"VALUE\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"fixed\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "persisted_consumer": {
+      "metadata": {
+        "name": "consumer",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db7fp2hjg4r7nrgcuvtg"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T03:52:42.434773Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "COPY",
+            "value": "fixed"
+          }
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "persisted_source": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "2",
+        "labels": {
+          "bex.co/app-id": "srv-db7fp2hjg4r7nrgcuvug"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T03:52:42.435596Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "VALUE",
+            "value": "fixed"
+          }
+        ],
+        "envFromSecret": "source-env",
+        "notifyOnFail": "default",
+        "restartedAt": "2026-10-14T03:52:42.438144Z",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "reapply_error": null,
+    "scope": "actual apps/secrets methods with fake Kubernetes/versioned storage; effective source inferred from persisted Secret order and explicit Env priority; no hosted apply/runtime/auth claim",
+    "source_VALUE": "fixed",
+    "source_head": "c3d6aa86b0e4c814a992446d0fdfa629db6ee3fa"
+  },
+  {
+    "case": "literal only control",
+    "consumer_COPY": "fixed",
+    "existing_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0",
+            "resourceId": "consumer"
+          },
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1",
+            "resourceId": "source"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "existing_validation_error": null,
+    "expected_source_VALUE": "fixed",
+    "first_apply_error": null,
+    "first_apply_mismatch": false,
+    "fresh_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "fresh_validation_error": null,
+    "immutable_literal_declared": true,
+    "immutable_literal_false_refusal": false,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"source\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"consumer\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"fixed\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "persisted_consumer": {
+      "metadata": {
+        "name": "consumer",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db7fp2hjg4r7nrgcv00g"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T03:52:42.440944Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "COPY",
+            "value": "fixed"
+          }
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "persisted_source": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db7fp2hjg4r7nrgcv01g"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T03:52:42.442748Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "VALUE",
+            "value": "fixed"
+          }
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "reapply_error": null,
+    "scope": "actual apps/secrets methods with fake Kubernetes/versioned storage; effective source inferred from persisted Secret order and explicit Env priority; no hosted apply/runtime/auth claim",
+    "source_VALUE": "fixed",
+    "source_head": "c3d6aa86b0e4c814a992446d0fdfa629db6ee3fa"
+  },
+  {
+    "case": "seed only control",
+    "consumer_COPY": "seed",
+    "existing_validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"consumer\": envVars[\"COPY\"]: fromService.envVarKey references env \"VALUE\" on existing service \"source\", which is a sync:false value seeded once, so its current value is not knowable from the Blueprint",
+          "line": 5,
+          "column": 9,
+          "path": "services[0].envVars[0]"
+        }
+      ]
+    },
+    "existing_validation_error": null,
+    "expected_source_VALUE": "seed",
+    "first_apply_error": null,
+    "first_apply_mismatch": false,
+    "fresh_validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "consumer",
+          "source"
+        ],
+        "syncFalseVars": [
+          "VALUE"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "consumer",
+            "sourcePath": "#/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "source",
+            "sourcePath": "#/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "fresh_validation_error": null,
+    "immutable_literal_declared": false,
+    "immutable_literal_false_refusal": false,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"VALUE\",\n            \"name\": \"source\",\n            \"type\": \"web\"\n          },\n          \"key\": \"COPY\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"consumer\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"sync\": false,\n          \"value\": \"seed\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"source\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "persisted_consumer": {
+      "metadata": {
+        "name": "consumer",
+        "namespace": "default",
+        "resourceVersion": "1",
+        "labels": {
+          "bex.co/app-id": "srv-db7fp2hjg4r7nrgcv03g"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T03:52:42.445142Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "env": [
+          {
+            "name": "COPY",
+            "value": "seed"
+          }
+        ],
+        "notifyOnFail": "default",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "persisted_source": {
+      "metadata": {
+        "name": "source",
+        "namespace": "default",
+        "resourceVersion": "2",
+        "labels": {
+          "bex.co/app-id": "srv-db7fp2hjg4r7nrgcv04g"
+        },
+        "annotations": {
+          "app.bex.co/release-generation": "1",
+          "app.bex.co/updated-at": "2026-10-14T03:52:42.445952Z"
+        }
+      },
+      "spec": {
+        "type": "web_service",
+        "image": "nginx:1",
+        "runtime": "image",
+        "builder": "auto",
+        "replicas": 1,
+        "port": 3000,
+        "envFromSecret": "source-env",
+        "notifyOnFail": "default",
+        "restartedAt": "2026-10-14T03:52:42.448569Z",
+        "tier": "free",
+        "expose": true,
+        "subdomainPolicy": "enabled"
+      }
+    },
+    "scope": "actual apps/secrets methods with fake Kubernetes/versioned storage; effective source inferred from persisted Secret order and explicit Env priority; no hosted apply/runtime/auth claim",
+    "source_VALUE": "seed",
+    "source_head": "c3d6aa86b0e4c814a992446d0fdfa629db6ee3fa"
+  }
+]

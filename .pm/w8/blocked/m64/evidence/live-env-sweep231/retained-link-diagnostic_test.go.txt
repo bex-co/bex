@@ -1,0 +1,71 @@
+package apps
+
+import (
+	"context"
+	"encoding/json"
+	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/envgroups"
+	"github.com/bex-co/bex/lego/backend/internal/secrets"
+	"testing"
+	"time"
+)
+
+// This diagnostic asserts the observed defect; it is not a fix regression.
+func TestQA231RetainedGroupCopies(t *testing.T) {
+	for _, tc := range []struct {
+		name, env string
+		wantValid bool
+	}{
+		{"env omitted", "", false},
+		{"env explicit empty", `,"envVars":[]`, false},
+		{"unrelated literal only", `,"envVars":[{"key":"UNRELATED","value":"control"}]`, false},
+		{"one authored retained link", `,"envVars":[{"fromGroup":"a"}]`, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			base := &core.Base{Client: fakeClient(), Namespace: "default", Clock: func() time.Time { return time.Unix(1_000_000, 0).UTC() }}
+			kv := newMemKV()
+			eg := &envgroups.Service{Base: base, Store: kv}
+			sec := &secrets.Service{Base: base, Store: kv}
+			svc := &Service{Base: base, EnvGroups: eg, EnvSeeder: sec, EnvNames: sec}
+			groups := `"envVarGroups":[{"name":"a","envVars":[{"key":"VALUE","value":"group a"}]},{"name":"b","envVars":[{"key":"VALUE","value":"group b"}]}]`
+			doc := func(env string, reference bool) string {
+				copy := `{"key":"COPY","value":"group b"}`
+				if reference {
+					copy = `{"key":"COPY","fromService":{"type":"web","name":"source","envVarKey":"VALUE"}}`
+				}
+				return `{` + groups + `,"services":[{"name":"source","type":"web","runtime":"image","image":{"url":"nginx:1"}` + env + `},{"name":"consumer","type":"web","runtime":"image","image":{"url":"nginx:1"},"envVars":[` + copy + `]}]}`
+			}
+			first := doc(`,"envVars":[{"fromGroup":"a"},{"fromGroup":"b"}]`, true)
+			if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: first}); err != nil {
+				t.Fatal(err)
+			}
+			// Removing all authored group links is accepted without the reference and
+			// leaves both original projections linked. No own mutable value is present.
+			if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: doc(tc.env, false)}); err != nil {
+				t.Fatal(err)
+			}
+			source := getApp(t, svc.Client, "source")
+			linked, err := eg.LinkedGroupNames(ctx, source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(linked) != 2 || linked[0] != "a" || linked[1] != "b" {
+				t.Fatalf("retained links %v", linked)
+			}
+			result, err := svc.ValidateBlueprint(ctx, "", doc(tc.env, true), "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.Valid != tc.wantValid {
+				t.Fatalf("valid=%v, expected current diagnostic=%v", result.Valid, tc.wantValid)
+			}
+			receipt := map[string]any{"case": tc.name, "retained_links": linked, "declared_values": map[string]string{"a": "group a", "b": "group b"}, "effective_value": "group b", "actual_valid": result.Valid, "expected_eligible": true, "validation": result, "qualification": "actual feature methods with fake Kubernetes and memory SecretKV; hosted runtime is separate"}
+			b, err := json.Marshal(receipt)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Log("QA231_RESULT " + string(b))
+		})
+	}
+}

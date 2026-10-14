@@ -1,0 +1,85 @@
+[
+  {
+    "request": {
+      "method": "POST",
+      "path": "/v1/services",
+      "body": {
+        "autoDeploy": "no",
+        "branch": "main",
+        "envVars": [
+          {
+            "key": "PATH",
+            "value": ""
+          },
+          {
+            "key": "QA_NOTE",
+            "value": "QA232_55dabfeb\n☃=static"
+          }
+        ],
+        "name": "qa-20261014-55dabfeb-static",
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "repo": "https://github.com/bex-co/bex",
+        "rootDir": "examples/hello-go",
+        "serviceDetails": {
+          "buildCommand": "/usr/local/bin/node -e 'const fs=require(\"fs\"),path=require(\"path\");for(const entry of [[\" dist 55dabfeb \", \"QA232_55dabfeb\"], [\"dist 55dabfeb\", \"QA232_55dabfeb_NEIGHBOR\"], [\"dist interior 55dabfeb\", \"QA232_55dabfeb\"]]){const [dir,marker]=entry;fs.mkdirSync(dir,{recursive:true});const bytes=JSON.stringify({marker,path:process.env.PATH,note:process.env.QA_NOTE});for(const name of [\"index.html\",\"snapshot.json\",\"note spaced.json\",\"☃.json\"]){fs.writeFileSync(path.join(dir,name),bytes);}}'",
+          "publishPath": "dist interior 55dabfeb"
+        },
+        "type": "static_site"
+      },
+      "raw_body": "{\"autoDeploy\":\"no\",\"branch\":\"main\",\"envVars\":[{\"key\":\"PATH\",\"value\":\"\"},{\"key\":\"QA_NOTE\",\"value\":\"QA232_55dabfeb\\n☃=static\"}],\"name\":\"qa-20261014-55dabfeb-static\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"repo\":\"https://github.com/bex-co/bex\",\"rootDir\":\"examples/hello-go\",\"serviceDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),path=require(\\\"path\\\");for(const entry of [[\\\" dist 55dabfeb \\\", \\\"QA232_55dabfeb\\\"], [\\\"dist 55dabfeb\\\", \\\"QA232_55dabfeb_NEIGHBOR\\\"], [\\\"dist interior 55dabfeb\\\", \\\"QA232_55dabfeb\\\"]]){const [dir,marker]=entry;fs.mkdirSync(dir,{recursive:true});const bytes=JSON.stringify({marker,path:process.env.PATH,note:process.env.QA_NOTE});for(const name of [\\\"index.html\\\",\\\"snapshot.json\\\",\\\"note spaced.json\\\",\\\"☃.json\\\"]){fs.writeFileSync(path.join(dir,name),bytes);}}'\",\"publishPath\":\"dist interior 55dabfeb\"},\"type\":\"static_site\"}",
+      "headers": {
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "Content-Type": "application/json",
+        "X-Bex-Cli-Version": "0.3.2"
+      },
+      "authorization": "[REDACTED]"
+    },
+    "status": 201,
+    "response": "{\"service\":{\"id\":\"srv-db7lhomt41sc7388o7og\",\"name\":\"qa-20261014-55dabfeb-static\",\"immutableName\":\"qa-20261014-55dabfeb-static\",\"slug\":\"qa-20261014-55dabfeb-static\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db7lhomt41sc7388o7og\",\"createdAt\":\"2026-10-14T10:26:42Z\",\"updatedAt\":\"2026-10-14T10:26:42.604482596Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA VALUE REDACTED]\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),path=require(\\\"path\\\");for(const entry of [[\\\" dist 55dabfeb \\\", \\\"QA232_55dabfeb\\\"], [\\\"dist 55dabfeb\\\", \\\"QA232_55dabfeb_NEIGHBOR\\\"], [\\\"dist interior 55dabfeb\\\", \\\"QA232_55dabfeb\\\"]]){const [dir,marker]=entry;fs.mkdirSync(dir,{recursive:true});const bytes=JSON.stringify({marker,path:process.env.PATH,note:process.env.QA_NOTE});for(const name of [\\\"index.html\\\",\\\"snapshot.json\\\",\\\"note spaced.json\\\",\\\"☃.json\\\"]){fs.writeFileSync(path.join(dir,name),bytes);}}'\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\"dist interior 55dabfeb\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261014-55dabfeb-static.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"},\"deployId\":\"dep-db7lhomt41sc7388o7p0\"}\n",
+    "response_headers": {
+      "Content-Type": "application/json",
+      "CF-RAY": "a4a5e322bba59203-SJC"
+    }
+  },
+  {
+    "request": {
+      "method": "POST",
+      "path": "/v1/services",
+      "body": {
+        "autoDeploy": "no",
+        "branch": "main",
+        "envVars": [
+          {
+            "key": "PATH",
+            "value": "/usr/bin:/bin"
+          },
+          {
+            "key": "QA_NOTE",
+            "value": "QA232_c2c6068e\n☃=static"
+          }
+        ],
+        "name": "qa-20261014-c2c6068e-static",
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "repo": "https://github.com/bex-co/bex",
+        "rootDir": "examples/hello-go",
+        "serviceDetails": {
+          "buildCommand": "/usr/local/bin/node -e 'const fs=require(\"fs\"),path=require(\"path\");for(const entry of [[\" dist c2c6068e \", \"QA232_c2c6068e\"], [\"dist c2c6068e\", \"QA232_c2c6068e_NEIGHBOR\"], [\"dist interior c2c6068e\", \"QA232_c2c6068e\"]]){const [dir,marker]=entry;fs.mkdirSync(dir,{recursive:true});const bytes=JSON.stringify({marker,path:process.env.PATH,note:process.env.QA_NOTE});for(const name of [\"index.html\",\"snapshot.json\",\"note spaced.json\",\"☃.json\"]){fs.writeFileSync(path.join(dir,name),bytes);}}'",
+          "publishPath": "dist interior c2c6068e"
+        },
+        "type": "static_site"
+      },
+      "raw_body": "{\"autoDeploy\":\"no\",\"branch\":\"main\",\"envVars\":[{\"key\":\"PATH\",\"value\":\"/usr/bin:/bin\"},{\"key\":\"QA_NOTE\",\"value\":\"QA232_c2c6068e\\n☃=static\"}],\"name\":\"qa-20261014-c2c6068e-static\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"repo\":\"https://github.com/bex-co/bex\",\"rootDir\":\"examples/hello-go\",\"serviceDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),path=require(\\\"path\\\");for(const entry of [[\\\" dist c2c6068e \\\", \\\"QA232_c2c6068e\\\"], [\\\"dist c2c6068e\\\", \\\"QA232_c2c6068e_NEIGHBOR\\\"], [\\\"dist interior c2c6068e\\\", \\\"QA232_c2c6068e\\\"]]){const [dir,marker]=entry;fs.mkdirSync(dir,{recursive:true});const bytes=JSON.stringify({marker,path:process.env.PATH,note:process.env.QA_NOTE});for(const name of [\\\"index.html\\\",\\\"snapshot.json\\\",\\\"note spaced.json\\\",\\\"☃.json\\\"]){fs.writeFileSync(path.join(dir,name),bytes);}}'\",\"publishPath\":\"dist interior c2c6068e\"},\"type\":\"static_site\"}",
+      "headers": {
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "Content-Type": "application/json"
+      },
+      "authorization": "[REDACTED]"
+    },
+    "status": 201,
+    "response": "{\"service\":{\"id\":\"srv-db7li2ut41sc7388o7qg\",\"name\":\"qa-20261014-c2c6068e-static\",\"immutableName\":\"qa-20261014-c2c6068e-static\",\"slug\":\"qa-20261014-c2c6068e-static\",\"displayName\":\"\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db7li2ut41sc7388o7qg\",\"createdAt\":\"2026-10-14T10:27:23Z\",\"updatedAt\":\"2026-10-14T10:27:23.362426685Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA VALUE REDACTED]\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),path=require(\\\"path\\\");for(const entry of [[\\\" dist c2c6068e \\\", \\\"QA232_c2c6068e\\\"], [\\\"dist c2c6068e\\\", \\\"QA232_c2c6068e_NEIGHBOR\\\"], [\\\"dist interior c2c6068e\\\", \\\"QA232_c2c6068e\\\"]]){const [dir,marker]=entry;fs.mkdirSync(dir,{recursive:true});const bytes=JSON.stringify({marker,path:process.env.PATH,note:process.env.QA_NOTE});for(const name of [\\\"index.html\\\",\\\"snapshot.json\\\",\\\"note spaced.json\\\",\\\"☃.json\\\"]){fs.writeFileSync(path.join(dir,name),bytes);}}'\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\"dist interior c2c6068e\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261014-c2c6068e-static.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"},\"deployId\":\"dep-db7li2ut41sc7388o7r0\"}\n",
+    "response_headers": {
+      "Content-Type": "application/json",
+      "CF-RAY": "a4a5e41fbae3f97b-SJC"
+    }
+  }
+]

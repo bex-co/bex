@@ -1,0 +1,19 @@
+{
+  "source_head": "195e2ebb1f1a086180bc674928d9c05a45a86153",
+  "deployed_revision": "unknown",
+  "native_creates": 2,
+  "native_restarts": 2,
+  "all_restart_exits0": true,
+  "owned_deleted": 2,
+  "recorded_deploy_children": 4,
+  "new_bug_filed": false,
+  "unverified": [
+    "native POST bodies not intercepted",
+    "no paid maintenance-mode mutation",
+    "no one-off job creation, a documented non-goal",
+    "no cron/static restart replay or w8/040 closeout",
+    "no staged-config/historical-release restart variants",
+    "no SSH or browser/shared-surface parity",
+    "no full suites or deployed OCI artifact verification"
+  ]
+}

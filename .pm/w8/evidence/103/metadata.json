@@ -1,0 +1,13 @@
+{
+  "source_head": "b6e243aecc4475b1b2be93532af1e67b03e90fc7",
+  "published_bex": "0.3.2 a6350da0d6e451e063143432e06c548ba7b5851b",
+  "unmodified_render": "2.27.0 a764810a768202704e7206eb7b87a47211fcd98e",
+  "scope": "six actual pinned resolver cases and twelve actual binary commands against a local POST-only responder; no production request or hosted runtime claim",
+  "silent_wrong_file_commands": 6,
+  "existing_file_false_missing_commands": 2,
+  "matching_controls": 4,
+  "harness_errors": "initial dummy config version was string instead of integer; twelve parse errors excluded before corrected replay",
+  "cleanup": "all local responders and dummy copied configs removed; harmless local files retained privately for reproducibility; no hosted resources or real QA credentials used",
+  "upstream_submission": "none; external submission, pin refresh and release remain prerequisites after internal patch preparation",
+  "QA_product_edit_commit_push": false
+}

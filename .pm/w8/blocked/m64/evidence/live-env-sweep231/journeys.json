@@ -1,0 +1,1028 @@
+{
+  "nonce": "ca7258f4",
+  "marker": "QA231_ca7258f4",
+  "source_name": "qa-20261014-ca7258f4-src",
+  "consumer_name": "qa-20261014-ca7258f4-copy",
+  "groups": [
+    "qa-20261014-ca7258f4-a",
+    "qa-20261014-ca7258f4-b",
+    "qa-20261014-ca7258f4-c"
+  ],
+  "source_head": "a11a77272e9a85debb788c4c6eb1aa53f7e8ac54",
+  "created_at": "2026-10-14T09:48:09.165530+00:00",
+  "source_template": {
+    "type": "web",
+    "runtime": "node",
+    "plan": "free",
+    "repo": "https://github.com/bex-co/bex",
+    "branch": "main",
+    "rootDir": "examples/hello-go",
+    "autoDeploy": false,
+    "buildCommand": "/usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'",
+    "startCommand": "/usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'",
+    "healthCheckPath": "/",
+    "name": "qa-20261014-ca7258f4-src"
+  },
+  "consumer_template": {
+    "type": "web",
+    "runtime": "node",
+    "plan": "free",
+    "repo": "https://github.com/bex-co/bex",
+    "branch": "main",
+    "rootDir": "examples/hello-go",
+    "autoDeploy": false,
+    "buildCommand": "/usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'",
+    "startCommand": "/usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'",
+    "healthCheckPath": "/",
+    "name": "qa-20261014-ca7258f4-copy",
+    "envVars": [
+      {
+        "key": "QA_COPY",
+        "fromService": {
+          "type": "web",
+          "name": "qa-20261014-ca7258f4-src",
+          "envVarKey": "QA_VALUE"
+        }
+      }
+    ]
+  },
+  "quota_before": {
+    "at": "2026-10-14T09:48:09.642273+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.319,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4a5aaae9f0ddc9b-SJC"
+    },
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+  },
+  "service_inventory_before": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.841,
+    "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-14T09:48:05Z\",\n        \"nextRunAt\": \"2026-10-14T09:49:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-14T09:48:05Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-14T09:48:04Z\",\n        \"nextRunAt\": \"2026-10-14T09:49:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-14T09:48:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-14T09:48:04Z\",\n        \"nextRunAt\": \"2026-10-14T09:49:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-14T09:48:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T09:45:36Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:33Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:28Z\"\n    }\n  }\n]",
+    "stderr": ""
+  },
+  "group_inventory_before": {
+    "at": "2026-10-14T09:48:11.883899+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/env-groups?ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 1.285,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4a5aab68dd8ed3e-SJC"
+    },
+    "response": "[]\n"
+  },
+  "blueprint_inventory_before": {
+    "at": "2026-10-14T09:48:12.305611+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/blueprints?ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.354,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4a5aabf6962df82-SJC"
+    },
+    "response": "[{\"blueprint\":{\"id\":\"blp-db136288mmqc73d4hpug\",\"name\":\"bex\",\"status\":\"in_sync\",\"autoSync\":true,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"path\":\"render.yaml\"},\"cursor\":\"blp-db136288mmqc73d4hpug\"}]\n"
+  },
+  "journeys": [
+    {
+      "variant": "initial",
+      "at": "2026-10-14T09:48:12.429569+00:00",
+      "manifest": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-a\n  - fromGroup: qa-20261014-ca7258f4-b\n  - fromGroup: qa-20261014-ca7258f4-a\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n",
+      "expected": "QA231_ca7258f4_B",
+      "expected_valid": true,
+      "qualification": "native validation; inline apply is API setup because pinned CLI has no Blueprint apply command",
+      "native_validations": [
+        {
+          "client": "bex",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-initial.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.719,
+            "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-ca7258f4-a\",\n      \"qa-20261014-ca7258f4-b\"\n    ],\n    \"services\": [\n      \"qa-20261014-ca7258f4-src\",\n      \"qa-20261014-ca7258f4-copy\"\n    ],\n    \"totalActions\": 4\n  },\n  \"valid\": true\n}",
+            "stderr": ""
+          }
+        },
+        {
+          "client": "render",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-initial.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 1.27,
+            "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-ca7258f4-a\",\n      \"qa-20261014-ca7258f4-b\"\n    ],\n    \"services\": [\n      \"qa-20261014-ca7258f4-src\",\n      \"qa-20261014-ca7258f4-copy\"\n    ],\n    \"totalActions\": 4\n  },\n  \"valid\": true\n}",
+            "stderr": ""
+          }
+        }
+      ],
+      "apply_intent_at": "2026-10-14T09:48:14.848562+00:00",
+      "apply_result": {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/deploy",
+          "body": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-a\n  - fromGroup: qa-20261014-ca7258f4-b\n  - fromGroup: qa-20261014-ca7258f4-a\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n"
+          },
+          "authorization": "[REDACTED]"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "response": "{\"services\":[{\"id\":\"srv-db7kvphllfps73emu850\",\"name\":\"qa-20261014-ca7258f4-src\",\"slug\":\"qa-20261014-ca7258f4-src\",\"displayName\":\"\",\"type\":\"web_service\",\"phase\":\"\",\"undeployedChanges\":false,\"undeployedChangesApplying\":false,\"url\":\"https://qa-20261014-ca7258f4-src.onbex.co\",\"urls\":null,\"image\":\"\",\"runtime\":\"node\",\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),http=require(\\\"http\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\",\"builder\":\"native\",\"replicas\":1,\"suspended\":false,\"plan\":\"free\",\"revision\":\"\",\"internalAddress\":\"qa-20261014-ca7258f4-src:3000\",\"port\":3000,\"createdAt\":\"2026-10-14T09:48:26Z\",\"updatedAt\":\"2026-10-14T09:48:26Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7kvphllfps73emu850\",\"region\":\"fsn1\",\"idleTTLSeconds\":0,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"linkedEnvGroupIds\":[\"evg-db7kvo1llfps73emu830\",\"evg-db7kvohllfps73emu840\"],\"autoDeploy\":false,\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"renderSubdomainPolicy\":\"enabled\",\"healthCheckPath\":\"/\",\"maxShutdownDelaySeconds\":30,\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"latestDeployId\":\"dep-db7kvphllfps73emu85g\"},{\"id\":\"srv-db7kvqhllfps73emu87g\",\"name\":\"qa-20261014-ca7258f4-copy\",\"slug\":\"qa-20261014-ca7258f4-copy\",\"displayName\":\"\",\"type\":\"web_service\",\"phase\":\"\",\"undeployedChanges\":false,\"undeployedChangesApplying\":false,\"url\":\"https://qa-20261014-ca7258f4-copy.onbex.co\",\"urls\":null,\"image\":\"\",\"runtime\":\"node\",\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),http=require(\\\"http\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\",\"builder\":\"native\",\"replicas\":1,\"suspended\":false,\"plan\":\"free\",\"revision\":\"\",\"internalAddress\":\"qa-20261014-ca7258f4-copy:3000\",\"port\":3000,\"createdAt\":\"2026-10-14T09:48:26Z\",\"updatedAt\":\"2026-10-14T09:48:26.567681375Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7kvqhllfps73emu87g\",\"region\":\"fsn1\",\"idleTTLSeconds\":0,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":false,\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"renderSubdomainPolicy\":\"enabled\",\"healthCheckPath\":\"/\",\"maxShutdownDelaySeconds\":30,\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"latestDeployId\":\"dep-db7kvqhllfps73emu880\"}],\"databases\":null,\"keyValues\":null,\"envGroups\":[{\"id\":\"evg-db7kvo1llfps73emu830\",\"name\":\"qa-20261014-ca7258f4-a\"},{\"id\":\"evg-db7kvohllfps73emu840\",\"name\":\"qa-20261014-ca7258f4-b\"}]}\n",
+        "stderr": ""
+      }
+    },
+    {
+      "variant": "reordered",
+      "at": "2026-10-14T09:52:07.068086+00:00",
+      "manifest": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-b\n  - fromGroup: qa-20261014-ca7258f4-a\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n",
+      "expected": "QA231_ca7258f4_B",
+      "expected_valid": true,
+      "qualification": "native validation; inline apply is API setup because pinned CLI has no Blueprint apply command",
+      "native_validations": [
+        {
+          "client": "bex",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-reordered.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 1.242,
+            "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-ca7258f4-a\",\n      \"qa-20261014-ca7258f4-b\"\n    ],\n    \"services\": [\n      \"qa-20261014-ca7258f4-src\",\n      \"qa-20261014-ca7258f4-copy\"\n    ],\n    \"totalActions\": 4\n  },\n  \"valid\": true\n}",
+            "stderr": ""
+          }
+        },
+        {
+          "client": "render",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-reordered.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 1.889,
+            "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-ca7258f4-a\",\n      \"qa-20261014-ca7258f4-b\"\n    ],\n    \"services\": [\n      \"qa-20261014-ca7258f4-src\",\n      \"qa-20261014-ca7258f4-copy\"\n    ],\n    \"totalActions\": 4\n  },\n  \"valid\": true\n}",
+            "stderr": ""
+          }
+        }
+      ],
+      "apply_intent_at": "2026-10-14T09:52:11.588015+00:00",
+      "apply_result": {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/deploy",
+          "body": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-b\n  - fromGroup: qa-20261014-ca7258f4-a\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n"
+          },
+          "authorization": "[REDACTED]"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "response": "{\"services\":[{\"id\":\"srv-db7kvphllfps73emu850\",\"name\":\"qa-20261014-ca7258f4-src\",\"slug\":\"qa-20261014-ca7258f4-src\",\"displayName\":\"\",\"type\":\"web_service\",\"phase\":\"Running\",\"undeployedChanges\":false,\"undeployedChangesApplying\":false,\"url\":\"https://qa-20261014-ca7258f4-src.onbex.co\",\"urls\":[\"https://qa-20261014-ca7258f4-src.onbex.co\"],\"image\":\"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261014-ca7258f4-src:gen-1@sha256:59bd8546fadd86f4e97d13f87571c99268d5ec988a1533a669209b30cffb336b\",\"runtime\":\"node\",\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),http=require(\\\"http\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\",\"builder\":\"native\",\"replicas\":1,\"suspended\":false,\"plan\":\"free\",\"revision\":\"rev-1\",\"internalAddress\":\"qa-20261014-ca7258f4-src:3000\",\"port\":3000,\"createdAt\":\"2026-10-14T09:48:26Z\",\"updatedAt\":\"2026-10-14T09:50:40Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7kvphllfps73emu850\",\"region\":\"fsn1\",\"idleTTLSeconds\":0,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"linkedEnvGroupIds\":[\"evg-db7kvo1llfps73emu830\",\"evg-db7kvohllfps73emu840\"],\"autoDeploy\":false,\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"renderSubdomainPolicy\":\"enabled\",\"healthCheckPath\":\"/\",\"maxShutdownDelaySeconds\":30,\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"}},{\"id\":\"srv-db7kvqhllfps73emu87g\",\"name\":\"qa-20261014-ca7258f4-copy\",\"slug\":\"qa-20261014-ca7258f4-copy\",\"displayName\":\"\",\"type\":\"web_service\",\"phase\":\"Running\",\"undeployedChanges\":false,\"undeployedChangesApplying\":false,\"url\":\"https://qa-20261014-ca7258f4-copy.onbex.co\",\"urls\":[\"https://qa-20261014-ca7258f4-copy.onbex.co\"],\"image\":\"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261014-ca7258f4-copy:gen-1@sha256:d4ba85a8845f37ce7664c6f58d5bd2c6ac87146cae88dcdf013e0a7a2c96ef2e\",\"runtime\":\"node\",\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),http=require(\\\"http\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\",\"builder\":\"native\",\"replicas\":1,\"suspended\":false,\"plan\":\"free\",\"revision\":\"rev-1\",\"internalAddress\":\"qa-20261014-ca7258f4-copy:3000\",\"port\":3000,\"createdAt\":\"2026-10-14T09:48:26Z\",\"updatedAt\":\"2026-10-14T09:50:45Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7kvqhllfps73emu87g\",\"region\":\"fsn1\",\"idleTTLSeconds\":0,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":false,\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"renderSubdomainPolicy\":\"enabled\",\"healthCheckPath\":\"/\",\"maxShutdownDelaySeconds\":30,\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"}}],\"databases\":null,\"keyValues\":null,\"envGroups\":[{\"id\":\"evg-db7kvo1llfps73emu830\",\"name\":\"qa-20261014-ca7258f4-a\"},{\"id\":\"evg-db7kvohllfps73emu840\",\"name\":\"qa-20261014-ca7258f4-b\"}]}\n",
+        "stderr": ""
+      }
+    },
+    {
+      "variant": "omitted-link",
+      "at": "2026-10-14T09:53:01.041504+00:00",
+      "manifest": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars: []\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n",
+      "expected": "QA231_ca7258f4_B",
+      "expected_valid": true,
+      "qualification": "native validation; inline apply is API setup because pinned CLI has no Blueprint apply command",
+      "native_validations": [
+        {
+          "client": "bex",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-omitted-link.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 1,
+            "elapsed": 0.285,
+            "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa-20261014-ca7258f4-copy\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on service \\\"qa-20261014-ca7258f4-src\\\", which has no such plainly-defined variable\",\n      \"line\": 41,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+            "stderr": ""
+          }
+        },
+        {
+          "client": "render",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-omitted-link.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 1,
+            "elapsed": 0.287,
+            "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa-20261014-ca7258f4-copy\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on service \\\"qa-20261014-ca7258f4-src\\\", which has no such plainly-defined variable\",\n      \"line\": 41,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+            "stderr": ""
+          }
+        }
+      ],
+      "apply_intent_at": "2026-10-14T09:53:02.941234+00:00",
+      "apply_result": {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/deploy",
+          "body": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars: []\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n"
+          },
+          "authorization": "[REDACTED]"
+        },
+        "status": "400",
+        "curl_exit": 0,
+        "response": "{\"error\":\"bad request: service \\\"qa-20261014-ca7258f4-copy\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on service \\\"qa-20261014-ca7258f4-src\\\", which has no such plainly-defined variable\",\"id\":\"bad_request\",\"message\":\"bad request: service \\\"qa-20261014-ca7258f4-copy\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on service \\\"qa-20261014-ca7258f4-src\\\", which has no such plainly-defined variable\"}\n",
+        "stderr": ""
+      }
+    },
+    {
+      "variant": "omitted-one-link",
+      "at": "2026-10-14T09:54:24.629836+00:00",
+      "manifest": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-a\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n",
+      "expected": "QA231_ca7258f4_B",
+      "expected_valid": true,
+      "qualification": "native validation; inline apply is API setup because pinned CLI has no Blueprint apply command",
+      "native_validations": [
+        {
+          "client": "bex",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-omitted-one-link.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 2.346,
+            "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-ca7258f4-a\",\n      \"qa-20261014-ca7258f4-b\"\n    ],\n    \"services\": [\n      \"qa-20261014-ca7258f4-src\",\n      \"qa-20261014-ca7258f4-copy\"\n    ],\n    \"totalActions\": 4\n  },\n  \"valid\": true\n}",
+            "stderr": ""
+          }
+        },
+        {
+          "client": "render",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-omitted-one-link.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 1.529,
+            "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-ca7258f4-a\",\n      \"qa-20261014-ca7258f4-b\"\n    ],\n    \"services\": [\n      \"qa-20261014-ca7258f4-src\",\n      \"qa-20261014-ca7258f4-copy\"\n    ],\n    \"totalActions\": 4\n  },\n  \"valid\": true\n}",
+            "stderr": ""
+          }
+        }
+      ],
+      "apply_intent_at": "2026-10-14T09:54:30.312524+00:00",
+      "apply_result": {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/deploy",
+          "body": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-a\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n"
+          },
+          "authorization": "[REDACTED]"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "response": "{\"services\":[{\"id\":\"srv-db7kvphllfps73emu850\",\"name\":\"qa-20261014-ca7258f4-src\",\"slug\":\"qa-20261014-ca7258f4-src\",\"displayName\":\"\",\"type\":\"web_service\",\"phase\":\"Running\",\"undeployedChanges\":false,\"undeployedChangesApplying\":false,\"url\":\"https://qa-20261014-ca7258f4-src.onbex.co\",\"urls\":[\"https://qa-20261014-ca7258f4-src.onbex.co\"],\"image\":\"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261014-ca7258f4-src:gen-1@sha256:59bd8546fadd86f4e97d13f87571c99268d5ec988a1533a669209b30cffb336b\",\"runtime\":\"node\",\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),http=require(\\\"http\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\",\"builder\":\"native\",\"replicas\":1,\"suspended\":false,\"plan\":\"free\",\"revision\":\"rev-1\",\"internalAddress\":\"qa-20261014-ca7258f4-src:3000\",\"port\":3000,\"createdAt\":\"2026-10-14T09:48:26Z\",\"updatedAt\":\"2026-10-14T09:50:40Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7kvphllfps73emu850\",\"region\":\"fsn1\",\"idleTTLSeconds\":0,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"linkedEnvGroupIds\":[\"evg-db7kvo1llfps73emu830\",\"evg-db7kvohllfps73emu840\"],\"autoDeploy\":false,\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"renderSubdomainPolicy\":\"enabled\",\"healthCheckPath\":\"/\",\"maxShutdownDelaySeconds\":30,\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"}},{\"id\":\"srv-db7kvqhllfps73emu87g\",\"name\":\"qa-20261014-ca7258f4-copy\",\"slug\":\"qa-20261014-ca7258f4-copy\",\"displayName\":\"\",\"type\":\"web_service\",\"phase\":\"Running\",\"undeployedChanges\":false,\"undeployedChangesApplying\":false,\"url\":\"https://qa-20261014-ca7258f4-copy.onbex.co\",\"urls\":[\"https://qa-20261014-ca7258f4-copy.onbex.co\"],\"image\":\"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261014-ca7258f4-copy:gen-1@sha256:d4ba85a8845f37ce7664c6f58d5bd2c6ac87146cae88dcdf013e0a7a2c96ef2e\",\"runtime\":\"node\",\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),http=require(\\\"http\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\",\"builder\":\"native\",\"replicas\":1,\"suspended\":false,\"plan\":\"free\",\"revision\":\"rev-1\",\"internalAddress\":\"qa-20261014-ca7258f4-copy:3000\",\"port\":3000,\"createdAt\":\"2026-10-14T09:48:26Z\",\"updatedAt\":\"2026-10-14T09:50:45Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7kvqhllfps73emu87g\",\"region\":\"fsn1\",\"idleTTLSeconds\":0,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":false,\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"renderSubdomainPolicy\":\"enabled\",\"healthCheckPath\":\"/\",\"maxShutdownDelaySeconds\":30,\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"}}],\"databases\":null,\"keyValues\":null,\"envGroups\":[{\"id\":\"evg-db7kvo1llfps73emu830\",\"name\":\"qa-20261014-ca7258f4-a\"},{\"id\":\"evg-db7kvohllfps73emu840\",\"name\":\"qa-20261014-ca7258f4-b\"}]}\n",
+        "stderr": ""
+      }
+    },
+    {
+      "variant": "undeclared-link",
+      "at": "2026-10-14T09:55:26.831667+00:00",
+      "manifest": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-a\n  - fromGroup: qa-20261014-ca7258f4-b\n  - fromGroup: qa-20261014-ca7258f4-a\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n",
+      "expected": "QA231_ca7258f4_B",
+      "expected_valid": false,
+      "qualification": "native validation; inline apply is API setup because pinned CLI has no Blueprint apply command",
+      "native_validations": [
+        {
+          "client": "bex",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-undeclared-link.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 1,
+            "elapsed": 0.302,
+            "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa-20261014-ca7258f4-copy\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on service \\\"qa-20261014-ca7258f4-src\\\", which has no such plainly-defined variable\",\n      \"line\": 40,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+            "stderr": ""
+          }
+        },
+        {
+          "client": "render",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-undeclared-link.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 1,
+            "elapsed": 0.286,
+            "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa-20261014-ca7258f4-copy\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on service \\\"qa-20261014-ca7258f4-src\\\", which has no such plainly-defined variable\",\n      \"line\": 40,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+            "stderr": ""
+          }
+        }
+      ],
+      "apply_intent_at": "2026-10-14T09:55:29.097583+00:00",
+      "apply_result": {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/deploy",
+          "body": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-a\n  - fromGroup: qa-20261014-ca7258f4-b\n  - fromGroup: qa-20261014-ca7258f4-a\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n"
+          },
+          "authorization": "[REDACTED]"
+        },
+        "status": "400",
+        "curl_exit": 0,
+        "response": "{\"error\":\"bad request: service \\\"qa-20261014-ca7258f4-copy\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on service \\\"qa-20261014-ca7258f4-src\\\", which has no such plainly-defined variable\",\"id\":\"bad_request\",\"message\":\"bad request: service \\\"qa-20261014-ca7258f4-copy\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on service \\\"qa-20261014-ca7258f4-src\\\", which has no such plainly-defined variable\"}\n",
+        "stderr": ""
+      }
+    },
+    {
+      "variant": "own-refusal",
+      "at": "2026-10-14T09:58:21.048950+00:00",
+      "manifest": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-a\n  - fromGroup: qa-20261014-ca7258f4-b\n  - fromGroup: qa-20261014-ca7258f4-a\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n",
+      "expected": "QA231_ca7258f4_B",
+      "expected_valid": false,
+      "qualification": "native validation; inline apply is API setup because pinned CLI has no Blueprint apply command",
+      "native_validations": [
+        {
+          "client": "bex",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-own-refusal.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 1,
+            "elapsed": 0.649,
+            "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa-20261014-ca7258f4-copy\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on existing service \\\"qa-20261014-ca7258f4-src\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\n      \"line\": 44,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+            "stderr": ""
+          }
+        },
+        {
+          "client": "render",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-own-refusal.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 1,
+            "elapsed": 1.147,
+            "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa-20261014-ca7258f4-copy\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on existing service \\\"qa-20261014-ca7258f4-src\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\n      \"line\": 44,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+            "stderr": ""
+          }
+        }
+      ],
+      "apply_intent_at": "2026-10-14T09:58:24.195261+00:00",
+      "apply_result": {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/deploy",
+          "body": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-a\n  - fromGroup: qa-20261014-ca7258f4-b\n  - fromGroup: qa-20261014-ca7258f4-a\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n"
+          },
+          "authorization": "[REDACTED]"
+        },
+        "status": "400",
+        "curl_exit": 0,
+        "response": "{\"error\":\"bad request: service \\\"qa-20261014-ca7258f4-copy\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on existing service \\\"qa-20261014-ca7258f4-src\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\"id\":\"bad_request\",\"message\":\"bad request: service \\\"qa-20261014-ca7258f4-copy\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on existing service \\\"qa-20261014-ca7258f4-src\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\"}\n",
+        "stderr": ""
+      }
+    },
+    {
+      "variant": "own-empty-refusal",
+      "at": "2026-10-14T10:01:48.394305+00:00",
+      "manifest": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-a\n  - fromGroup: qa-20261014-ca7258f4-b\n  - fromGroup: qa-20261014-ca7258f4-a\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n",
+      "expected": "QA231_ca7258f4_B",
+      "expected_valid": false,
+      "qualification": "native validation; inline apply is API setup because pinned CLI has no Blueprint apply command",
+      "native_validations": [
+        {
+          "client": "bex",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-own-empty-refusal.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 1,
+            "elapsed": 1.23,
+            "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa-20261014-ca7258f4-copy\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on existing service \\\"qa-20261014-ca7258f4-src\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\n      \"line\": 44,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+            "stderr": ""
+          }
+        },
+        {
+          "client": "render",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-own-empty-refusal.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 1,
+            "elapsed": 1.496,
+            "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa-20261014-ca7258f4-copy\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on existing service \\\"qa-20261014-ca7258f4-src\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\n      \"line\": 44,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+            "stderr": ""
+          }
+        }
+      ],
+      "apply_intent_at": "2026-10-14T10:01:52.502273+00:00",
+      "apply_result": {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/deploy",
+          "body": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-a\n  - fromGroup: qa-20261014-ca7258f4-b\n  - fromGroup: qa-20261014-ca7258f4-a\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n"
+          },
+          "authorization": "[REDACTED]"
+        },
+        "status": "400",
+        "curl_exit": 0,
+        "response": "{\"error\":\"bad request: service \\\"qa-20261014-ca7258f4-copy\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on existing service \\\"qa-20261014-ca7258f4-src\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\",\"id\":\"bad_request\",\"message\":\"bad request: service \\\"qa-20261014-ca7258f4-copy\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on existing service \\\"qa-20261014-ca7258f4-src\\\", which its own environment also sets over the group value, so its current value is not knowable from the Blueprint\"}\n",
+        "stderr": ""
+      }
+    },
+    {
+      "variant": "literal-seed",
+      "at": "2026-10-14T10:02:42.361773+00:00",
+      "manifest": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-a\n  - fromGroup: qa-20261014-ca7258f4-b\n  - fromGroup: qa-20261014-ca7258f4-a\n  - key: QA_VALUE\n    value: QA231_ca7258f4_LITERAL\n  - key: QA_VALUE\n    value: QA231_ca7258f4_SEED\n    sync: false\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n",
+      "expected": "QA231_ca7258f4_LITERAL",
+      "expected_valid": true,
+      "qualification": "native validation; inline apply is API setup because pinned CLI has no Blueprint apply command",
+      "native_validations": [
+        {
+          "client": "bex",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-literal-seed.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.899,
+            "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-ca7258f4-a\",\n      \"qa-20261014-ca7258f4-b\"\n    ],\n    \"services\": [\n      \"qa-20261014-ca7258f4-src\",\n      \"qa-20261014-ca7258f4-copy\"\n    ],\n    \"totalActions\": 4\n  },\n  \"valid\": true\n}",
+            "stderr": ""
+          }
+        },
+        {
+          "client": "render",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-literal-seed.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 1.501,
+            "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-ca7258f4-a\",\n      \"qa-20261014-ca7258f4-b\"\n    ],\n    \"services\": [\n      \"qa-20261014-ca7258f4-src\",\n      \"qa-20261014-ca7258f4-copy\"\n    ],\n    \"totalActions\": 4\n  },\n  \"valid\": true\n}",
+            "stderr": ""
+          }
+        }
+      ],
+      "apply_intent_at": "2026-10-14T10:02:46.140802+00:00",
+      "apply_result": {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/deploy",
+          "body": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-a\n  - fromGroup: qa-20261014-ca7258f4-b\n  - fromGroup: qa-20261014-ca7258f4-a\n  - key: QA_VALUE\n    value: QA231_ca7258f4_LITERAL\n  - key: QA_VALUE\n    value: QA231_ca7258f4_SEED\n    sync: false\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n"
+          },
+          "authorization": "[REDACTED]"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "response": "{\"services\":[{\"id\":\"srv-db7kvphllfps73emu850\",\"name\":\"qa-20261014-ca7258f4-src\",\"slug\":\"qa-20261014-ca7258f4-src\",\"displayName\":\"\",\"type\":\"web_service\",\"phase\":\"Running\",\"undeployedChanges\":false,\"undeployedChangesApplying\":false,\"url\":\"https://qa-20261014-ca7258f4-src.onbex.co\",\"urls\":[\"https://qa-20261014-ca7258f4-src.onbex.co\"],\"image\":\"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261014-ca7258f4-src:gen-3@sha256:ef81b39ada1d5233aaeca446ac5d9ce27a2eb72c9d7bd1c6c92488f208d05ea1\",\"runtime\":\"node\",\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),http=require(\\\"http\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\",\"builder\":\"native\",\"replicas\":1,\"suspended\":false,\"plan\":\"free\",\"revision\":\"rev-3\",\"internalAddress\":\"qa-20261014-ca7258f4-src:3000\",\"port\":3000,\"createdAt\":\"2026-10-14T09:48:26Z\",\"updatedAt\":\"2026-10-14T10:02:50.849409523Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7kvphllfps73emu850\",\"region\":\"fsn1\",\"idleTTLSeconds\":0,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"linkedEnvGroupIds\":[\"evg-db7kvo1llfps73emu830\",\"evg-db7kvohllfps73emu840\"],\"autoDeploy\":false,\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"renderSubdomainPolicy\":\"enabled\",\"healthCheckPath\":\"/\",\"maxShutdownDelaySeconds\":30,\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"}},{\"id\":\"srv-db7kvqhllfps73emu87g\",\"name\":\"qa-20261014-ca7258f4-copy\",\"slug\":\"qa-20261014-ca7258f4-copy\",\"displayName\":\"\",\"type\":\"web_service\",\"phase\":\"Running\",\"undeployedChanges\":false,\"undeployedChangesApplying\":false,\"url\":\"https://qa-20261014-ca7258f4-copy.onbex.co\",\"urls\":[\"https://qa-20261014-ca7258f4-copy.onbex.co\"],\"image\":\"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261014-ca7258f4-copy:gen-1@sha256:d4ba85a8845f37ce7664c6f58d5bd2c6ac87146cae88dcdf013e0a7a2c96ef2e\",\"runtime\":\"node\",\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),http=require(\\\"http\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\",\"builder\":\"native\",\"replicas\":1,\"suspended\":false,\"plan\":\"free\",\"revision\":\"rev-1\",\"internalAddress\":\"qa-20261014-ca7258f4-copy:3000\",\"port\":3000,\"createdAt\":\"2026-10-14T09:48:26Z\",\"updatedAt\":\"2026-10-14T10:02:53.014208833Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7kvqhllfps73emu87g\",\"region\":\"fsn1\",\"idleTTLSeconds\":0,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":false,\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"renderSubdomainPolicy\":\"enabled\",\"healthCheckPath\":\"/\",\"maxShutdownDelaySeconds\":30,\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"}}],\"databases\":null,\"keyValues\":null,\"envGroups\":[{\"id\":\"evg-db7kvo1llfps73emu830\",\"name\":\"qa-20261014-ca7258f4-a\"},{\"id\":\"evg-db7kvohllfps73emu840\",\"name\":\"qa-20261014-ca7258f4-b\"}]}\n",
+        "stderr": ""
+      }
+    },
+    {
+      "variant": "seed-literal",
+      "at": "2026-10-14T10:03:46.546553+00:00",
+      "manifest": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-a\n  - fromGroup: qa-20261014-ca7258f4-b\n  - fromGroup: qa-20261014-ca7258f4-a\n  - key: QA_VALUE\n    value: QA231_ca7258f4_SEED\n    sync: false\n  - key: QA_VALUE\n    value: QA231_ca7258f4_LITERAL\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n",
+      "expected": "QA231_ca7258f4_LITERAL",
+      "expected_valid": true,
+      "qualification": "native validation; inline apply is API setup because pinned CLI has no Blueprint apply command",
+      "native_validations": [
+        {
+          "client": "bex",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-seed-literal.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.897,
+            "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-ca7258f4-a\",\n      \"qa-20261014-ca7258f4-b\"\n    ],\n    \"services\": [\n      \"qa-20261014-ca7258f4-src\",\n      \"qa-20261014-ca7258f4-copy\"\n    ],\n    \"totalActions\": 4\n  },\n  \"valid\": true\n}",
+            "stderr": ""
+          }
+        },
+        {
+          "client": "render",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-seed-literal.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 1.04,
+            "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-ca7258f4-a\",\n      \"qa-20261014-ca7258f4-b\"\n    ],\n    \"services\": [\n      \"qa-20261014-ca7258f4-src\",\n      \"qa-20261014-ca7258f4-copy\"\n    ],\n    \"totalActions\": 4\n  },\n  \"valid\": true\n}",
+            "stderr": ""
+          }
+        }
+      ]
+    },
+    {
+      "variant": "seed-literal",
+      "at": "2026-10-14T10:05:25.933839+00:00",
+      "manifest": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-a\n  - fromGroup: qa-20261014-ca7258f4-b\n  - fromGroup: qa-20261014-ca7258f4-a\n  - key: QA_VALUE\n    value: QA231_ca7258f4_SEED\n    sync: false\n  - key: QA_VALUE\n    value: QA231_ca7258f4_LITERAL\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n",
+      "expected": "QA231_ca7258f4_LITERAL",
+      "expected_valid": true,
+      "qualification": "native validation; inline apply is API setup because pinned CLI has no Blueprint apply command",
+      "native_validations": [
+        {
+          "client": "bex",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-seed-literal.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.914,
+            "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-ca7258f4-a\",\n      \"qa-20261014-ca7258f4-b\"\n    ],\n    \"services\": [\n      \"qa-20261014-ca7258f4-src\",\n      \"qa-20261014-ca7258f4-copy\"\n    ],\n    \"totalActions\": 4\n  },\n  \"valid\": true\n}",
+            "stderr": ""
+          }
+        },
+        {
+          "client": "render",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-seed-literal.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.678,
+            "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-ca7258f4-a\",\n      \"qa-20261014-ca7258f4-b\"\n    ],\n    \"services\": [\n      \"qa-20261014-ca7258f4-src\",\n      \"qa-20261014-ca7258f4-copy\"\n    ],\n    \"totalActions\": 4\n  },\n  \"valid\": true\n}",
+            "stderr": ""
+          }
+        }
+      ],
+      "apply_intent_at": "2026-10-14T10:05:28.887763+00:00",
+      "apply_result": {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/deploy",
+          "body": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-a\n  - fromGroup: qa-20261014-ca7258f4-b\n  - fromGroup: qa-20261014-ca7258f4-a\n  - key: QA_VALUE\n    value: QA231_ca7258f4_SEED\n    sync: false\n  - key: QA_VALUE\n    value: QA231_ca7258f4_LITERAL\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n"
+          },
+          "authorization": "[REDACTED]"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "response": "{\"services\":[{\"id\":\"srv-db7kvphllfps73emu850\",\"name\":\"qa-20261014-ca7258f4-src\",\"slug\":\"qa-20261014-ca7258f4-src\",\"displayName\":\"\",\"type\":\"web_service\",\"phase\":\"Running\",\"undeployedChanges\":false,\"undeployedChangesApplying\":false,\"url\":\"https://qa-20261014-ca7258f4-src.onbex.co\",\"urls\":[\"https://qa-20261014-ca7258f4-src.onbex.co\"],\"image\":\"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261014-ca7258f4-src:gen-4@sha256:ed17c0fa04c3021ec3d001fb5bbcead128271d1da22442d0bb5e865e8da02c0a\",\"runtime\":\"node\",\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),http=require(\\\"http\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\",\"builder\":\"native\",\"replicas\":1,\"suspended\":false,\"plan\":\"free\",\"revision\":\"rev-4\",\"internalAddress\":\"qa-20261014-ca7258f4-src:3000\",\"port\":3000,\"createdAt\":\"2026-10-14T09:48:26Z\",\"updatedAt\":\"2026-10-14T10:03:54Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7kvphllfps73emu850\",\"region\":\"fsn1\",\"idleTTLSeconds\":0,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"linkedEnvGroupIds\":[\"evg-db7kvo1llfps73emu830\",\"evg-db7kvohllfps73emu840\"],\"autoDeploy\":false,\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"renderSubdomainPolicy\":\"enabled\",\"healthCheckPath\":\"/\",\"maxShutdownDelaySeconds\":30,\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"}},{\"id\":\"srv-db7kvqhllfps73emu87g\",\"name\":\"qa-20261014-ca7258f4-copy\",\"slug\":\"qa-20261014-ca7258f4-copy\",\"displayName\":\"\",\"type\":\"web_service\",\"phase\":\"Running\",\"undeployedChanges\":false,\"undeployedChangesApplying\":false,\"url\":\"https://qa-20261014-ca7258f4-copy.onbex.co\",\"urls\":[\"https://qa-20261014-ca7258f4-copy.onbex.co\"],\"image\":\"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261014-ca7258f4-copy:gen-2@sha256:9dd30f457743a5456c9786a807cabcd348f0cffcd9bb54cb52bcbdda9f8687a3\",\"runtime\":\"node\",\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),http=require(\\\"http\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\",\"builder\":\"native\",\"replicas\":1,\"suspended\":false,\"plan\":\"free\",\"revision\":\"rev-2\",\"internalAddress\":\"qa-20261014-ca7258f4-copy:3000\",\"port\":3000,\"createdAt\":\"2026-10-14T09:48:26Z\",\"updatedAt\":\"2026-10-14T10:04:41Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7kvqhllfps73emu87g\",\"region\":\"fsn1\",\"idleTTLSeconds\":0,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":false,\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"renderSubdomainPolicy\":\"enabled\",\"healthCheckPath\":\"/\",\"maxShutdownDelaySeconds\":30,\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"}}],\"databases\":null,\"keyValues\":null,\"envGroups\":[{\"id\":\"evg-db7kvo1llfps73emu830\",\"name\":\"qa-20261014-ca7258f4-a\"},{\"id\":\"evg-db7kvohllfps73emu840\",\"name\":\"qa-20261014-ca7258f4-b\"}]}\n",
+        "stderr": ""
+      }
+    },
+    {
+      "variant": "empty-literal-seed",
+      "at": "2026-10-14T10:08:28.297207+00:00",
+      "manifest": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-a\n  - fromGroup: qa-20261014-ca7258f4-b\n  - fromGroup: qa-20261014-ca7258f4-a\n  - key: QA_VALUE\n    value: ''\n  - key: QA_VALUE\n    value: QA231_ca7258f4_SEED\n    sync: false\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n",
+      "expected": "",
+      "expected_valid": true,
+      "qualification": "native validation; inline apply is API setup because pinned CLI has no Blueprint apply command",
+      "native_validations": [
+        {
+          "client": "bex",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-empty-literal-seed.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 1.155,
+            "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-ca7258f4-a\",\n      \"qa-20261014-ca7258f4-b\"\n    ],\n    \"services\": [\n      \"qa-20261014-ca7258f4-src\",\n      \"qa-20261014-ca7258f4-copy\"\n    ],\n    \"totalActions\": 4\n  },\n  \"valid\": true\n}",
+            "stderr": ""
+          }
+        },
+        {
+          "client": "render",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-empty-literal-seed.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 1.369,
+            "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-ca7258f4-a\",\n      \"qa-20261014-ca7258f4-b\"\n    ],\n    \"services\": [\n      \"qa-20261014-ca7258f4-src\",\n      \"qa-20261014-ca7258f4-copy\"\n    ],\n    \"totalActions\": 4\n  },\n  \"valid\": true\n}",
+            "stderr": ""
+          }
+        }
+      ],
+      "apply_intent_at": "2026-10-14T10:08:32.178588+00:00",
+      "apply_result": {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/deploy",
+          "body": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-a\n  - fromGroup: qa-20261014-ca7258f4-b\n  - fromGroup: qa-20261014-ca7258f4-a\n  - key: QA_VALUE\n    value: ''\n  - key: QA_VALUE\n    value: QA231_ca7258f4_SEED\n    sync: false\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n"
+          },
+          "authorization": "[REDACTED]"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "response": "{\"services\":[{\"id\":\"srv-db7kvphllfps73emu850\",\"name\":\"qa-20261014-ca7258f4-src\",\"slug\":\"qa-20261014-ca7258f4-src\",\"displayName\":\"\",\"type\":\"web_service\",\"phase\":\"Running\",\"undeployedChanges\":false,\"undeployedChangesApplying\":false,\"url\":\"https://qa-20261014-ca7258f4-src.onbex.co\",\"urls\":[\"https://qa-20261014-ca7258f4-src.onbex.co\"],\"image\":\"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261014-ca7258f4-src:gen-4@sha256:ed17c0fa04c3021ec3d001fb5bbcead128271d1da22442d0bb5e865e8da02c0a\",\"runtime\":\"node\",\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),http=require(\\\"http\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\",\"builder\":\"native\",\"replicas\":1,\"suspended\":false,\"plan\":\"free\",\"revision\":\"rev-4\",\"internalAddress\":\"qa-20261014-ca7258f4-src:3000\",\"port\":3000,\"createdAt\":\"2026-10-14T09:48:26Z\",\"updatedAt\":\"2026-10-14T10:08:36.899383446Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7kvphllfps73emu850\",\"region\":\"fsn1\",\"idleTTLSeconds\":0,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"linkedEnvGroupIds\":[\"evg-db7kvo1llfps73emu830\",\"evg-db7kvohllfps73emu840\"],\"autoDeploy\":false,\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"renderSubdomainPolicy\":\"enabled\",\"healthCheckPath\":\"/\",\"maxShutdownDelaySeconds\":30,\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"}},{\"id\":\"srv-db7kvqhllfps73emu87g\",\"name\":\"qa-20261014-ca7258f4-copy\",\"slug\":\"qa-20261014-ca7258f4-copy\",\"displayName\":\"\",\"type\":\"web_service\",\"phase\":\"Running\",\"undeployedChanges\":false,\"undeployedChangesApplying\":false,\"url\":\"https://qa-20261014-ca7258f4-copy.onbex.co\",\"urls\":[\"https://qa-20261014-ca7258f4-copy.onbex.co\"],\"image\":\"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261014-ca7258f4-copy:gen-3@sha256:c39f4c2211316529168b2beca83d6ca17e7acf2f8775d0be8dc4dcf857a28fce\",\"runtime\":\"node\",\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),http=require(\\\"http\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\",\"builder\":\"native\",\"replicas\":1,\"suspended\":false,\"plan\":\"free\",\"revision\":\"rev-3\",\"internalAddress\":\"qa-20261014-ca7258f4-copy:3000\",\"port\":3000,\"createdAt\":\"2026-10-14T09:48:26Z\",\"updatedAt\":\"2026-10-14T10:08:38.353287399Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7kvqhllfps73emu87g\",\"region\":\"fsn1\",\"idleTTLSeconds\":0,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":false,\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"renderSubdomainPolicy\":\"enabled\",\"healthCheckPath\":\"/\",\"maxShutdownDelaySeconds\":30,\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"}}],\"databases\":null,\"keyValues\":null,\"envGroups\":[{\"id\":\"evg-db7kvo1llfps73emu830\",\"name\":\"qa-20261014-ca7258f4-a\"},{\"id\":\"evg-db7kvohllfps73emu840\",\"name\":\"qa-20261014-ca7258f4-b\"}]}\n",
+        "stderr": ""
+      }
+    },
+    {
+      "variant": "empty-seed-literal",
+      "at": "2026-10-14T10:11:44.500837+00:00",
+      "manifest": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-a\n  - fromGroup: qa-20261014-ca7258f4-b\n  - fromGroup: qa-20261014-ca7258f4-a\n  - key: QA_VALUE\n    value: QA231_ca7258f4_SEED\n    sync: false\n  - key: QA_VALUE\n    value: ''\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n",
+      "expected": "",
+      "expected_valid": true,
+      "qualification": "native validation; inline apply is API setup because pinned CLI has no Blueprint apply command",
+      "native_validations": [
+        {
+          "client": "bex",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-empty-seed-literal.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 1.476,
+            "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-ca7258f4-a\",\n      \"qa-20261014-ca7258f4-b\"\n    ],\n    \"services\": [\n      \"qa-20261014-ca7258f4-src\",\n      \"qa-20261014-ca7258f4-copy\"\n    ],\n    \"totalActions\": 4\n  },\n  \"valid\": true\n}",
+            "stderr": ""
+          }
+        },
+        {
+          "client": "render",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "blueprints",
+              "validate",
+              "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-empty-seed-literal.yaml",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.728,
+            "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-ca7258f4-a\",\n      \"qa-20261014-ca7258f4-b\"\n    ],\n    \"services\": [\n      \"qa-20261014-ca7258f4-src\",\n      \"qa-20261014-ca7258f4-copy\"\n    ],\n    \"totalActions\": 4\n  },\n  \"valid\": true\n}",
+            "stderr": ""
+          }
+        }
+      ],
+      "apply_intent_at": "2026-10-14T10:11:48.067566+00:00",
+      "apply_result": {
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/deploy",
+          "body": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-a\n  - fromGroup: qa-20261014-ca7258f4-b\n  - fromGroup: qa-20261014-ca7258f4-a\n  - key: QA_VALUE\n    value: QA231_ca7258f4_SEED\n    sync: false\n  - key: QA_VALUE\n    value: ''\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n"
+          },
+          "authorization": "[REDACTED]"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "response": "{\"services\":[{\"id\":\"srv-db7kvphllfps73emu850\",\"name\":\"qa-20261014-ca7258f4-src\",\"slug\":\"qa-20261014-ca7258f4-src\",\"displayName\":\"\",\"type\":\"web_service\",\"phase\":\"Running\",\"undeployedChanges\":false,\"undeployedChangesApplying\":false,\"url\":\"https://qa-20261014-ca7258f4-src.onbex.co\",\"urls\":[\"https://qa-20261014-ca7258f4-src.onbex.co\"],\"image\":\"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261014-ca7258f4-src:gen-5@sha256:99ccac85b92ac235df36a4bbcd869f2cfc80a4bb95235bc0999bb9d9d24cc255\",\"runtime\":\"node\",\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),http=require(\\\"http\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\",\"builder\":\"native\",\"replicas\":1,\"suspended\":false,\"plan\":\"free\",\"revision\":\"rev-5\",\"internalAddress\":\"qa-20261014-ca7258f4-src:3000\",\"port\":3000,\"createdAt\":\"2026-10-14T09:48:26Z\",\"updatedAt\":\"2026-10-14T10:09:40Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7kvphllfps73emu850\",\"region\":\"fsn1\",\"idleTTLSeconds\":0,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"linkedEnvGroupIds\":[\"evg-db7kvo1llfps73emu830\",\"evg-db7kvohllfps73emu840\"],\"autoDeploy\":false,\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"renderSubdomainPolicy\":\"enabled\",\"healthCheckPath\":\"/\",\"maxShutdownDelaySeconds\":30,\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"}},{\"id\":\"srv-db7kvqhllfps73emu87g\",\"name\":\"qa-20261014-ca7258f4-copy\",\"slug\":\"qa-20261014-ca7258f4-copy\",\"displayName\":\"\",\"type\":\"web_service\",\"phase\":\"Running\",\"undeployedChanges\":false,\"undeployedChangesApplying\":false,\"url\":\"https://qa-20261014-ca7258f4-copy.onbex.co\",\"urls\":[\"https://qa-20261014-ca7258f4-copy.onbex.co\"],\"image\":\"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261014-ca7258f4-copy:gen-4@sha256:615dbd9eb8d25ee43bafea48076a451feea0de82bea1cad75ab11523e46a778d\",\"runtime\":\"node\",\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),http=require(\\\"http\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\",\"builder\":\"native\",\"replicas\":1,\"suspended\":false,\"plan\":\"free\",\"revision\":\"rev-4\",\"internalAddress\":\"qa-20261014-ca7258f4-copy:3000\",\"port\":3000,\"createdAt\":\"2026-10-14T09:48:26Z\",\"updatedAt\":\"2026-10-14T10:10:26Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7kvqhllfps73emu87g\",\"region\":\"fsn1\",\"idleTTLSeconds\":0,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":false,\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"renderSubdomainPolicy\":\"enabled\",\"healthCheckPath\":\"/\",\"maxShutdownDelaySeconds\":30,\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"}}],\"databases\":null,\"keyValues\":null,\"envGroups\":[{\"id\":\"evg-db7kvo1llfps73emu830\",\"name\":\"qa-20261014-ca7258f4-a\"},{\"id\":\"evg-db7kvohllfps73emu840\",\"name\":\"qa-20261014-ca7258f4-b\"}]}\n",
+        "stderr": ""
+      }
+    }
+  ],
+  "last_apply": {
+    "variant": "empty-seed-literal",
+    "at": "2026-10-14T10:11:44.500837+00:00",
+    "manifest": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-a\n  - fromGroup: qa-20261014-ca7258f4-b\n  - fromGroup: qa-20261014-ca7258f4-a\n  - key: QA_VALUE\n    value: QA231_ca7258f4_SEED\n    sync: false\n  - key: QA_VALUE\n    value: ''\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n",
+    "expected": "",
+    "expected_valid": true,
+    "qualification": "native validation; inline apply is API setup because pinned CLI has no Blueprint apply command",
+    "native_validations": [
+      {
+        "client": "bex",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-empty-seed-literal.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 1.476,
+          "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-ca7258f4-a\",\n      \"qa-20261014-ca7258f4-b\"\n    ],\n    \"services\": [\n      \"qa-20261014-ca7258f4-src\",\n      \"qa-20261014-ca7258f4-copy\"\n    ],\n    \"totalActions\": 4\n  },\n  \"valid\": true\n}",
+          "stderr": ""
+        }
+      },
+      {
+        "client": "render",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "blueprints",
+            "validate",
+            "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep231-empty-seed-literal.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.728,
+          "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261014-ca7258f4-a\",\n      \"qa-20261014-ca7258f4-b\"\n    ],\n    \"services\": [\n      \"qa-20261014-ca7258f4-src\",\n      \"qa-20261014-ca7258f4-copy\"\n    ],\n    \"totalActions\": 4\n  },\n  \"valid\": true\n}",
+          "stderr": ""
+        }
+      }
+    ],
+    "apply_intent_at": "2026-10-14T10:11:48.067566+00:00",
+    "apply_result": {
+      "request": {
+        "method": "POST",
+        "path": "/v1/blueprints/deploy",
+        "body": {
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "bexYaml": "envVarGroups:\n- name: qa-20261014-ca7258f4-a\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_A\n- name: qa-20261014-ca7258f4-b\n  envVars:\n  - key: QA_VALUE\n    value: QA231_ca7258f4_B\nservices:\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-src\n  envVars:\n  - fromGroup: qa-20261014-ca7258f4-a\n  - fromGroup: qa-20261014-ca7258f4-b\n  - fromGroup: qa-20261014-ca7258f4-a\n  - key: QA_VALUE\n    value: QA231_ca7258f4_SEED\n    sync: false\n  - key: QA_VALUE\n    value: ''\n- type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/bex-co/bex\n  branch: main\n  rootDir: examples/hello-go\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require(\"fs\");function snap(){return\n    {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require(\"fs\"),http=require(\"http\");function\n    snap(){return {marker:\"QA231_ca7258f4\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const\n    built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'\n  healthCheckPath: /\n  name: qa-20261014-ca7258f4-copy\n  envVars:\n  - key: QA_COPY\n    fromService:\n      type: web\n      name: qa-20261014-ca7258f4-src\n      envVarKey: QA_VALUE\n"
+        },
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "response": "{\"services\":[{\"id\":\"srv-db7kvphllfps73emu850\",\"name\":\"qa-20261014-ca7258f4-src\",\"slug\":\"qa-20261014-ca7258f4-src\",\"displayName\":\"\",\"type\":\"web_service\",\"phase\":\"Running\",\"undeployedChanges\":false,\"undeployedChangesApplying\":false,\"url\":\"https://qa-20261014-ca7258f4-src.onbex.co\",\"urls\":[\"https://qa-20261014-ca7258f4-src.onbex.co\"],\"image\":\"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261014-ca7258f4-src:gen-5@sha256:99ccac85b92ac235df36a4bbcd869f2cfc80a4bb95235bc0999bb9d9d24cc255\",\"runtime\":\"node\",\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),http=require(\\\"http\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\",\"builder\":\"native\",\"replicas\":1,\"suspended\":false,\"plan\":\"free\",\"revision\":\"rev-5\",\"internalAddress\":\"qa-20261014-ca7258f4-src:3000\",\"port\":3000,\"createdAt\":\"2026-10-14T09:48:26Z\",\"updatedAt\":\"2026-10-14T10:09:40Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7kvphllfps73emu850\",\"region\":\"fsn1\",\"idleTTLSeconds\":0,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"linkedEnvGroupIds\":[\"evg-db7kvo1llfps73emu830\",\"evg-db7kvohllfps73emu840\"],\"autoDeploy\":false,\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"renderSubdomainPolicy\":\"enabled\",\"healthCheckPath\":\"/\",\"maxShutdownDelaySeconds\":30,\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"}},{\"id\":\"srv-db7kvqhllfps73emu87g\",\"name\":\"qa-20261014-ca7258f4-copy\",\"slug\":\"qa-20261014-ca7258f4-copy\",\"displayName\":\"\",\"type\":\"web_service\",\"phase\":\"Running\",\"undeployedChanges\":false,\"undeployedChangesApplying\":false,\"url\":\"https://qa-20261014-ca7258f4-copy.onbex.co\",\"urls\":[\"https://qa-20261014-ca7258f4-copy.onbex.co\"],\"image\":\"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261014-ca7258f4-copy:gen-4@sha256:615dbd9eb8d25ee43bafea48076a451feea0de82bea1cad75ab11523e46a778d\",\"runtime\":\"node\",\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),http=require(\\\"http\\\");function snap(){return {marker:\\\"QA231_ca7258f4\\\",value:process.env.QA_VALUE??null,copy:process.env.QA_COPY??null};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\",\"builder\":\"native\",\"replicas\":1,\"suspended\":false,\"plan\":\"free\",\"revision\":\"rev-4\",\"internalAddress\":\"qa-20261014-ca7258f4-copy:3000\",\"port\":3000,\"createdAt\":\"2026-10-14T09:48:26Z\",\"updatedAt\":\"2026-10-14T10:10:26Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7kvqhllfps73emu87g\",\"region\":\"fsn1\",\"idleTTLSeconds\":0,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":false,\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"renderSubdomainPolicy\":\"enabled\",\"healthCheckPath\":\"/\",\"maxShutdownDelaySeconds\":30,\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"}}],\"databases\":null,\"keyValues\":null,\"envGroups\":[{\"id\":\"evg-db7kvo1llfps73emu830\",\"name\":\"qa-20261014-ca7258f4-a\"},{\"id\":\"evg-db7kvohllfps73emu840\",\"name\":\"qa-20261014-ca7258f4-b\"}]}\n",
+      "stderr": ""
+    }
+  },
+  "own_edits": [
+    {
+      "at": "2026-10-14T09:55:57.064146+00:00",
+      "value": "QA231_ca7258f4_OWN",
+      "intent": "same-key own mutable override on exact-owned source, save_only",
+      "result": {
+        "request": {
+          "method": "PATCH",
+          "path": "/v1/services/srv-db7kvphllfps73emu850/environment",
+          "body": {
+            "envVars": [
+              {
+                "key": "QA_VALUE",
+                "value": "QA231_ca7258f4_OWN"
+              }
+            ],
+            "saveMode": "save_only"
+          },
+          "authorization": "[REDACTED]"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "response": "{\"envVarKeys\":[\"QA_VALUE\"],\"secretFileNames\":null,\"rolledOut\":false,\"revision\":null}\n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T09:59:32.047578+00:00",
+      "value": "",
+      "intent": "same-key own mutable override on exact-owned source, save_only",
+      "result": {
+        "request": {
+          "method": "PATCH",
+          "path": "/v1/services/srv-db7kvphllfps73emu850/environment",
+          "body": {
+            "envVars": [
+              {
+                "key": "QA_VALUE",
+                "value": ""
+              }
+            ],
+            "saveMode": "save_only"
+          },
+          "authorization": "[REDACTED]"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "response": "{\"envVarKeys\":[\"QA_VALUE\"],\"secretFileNames\":null,\"rolledOut\":false,\"revision\":null}\n",
+        "stderr": ""
+      }
+    }
+  ],
+  "cleanup_group_inventory": {
+    "at": "2026-10-14T10:17:00.844209+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/env-groups?ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 1.793,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4a5d4e99b0af99b-SJC"
+    },
+    "response": "[]\n"
+  },
+  "cleanup_blueprint_inventory": {
+    "at": "2026-10-14T10:17:01.163103+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/blueprints?ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.249,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4a5d4f53bbb2ca1-SJC"
+    },
+    "response": "[{\"blueprint\":{\"id\":\"blp-db136288mmqc73d4hpug\",\"name\":\"bex\",\"status\":\"in_sync\",\"autoSync\":true,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"path\":\"render.yaml\"},\"cursor\":\"blp-db136288mmqc73d4hpug\"}]\n"
+  }
+}

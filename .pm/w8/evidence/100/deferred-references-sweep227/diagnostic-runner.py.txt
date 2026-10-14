@@ -1,0 +1,26 @@
+from pathlib import Path
+import subprocess, os, json, re
+p = Path(__file__).parent
+root = Path('$REPO')
+overlay = p / 'sweep227-deferred-overlay.json'
+overlay.write_text(json.dumps({'Replace': {str(root / 'lego/backend/internal/apps/qa227_deferred_probe_test.go'): str(p / 'sweep227-deferred-probe_test.go')}}))
+env = {k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_','PG','REDISCLI_'))}
+env.update(GOWORK='off', GOTOOLCHAIN='go1.26.8')
+head = subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()
+with (p / 'sweep227-deferred-events.jsonl').open('w') as out, (p / 'sweep227-deferred-stderr.log').open('w') as err:
+ r = subprocess.run(['go','test','-overlay',str(overlay),'./internal/apps','-run','^TestQA227DeferredReferenceLocation$','-count=1','-json'],cwd=root/'lego/backend',env=env,stdout=out,stderr=err,timeout=240)
+assert r.returncode==0, 'Inspect private source diagnostic output'
+combined={}
+for line in (p/'sweep227-deferred-events.jsonl').read_text().splitlines():
+ e=json.loads(line)
+ if e.get('Action')=='output':
+  name=e.get('Test','');combined[name]=combined.get(name,'')+e.get('Output','')
+rows=[]
+for output in combined.values():
+ for match in re.finditer(r'QA227_DEFERRED (\{[^\n]+\})',output):
+  row=json.loads(match[1]);row['source_head']=head;rows.append(row)
+assert len(rows)==24,len(rows)
+(p/'sweep227-deferred-source-results.json').write_text(json.dumps(rows,indent=2)+'\n')
+for row in rows:
+ print(json.dumps({k:row[k] for k in ['case','expect_valid','actual_path','expected_path','location_or_valid_control_pass']}),flush=True)
+print('Source cases:',len(rows),'mismatches:',sum(not x['location_or_valid_control_pass'] for x in rows),flush=True)

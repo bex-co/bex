@@ -1,0 +1,25 @@
+require 'json'
+require 'socket'
+require 'digest/sha2'
+def snap
+ b=File.binread('/etc/secrets/qa-note.txt')
+ {'marker'=>ENV.fetch('QA_MARKER'),'path'=>ENV.fetch('PATH'),'fileBase64'=>[b].pack('m0'),'fileSHA256'=>Digest::SHA256.hexdigest(b)}
+end
+if ARGV[0]=='--snapshot'
+ puts JSON.generate(snap)
+ exit 0
+end
+built=JSON.parse(File.read('qa-built.json'))
+server=TCPServer.new('0.0.0.0',Integer(ENV.fetch('PORT','3000')))
+loop do
+ client=server.accept
+ begin
+  request=client.gets
+  next if request.nil?
+  while (line=client.gets) && line!="\r\n"; end
+  payload=JSON.generate({'built'=>built,'runtime'=>snap})
+  client.write("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: #{payload.bytesize}\r\nConnection: close\r\n\r\n"+payload)
+ ensure
+  client.close
+ end
+end

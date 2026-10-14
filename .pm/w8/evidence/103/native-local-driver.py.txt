@@ -1,0 +1,70 @@
+from pathlib import Path
+import json, os, subprocess, threading, http.server, shutil, time, yaml
+
+p = Path(__file__).parent
+rows = json.loads((p / 'sweep225-path-results.json').read_text())
+results = []
+for row in rows:
+    for client in ('bex', 'render'):
+        captures = []
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+            def do_GET(self):
+                self.send_error(405)
+            def do_POST(self):
+                if self.path != '/v1/services':
+                    self.send_error(400)
+                    return
+                body = self.rfile.read(int(self.headers['Content-Length'])).decode()
+                captures.append({'method':'POST', 'path':self.path, 'body':json.loads(body),
+                                 'scope':'local fake response only; no request forwarded to production; dummy credential'})
+                value = json.loads(body)
+                response = json.dumps({'service':{'id':'srv-qa225localonly', 'name':value['name'],
+                    'type':'web_service', 'serviceDetails':{'runtime':'image', 'plan':'free', 'region':'frankfurt'}},
+                    'deployId':'dep-qa225localonly'}).encode()
+                self.send_response(201)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Length', str(len(response)))
+                self.end_headers()
+                self.wfile.write(response)
+        server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        server.daemon_threads = True
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        origin = f'http://127.0.0.1:{server.server_port}/v1/'
+        cfgdir = p / f'sweep225-local-config-{server.server_port}'
+        cfgdir.mkdir(mode=0o700)
+        cfg = cfgdir / 'cli.yaml'
+        cfg.write_text(yaml.safe_dump({'version':1, 'workspace':'tea-qa225localonly',
+            'workspace_name':'qa-local', 'api':{'host':origin, 'key':'qa225-dummy-local-key'}}))
+        cfg.chmod(0o600)
+        prefix = 'BEX' if client == 'bex' else 'RENDER'
+        env = {k:v for k,v in os.environ.items() if not k.startswith(('BEX_', 'RENDER_', 'QA_'))}
+        env.update({prefix+'_HOST':origin, prefix+'_CLI_CONFIG_DIR':str(cfgdir), prefix+'_CLI_CONFIG_PATH':str(cfg),
+            prefix+'_WORKSPACE':'tea-qa225localonly', prefix+'_CLI_DISABLE_ANALYTICS':'1', 'BEX_NO_UPDATE_NOTIFIER':'1',
+            'DO_NOT_TRACK':'1', 'BROWSER':'/usr/bin/true'})
+        args = ['services', 'create', '--name','qa225-local', '--type','web_service', '--image','nginx:1',
+                '--plan','free', '--region','frankfurt', '--secret-file',row['literal_argument'], '--confirm','-o','json']
+        binary = p / 'release/bex' if client == 'bex' else p / 'render-pin'
+        start = time.monotonic()
+        try:
+            result = subprocess.run([str(binary),*args], env=env, text=True, capture_output=True, timeout=20)
+            actual = captures[0]['body']['secretFiles'][0]['content'] if captures else None
+            receipt = {'client':client, 'case':row['case'], 'command':[client,*args],
+                'exit':result.returncode, 'elapsed':round(time.monotonic()-start,3),
+                'stdout':result.stdout, 'stderr':result.stderr, 'captures':captures,
+                'expected_content':row['expected_content'], 'actual_request_content':actual,
+                'file_bytes_preserved':actual==row['expected_content'],
+                'qualification':'actual published Bex / unmodified Render against local POST-only fixture responder; no live hosting or production auth claim'}
+            results.append(receipt)
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+            shutil.rmtree(cfgdir)
+        (p / 'sweep225-native-local-results.json').write_text(json.dumps(results, indent=2) + '\n')
+        print(json.dumps({'client':client,'case':row['case'],'exit':result.returncode,
+            'POSTs':len(captures),'expected_content':row['expected_content'],'actual_content':actual}),flush=True)
+assert len(results)==12
+print('Twelve actual native commands completed; no production requests or resources; all dummy configs/servers removed.',flush=True)

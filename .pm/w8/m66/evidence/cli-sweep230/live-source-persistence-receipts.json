@@ -1,0 +1,455 @@
+{
+  "owned_service": "srv-db7j7vhllfps73emu6cg",
+  "registration": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/deploy",
+      "body": {
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "repo": "https://github.com/expressjs/express",
+        "branch": "master",
+        "bexYaml": "services:\n- name: qa-20261014-b51b53-hook\n  type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/expressjs/express\n  branch: master\n  rootDir: ''\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"');function snap(){return\n    {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\"'\"'qa-built.json'\"'\"',JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),http=require('\"'\"'http'\"'\"');function\n    snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"'));http.createServer((q,r)=>{const\n    b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'\n  healthCheckPath: /\n  initialDeployHook: '/usr/local/bin/node -e ''fetch(\"https://qa-20261014-26afa0-count.onbex.co/hit\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:\"{\\\"marker\\\":\n    \\\"QA230_26afa042bfeb\\\", \\\"fixture\\\": \\\"qa-20261014-b51b53-hook\\\", \\\"role\\\": \\\"initial\\\"}\"}).then(async\n    r=>{if(!r.ok)throw new Error(\"counter status \"+r.status);console.log(JSON.stringify(await\n    r.json()));}).catch(e=>{console.error(e.message);process.exit(1);});'''\n  preDeployCommand: '/usr/local/bin/node -e ''fetch(\"https://qa-20261014-26afa0-count.onbex.co/hit\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:\"{\\\"marker\\\":\n    \\\"QA230_26afa042bfeb\\\", \\\"fixture\\\": \\\"qa-20261014-b51b53-hook\\\", \\\"role\\\": \\\"regular\\\"}\"}).then(async\n    r=>{if(!r.ok)throw new Error(\"counter status \"+r.status);console.log(JSON.stringify(await\n    r.json()));}).catch(e=>{console.error(e.message);process.exit(1);});'''\n  envVars:\n  - key: PATH\n    value: /usr/bin:/bin\n  - key: QA_LITERAL\n    value: \"QA230_b51b53\\n\\u2603=literal\"\n"
+      },
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "response": "{\"services\":[{\"id\":\"srv-db7j7vhllfps73emu6cg\",\"name\":\"qa-20261014-b51b53-hook\",\"slug\":\"qa-20261014-b51b53-hook\",\"displayName\":\"\",\"type\":\"web_service\",\"phase\":\"Hibernated\",\"undeployedChanges\":false,\"undeployedChangesApplying\":false,\"url\":\"https://qa-20261014-b51b53-hook.onbex.co\",\"urls\":[\"https://qa-20261014-b51b53-hook.onbex.co\"],\"image\":\"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261014-b51b53-hook:gen-5@sha256:4a69064bca5dc68db0cc735cec8bca83cd39ba4741ea034ff5bdbcf56dabb663\",\"runtime\":\"node\",\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"');function snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),http=require('\\\"'\\\"'http'\\\"'\\\"');function snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"'));http.createServer((q,r)=\\u003e{const b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\",\"builder\":\"native\",\"replicas\":1,\"suspended\":false,\"plan\":\"free\",\"revision\":\"rev-5\",\"internalAddress\":\"qa-20261014-b51b53-hook:3000\",\"port\":3000,\"createdAt\":\"2026-10-14T07:49:18Z\",\"updatedAt\":\"2026-10-14T08:49:38.198848451Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7j7vhllfps73emu6cg\",\"region\":\"fsn1\",\"idleTTLSeconds\":0,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"repo\":\"https://github.com/expressjs/express\",\"branch\":\"master\",\"autoDeploy\":false,\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"renderSubdomainPolicy\":\"enabled\",\"healthCheckPath\":\"/\",\"maxShutdownDelaySeconds\":30,\"preDeployCommand\":\"/usr/local/bin/node -e 'fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\": \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"regular\\\\\\\"}\\\"}).then(async r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'\",\"initialDeployHook\":\"/usr/local/bin/node -e 'fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\": \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"initial\\\\\\\"}\\\"}).then(async r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"}}],\"databases\":null,\"keyValues\":null,\"envGroups\":null}\n",
+    "stderr": "",
+    "qualification": "owned API setup/sync/disconnect; not native CLI coverage"
+  },
+  "persistent_ownership_and_syncs": {
+    "sweep": 230,
+    "type": "blueprint",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "case": "persistent",
+    "name": "qa-20261014-b51b53-hook-bp",
+    "desired_QA_name": "qa-20261014-b51b53-hook-bp",
+    "time": "2026-10-14T08:49:37.583235+00:00",
+    "dependency_ids": [
+      "srv-db7j7vhllfps73emu6cg"
+    ],
+    "before_inventory": [
+      {
+        "id": "blp-db136288mmqc73d4hpug",
+        "name": "bex",
+        "repo": "https://github.com/bex-co/bex",
+        "branch": "main",
+        "path": "render.yaml"
+      }
+    ],
+    "repo": "https://github.com/expressjs/express",
+    "branch": "master",
+    "path": "render.yaml",
+    "manifest": "services:\n- name: qa-20261014-b51b53-hook\n  type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/expressjs/express\n  branch: master\n  rootDir: ''\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"');function snap(){return\n    {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\"'\"'qa-built.json'\"'\"',JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),http=require('\"'\"'http'\"'\"');function\n    snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"'));http.createServer((q,r)=>{const\n    b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'\n  healthCheckPath: /\n  initialDeployHook: '/usr/local/bin/node -e ''fetch(\"https://qa-20261014-26afa0-count.onbex.co/hit\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:\"{\\\"marker\\\":\n    \\\"QA230_26afa042bfeb\\\", \\\"fixture\\\": \\\"qa-20261014-b51b53-hook\\\", \\\"role\\\": \\\"initial\\\"}\"}).then(async\n    r=>{if(!r.ok)throw new Error(\"counter status \"+r.status);console.log(JSON.stringify(await\n    r.json()));}).catch(e=>{console.error(e.message);process.exit(1);});'''\n  preDeployCommand: '/usr/local/bin/node -e ''fetch(\"https://qa-20261014-26afa0-count.onbex.co/hit\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:\"{\\\"marker\\\":\n    \\\"QA230_26afa042bfeb\\\", \\\"fixture\\\": \\\"qa-20261014-b51b53-hook\\\", \\\"role\\\": \\\"regular\\\"}\"}).then(async\n    r=>{if(!r.ok)throw new Error(\"counter status \"+r.status);console.log(JSON.stringify(await\n    r.json()));}).catch(e=>{console.error(e.message);process.exit(1);});'''\n  envVars:\n  - key: PATH\n    value: /usr/bin:/bin\n  - key: QA_LITERAL\n    value: \"QA230_b51b53\\n\\u2603=literal\"\n",
+    "state": "deleted: own metadata disconnected; detail404/listabsent/baseline Blueprint preserved",
+    "API_registration_body": {
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/expressjs/express",
+      "branch": "master",
+      "bexYaml": "services:\n- name: qa-20261014-b51b53-hook\n  type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/expressjs/express\n  branch: master\n  rootDir: ''\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"');function snap(){return\n    {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\"'\"'qa-built.json'\"'\"',JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),http=require('\"'\"'http'\"'\"');function\n    snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"'));http.createServer((q,r)=>{const\n    b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'\n  healthCheckPath: /\n  initialDeployHook: '/usr/local/bin/node -e ''fetch(\"https://qa-20261014-26afa0-count.onbex.co/hit\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:\"{\\\"marker\\\":\n    \\\"QA230_26afa042bfeb\\\", \\\"fixture\\\": \\\"qa-20261014-b51b53-hook\\\", \\\"role\\\": \\\"initial\\\"}\"}).then(async\n    r=>{if(!r.ok)throw new Error(\"counter status \"+r.status);console.log(JSON.stringify(await\n    r.json()));}).catch(e=>{console.error(e.message);process.exit(1);});'''\n  preDeployCommand: '/usr/local/bin/node -e ''fetch(\"https://qa-20261014-26afa0-count.onbex.co/hit\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:\"{\\\"marker\\\":\n    \\\"QA230_26afa042bfeb\\\", \\\"fixture\\\": \\\"qa-20261014-b51b53-hook\\\", \\\"role\\\": \\\"regular\\\"}\"}).then(async\n    r=>{if(!r.ok)throw new Error(\"counter status \"+r.status);console.log(JSON.stringify(await\n    r.json()));}).catch(e=>{console.error(e.message);process.exit(1);});'''\n  envVars:\n  - key: PATH\n    value: /usr/bin:/bin\n  - key: QA_LITERAL\n    value: \"QA230_b51b53\\n\\u2603=literal\"\n"
+    },
+    "registration_result": {
+      "request": {
+        "method": "POST",
+        "path": "/v1/blueprints/deploy",
+        "body": {
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "repo": "https://github.com/expressjs/express",
+          "branch": "master",
+          "bexYaml": "services:\n- name: qa-20261014-b51b53-hook\n  type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/expressjs/express\n  branch: master\n  rootDir: ''\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"');function snap(){return\n    {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\"'\"'qa-built.json'\"'\"',JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),http=require('\"'\"'http'\"'\"');function\n    snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"'));http.createServer((q,r)=>{const\n    b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'\n  healthCheckPath: /\n  initialDeployHook: '/usr/local/bin/node -e ''fetch(\"https://qa-20261014-26afa0-count.onbex.co/hit\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:\"{\\\"marker\\\":\n    \\\"QA230_26afa042bfeb\\\", \\\"fixture\\\": \\\"qa-20261014-b51b53-hook\\\", \\\"role\\\": \\\"initial\\\"}\"}).then(async\n    r=>{if(!r.ok)throw new Error(\"counter status \"+r.status);console.log(JSON.stringify(await\n    r.json()));}).catch(e=>{console.error(e.message);process.exit(1);});'''\n  preDeployCommand: '/usr/local/bin/node -e ''fetch(\"https://qa-20261014-26afa0-count.onbex.co/hit\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:\"{\\\"marker\\\":\n    \\\"QA230_26afa042bfeb\\\", \\\"fixture\\\": \\\"qa-20261014-b51b53-hook\\\", \\\"role\\\": \\\"regular\\\"}\"}).then(async\n    r=>{if(!r.ok)throw new Error(\"counter status \"+r.status);console.log(JSON.stringify(await\n    r.json()));}).catch(e=>{console.error(e.message);process.exit(1);});'''\n  envVars:\n  - key: PATH\n    value: /usr/bin:/bin\n  - key: QA_LITERAL\n    value: \"QA230_b51b53\\n\\u2603=literal\"\n"
+        },
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "response": "{\"services\":[{\"id\":\"srv-db7j7vhllfps73emu6cg\",\"name\":\"qa-20261014-b51b53-hook\",\"slug\":\"qa-20261014-b51b53-hook\",\"displayName\":\"\",\"type\":\"web_service\",\"phase\":\"Hibernated\",\"undeployedChanges\":false,\"undeployedChangesApplying\":false,\"url\":\"https://qa-20261014-b51b53-hook.onbex.co\",\"urls\":[\"https://qa-20261014-b51b53-hook.onbex.co\"],\"image\":\"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261014-b51b53-hook:gen-5@sha256:4a69064bca5dc68db0cc735cec8bca83cd39ba4741ea034ff5bdbcf56dabb663\",\"runtime\":\"node\",\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"');function snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),http=require('\\\"'\\\"'http'\\\"'\\\"');function snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"'));http.createServer((q,r)=\\u003e{const b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\",\"builder\":\"native\",\"replicas\":1,\"suspended\":false,\"plan\":\"free\",\"revision\":\"rev-5\",\"internalAddress\":\"qa-20261014-b51b53-hook:3000\",\"port\":3000,\"createdAt\":\"2026-10-14T07:49:18Z\",\"updatedAt\":\"2026-10-14T08:49:38.198848451Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7j7vhllfps73emu6cg\",\"region\":\"fsn1\",\"idleTTLSeconds\":0,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"repo\":\"https://github.com/expressjs/express\",\"branch\":\"master\",\"autoDeploy\":false,\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"renderSubdomainPolicy\":\"enabled\",\"healthCheckPath\":\"/\",\"maxShutdownDelaySeconds\":30,\"preDeployCommand\":\"/usr/local/bin/node -e 'fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\": \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"regular\\\\\\\"}\\\"}).then(async r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'\",\"initialDeployHook\":\"/usr/local/bin/node -e 'fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\": \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"initial\\\\\\\"}\\\"}).then(async r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"}}],\"databases\":null,\"keyValues\":null,\"envGroups\":null}\n",
+      "stderr": "",
+      "qualification": "owned API setup/sync/disconnect; not native CLI coverage"
+    },
+    "id": "blp-db7k48hllfps73emu750",
+    "after_inventory": [
+      {
+        "id": "blp-db7k48hllfps73emu750",
+        "name": "express",
+        "repo": "https://github.com/expressjs/express",
+        "branch": "master",
+        "path": "render.yaml"
+      },
+      {
+        "id": "blp-db136288mmqc73d4hpug",
+        "name": "bex",
+        "repo": "https://github.com/bex-co/bex",
+        "branch": "main",
+        "path": "render.yaml"
+      }
+    ],
+    "creation_detail": {
+      "at": "2026-10-14T08:49:39.615718+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/blueprints/blp-db7k48hllfps73emu750?ownerId=tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.696,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a554fa9bd8b8b6-SJC"
+      },
+      "response": "{\"id\":\"blp-db7k48hllfps73emu750\",\"name\":\"express\",\"repo\":\"https://github.com/expressjs/express\",\"branch\":\"master\",\"path\":\"render.yaml\",\"autoSync\":true,\"manifest\":\"services:\\n- name: qa-20261014-b51b53-hook\\n  type: web\\n  runtime: node\\n  plan: free\\n  repo: https://github.com/expressjs/express\\n  branch: master\\n  rootDir: ''\\n  autoDeploy: false\\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"');function snap(){return\\n    {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify(snap()));'\\n  startCommand: /usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),http=require('\\\"'\\\"'http'\\\"'\\\"');function\\n    snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"'));http.createServer((q,r)=\\u003e{const\\n    b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\\n  healthCheckPath: /\\n  initialDeployHook: '/usr/local/bin/node -e ''fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\":\\n    \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"initial\\\\\\\"}\\\"}).then(async\\n    r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await\\n    r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'''\\n  preDeployCommand: '/usr/local/bin/node -e ''fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\":\\n    \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"regular\\\\\\\"}\\\"}).then(async\\n    r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await\\n    r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'''\\n  envVars:\\n  - key: PATH\\n    value: /usr/bin:/bin\\n  - key: QA_LITERAL\\n    value: \\\"QA230_b51b53\\\\n\\\\u2603=literal\\\"\\n\",\"status\":\"in_sync\",\"createdAt\":\"2026-10-14T08:49:38.213791Z\",\"updatedAt\":\"2026-10-14T08:49:38.213791Z\"}\n"
+    },
+    "create_response": {
+      "id": "blp-db7k48hllfps73emu750",
+      "name": "express",
+      "repo": "https://github.com/expressjs/express",
+      "branch": "master",
+      "path": "render.yaml",
+      "autoSync": true,
+      "manifest": "services:\n- name: qa-20261014-b51b53-hook\n  type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/expressjs/express\n  branch: master\n  rootDir: ''\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"');function snap(){return\n    {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\"'\"'qa-built.json'\"'\"',JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),http=require('\"'\"'http'\"'\"');function\n    snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"'));http.createServer((q,r)=>{const\n    b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'\n  healthCheckPath: /\n  initialDeployHook: '/usr/local/bin/node -e ''fetch(\"https://qa-20261014-26afa0-count.onbex.co/hit\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:\"{\\\"marker\\\":\n    \\\"QA230_26afa042bfeb\\\", \\\"fixture\\\": \\\"qa-20261014-b51b53-hook\\\", \\\"role\\\": \\\"initial\\\"}\"}).then(async\n    r=>{if(!r.ok)throw new Error(\"counter status \"+r.status);console.log(JSON.stringify(await\n    r.json()));}).catch(e=>{console.error(e.message);process.exit(1);});'''\n  preDeployCommand: '/usr/local/bin/node -e ''fetch(\"https://qa-20261014-26afa0-count.onbex.co/hit\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:\"{\\\"marker\\\":\n    \\\"QA230_26afa042bfeb\\\", \\\"fixture\\\": \\\"qa-20261014-b51b53-hook\\\", \\\"role\\\": \\\"regular\\\"}\"}).then(async\n    r=>{if(!r.ok)throw new Error(\"counter status \"+r.status);console.log(JSON.stringify(await\n    r.json()));}).catch(e=>{console.error(e.message);process.exit(1);});'''\n  envVars:\n  - key: PATH\n    value: /usr/bin:/bin\n  - key: QA_LITERAL\n    value: \"QA230_b51b53\\n\\u2603=literal\"\n",
+      "status": "in_sync",
+      "createdAt": "2026-10-14T08:49:38.213791Z",
+      "updatedAt": "2026-10-14T08:49:38.213791Z"
+    },
+    "owned_update_intent": {
+      "at": "2026-10-14T08:49:39.705448+00:00",
+      "body": {
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "name": "qa-20261014-b51b53-hook-bp",
+        "autoSync": false
+      }
+    },
+    "owned_update_result": {
+      "request": {
+        "method": "PATCH",
+        "path": "/v1/blueprints/blp-db7k48hllfps73emu750",
+        "body": {
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "name": "qa-20261014-b51b53-hook-bp",
+          "autoSync": false
+        },
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "response": "{\"id\":\"blp-db7k48hllfps73emu750\",\"name\":\"qa-20261014-b51b53-hook-bp\",\"repo\":\"https://github.com/expressjs/express\",\"branch\":\"master\",\"path\":\"render.yaml\",\"autoSync\":false,\"manifest\":\"services:\\n- name: qa-20261014-b51b53-hook\\n  type: web\\n  runtime: node\\n  plan: free\\n  repo: https://github.com/expressjs/express\\n  branch: master\\n  rootDir: ''\\n  autoDeploy: false\\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"');function snap(){return\\n    {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify(snap()));'\\n  startCommand: /usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),http=require('\\\"'\\\"'http'\\\"'\\\"');function\\n    snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"'));http.createServer((q,r)=\\u003e{const\\n    b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\\n  healthCheckPath: /\\n  initialDeployHook: '/usr/local/bin/node -e ''fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\":\\n    \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"initial\\\\\\\"}\\\"}).then(async\\n    r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await\\n    r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'''\\n  preDeployCommand: '/usr/local/bin/node -e ''fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\":\\n    \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"regular\\\\\\\"}\\\"}).then(async\\n    r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await\\n    r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'''\\n  envVars:\\n  - key: PATH\\n    value: /usr/bin:/bin\\n  - key: QA_LITERAL\\n    value: \\\"QA230_b51b53\\\\n\\\\u2603=literal\\\"\\n\",\"status\":\"paused\",\"createdAt\":\"2026-10-14T08:49:38.213791Z\",\"updatedAt\":\"2026-10-14T08:49:39.972255Z\"}\n",
+      "stderr": "",
+      "qualification": "owned API setup/sync/disconnect; not native CLI coverage"
+    },
+    "sync_intents": [
+      {
+        "at": "2026-10-14T08:55:58.330579+00:00",
+        "before_detail": {
+          "at": "2026-10-14T08:55:58.314822+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/blueprints/blp-db7k48hllfps73emu750?ownerId=tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "200",
+          "elapsed": 0.328,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4a55e3bca2fcf27-SJC"
+          },
+          "response": "{\"id\":\"blp-db7k48hllfps73emu750\",\"name\":\"qa-20261014-b51b53-hook-bp\",\"repo\":\"https://github.com/expressjs/express\",\"branch\":\"master\",\"path\":\"render.yaml\",\"autoSync\":false,\"manifest\":\"services:\\n- name: qa-20261014-b51b53-hook\\n  type: web\\n  runtime: node\\n  plan: free\\n  repo: https://github.com/expressjs/express\\n  branch: master\\n  rootDir: ''\\n  autoDeploy: false\\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"');function snap(){return\\n    {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify(snap()));'\\n  startCommand: /usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),http=require('\\\"'\\\"'http'\\\"'\\\"');function\\n    snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"'));http.createServer((q,r)=\\u003e{const\\n    b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\\n  healthCheckPath: /\\n  initialDeployHook: '/usr/local/bin/node -e ''fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\":\\n    \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"initial\\\\\\\"}\\\"}).then(async\\n    r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await\\n    r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'''\\n  preDeployCommand: '/usr/local/bin/node -e ''fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\":\\n    \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"regular\\\\\\\"}\\\"}).then(async\\n    r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await\\n    r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'''\\n  envVars:\\n  - key: PATH\\n    value: /usr/bin:/bin\\n  - key: QA_LITERAL\\n    value: \\\"QA230_b51b53\\\\n\\\\u2603=literal\\\"\\n\",\"status\":\"paused\",\"createdAt\":\"2026-10-14T08:49:38.213791Z\",\"updatedAt\":\"2026-10-14T08:49:39.972255Z\"}\n"
+        },
+        "body": {
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "bexYaml": "services:\n- name: qa-20261014-b51b53-hook\n  type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/expressjs/express\n  branch: master\n  rootDir: ''\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"');function snap(){return\n    {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\"'\"'qa-built.json'\"'\"',JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),http=require('\"'\"'http'\"'\"');function\n    snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"'));http.createServer((q,r)=>{const\n    b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'\n  healthCheckPath: /\n  initialDeployHook: '/usr/local/bin/node -e ''fetch(\"https://qa-20261014-26afa0-count.onbex.co/hit\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:\"{\\\"marker\\\":\n    \\\"QA230_26afa042bfeb\\\", \\\"fixture\\\": \\\"qa-20261014-b51b53-hook\\\", \\\"role\\\": \\\"initial\\\"}\"}).then(async\n    r=>{if(!r.ok)throw new Error(\"counter status \"+r.status);console.log(JSON.stringify(await\n    r.json()));}).catch(e=>{console.error(e.message);process.exit(1);});'''\n  preDeployCommand: '/usr/local/bin/node -e ''fetch(\"https://qa-20261014-26afa0-count.onbex.co/hit\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:\"{\\\"marker\\\":\n    \\\"QA230_26afa042bfeb\\\", \\\"fixture\\\": \\\"qa-20261014-b51b53-hook\\\", \\\"role\\\": \\\"regular\\\"}\"}).then(async\n    r=>{if(!r.ok)throw new Error(\"counter status \"+r.status);console.log(JSON.stringify(await\n    r.json()));}).catch(e=>{console.error(e.message);process.exit(1);});'''\n  envVars:\n  - key: PATH\n    value: /usr/bin:/bin\n  - key: QA_LITERAL\n    value: \"QA230_b51b53\\n\\u2603=literal\"\n"
+        },
+        "result": {
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/blp-db7k48hllfps73emu750/sync",
+            "body": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "bexYaml": "services:\n- name: qa-20261014-b51b53-hook\n  type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/expressjs/express\n  branch: master\n  rootDir: ''\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"');function snap(){return\n    {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\"'\"'qa-built.json'\"'\"',JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),http=require('\"'\"'http'\"'\"');function\n    snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"'));http.createServer((q,r)=>{const\n    b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'\n  healthCheckPath: /\n  initialDeployHook: '/usr/local/bin/node -e ''fetch(\"https://qa-20261014-26afa0-count.onbex.co/hit\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:\"{\\\"marker\\\":\n    \\\"QA230_26afa042bfeb\\\", \\\"fixture\\\": \\\"qa-20261014-b51b53-hook\\\", \\\"role\\\": \\\"initial\\\"}\"}).then(async\n    r=>{if(!r.ok)throw new Error(\"counter status \"+r.status);console.log(JSON.stringify(await\n    r.json()));}).catch(e=>{console.error(e.message);process.exit(1);});'''\n  preDeployCommand: '/usr/local/bin/node -e ''fetch(\"https://qa-20261014-26afa0-count.onbex.co/hit\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:\"{\\\"marker\\\":\n    \\\"QA230_26afa042bfeb\\\", \\\"fixture\\\": \\\"qa-20261014-b51b53-hook\\\", \\\"role\\\": \\\"regular\\\"}\"}).then(async\n    r=>{if(!r.ok)throw new Error(\"counter status \"+r.status);console.log(JSON.stringify(await\n    r.json()));}).catch(e=>{console.error(e.message);process.exit(1);});'''\n  envVars:\n  - key: PATH\n    value: /usr/bin:/bin\n  - key: QA_LITERAL\n    value: \"QA230_b51b53\\n\\u2603=literal\"\n"
+            },
+            "authorization": "[REDACTED]"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "response": "{\"blueprint\":{\"id\":\"blp-db7k48hllfps73emu750\",\"name\":\"qa-20261014-b51b53-hook-bp\",\"repo\":\"https://github.com/expressjs/express\",\"branch\":\"master\",\"path\":\"render.yaml\",\"autoSync\":false,\"manifest\":\"services:\\n- name: qa-20261014-b51b53-hook\\n  type: web\\n  runtime: node\\n  plan: free\\n  repo: https://github.com/expressjs/express\\n  branch: master\\n  rootDir: ''\\n  autoDeploy: false\\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"');function snap(){return\\n    {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify(snap()));'\\n  startCommand: /usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),http=require('\\\"'\\\"'http'\\\"'\\\"');function\\n    snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"'));http.createServer((q,r)=\\u003e{const\\n    b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\\n  healthCheckPath: /\\n  initialDeployHook: '/usr/local/bin/node -e ''fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\":\\n    \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"initial\\\\\\\"}\\\"}).then(async\\n    r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await\\n    r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'''\\n  preDeployCommand: '/usr/local/bin/node -e ''fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\":\\n    \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"regular\\\\\\\"}\\\"}).then(async\\n    r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await\\n    r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'''\\n  envVars:\\n  - key: PATH\\n    value: /usr/bin:/bin\\n  - key: QA_LITERAL\\n    value: \\\"QA230_b51b53\\\\n\\\\u2603=literal\\\"\\n\",\"status\":\"paused\",\"lastSync\":\"2026-10-14T08:55:59Z\",\"createdAt\":\"2026-10-14T08:49:38.213791Z\",\"updatedAt\":\"2026-10-14T08:55:59.557922Z\"},\"stack\":{\"services\":[{\"id\":\"srv-db7j7vhllfps73emu6cg\",\"name\":\"qa-20261014-b51b53-hook\",\"slug\":\"qa-20261014-b51b53-hook\",\"displayName\":\"\",\"type\":\"web_service\",\"phase\":\"Running\",\"undeployedChanges\":false,\"undeployedChangesApplying\":false,\"url\":\"https://qa-20261014-b51b53-hook.onbex.co\",\"urls\":[\"https://qa-20261014-b51b53-hook.onbex.co\"],\"image\":\"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261014-b51b53-hook:gen-5@sha256:4a69064bca5dc68db0cc735cec8bca83cd39ba4741ea034ff5bdbcf56dabb663\",\"runtime\":\"node\",\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"');function snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),http=require('\\\"'\\\"'http'\\\"'\\\"');function snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"'));http.createServer((q,r)=\\u003e{const b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\",\"builder\":\"native\",\"replicas\":1,\"suspended\":false,\"plan\":\"free\",\"revision\":\"rev-5\",\"internalAddress\":\"qa-20261014-b51b53-hook:3000\",\"port\":3000,\"createdAt\":\"2026-10-14T07:49:18Z\",\"updatedAt\":\"2026-10-14T08:55:59.166135597Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7j7vhllfps73emu6cg\",\"region\":\"fsn1\",\"idleTTLSeconds\":0,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"repo\":\"https://github.com/expressjs/express\",\"branch\":\"master\",\"autoDeploy\":false,\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"renderSubdomainPolicy\":\"enabled\",\"healthCheckPath\":\"/\",\"maxShutdownDelaySeconds\":30,\"preDeployCommand\":\"/usr/local/bin/node -e 'fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\": \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"regular\\\\\\\"}\\\"}).then(async r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'\",\"initialDeployHook\":\"/usr/local/bin/node -e 'fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\": \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"initial\\\\\\\"}\\\"}).then(async r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"}}],\"databases\":null,\"keyValues\":null,\"envGroups\":null},\"detachedResources\":[]}\n",
+          "stderr": "",
+          "qualification": "owned API setup/sync/disconnect; not native CLI coverage"
+        }
+      },
+      {
+        "at": "2026-10-14T09:06:42.868344+00:00",
+        "before_detail": {
+          "at": "2026-10-14T09:06:42.861879+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/blueprints/blp-db7k48hllfps73emu750?ownerId=tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "200",
+          "elapsed": 0.44,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4a56df79ed1ba62-SJC"
+          },
+          "response": "{\"id\":\"blp-db7k48hllfps73emu750\",\"name\":\"qa-20261014-b51b53-hook-bp\",\"repo\":\"https://github.com/expressjs/express\",\"branch\":\"master\",\"path\":\"render.yaml\",\"autoSync\":false,\"manifest\":\"services:\\n- name: qa-20261014-b51b53-hook\\n  type: web\\n  runtime: node\\n  plan: free\\n  repo: https://github.com/expressjs/express\\n  branch: master\\n  rootDir: ''\\n  autoDeploy: false\\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"');function snap(){return\\n    {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify(snap()));'\\n  startCommand: /usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),http=require('\\\"'\\\"'http'\\\"'\\\"');function\\n    snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"'));http.createServer((q,r)=\\u003e{const\\n    b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\\n  healthCheckPath: /\\n  initialDeployHook: '/usr/local/bin/node -e ''fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\":\\n    \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"initial\\\\\\\"}\\\"}).then(async\\n    r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await\\n    r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'''\\n  preDeployCommand: '/usr/local/bin/node -e ''fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\":\\n    \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"regular\\\\\\\"}\\\"}).then(async\\n    r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await\\n    r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'''\\n  envVars:\\n  - key: PATH\\n    value: /usr/bin:/bin\\n  - key: QA_LITERAL\\n    value: \\\"QA230_b51b53\\\\n\\\\u2603=literal\\\"\\n\",\"status\":\"paused\",\"lastSync\":\"2026-10-14T08:55:59Z\",\"resources\":[{\"id\":\"srv-db7j7vhllfps73emu6cg\",\"name\":\"qa-20261014-b51b53-hook\",\"type\":\"web_service\"}],\"createdAt\":\"2026-10-14T08:49:38.213791Z\",\"updatedAt\":\"2026-10-14T08:55:59.557922Z\"}\n"
+        },
+        "body": {
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "bexYaml": "services:\n- name: qa-20261014-b51b53-hook\n  type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/expressjs/express\n  branch: master\n  rootDir: ''\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"');function snap(){return\n    {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\"'\"'qa-built.json'\"'\"',JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),http=require('\"'\"'http'\"'\"');function\n    snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"'));http.createServer((q,r)=>{const\n    b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'\n  healthCheckPath: /\n  initialDeployHook: '/usr/local/bin/node -e ''fetch(\"https://qa-20261014-26afa0-count.onbex.co/hit\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:\"{\\\"marker\\\":\n    \\\"QA230_26afa042bfeb\\\", \\\"fixture\\\": \\\"qa-20261014-b51b53-hook\\\", \\\"role\\\": \\\"initial\\\"}\"}).then(async\n    r=>{if(!r.ok)throw new Error(\"counter status \"+r.status);console.log(JSON.stringify(await\n    r.json()));}).catch(e=>{console.error(e.message);process.exit(1);});'''\n  preDeployCommand: '/usr/local/bin/node -e ''fetch(\"https://qa-20261014-26afa0-count.onbex.co/hit\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:\"{\\\"marker\\\":\n    \\\"QA230_26afa042bfeb\\\", \\\"fixture\\\": \\\"qa-20261014-b51b53-hook\\\", \\\"role\\\": \\\"regular\\\"}\"}).then(async\n    r=>{if(!r.ok)throw new Error(\"counter status \"+r.status);console.log(JSON.stringify(await\n    r.json()));}).catch(e=>{console.error(e.message);process.exit(1);});'''\n  envVars:\n  - key: PATH\n    value: /usr/bin:/bin\n  - key: QA_LITERAL\n    value: \"QA230_b51b53\\n\\u2603=literal\"\n"
+        },
+        "result": {
+          "request": {
+            "method": "POST",
+            "path": "/v1/blueprints/blp-db7k48hllfps73emu750/sync",
+            "body": {
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "bexYaml": "services:\n- name: qa-20261014-b51b53-hook\n  type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/expressjs/express\n  branch: master\n  rootDir: ''\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"');function snap(){return\n    {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\"'\"'qa-built.json'\"'\"',JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),http=require('\"'\"'http'\"'\"');function\n    snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"'));http.createServer((q,r)=>{const\n    b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'\n  healthCheckPath: /\n  initialDeployHook: '/usr/local/bin/node -e ''fetch(\"https://qa-20261014-26afa0-count.onbex.co/hit\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:\"{\\\"marker\\\":\n    \\\"QA230_26afa042bfeb\\\", \\\"fixture\\\": \\\"qa-20261014-b51b53-hook\\\", \\\"role\\\": \\\"initial\\\"}\"}).then(async\n    r=>{if(!r.ok)throw new Error(\"counter status \"+r.status);console.log(JSON.stringify(await\n    r.json()));}).catch(e=>{console.error(e.message);process.exit(1);});'''\n  preDeployCommand: '/usr/local/bin/node -e ''fetch(\"https://qa-20261014-26afa0-count.onbex.co/hit\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:\"{\\\"marker\\\":\n    \\\"QA230_26afa042bfeb\\\", \\\"fixture\\\": \\\"qa-20261014-b51b53-hook\\\", \\\"role\\\": \\\"regular\\\"}\"}).then(async\n    r=>{if(!r.ok)throw new Error(\"counter status \"+r.status);console.log(JSON.stringify(await\n    r.json()));}).catch(e=>{console.error(e.message);process.exit(1);});'''\n  envVars:\n  - key: PATH\n    value: /usr/bin:/bin\n  - key: QA_LITERAL\n    value: \"QA230_b51b53\\n\\u2603=literal\"\n"
+            },
+            "authorization": "[REDACTED]"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "response": "{\"blueprint\":{\"id\":\"blp-db7k48hllfps73emu750\",\"name\":\"qa-20261014-b51b53-hook-bp\",\"repo\":\"https://github.com/expressjs/express\",\"branch\":\"master\",\"path\":\"render.yaml\",\"autoSync\":false,\"manifest\":\"services:\\n- name: qa-20261014-b51b53-hook\\n  type: web\\n  runtime: node\\n  plan: free\\n  repo: https://github.com/expressjs/express\\n  branch: master\\n  rootDir: ''\\n  autoDeploy: false\\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"');function snap(){return\\n    {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify(snap()));'\\n  startCommand: /usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),http=require('\\\"'\\\"'http'\\\"'\\\"');function\\n    snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"'));http.createServer((q,r)=\\u003e{const\\n    b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\\n  healthCheckPath: /\\n  initialDeployHook: '/usr/local/bin/node -e ''fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\":\\n    \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"initial\\\\\\\"}\\\"}).then(async\\n    r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await\\n    r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'''\\n  preDeployCommand: '/usr/local/bin/node -e ''fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\":\\n    \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"regular\\\\\\\"}\\\"}).then(async\\n    r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await\\n    r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'''\\n  envVars:\\n  - key: PATH\\n    value: /usr/bin:/bin\\n  - key: QA_LITERAL\\n    value: \\\"QA230_b51b53\\\\n\\\\u2603=literal\\\"\\n\",\"status\":\"paused\",\"lastSync\":\"2026-10-14T09:06:43Z\",\"createdAt\":\"2026-10-14T08:49:38.213791Z\",\"updatedAt\":\"2026-10-14T09:06:43.562597Z\"},\"stack\":{\"services\":[{\"id\":\"srv-db7j7vhllfps73emu6cg\",\"name\":\"qa-20261014-b51b53-hook\",\"slug\":\"qa-20261014-b51b53-hook\",\"displayName\":\"\",\"type\":\"web_service\",\"phase\":\"Running\",\"undeployedChanges\":false,\"undeployedChangesApplying\":false,\"url\":\"https://qa-20261014-b51b53-hook.onbex.co\",\"urls\":[\"https://qa-20261014-b51b53-hook.onbex.co\"],\"image\":\"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261014-b51b53-hook:gen-10@sha256:244e791c73d4e8a0f6f64e3a7de5fbc9305919d329bedcb177bad33c0e5c83bb\",\"runtime\":\"node\",\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"');function snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),http=require('\\\"'\\\"'http'\\\"'\\\"');function snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"'));http.createServer((q,r)=\\u003e{const b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\",\"builder\":\"native\",\"replicas\":1,\"suspended\":false,\"plan\":\"free\",\"revision\":\"rev-10\",\"internalAddress\":\"qa-20261014-b51b53-hook:3000\",\"port\":3000,\"createdAt\":\"2026-10-14T07:49:18Z\",\"updatedAt\":\"2026-10-14T09:06:43.479281491Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7j7vhllfps73emu6cg\",\"region\":\"fsn1\",\"idleTTLSeconds\":0,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"blueprintId\":\"blp-db7k48hllfps73emu750\",\"repo\":\"https://github.com/expressjs/express\",\"branch\":\"master\",\"autoDeploy\":false,\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"renderSubdomainPolicy\":\"enabled\",\"healthCheckPath\":\"/\",\"maxShutdownDelaySeconds\":30,\"preDeployCommand\":\"/usr/local/bin/node -e 'fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\": \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"regular\\\\\\\"}\\\"}).then(async r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'\",\"initialDeployHook\":\"/usr/local/bin/node -e 'fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\": \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"initial\\\\\\\"}\\\"}).then(async r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"}}],\"databases\":null,\"keyValues\":null,\"envGroups\":null},\"detachedResources\":[]}\n",
+          "stderr": "",
+          "qualification": "owned API setup/sync/disconnect; not native CLI coverage"
+        }
+      }
+    ],
+    "after_sync_detail": {
+      "at": "2026-10-14T09:06:44.449696+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/blueprints/blp-db7k48hllfps73emu750?ownerId=tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.648,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a56e001c06053e-SJC"
+      },
+      "response": "{\"id\":\"blp-db7k48hllfps73emu750\",\"name\":\"qa-20261014-b51b53-hook-bp\",\"repo\":\"https://github.com/expressjs/express\",\"branch\":\"master\",\"path\":\"render.yaml\",\"autoSync\":false,\"manifest\":\"services:\\n- name: qa-20261014-b51b53-hook\\n  type: web\\n  runtime: node\\n  plan: free\\n  repo: https://github.com/expressjs/express\\n  branch: master\\n  rootDir: ''\\n  autoDeploy: false\\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"');function snap(){return\\n    {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify(snap()));'\\n  startCommand: /usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),http=require('\\\"'\\\"'http'\\\"'\\\"');function\\n    snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"'));http.createServer((q,r)=\\u003e{const\\n    b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\\n  healthCheckPath: /\\n  initialDeployHook: '/usr/local/bin/node -e ''fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\":\\n    \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"initial\\\\\\\"}\\\"}).then(async\\n    r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await\\n    r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'''\\n  preDeployCommand: '/usr/local/bin/node -e ''fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\":\\n    \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"regular\\\\\\\"}\\\"}).then(async\\n    r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await\\n    r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'''\\n  envVars:\\n  - key: PATH\\n    value: /usr/bin:/bin\\n  - key: QA_LITERAL\\n    value: \\\"QA230_b51b53\\\\n\\\\u2603=literal\\\"\\n\",\"status\":\"paused\",\"lastSync\":\"2026-10-14T09:06:43Z\",\"resources\":[{\"id\":\"srv-db7j7vhllfps73emu6cg\",\"name\":\"qa-20261014-b51b53-hook\",\"type\":\"web_service\"}],\"createdAt\":\"2026-10-14T08:49:38.213791Z\",\"updatedAt\":\"2026-10-14T09:06:43.562597Z\"}\n"
+    },
+    "disconnect_intent": {
+      "at": "2026-10-14T09:24:44.146171+00:00",
+      "before_detail": {
+        "at": "2026-10-14T09:24:44.138461+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/blueprints/blp-db7k48hllfps73emu750?ownerId=tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "authorization": "[REDACTED]"
+        },
+        "status": "200",
+        "elapsed": 0.327,
+        "curl_exit": 0,
+        "stderr": "",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4a5885e1edbcf23-SJC"
+        },
+        "response": "{\"id\":\"blp-db7k48hllfps73emu750\",\"name\":\"qa-20261014-b51b53-hook-bp\",\"repo\":\"https://github.com/expressjs/express\",\"branch\":\"master\",\"path\":\"render.yaml\",\"autoSync\":false,\"manifest\":\"services:\\n- name: qa-20261014-b51b53-hook\\n  type: web\\n  runtime: node\\n  plan: free\\n  repo: https://github.com/expressjs/express\\n  branch: master\\n  rootDir: ''\\n  autoDeploy: false\\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"');function snap(){return\\n    {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify(snap()));'\\n  startCommand: /usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),http=require('\\\"'\\\"'http'\\\"'\\\"');function\\n    snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"'));http.createServer((q,r)=\\u003e{const\\n    b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\\n  healthCheckPath: /\\n  initialDeployHook: '/usr/local/bin/node -e ''fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\":\\n    \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"initial\\\\\\\"}\\\"}).then(async\\n    r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await\\n    r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'''\\n  preDeployCommand: '/usr/local/bin/node -e ''fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\":\\n    \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"regular\\\\\\\"}\\\"}).then(async\\n    r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await\\n    r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'''\\n  envVars:\\n  - key: PATH\\n    value: /usr/bin:/bin\\n  - key: QA_LITERAL\\n    value: \\\"QA230_b51b53\\\\n\\\\u2603=literal\\\"\\n\",\"status\":\"paused\",\"lastSync\":\"2026-10-14T09:06:43Z\",\"resources\":[{\"id\":\"srv-db7j7vhllfps73emu6cg\",\"name\":\"qa-20261014-b51b53-hook\",\"type\":\"web_service\"}],\"createdAt\":\"2026-10-14T08:49:38.213791Z\",\"updatedAt\":\"2026-10-14T09:06:43.562597Z\"}\n"
+      },
+      "qualification": "disconnect metadata/claims only; service deletion is separately performed by exact owned ID"
+    },
+    "disconnect_result": {
+      "request": {
+        "method": "DELETE",
+        "path": "/v1/blueprints/blp-db7k48hllfps73emu750?ownerId=tea-daif693dqjvc73e7as3g",
+        "body": null,
+        "authorization": "[REDACTED]"
+      },
+      "status": "204",
+      "curl_exit": 0,
+      "response": "",
+      "stderr": "",
+      "qualification": "owned API setup/sync/disconnect; not native CLI coverage"
+    },
+    "after_disconnect_detail": {
+      "at": "2026-10-14T09:24:45.155459+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/blueprints/blp-db7k48hllfps73emu750?ownerId=tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "404",
+      "elapsed": 0.309,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a588649c632db6-SJC"
+      },
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"blueprint not found\",\"id\":\"not_found\",\"message\":\"blueprint not found\",\"params\":null}\n"
+    },
+    "after_disconnect_inventory": [
+      {
+        "id": "blp-db136288mmqc73d4hpug",
+        "name": "bex",
+        "repo": "https://github.com/bex-co/bex",
+        "branch": "main",
+        "path": "render.yaml"
+      }
+    ]
+  },
+  "requested_manifest": "services:\n- name: qa-20261014-b51b53-hook\n  type: web\n  runtime: node\n  plan: free\n  repo: https://github.com/expressjs/express\n  branch: master\n  rootDir: ''\n  autoDeploy: false\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"');function snap(){return\n    {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\"'\"'qa-built.json'\"'\"',JSON.stringify(snap()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'fs'\"'\"'),http=require('\"'\"'http'\"'\"');function\n    snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\"'\"'qa-built.json'\"'\"'));http.createServer((q,r)=>{const\n    b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\"'\"'Content-Type'\"'\"':'\"'\"'application/json'\"'\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'\n  healthCheckPath: /\n  initialDeployHook: '/usr/local/bin/node -e ''fetch(\"https://qa-20261014-26afa0-count.onbex.co/hit\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:\"{\\\"marker\\\":\n    \\\"QA230_26afa042bfeb\\\", \\\"fixture\\\": \\\"qa-20261014-b51b53-hook\\\", \\\"role\\\": \\\"initial\\\"}\"}).then(async\n    r=>{if(!r.ok)throw new Error(\"counter status \"+r.status);console.log(JSON.stringify(await\n    r.json()));}).catch(e=>{console.error(e.message);process.exit(1);});'''\n  preDeployCommand: '/usr/local/bin/node -e ''fetch(\"https://qa-20261014-26afa0-count.onbex.co/hit\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:\"{\\\"marker\\\":\n    \\\"QA230_26afa042bfeb\\\", \\\"fixture\\\": \\\"qa-20261014-b51b53-hook\\\", \\\"role\\\": \\\"regular\\\"}\"}).then(async\n    r=>{if(!r.ok)throw new Error(\"counter status \"+r.status);console.log(JSON.stringify(await\n    r.json()));}).catch(e=>{console.error(e.message);process.exit(1);});'''\n  envVars:\n  - key: PATH\n    value: /usr/bin:/bin\n  - key: QA_LITERAL\n    value: \"QA230_b51b53\\n\\u2603=literal\"\n",
+  "settled_current_service": {
+    "at": "2026-10-14T09:13:15.547396+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/services/srv-db7j7vhllfps73emu6cg",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.682,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4a5778e2be01698-SJC"
+    },
+    "response": "{\"id\":\"srv-db7j7vhllfps73emu6cg\",\"name\":\"qa-20261014-b51b53-hook\",\"immutableName\":\"qa-20261014-b51b53-hook\",\"slug\":\"qa-20261014-b51b53-hook\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7j7vhllfps73emu6cg\",\"createdAt\":\"2026-10-14T07:49:18Z\",\"updatedAt\":\"2026-10-14T09:09:30Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA VALUE REDACTED]\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"');function snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}fs.writeFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"',JSON.stringify(snap()));'\",\"preDeployCommand\":\"/usr/local/bin/node -e 'fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\": \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"regular\\\\\\\"}\\\"}).then(async r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'fs'\\\"'\\\"'),http=require('\\\"'\\\"'http'\\\"'\\\"');function snap(){return {path:process.env.PATH,marker:process.env.QA_LITERAL};}const built=JSON.parse(fs.readFileSync('\\\"'\\\"'qa-built.json'\\\"'\\\"'));http.createServer((q,r)=\\u003e{const b=JSON.stringify({built:built,runtime:snap()});r.writeHead(200,{'\\\"'\\\"'Content-Type'\\\"'\\\"':'\\\"'\\\"'application/json'\\\"'\\\"'});r.end(b);}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"},\"healthCheckPath\":\"/\",\"initialDeployHook\":\"/usr/local/bin/node -e 'fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\": \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"initial\\\\\\\"}\\\"}).then(async r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'\",\"internalAddress\":\"qa-20261014-b51b53-hook:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"preDeployCommand\":\"/usr/local/bin/node -e 'fetch(\\\"https://qa-20261014-26afa0-count.onbex.co/hit\\\",{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:\\\"{\\\\\\\"marker\\\\\\\": \\\\\\\"QA230_26afa042bfeb\\\\\\\", \\\\\\\"fixture\\\\\\\": \\\\\\\"qa-20261014-b51b53-hook\\\\\\\", \\\\\\\"role\\\\\\\": \\\\\\\"regular\\\\\\\"}\\\"}).then(async r=\\u003e{if(!r.ok)throw new Error(\\\"counter status \\\"+r.status);console.log(JSON.stringify(await r.json()));}).catch(e=\\u003e{console.error(e.message);process.exit(1);});'\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261014-b51b53-hook.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"blueprintId\":\"blp-db7k48hllfps73emu750\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-13\",\"urls\":[\"https://qa-20261014-b51b53-hook.onbex.co\"],\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n"
+  },
+  "canceled_setup_detail": {
+    "at": "2026-10-14T08:55:57.723577+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/services/srv-db7j7vhllfps73emu6cg/deploys/dep-db7k48hllfps73emu74g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.682,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4a55e360dfbe8d9-SJC"
+    },
+    "response": "{\"id\":\"dep-db7k48hllfps73emu74g\",\"serviceId\":\"srv-db7j7vhllfps73emu6cg\",\"status\":\"canceled\",\"trigger\":\"other\",\"bexTrigger\":\"blueprint\",\"commit\":{\"id\":\"a419aa7350389a275ab45fde2e849ed1f02449ef\",\"message\":\"Revert \\\"build(deps-dev): bump supertest from 6.3.0 to 7.3.0 (#7494)\\\" (#7518)\\n\\nThis reverts commit 6d2df035a95f3d1002be3e29997b7a4bfe976b5f.\",\"createdAt\":\"2026-10-09T16:24:38Z\"},\"createdAt\":\"2026-10-14T08:49:38.18424Z\",\"updatedAt\":\"2026-10-14T08:50:34.796094Z\",\"startedAt\":\"2026-10-14T08:50:04.640898Z\",\"finishedAt\":\"2026-10-14T08:50:34.796093Z\",\"cancelReason\":\"Superseded by a newer release\"}\n"
+  },
+  "native_default_source_controls": [
+    {
+      "at": "2026-10-14T08:58:20.315361+00:00",
+      "client": "bex",
+      "commit": null,
+      "state": "native result received; reconcile history before any retry",
+      "before_deploy_ids": [
+        "dep-db7k77ut41sc7388o65g",
+        "dep-db7k48hllfps73emu74g",
+        "dep-db7jqu6t41sc7388o5v0",
+        "dep-db7jf7et41sc7388o5kg",
+        "dep-db7jdi1llfps73emu6m0",
+        "dep-db7jbiet41sc7388o5h0",
+        "dep-db7j7vhllfps73emu6d0"
+      ],
+      "qualification": "default current source after owned persistent Blueprint setup/sync; original commit remains in historical controls",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "create",
+          "srv-db7j7vhllfps73emu6cg",
+          "--wait",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 94.812,
+        "stdout": "{\n  \"commit\": {\n    \"createdAt\": \"2026-10-14T08:14:49Z\",\n    \"id\": \"e2ec1ea1c820d3df13856875124967bb7644415b\",\n    \"message\": \"docs(pm): file Postgres loading card geometry in w4/298\"\n  },\n  \"createdAt\": \"2026-10-14T08:58:21.576414Z\",\n  \"finishedAt\": \"2026-10-14T08:59:51.934787Z\",\n  \"id\": \"dep-db7k8bet41sc7388o67g\",\n  \"startedAt\": \"2026-10-14T08:58:34.976264Z\",\n  \"status\": \"live\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-14T08:59:51.934788Z\"\n}",
+        "stderr": "Waiting for deploy dep-db7k8bet41sc7388o67g to complete...\n\n"
+      },
+      "decoded_objects": [
+        {
+          "commit": {
+            "createdAt": "2026-10-14T08:14:49Z",
+            "id": "e2ec1ea1c820d3df13856875124967bb7644415b",
+            "message": "docs(pm): file Postgres loading card geometry in w4/298"
+          },
+          "createdAt": "2026-10-14T08:58:21.576414Z",
+          "finishedAt": "2026-10-14T08:59:51.934787Z",
+          "id": "dep-db7k8bet41sc7388o67g",
+          "startedAt": "2026-10-14T08:58:34.976264Z",
+          "status": "live",
+          "trigger": "api",
+          "updatedAt": "2026-10-14T08:59:51.934788Z"
+        }
+      ]
+    },
+    {
+      "at": "2026-10-14T09:08:02.945967+00:00",
+      "client": "render",
+      "commit": null,
+      "state": "native result received; reconcile history before any retry",
+      "before_deploy_ids": [
+        "dep-db7kc8pllfps73emu7b0",
+        "dep-db7k8bet41sc7388o67g",
+        "dep-db7k77ut41sc7388o65g",
+        "dep-db7k48hllfps73emu74g",
+        "dep-db7jqu6t41sc7388o5v0",
+        "dep-db7jf7et41sc7388o5kg",
+        "dep-db7jdi1llfps73emu6m0",
+        "dep-db7jbiet41sc7388o5h0",
+        "dep-db7j7vhllfps73emu6d0"
+      ],
+      "qualification": "default current source after owned persistent Blueprint setup/sync; original commit remains in historical controls",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "deploys",
+          "create",
+          "srv-db7j7vhllfps73emu6cg",
+          "--wait",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 94.676,
+        "stdout": "{\n  \"commit\": {\n    \"createdAt\": \"2026-10-14T08:14:49Z\",\n    \"id\": \"e2ec1ea1c820d3df13856875124967bb7644415b\",\n    \"message\": \"docs(pm): file Postgres loading card geometry in w4/298\"\n  },\n  \"createdAt\": \"2026-10-14T09:08:03.878251Z\",\n  \"finishedAt\": \"2026-10-14T09:09:34.755477Z\",\n  \"id\": \"dep-db7kcsut41sc7388o6b0\",\n  \"startedAt\": \"2026-10-14T09:08:22.280607Z\",\n  \"status\": \"live\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-14T09:09:34.755478Z\"\n}",
+        "stderr": "Waiting for deploy dep-db7kcsut41sc7388o6b0 to complete...\n\n"
+      },
+      "decoded_objects": [
+        {
+          "commit": {
+            "createdAt": "2026-10-14T08:14:49Z",
+            "id": "e2ec1ea1c820d3df13856875124967bb7644415b",
+            "message": "docs(pm): file Postgres loading card geometry in w4/298"
+          },
+          "createdAt": "2026-10-14T09:08:03.878251Z",
+          "finishedAt": "2026-10-14T09:09:34.755477Z",
+          "id": "dep-db7kcsut41sc7388o6b0",
+          "startedAt": "2026-10-14T09:08:22.280607Z",
+          "status": "live",
+          "trigger": "api",
+          "updatedAt": "2026-10-14T09:09:34.755478Z"
+        }
+      ]
+    }
+  ],
+  "qualification": "Repo/branch loss live-proven; cancellation is associated behavior, not a separately established generation bug; live tier/replicas/idle writes and exact SQL inspection not performed"
+}

@@ -1,0 +1,158 @@
+[
+  {
+    "compiler_problems": null,
+    "compiler_valid": true,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775807\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "pinned_schema_valid": true,
+    "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+    "shape": "root service",
+    "typed_values": {
+      "VALUE": "9223372036854775807"
+    },
+    "value": "9223372036854775807",
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "compiler_problems": null,
+    "compiler_valid": true,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775808\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "pinned_schema_valid": true,
+    "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+    "shape": "root service",
+    "typed_values": {
+      "VALUE": "9223372036854775808"
+    },
+    "value": "9223372036854775808",
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "compiler_problems": null,
+    "compiler_valid": true,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 18446744073709551615\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "pinned_schema_valid": true,
+    "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+    "shape": "root service",
+    "typed_values": {
+      "VALUE": "18446744073709551615"
+    },
+    "value": "18446744073709551615",
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "compiler_problems": null,
+    "compiler_valid": true,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"18446744073709551615\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "pinned_schema_valid": true,
+    "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+    "shape": "root service",
+    "typed_values": {
+      "VALUE": "18446744073709551615"
+    },
+    "value": "\"18446744073709551615\"",
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "compiler_problems": null,
+    "compiler_valid": true,
+    "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": 9223372036854775807\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-local-source\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+    "pinned_schema_valid": true,
+    "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+    "shape": "nested service",
+    "typed_values": {
+      "VALUE": "9223372036854775807"
+    },
+    "value": "9223372036854775807",
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "compiler_problems": null,
+    "compiler_valid": true,
+    "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": 9223372036854775808\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-local-source\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+    "pinned_schema_valid": true,
+    "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+    "shape": "nested service",
+    "typed_values": {
+      "VALUE": "9223372036854775808"
+    },
+    "value": "9223372036854775808",
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "compiler_problems": null,
+    "compiler_valid": true,
+    "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": 18446744073709551615\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-local-source\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+    "pinned_schema_valid": true,
+    "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+    "shape": "nested service",
+    "typed_values": {
+      "VALUE": "18446744073709551615"
+    },
+    "value": "18446744073709551615",
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "compiler_problems": null,
+    "compiler_valid": true,
+    "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"18446744073709551615\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-local-source\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+    "pinned_schema_valid": true,
+    "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+    "shape": "nested service",
+    "typed_values": {
+      "VALUE": "18446744073709551615"
+    },
+    "value": "\"18446744073709551615\"",
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "compiler_problems": null,
+    "compiler_valid": true,
+    "manifest": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775807\n        }\n      ],\n      \"name\": \"g\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"g\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "pinned_schema_valid": true,
+    "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+    "shape": "group",
+    "typed_values": {
+      "VALUE": "9223372036854775807"
+    },
+    "value": "9223372036854775807",
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "compiler_problems": null,
+    "compiler_valid": true,
+    "manifest": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775808\n        }\n      ],\n      \"name\": \"g\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"g\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "pinned_schema_valid": true,
+    "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+    "shape": "group",
+    "typed_values": {
+      "VALUE": "9223372036854775808"
+    },
+    "value": "9223372036854775808",
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "compiler_problems": null,
+    "compiler_valid": true,
+    "manifest": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 18446744073709551615\n        }\n      ],\n      \"name\": \"g\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"g\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "pinned_schema_valid": true,
+    "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+    "shape": "group",
+    "typed_values": {
+      "VALUE": "18446744073709551615"
+    },
+    "value": "18446744073709551615",
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  },
+  {
+    "compiler_problems": null,
+    "compiler_valid": true,
+    "manifest": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"18446744073709551615\"\n        }\n      ],\n      \"name\": \"g\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"g\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "pinned_schema_valid": true,
+    "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+    "shape": "group",
+    "typed_values": {
+      "VALUE": "18446744073709551615"
+    },
+    "value": "\"18446744073709551615\"",
+    "source_head": "acaf06168bffff641d33377948ccd1c2e8a30f2b"
+  }
+]

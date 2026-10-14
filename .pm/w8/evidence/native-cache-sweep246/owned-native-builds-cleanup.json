@@ -1,0 +1,704 @@
+[
+  {
+    "sweep": 246,
+    "case": "bex",
+    "client": "bex",
+    "role": "source",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "web_service",
+    "name": "qa-20261014-cc6c8107-source",
+    "nonce": "cc6c8107",
+    "marker": "QA246_cc6c8107_source",
+    "time": "2026-10-14T15:20:54.821022+00:00",
+    "source_head": "36ec7a4f6602a66d8a03c4c359a5493906a1a019",
+    "state": "deleted: nativeack/API404/listabsent/runtime404/baseline present/quota termination0",
+    "create_command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261014-cc6c8107-source",
+      "--type",
+      "web_service",
+      "--runtime",
+      "node",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/hello-go",
+      "--build-command",
+      "/bin/cat > qa_probe.js <<'QA246_NODE'\nconst fs=require('node:fs'),crypto=require('node:crypto'),http=require('node:http');\nfunction snap(){const b=fs.readFileSync('/etc/secrets/qa-note.txt');return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString('base64'),fileSHA256:crypto.createHash('sha256').update(b).digest('hex')};}\nif(process.argv[2]==='--snapshot'){console.log(JSON.stringify({...snap(),buildToken:crypto.randomBytes(16).toString('hex'),builtAt:new Date().toISOString()}));}else{const built=JSON.parse(fs.readFileSync('qa-built.json','utf8'));http.createServer((req,res)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),'0.0.0.0');}\nQA246_NODE\n/usr/local/bin/node qa_probe.js --snapshot > qa-built.json",
+      "--start-command",
+      "/usr/local/bin/node /opt/render/project/src/qa_probe.js",
+      "--health-check-path",
+      "/",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--env-var",
+      "QA_MARKER=QA246_cc6c8107_source",
+      "--secret-file",
+      "qa-note.txt:/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep246-bex-note.txt",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "capacity_proof": {
+      "at": "2026-10-14T15:20:53.500054+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.701,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a792138edacdf0-EWR"
+      },
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "pre_create_inventory": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.255,
+      "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-14T15:20:06Z\",\n        \"nextRunAt\": \"2026-10-14T15:21:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-14T15:20:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-14T15:20:04Z\",\n        \"nextRunAt\": \"2026-10-14T15:21:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-14T15:20:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-14T15:20:04Z\",\n        \"nextRunAt\": \"2026-10-14T15:21:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-14T15:20:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T15:15:36Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:33Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:28Z\"\n    }\n  }\n]",
+      "stderr": ""
+    },
+    "expected_snapshot": {
+      "marker": "QA246_cc6c8107_source",
+      "fileBase64": "UUEyNDZfY2M2YzgxMDdfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+      "fileSHA256": "3387a881a2802d68a3a8c40246e31a5a9e1947e23633011d57da7c0d6c858144"
+    },
+    "expected_path": null,
+    "harmless_file_contents": "QA246_cc6c8107_source\n☃=file\nsecond line\n",
+    "harmless_file": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep246-bex-note.txt",
+    "dependency_ids": [],
+    "source_id": null,
+    "recorded_child_ids": [
+      "dep-db7prm1llfps73emudeg",
+      "dep-db7ptimt41sc7388ocag",
+      "dep-db7pv49llfps73emudfg"
+    ],
+    "build_program": "/bin/cat > qa_probe.js <<'QA246_NODE'\nconst fs=require('node:fs'),crypto=require('node:crypto'),http=require('node:http');\nfunction snap(){const b=fs.readFileSync('/etc/secrets/qa-note.txt');return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString('base64'),fileSHA256:crypto.createHash('sha256').update(b).digest('hex')};}\nif(process.argv[2]==='--snapshot'){console.log(JSON.stringify({...snap(),buildToken:crypto.randomBytes(16).toString('hex'),builtAt:new Date().toISOString()}));}else{const built=JSON.parse(fs.readFileSync('qa-built.json','utf8'));http.createServer((req,res)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),'0.0.0.0');}\nQA246_NODE\n/usr/local/bin/node qa_probe.js --snapshot > qa-built.json",
+    "generated_node_program": "const fs=require('node:fs'),crypto=require('node:crypto'),http=require('node:http');\nfunction snap(){const b=fs.readFileSync('/etc/secrets/qa-note.txt');return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString('base64'),fileSHA256:crypto.createHash('sha256').update(b).digest('hex')};}\nif(process.argv[2]==='--snapshot'){console.log(JSON.stringify({...snap(),buildToken:crypto.randomBytes(16).toString('hex'),builtAt:new Date().toISOString()}));}else{const built=JSON.parse(fs.readFileSync('qa-built.json','utf8'));http.createServer((req,res)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),'0.0.0.0');}\n",
+    "start_program": "/usr/local/bin/node /opt/render/project/src/qa_probe.js",
+    "qualification": "native Node fixture with explicit PATH and harmless file bytes; absolute Node executable and standard-library app; build-only random token observes cache behavior; no product source edit",
+    "create_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "qa-20261014-cc6c8107-source",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--branch",
+        "main",
+        "--root-directory",
+        "examples/hello-go",
+        "--build-command",
+        "/bin/cat > qa_probe.js <<'QA246_NODE'\nconst fs=require('node:fs'),crypto=require('node:crypto'),http=require('node:http');\nfunction snap(){const b=fs.readFileSync('/etc/secrets/qa-note.txt');return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString('base64'),fileSHA256:crypto.createHash('sha256').update(b).digest('hex')};}\nif(process.argv[2]==='--snapshot'){console.log(JSON.stringify({...snap(),buildToken:crypto.randomBytes(16).toString('hex'),builtAt:new Date().toISOString()}));}else{const built=JSON.parse(fs.readFileSync('qa-built.json','utf8'));http.createServer((req,res)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),'0.0.0.0');}\nQA246_NODE\n/usr/local/bin/node qa_probe.js --snapshot > qa-built.json",
+        "--start-command",
+        "/usr/local/bin/node /opt/render/project/src/qa_probe.js",
+        "--health-check-path",
+        "/",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--auto-deploy=false",
+        "--env-var",
+        "QA_MARKER=QA246_cc6c8107_source",
+        "--secret-file",
+        "qa-note.txt:/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep246-bex-note.txt",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.68,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-14T15:20:56Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db7prm1llfps73emude0\",\n  \"id\": \"srv-db7prm1llfps73emude0\",\n  \"name\": \"qa-20261014-cc6c8107-source\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-go\",\n  \"serviceDetails\": {\n    \"env\": \"node\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"/bin/cat \\u003e qa_probe.js \\u003c\\u003c'QA246_NODE'\\nconst fs=require('node:fs'),crypto=require('node:crypto'),http=require('node:http');\\nfunction snap(){const b=fs.readFileSync('/etc/secrets/qa-note.txt');return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString('base64'),fileSHA256:crypto.createHash('sha256').update(b).digest('hex')};}\\nif(process.argv[2]==='--snapshot'){console.log(JSON.stringify({...snap(),buildToken:crypto.randomBytes(16).toString('hex'),builtAt:new Date().toISOString()}));}else{const built=JSON.parse(fs.readFileSync('qa-built.json','utf8'));http.createServer((req,res)=\\u003e{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),'0.0.0.0');}\\nQA246_NODE\\n/usr/local/bin/node qa_probe.js --snapshot \\u003e qa-built.json\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"/usr/local/bin/node /opt/render/project/src/qa_probe.js\"\n    },\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261014-cc6c8107-source:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"node\",\n    \"url\": \"https://qa-20261014-cc6c8107-source.onbex.co\"\n  },\n  \"slug\": \"qa-20261014-cc6c8107-source\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-14T15:20:56.186196025Z\"\n}",
+      "stderr": ""
+    },
+    "id": "srv-db7prm1llfps73emude0",
+    "create_response": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "main",
+      "createdAt": "2026-10-14T15:20:56Z",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db7prm1llfps73emude0",
+      "id": "srv-db7prm1llfps73emude0",
+      "name": "qa-20261014-cc6c8107-source",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/bex-co/bex",
+      "rootDir": "examples/hello-go",
+      "serviceDetails": {
+        "env": "node",
+        "envSpecificDetails": {
+          "buildCommand": "/bin/cat > qa_probe.js <<'QA246_NODE'\nconst fs=require('node:fs'),crypto=require('node:crypto'),http=require('node:http');\nfunction snap(){const b=fs.readFileSync('/etc/secrets/qa-note.txt');return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString('base64'),fileSHA256:crypto.createHash('sha256').update(b).digest('hex')};}\nif(process.argv[2]==='--snapshot'){console.log(JSON.stringify({...snap(),buildToken:crypto.randomBytes(16).toString('hex'),builtAt:new Date().toISOString()}));}else{const built=JSON.parse(fs.readFileSync('qa-built.json','utf8'));http.createServer((req,res)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),'0.0.0.0');}\nQA246_NODE\n/usr/local/bin/node qa_probe.js --snapshot > qa-built.json",
+          "preDeployCommand": "",
+          "startCommand": "/usr/local/bin/node /opt/render/project/src/qa_probe.js"
+        },
+        "healthCheckPath": "/",
+        "internalAddress": "qa-20261014-cc6c8107-source:3000",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "free",
+        "port": 3000,
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "node",
+        "url": "https://qa-20261014-cc6c8107-source.onbex.co"
+      },
+      "slug": "qa-20261014-cc6c8107-source",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "web_service",
+      "updatedAt": "2026-10-14T15:20:56.186196025Z"
+    },
+    "deploy_children": [
+      {
+        "commit": {
+          "createdAt": "2026-10-14T14:53:03Z",
+          "id": "36ec7a4f6602a66d8a03c4c359a5493906a1a019",
+          "message": "docs(pm): cover Key Value catalog loading in w4/301"
+        },
+        "createdAt": "2026-10-14T15:28:17.49741Z",
+        "finishedAt": "2026-10-14T15:29:34.766664Z",
+        "id": "dep-db7pv49llfps73emudfg",
+        "startedAt": "2026-10-14T15:28:35.102975Z",
+        "status": "live",
+        "trigger": "api",
+        "updatedAt": "2026-10-14T15:29:34.766665Z"
+      },
+      {
+        "commit": {
+          "createdAt": "2026-10-14T14:53:03Z",
+          "id": "36ec7a4f6602a66d8a03c4c359a5493906a1a019",
+          "message": "docs(pm): cover Key Value catalog loading in w4/301"
+        },
+        "createdAt": "2026-10-14T15:24:58.112216Z",
+        "finishedAt": "2026-10-14T15:26:04.606368Z",
+        "id": "dep-db7ptimt41sc7388ocag",
+        "startedAt": "2026-10-14T15:25:04.638623Z",
+        "status": "deactivated",
+        "trigger": "api",
+        "updatedAt": "2026-10-14T15:29:34.773094Z"
+      },
+      {
+        "commit": {
+          "id": "36ec7a4f6602a66d8a03c4c359a5493906a1a019",
+          "message": "docs(pm): cover Key Value catalog loading in w4/301"
+        },
+        "createdAt": "2026-10-14T15:20:56.159456Z",
+        "finishedAt": "2026-10-14T15:23:22.532906Z",
+        "id": "dep-db7prm1llfps73emudeg",
+        "startedAt": "2026-10-14T15:22:04.711736Z",
+        "status": "deactivated",
+        "trigger": "other",
+        "updatedAt": "2026-10-14T15:26:04.609472Z"
+      }
+    ],
+    "observations": [
+      {
+        "at": "2026-10-14T15:22:11.845752+00:00",
+        "native_history": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db7prm1llfps73emude0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.768,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"36ec7a4f6602a66d8a03c4c359a5493906a1a019\",\n      \"message\": \"docs(pm): cover Key Value catalog loading in w4/301\"\n    },\n    \"createdAt\": \"2026-10-14T15:20:56.159456Z\",\n    \"id\": \"dep-db7prm1llfps73emudeg\",\n    \"startedAt\": \"2026-10-14T15:22:04.711736Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T15:22:04.711747Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "36ec7a4f6602a66d8a03c4c359a5493906a1a019",
+            "message": "docs(pm): cover Key Value catalog loading in w4/301"
+          },
+          "createdAt": "2026-10-14T15:20:56.159456Z",
+          "id": "dep-db7prm1llfps73emudeg",
+          "startedAt": "2026-10-14T15:22:04.711736Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-14T15:22:04.711747Z"
+        },
+        "runtime": {
+          "HTTP": "404",
+          "exit": 0,
+          "body": null,
+          "raw_body": "404 page not found\n",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": false
+      },
+      {
+        "at": "2026-10-14T15:22:59.953079+00:00",
+        "native_history": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db7prm1llfps73emude0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.706,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"36ec7a4f6602a66d8a03c4c359a5493906a1a019\",\n      \"message\": \"docs(pm): cover Key Value catalog loading in w4/301\"\n    },\n    \"createdAt\": \"2026-10-14T15:20:56.159456Z\",\n    \"id\": \"dep-db7prm1llfps73emudeg\",\n    \"startedAt\": \"2026-10-14T15:22:04.711736Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T15:22:04.711747Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "36ec7a4f6602a66d8a03c4c359a5493906a1a019",
+            "message": "docs(pm): cover Key Value catalog loading in w4/301"
+          },
+          "createdAt": "2026-10-14T15:20:56.159456Z",
+          "id": "dep-db7prm1llfps73emudeg",
+          "startedAt": "2026-10-14T15:22:04.711736Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-14T15:22:04.711747Z"
+        },
+        "runtime": {
+          "HTTP": "503",
+          "exit": 0,
+          "body": null,
+          "raw_body": "service unavailable\n",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": false
+      },
+      {
+        "at": "2026-10-14T15:24:19.654959+00:00",
+        "native_history": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db7prm1llfps73emude0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.709,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"36ec7a4f6602a66d8a03c4c359a5493906a1a019\",\n      \"message\": \"docs(pm): cover Key Value catalog loading in w4/301\"\n    },\n    \"createdAt\": \"2026-10-14T15:20:56.159456Z\",\n    \"finishedAt\": \"2026-10-14T15:23:22.532906Z\",\n    \"id\": \"dep-db7prm1llfps73emudeg\",\n    \"startedAt\": \"2026-10-14T15:22:04.711736Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T15:23:22.532908Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "36ec7a4f6602a66d8a03c4c359a5493906a1a019",
+            "message": "docs(pm): cover Key Value catalog loading in w4/301"
+          },
+          "createdAt": "2026-10-14T15:20:56.159456Z",
+          "finishedAt": "2026-10-14T15:23:22.532906Z",
+          "id": "dep-db7prm1llfps73emudeg",
+          "startedAt": "2026-10-14T15:22:04.711736Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-14T15:23:22.532908Z"
+        },
+        "runtime": {
+          "HTTP": "200",
+          "exit": 0,
+          "body": {
+            "built": {
+              "marker": "QA246_cc6c8107_source",
+              "path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "fileBase64": "UUEyNDZfY2M2YzgxMDdfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+              "fileSHA256": "3387a881a2802d68a3a8c40246e31a5a9e1947e23633011d57da7c0d6c858144",
+              "buildToken": "7ddd0e2efa2e1394423f1f84868ea74c",
+              "builtAt": "2026-10-14T15:22:31.389Z"
+            },
+            "runtime": {
+              "marker": "QA246_cc6c8107_source",
+              "path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "fileBase64": "UUEyNDZfY2M2YzgxMDdfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+              "fileSHA256": "3387a881a2802d68a3a8c40246e31a5a9e1947e23633011d57da7c0d6c858144"
+            }
+          },
+          "raw_body": "{\"built\":{\"marker\":\"QA246_cc6c8107_source\",\"path\":\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"fileBase64\":\"UUEyNDZfY2M2YzgxMDdfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==\",\"fileSHA256\":\"3387a881a2802d68a3a8c40246e31a5a9e1947e23633011d57da7c0d6c858144\",\"buildToken\":\"7ddd0e2efa2e1394423f1f84868ea74c\",\"builtAt\":\"2026-10-14T15:22:31.389Z\"},\"runtime\":{\"marker\":\"QA246_cc6c8107_source\",\"path\":\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"fileBase64\":\"UUEyNDZfY2M2YzgxMDdfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==\",\"fileSHA256\":\"3387a881a2802d68a3a8c40246e31a5a9e1947e23633011d57da7c0d6c858144\"}}",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": true
+      },
+      {
+        "at": "2026-10-14T15:26:06.440962+00:00",
+        "native_history": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db7prm1llfps73emude0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.426,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-14T14:53:03Z\",\n      \"id\": \"36ec7a4f6602a66d8a03c4c359a5493906a1a019\",\n      \"message\": \"docs(pm): cover Key Value catalog loading in w4/301\"\n    },\n    \"createdAt\": \"2026-10-14T15:24:58.112216Z\",\n    \"finishedAt\": \"2026-10-14T15:26:04.606368Z\",\n    \"id\": \"dep-db7ptimt41sc7388ocag\",\n    \"startedAt\": \"2026-10-14T15:25:04.638623Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-14T15:26:04.60637Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"36ec7a4f6602a66d8a03c4c359a5493906a1a019\",\n      \"message\": \"docs(pm): cover Key Value catalog loading in w4/301\"\n    },\n    \"createdAt\": \"2026-10-14T15:20:56.159456Z\",\n    \"finishedAt\": \"2026-10-14T15:23:22.532906Z\",\n    \"id\": \"dep-db7prm1llfps73emudeg\",\n    \"startedAt\": \"2026-10-14T15:22:04.711736Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T15:26:04.609472Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "createdAt": "2026-10-14T14:53:03Z",
+            "id": "36ec7a4f6602a66d8a03c4c359a5493906a1a019",
+            "message": "docs(pm): cover Key Value catalog loading in w4/301"
+          },
+          "createdAt": "2026-10-14T15:24:58.112216Z",
+          "finishedAt": "2026-10-14T15:26:04.606368Z",
+          "id": "dep-db7ptimt41sc7388ocag",
+          "startedAt": "2026-10-14T15:25:04.638623Z",
+          "status": "live",
+          "trigger": "api",
+          "updatedAt": "2026-10-14T15:26:04.60637Z"
+        },
+        "runtime": {
+          "HTTP": "200",
+          "exit": 0,
+          "body": {
+            "built": {
+              "marker": "QA246_cc6c8107_source",
+              "path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "fileBase64": "UUEyNDZfY2M2YzgxMDdfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+              "fileSHA256": "3387a881a2802d68a3a8c40246e31a5a9e1947e23633011d57da7c0d6c858144",
+              "buildToken": "96a261bfc49ca924abe2ced694f08fef",
+              "builtAt": "2026-10-14T15:25:35.340Z"
+            },
+            "runtime": {
+              "marker": "QA246_cc6c8107_source",
+              "path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "fileBase64": "UUEyNDZfY2M2YzgxMDdfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+              "fileSHA256": "3387a881a2802d68a3a8c40246e31a5a9e1947e23633011d57da7c0d6c858144"
+            }
+          },
+          "raw_body": "{\"built\":{\"marker\":\"QA246_cc6c8107_source\",\"path\":\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"fileBase64\":\"UUEyNDZfY2M2YzgxMDdfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==\",\"fileSHA256\":\"3387a881a2802d68a3a8c40246e31a5a9e1947e23633011d57da7c0d6c858144\",\"buildToken\":\"96a261bfc49ca924abe2ced694f08fef\",\"builtAt\":\"2026-10-14T15:25:35.340Z\"},\"runtime\":{\"marker\":\"QA246_cc6c8107_source\",\"path\":\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"fileBase64\":\"UUEyNDZfY2M2YzgxMDdfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==\",\"fileSHA256\":\"3387a881a2802d68a3a8c40246e31a5a9e1947e23633011d57da7c0d6c858144\"}}",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": true
+      },
+      {
+        "at": "2026-10-14T15:29:18.334117+00:00",
+        "native_history": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db7prm1llfps73emude0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.691,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-14T14:53:03Z\",\n      \"id\": \"36ec7a4f6602a66d8a03c4c359a5493906a1a019\",\n      \"message\": \"docs(pm): cover Key Value catalog loading in w4/301\"\n    },\n    \"createdAt\": \"2026-10-14T15:28:17.49741Z\",\n    \"id\": \"dep-db7pv49llfps73emudfg\",\n    \"startedAt\": \"2026-10-14T15:28:35.102975Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-14T15:28:35.102976Z\"\n  },\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-14T14:53:03Z\",\n      \"id\": \"36ec7a4f6602a66d8a03c4c359a5493906a1a019\",\n      \"message\": \"docs(pm): cover Key Value catalog loading in w4/301\"\n    },\n    \"createdAt\": \"2026-10-14T15:24:58.112216Z\",\n    \"finishedAt\": \"2026-10-14T15:26:04.606368Z\",\n    \"id\": \"dep-db7ptimt41sc7388ocag\",\n    \"startedAt\": \"2026-10-14T15:25:04.638623Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-14T15:26:04.60637Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"36ec7a4f6602a66d8a03c4c359a5493906a1a019\",\n      \"message\": \"docs(pm): cover Key Value catalog loading in w4/301\"\n    },\n    \"createdAt\": \"2026-10-14T15:20:56.159456Z\",\n    \"finishedAt\": \"2026-10-14T15:23:22.532906Z\",\n    \"id\": \"dep-db7prm1llfps73emudeg\",\n    \"startedAt\": \"2026-10-14T15:22:04.711736Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T15:26:04.609472Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "createdAt": "2026-10-14T14:53:03Z",
+            "id": "36ec7a4f6602a66d8a03c4c359a5493906a1a019",
+            "message": "docs(pm): cover Key Value catalog loading in w4/301"
+          },
+          "createdAt": "2026-10-14T15:28:17.49741Z",
+          "id": "dep-db7pv49llfps73emudfg",
+          "startedAt": "2026-10-14T15:28:35.102975Z",
+          "status": "build_in_progress",
+          "trigger": "api",
+          "updatedAt": "2026-10-14T15:28:35.102976Z"
+        },
+        "runtime": {
+          "HTTP": "200",
+          "exit": 0,
+          "body": {
+            "built": {
+              "marker": "QA246_cc6c8107_source",
+              "path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "fileBase64": "UUEyNDZfY2M2YzgxMDdfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+              "fileSHA256": "3387a881a2802d68a3a8c40246e31a5a9e1947e23633011d57da7c0d6c858144",
+              "buildToken": "96a261bfc49ca924abe2ced694f08fef",
+              "builtAt": "2026-10-14T15:25:35.340Z"
+            },
+            "runtime": {
+              "marker": "QA246_cc6c8107_source",
+              "path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "fileBase64": "UUEyNDZfY2M2YzgxMDdfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+              "fileSHA256": "3387a881a2802d68a3a8c40246e31a5a9e1947e23633011d57da7c0d6c858144"
+            }
+          },
+          "raw_body": "{\"built\":{\"marker\":\"QA246_cc6c8107_source\",\"path\":\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"fileBase64\":\"UUEyNDZfY2M2YzgxMDdfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==\",\"fileSHA256\":\"3387a881a2802d68a3a8c40246e31a5a9e1947e23633011d57da7c0d6c858144\",\"buildToken\":\"96a261bfc49ca924abe2ced694f08fef\",\"builtAt\":\"2026-10-14T15:25:35.340Z\"},\"runtime\":{\"marker\":\"QA246_cc6c8107_source\",\"path\":\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"fileBase64\":\"UUEyNDZfY2M2YzgxMDdfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==\",\"fileSHA256\":\"3387a881a2802d68a3a8c40246e31a5a9e1947e23633011d57da7c0d6c858144\"}}",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": true
+      },
+      {
+        "at": "2026-10-14T15:30:16.924579+00:00",
+        "native_history": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db7prm1llfps73emude0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.37,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-14T14:53:03Z\",\n      \"id\": \"36ec7a4f6602a66d8a03c4c359a5493906a1a019\",\n      \"message\": \"docs(pm): cover Key Value catalog loading in w4/301\"\n    },\n    \"createdAt\": \"2026-10-14T15:28:17.49741Z\",\n    \"finishedAt\": \"2026-10-14T15:29:34.766664Z\",\n    \"id\": \"dep-db7pv49llfps73emudfg\",\n    \"startedAt\": \"2026-10-14T15:28:35.102975Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-14T15:29:34.766665Z\"\n  },\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-14T14:53:03Z\",\n      \"id\": \"36ec7a4f6602a66d8a03c4c359a5493906a1a019\",\n      \"message\": \"docs(pm): cover Key Value catalog loading in w4/301\"\n    },\n    \"createdAt\": \"2026-10-14T15:24:58.112216Z\",\n    \"finishedAt\": \"2026-10-14T15:26:04.606368Z\",\n    \"id\": \"dep-db7ptimt41sc7388ocag\",\n    \"startedAt\": \"2026-10-14T15:25:04.638623Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-14T15:29:34.773094Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"36ec7a4f6602a66d8a03c4c359a5493906a1a019\",\n      \"message\": \"docs(pm): cover Key Value catalog loading in w4/301\"\n    },\n    \"createdAt\": \"2026-10-14T15:20:56.159456Z\",\n    \"finishedAt\": \"2026-10-14T15:23:22.532906Z\",\n    \"id\": \"dep-db7prm1llfps73emudeg\",\n    \"startedAt\": \"2026-10-14T15:22:04.711736Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T15:26:04.609472Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "createdAt": "2026-10-14T14:53:03Z",
+            "id": "36ec7a4f6602a66d8a03c4c359a5493906a1a019",
+            "message": "docs(pm): cover Key Value catalog loading in w4/301"
+          },
+          "createdAt": "2026-10-14T15:28:17.49741Z",
+          "finishedAt": "2026-10-14T15:29:34.766664Z",
+          "id": "dep-db7pv49llfps73emudfg",
+          "startedAt": "2026-10-14T15:28:35.102975Z",
+          "status": "live",
+          "trigger": "api",
+          "updatedAt": "2026-10-14T15:29:34.766665Z"
+        },
+        "runtime": {
+          "HTTP": "200",
+          "exit": 0,
+          "body": {
+            "built": {
+              "marker": "QA246_cc6c8107_source",
+              "path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "fileBase64": "UUEyNDZfY2M2YzgxMDdfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+              "fileSHA256": "3387a881a2802d68a3a8c40246e31a5a9e1947e23633011d57da7c0d6c858144",
+              "buildToken": "8f4676aa7fafec32ddec6f27f6ac4e42",
+              "builtAt": "2026-10-14T15:28:58.617Z"
+            },
+            "runtime": {
+              "marker": "QA246_cc6c8107_source",
+              "path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "fileBase64": "UUEyNDZfY2M2YzgxMDdfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+              "fileSHA256": "3387a881a2802d68a3a8c40246e31a5a9e1947e23633011d57da7c0d6c858144"
+            }
+          },
+          "raw_body": "{\"built\":{\"marker\":\"QA246_cc6c8107_source\",\"path\":\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"fileBase64\":\"UUEyNDZfY2M2YzgxMDdfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==\",\"fileSHA256\":\"3387a881a2802d68a3a8c40246e31a5a9e1947e23633011d57da7c0d6c858144\",\"buildToken\":\"8f4676aa7fafec32ddec6f27f6ac4e42\",\"builtAt\":\"2026-10-14T15:28:58.617Z\"},\"runtime\":{\"marker\":\"QA246_cc6c8107_source\",\"path\":\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"fileBase64\":\"UUEyNDZfY2M2YzgxMDdfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==\",\"fileSHA256\":\"3387a881a2802d68a3a8c40246e31a5a9e1947e23633011d57da7c0d6c858144\"}}",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": true
+      }
+    ],
+    "ready": true,
+    "accepted_snapshot": {
+      "built": {
+        "marker": "QA246_cc6c8107_source",
+        "path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "fileBase64": "UUEyNDZfY2M2YzgxMDdfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+        "fileSHA256": "3387a881a2802d68a3a8c40246e31a5a9e1947e23633011d57da7c0d6c858144",
+        "buildToken": "8f4676aa7fafec32ddec6f27f6ac4e42",
+        "builtAt": "2026-10-14T15:28:58.617Z"
+      },
+      "runtime": {
+        "marker": "QA246_cc6c8107_source",
+        "path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "fileBase64": "UUEyNDZfY2M2YzgxMDdfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+        "fileSHA256": "3387a881a2802d68a3a8c40246e31a5a9e1947e23633011d57da7c0d6c858144"
+      }
+    },
+    "manual_deploy_intents": [
+      {
+        "at": "2026-10-14T15:24:56.810253+00:00",
+        "command": [
+          "bex",
+          "deploys",
+          "create",
+          "srv-db7prm1llfps73emude0",
+          "--commit",
+          "36ec7a4f6602a66d8a03c4c359a5493906a1a019",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "before_ids": [
+          "dep-db7prm1llfps73emudeg"
+        ],
+        "same_commit": "36ec7a4f6602a66d8a03c4c359a5493906a1a019",
+        "wait": false,
+        "clear_cache": false,
+        "native_client": "bex",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "create",
+            "srv-db7prm1llfps73emude0",
+            "--commit",
+            "36ec7a4f6602a66d8a03c4c359a5493906a1a019",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 1.272,
+          "stdout": "{\n  \"commit\": {\n    \"createdAt\": \"2026-10-14T14:53:03Z\",\n    \"id\": \"36ec7a4f6602a66d8a03c4c359a5493906a1a019\",\n    \"message\": \"docs(pm): cover Key Value catalog loading in w4/301\"\n  },\n  \"createdAt\": \"2026-10-14T15:24:58.112216Z\",\n  \"id\": \"dep-db7ptimt41sc7388ocag\",\n  \"status\": \"created\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-14T15:24:58.112216Z\"\n}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-14T15:28:16.688842+00:00",
+        "command": [
+          "render",
+          "deploys",
+          "create",
+          "srv-db7prm1llfps73emude0",
+          "--commit",
+          "36ec7a4f6602a66d8a03c4c359a5493906a1a019",
+          "--clear-cache",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "before_ids": [
+          "dep-db7ptimt41sc7388ocag",
+          "dep-db7prm1llfps73emudeg"
+        ],
+        "same_commit": "36ec7a4f6602a66d8a03c4c359a5493906a1a019",
+        "wait": false,
+        "clear_cache": true,
+        "native_client": "render",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "create",
+            "srv-db7prm1llfps73emude0",
+            "--commit",
+            "36ec7a4f6602a66d8a03c4c359a5493906a1a019",
+            "--clear-cache",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.741,
+          "stdout": "{\n  \"commit\": {\n    \"createdAt\": \"2026-10-14T14:53:03Z\",\n    \"id\": \"36ec7a4f6602a66d8a03c4c359a5493906a1a019\",\n    \"message\": \"docs(pm): cover Key Value catalog loading in w4/301\"\n  },\n  \"createdAt\": \"2026-10-14T15:28:17.49741Z\",\n  \"id\": \"dep-db7pv49llfps73emudfg\",\n  \"status\": \"created\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-14T15:28:17.49741Z\"\n}",
+          "stderr": ""
+        }
+      }
+    ],
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db7prm1llfps73emude0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.898,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-14T15:20:56Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db7prm1llfps73emude0\",\n    \"id\": \"srv-db7prm1llfps73emude0\",\n    \"name\": \"qa-20261014-cc6c8107-source\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-go\",\n    \"serviceDetails\": {\n      \"env\": \"node\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"/bin/cat \\u003e qa_probe.js \\u003c\\u003c'QA246_NODE'\\nconst fs=require('node:fs'),crypto=require('node:crypto'),http=require('node:http');\\nfunction snap(){const b=fs.readFileSync('/etc/secrets/qa-note.txt');return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString('base64'),fileSHA256:crypto.createHash('sha256').update(b).digest('hex')};}\\nif(process.argv[2]==='--snapshot'){console.log(JSON.stringify({...snap(),buildToken:crypto.randomBytes(16).toString('hex'),builtAt:new Date().toISOString()}));}else{const built=JSON.parse(fs.readFileSync('qa-built.json','utf8'));http.createServer((req,res)=\\u003e{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),'0.0.0.0');}\\nQA246_NODE\\n/usr/local/bin/node qa_probe.js --snapshot \\u003e qa-built.json\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"/usr/local/bin/node /opt/render/project/src/qa_probe.js\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261014-cc6c8107-source:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"node\",\n      \"url\": \"https://qa-20261014-cc6c8107-source.onbex.co\"\n    },\n    \"slug\": \"qa-20261014-cc6c8107-source\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-14T15:29:25Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "cleanup_reconciliations": [
+      {
+        "at": "2026-10-14T15:31:29.289601+00:00",
+        "detail": {
+          "at": "2026-10-14T15:31:27.422579+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db7prm1llfps73emude0",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "404",
+          "elapsed": 0.788,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4a7a18c3d0efc1e-PDX"
+          },
+          "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+        },
+        "list_ids": [
+          "srv-daif6dsmg29s73d1umvg",
+          "srv-dap3r714dm7c7390q91g",
+          "srv-dap3umrbdpcs73f5eeug",
+          "srv-dap3v694dm7c7390q930",
+          "srv-db09u90ehcmc739j12cg",
+          "srv-db09vbgehcmc739j12i0"
+        ],
+        "baseline_present": true,
+        "runtime": {
+          "exit": 0,
+          "HTTP": "404",
+          "stderr": ""
+        },
+        "quota": {
+          "at": "2026-10-14T15:31:29.283452+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "200",
+          "elapsed": 0.281,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4a7a19add307587-SJC"
+          },
+          "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+        }
+      }
+    ]
+  }
+]

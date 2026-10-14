@@ -1,0 +1,28 @@
+from pathlib import Path
+import json,subprocess,secrets,datetime,shlex,sys,time
+p=Path(__file__).parent;cp=Path('$REPO/.playwright-mcp/cli-qa-w8-checkpoint.json')
+c=json.loads(cp.read_text());assert c['sync230_result']==0 and not c.get('active_sync_stash')
+mode=sys.argv[1];ws='tea-daif693dqjvc73e7as3g';idfile=p/'sweep230-collector-id.txt'
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,indent=2));cp.chmod(0o600)
+def cli(args):return json.loads(subprocess.check_output(['python3',str(p/'run.py'),'--release',*args],text=True))
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True))
+if mode=='create':
+ assert not idfile.exists() and not any(v.get('sweep')==230 and v.get('case')=='collector' for v in c['resources'])
+ q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';limits=json.loads(q['response']);assert limits['services']['used']+limits['services']['terminating']<limits['services']['limit']
+ nonce=secrets.token_hex(6);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce[:6]+'-count';marker='QA230_'+nonce
+ program="const http=require('http'),os=require('os');const marker="+json.dumps(marker)+";const instance=os.hostname();const records=[];function send(r,status,b){r.writeHead(status,{'Content-Type':'application/json'});r.end(JSON.stringify(b));}http.createServer((q,r)=>{if(q.method==='GET'&&q.url==='/'){send(r,200,{marker,instance,records});return;}if(q.method==='POST'&&q.url==='/hit'){let b='';q.on('data',x=>b+=x);q.on('end',()=>{try{const v=JSON.parse(b);if(v.marker!==marker||!['initial','regular','common'].includes(v.role)||typeof v.fixture!=='string'){send(r,400,{error:'invalid fixture marker'});return;}const entry={fixture:v.fixture,role:v.role,ordinal:records.length+1,at:Date.now()};records.push(entry);send(r,200,{marker,instance,entry});}catch(e){send(r,400,{error:'invalid JSON'});}});return;}send(r,404,{error:'missing route'});}).listen(Number(process.env.PORT||3000),'0.0.0.0');"
+ args=['services','create','--name',name,'--type','web_service','--runtime','node','--repo','https://github.com/bex-co/bex','--branch','main','--root-directory','examples/hello-go','--build-command','/usr/local/bin/node --version','--start-command','/usr/local/bin/node -e '+shlex.quote(program),'--health-check-path','/','--plan','free','--region','frankfurt','--auto-deploy=false','--confirm','-o','json']
+ x={'sweep':230,'case':'collector','workspace':ws,'type':'web_service','source_head':c['head'],'name':name,'nonce':nonce,'marker':marker,'time':now(),'dependency_ids':[],'state':'create intent persisted','role':'owned harmless hook execution counter','capacity_proof':q,'command':['bex',*args],'program':program};c['resources'].append(x);save();r=cli(args);x['create_result']=r;x['state']='native result received; reconcile before retry';save();assert r['exit']==0;v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v);assert v['ownerId']==ws and v['name']==name and v['serviceDetails']['plan']=='free';x.update(id=v['id'],create_response=v,state='created: counter runtime pending');idfile.write_text(v['id']);save();print(json.dumps({'id':v['id'],'name':name,'exit':r['exit']}),flush=True);raise SystemExit(0)
+sid=idfile.read_text().strip();x=next(v for v in c['resources'] if v.get('id')==sid);assert x['sweep']==230 and x['workspace']==ws and x['create_result']['exit']==0 and x['create_response']['id']==sid and not x['state'].startswith('deleted:')
+assert mode in ['observe','read']
+for attempt in range(3 if mode=='observe' else 1):
+ r=cli(['deploys','list',sid,'--confirm','-o','json']);assert r['exit']==0;ds=json.loads(r['stdout']);x['deploy_children']=ds;file=p/'sweep230-collector-runtime.json';http=subprocess.run(['curl','--disable','-sS','--max-time','8','-o',str(file),'-w','%{http_code}',x['create_response']['serviceDetails']['url']+'/'],capture_output=True,text=True,timeout=12)
+ try:body=json.loads(file.read_text())
+ except ValueError:body=None
+ ok=ds[0]['status']=='live' and http.stdout=='200' and isinstance(body,dict) and body.get('marker')==x['marker'] and (not x.get('expected_process_uuid') or ':' in body.get('instance',''));x.setdefault('observations',[]).append({'at':now(),'native_history':r,'target':ds[0],'http':http.stdout,'exit':http.returncode,'body':body,'own_marker_and_live':ok});save();print(json.dumps({'status':ds[0]['status'],'http':http.stdout,'own_counter_ready':ok,'records':len(body.get('records',[])) if isinstance(body,dict) else None}),flush=True)
+ if ok:
+  if x.get('collector_instance'):assert x['collector_instance']==body['instance'],'Counter restarted; reconcile evidence before interpreting counts'
+  x['collector_instance']=body['instance'];x['ready']=True;save();break
+ if ds[0]['status'] in ['build_failed','pre_deploy_failed','update_failed','canceled']:break
+ if attempt<2:time.sleep(6)

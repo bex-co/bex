@@ -1,0 +1,1007 @@
+[
+  {
+    "sweep": 237,
+    "case": "bex",
+    "client": "bex",
+    "role": "source",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "web_service",
+    "name": "qa-20261014-51d468ac-source",
+    "nonce": "51d468ac",
+    "marker": "QA237_51d468ac_source",
+    "time": "2026-10-14T12:26:58.317262+00:00",
+    "source_head": "195e2ebb1f1a086180bc674928d9c05a45a86153",
+    "state": "deleted: nativeack/API404/listabsent/runtime404/baseline present/quota termination0",
+    "create_command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261014-51d468ac-source",
+      "--type",
+      "web_service",
+      "--runtime",
+      "go",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/hello-go",
+      "--build-command",
+      "/bin/cat > qa_probe.go <<'QA237_GO'\npackage main\nimport(\"crypto/sha256\";\"encoding/base64\";\"encoding/json\";\"fmt\";\"log\";\"net/http\";\"os\")\nfunc snap() map[string]string {b,e:=os.ReadFile(\"/etc/secrets/qa-note.txt\");if e!=nil{log.Fatal(e)};h:=sha256.Sum256(b);return map[string]string{\"marker\":os.Getenv(\"QA_MARKER\"),\"path\":os.Getenv(\"PATH\"),\"fileBase64\":base64.StdEncoding.EncodeToString(b),\"fileSHA256\":fmt.Sprintf(\"%x\",h)}}\nfunc main(){if len(os.Args)>1&&os.Args[1]==\"--snapshot\"{if e:=json.NewEncoder(os.Stdout).Encode(snap());e!=nil{log.Fatal(e)};return};b,e:=os.ReadFile(\"qa-built.json\");if e!=nil{log.Fatal(e)};var built map[string]string;if e=json.Unmarshal(b,&built);e!=nil{log.Fatal(e)};http.HandleFunc(\"/\",func(w http.ResponseWriter,r *http.Request){w.Header().Set(\"Content-Type\",\"application/json\");_ = json.NewEncoder(w).Encode(map[string]interface{}{\"built\":built,\"runtime\":snap()})});port:=os.Getenv(\"PORT\");if port==\"\"{port=\"3000\"};log.Fatal(http.ListenAndServe(\":\"+port,nil))}\nQA237_GO\n/usr/local/go/bin/go build -o qa-http qa_probe.go\n/opt/render/project/src/qa-http --snapshot > qa-built.json",
+      "--start-command",
+      "/opt/render/project/src/qa-http",
+      "--health-check-path",
+      "/",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--env-var",
+      "QA_MARKER=QA237_51d468ac_source",
+      "--env-var",
+      "PATH=",
+      "--env-var",
+      "CGO_ENABLED=0",
+      "--secret-file",
+      "qa-note.txt:/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep237-bex-note.txt",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "capacity_proof": {
+      "at": "2026-10-14T12:26:57.565552+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.652,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a6934a7f86ebe4-SJC"
+      },
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "pre_create_inventory": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.694,
+      "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-14T12:26:07Z\",\n        \"nextRunAt\": \"2026-10-14T12:27:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-14T12:26:07Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-14T12:26:04Z\",\n        \"nextRunAt\": \"2026-10-14T12:27:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-14T12:26:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-14T12:26:06Z\",\n        \"nextRunAt\": \"2026-10-14T12:27:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-14T12:26:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T12:15:36Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:33Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:28Z\"\n    }\n  }\n]",
+      "stderr": ""
+    },
+    "expected_snapshot": {
+      "marker": "QA237_51d468ac_source",
+      "fileBase64": "UUEyMzdfNTFkNDY4YWNfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+      "fileSHA256": "393729b76b259c42b3f2ebeb3aa5d0e34e98b56a8b5d4bde6cba0f82600716c2"
+    },
+    "expected_path": "",
+    "harmless_file_contents": "QA237_51d468ac_source\n☃=file\nsecond line\n",
+    "harmless_file": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep237-bex-note.txt",
+    "dependency_ids": [],
+    "source_id": null,
+    "recorded_child_ids": [
+      "dep-db7na4pllfps73emua3g",
+      "dep-db7ncq1llfps73emua4g"
+    ],
+    "build_program": "/bin/cat > qa_probe.go <<'QA237_GO'\npackage main\nimport(\"crypto/sha256\";\"encoding/base64\";\"encoding/json\";\"fmt\";\"log\";\"net/http\";\"os\")\nfunc snap() map[string]string {b,e:=os.ReadFile(\"/etc/secrets/qa-note.txt\");if e!=nil{log.Fatal(e)};h:=sha256.Sum256(b);return map[string]string{\"marker\":os.Getenv(\"QA_MARKER\"),\"path\":os.Getenv(\"PATH\"),\"fileBase64\":base64.StdEncoding.EncodeToString(b),\"fileSHA256\":fmt.Sprintf(\"%x\",h)}}\nfunc main(){if len(os.Args)>1&&os.Args[1]==\"--snapshot\"{if e:=json.NewEncoder(os.Stdout).Encode(snap());e!=nil{log.Fatal(e)};return};b,e:=os.ReadFile(\"qa-built.json\");if e!=nil{log.Fatal(e)};var built map[string]string;if e=json.Unmarshal(b,&built);e!=nil{log.Fatal(e)};http.HandleFunc(\"/\",func(w http.ResponseWriter,r *http.Request){w.Header().Set(\"Content-Type\",\"application/json\");_ = json.NewEncoder(w).Encode(map[string]interface{}{\"built\":built,\"runtime\":snap()})});port:=os.Getenv(\"PORT\");if port==\"\"{port=\"3000\"};log.Fatal(http.ListenAndServe(\":\"+port,nil))}\nQA237_GO\n/usr/local/go/bin/go build -o qa-http qa_probe.go\n/opt/render/project/src/qa-http --snapshot > qa-built.json",
+    "generated_go_program": "package main\nimport(\"crypto/sha256\";\"encoding/base64\";\"encoding/json\";\"fmt\";\"log\";\"net/http\";\"os\")\nfunc snap() map[string]string {b,e:=os.ReadFile(\"/etc/secrets/qa-note.txt\");if e!=nil{log.Fatal(e)};h:=sha256.Sum256(b);return map[string]string{\"marker\":os.Getenv(\"QA_MARKER\"),\"path\":os.Getenv(\"PATH\"),\"fileBase64\":base64.StdEncoding.EncodeToString(b),\"fileSHA256\":fmt.Sprintf(\"%x\",h)}}\nfunc main(){if len(os.Args)>1&&os.Args[1]==\"--snapshot\"{if e:=json.NewEncoder(os.Stdout).Encode(snap());e!=nil{log.Fatal(e)};return};b,e:=os.ReadFile(\"qa-built.json\");if e!=nil{log.Fatal(e)};var built map[string]string;if e=json.Unmarshal(b,&built);e!=nil{log.Fatal(e)};http.HandleFunc(\"/\",func(w http.ResponseWriter,r *http.Request){w.Header().Set(\"Content-Type\",\"application/json\");_ = json.NewEncoder(w).Encode(map[string]interface{}{\"built\":built,\"runtime\":snap()})});port:=os.Getenv(\"PORT\");if port==\"\"{port=\"3000\"};log.Fatal(http.ListenAndServe(\":\"+port,nil))}\n",
+    "start_program": "/opt/render/project/src/qa-http",
+    "qualification": "native Go fixture with explicit PATH and harmless file bytes; absolute compiler/application and CGO_ENABLED=0; no product source edit",
+    "create_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "qa-20261014-51d468ac-source",
+        "--type",
+        "web_service",
+        "--runtime",
+        "go",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--branch",
+        "main",
+        "--root-directory",
+        "examples/hello-go",
+        "--build-command",
+        "/bin/cat > qa_probe.go <<'QA237_GO'\npackage main\nimport(\"crypto/sha256\";\"encoding/base64\";\"encoding/json\";\"fmt\";\"log\";\"net/http\";\"os\")\nfunc snap() map[string]string {b,e:=os.ReadFile(\"/etc/secrets/qa-note.txt\");if e!=nil{log.Fatal(e)};h:=sha256.Sum256(b);return map[string]string{\"marker\":os.Getenv(\"QA_MARKER\"),\"path\":os.Getenv(\"PATH\"),\"fileBase64\":base64.StdEncoding.EncodeToString(b),\"fileSHA256\":fmt.Sprintf(\"%x\",h)}}\nfunc main(){if len(os.Args)>1&&os.Args[1]==\"--snapshot\"{if e:=json.NewEncoder(os.Stdout).Encode(snap());e!=nil{log.Fatal(e)};return};b,e:=os.ReadFile(\"qa-built.json\");if e!=nil{log.Fatal(e)};var built map[string]string;if e=json.Unmarshal(b,&built);e!=nil{log.Fatal(e)};http.HandleFunc(\"/\",func(w http.ResponseWriter,r *http.Request){w.Header().Set(\"Content-Type\",\"application/json\");_ = json.NewEncoder(w).Encode(map[string]interface{}{\"built\":built,\"runtime\":snap()})});port:=os.Getenv(\"PORT\");if port==\"\"{port=\"3000\"};log.Fatal(http.ListenAndServe(\":\"+port,nil))}\nQA237_GO\n/usr/local/go/bin/go build -o qa-http qa_probe.go\n/opt/render/project/src/qa-http --snapshot > qa-built.json",
+        "--start-command",
+        "/opt/render/project/src/qa-http",
+        "--health-check-path",
+        "/",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--auto-deploy=false",
+        "--env-var",
+        "QA_MARKER=QA237_51d468ac_source",
+        "--env-var",
+        "PATH=",
+        "--env-var",
+        "CGO_ENABLED=0",
+        "--secret-file",
+        "qa-note.txt:/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep237-bex-note.txt",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.479,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-14T12:26:59Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db7na4pllfps73emua30\",\n  \"id\": \"srv-db7na4pllfps73emua30\",\n  \"name\": \"qa-20261014-51d468ac-source\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-go\",\n  \"serviceDetails\": {\n    \"env\": \"go\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"/bin/cat \\u003e qa_probe.go \\u003c\\u003c'QA237_GO'\\npackage main\\nimport(\\\"crypto/sha256\\\";\\\"encoding/base64\\\";\\\"encoding/json\\\";\\\"fmt\\\";\\\"log\\\";\\\"net/http\\\";\\\"os\\\")\\nfunc snap() map[string]string {b,e:=os.ReadFile(\\\"/etc/secrets/qa-note.txt\\\");if e!=nil{log.Fatal(e)};h:=sha256.Sum256(b);return map[string]string{\\\"marker\\\":os.Getenv(\\\"QA_MARKER\\\"),\\\"path\\\":os.Getenv(\\\"PATH\\\"),\\\"fileBase64\\\":base64.StdEncoding.EncodeToString(b),\\\"fileSHA256\\\":fmt.Sprintf(\\\"%x\\\",h)}}\\nfunc main(){if len(os.Args)\\u003e1\\u0026\\u0026os.Args[1]==\\\"--snapshot\\\"{if e:=json.NewEncoder(os.Stdout).Encode(snap());e!=nil{log.Fatal(e)};return};b,e:=os.ReadFile(\\\"qa-built.json\\\");if e!=nil{log.Fatal(e)};var built map[string]string;if e=json.Unmarshal(b,\\u0026built);e!=nil{log.Fatal(e)};http.HandleFunc(\\\"/\\\",func(w http.ResponseWriter,r *http.Request){w.Header().Set(\\\"Content-Type\\\",\\\"application/json\\\");_ = json.NewEncoder(w).Encode(map[string]interface{}{\\\"built\\\":built,\\\"runtime\\\":snap()})});port:=os.Getenv(\\\"PORT\\\");if port==\\\"\\\"{port=\\\"3000\\\"};log.Fatal(http.ListenAndServe(\\\":\\\"+port,nil))}\\nQA237_GO\\n/usr/local/go/bin/go build -o qa-http qa_probe.go\\n/opt/render/project/src/qa-http --snapshot \\u003e qa-built.json\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"/opt/render/project/src/qa-http\"\n    },\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261014-51d468ac-source:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"go\",\n    \"url\": \"https://qa-20261014-51d468ac-source.onbex.co\"\n  },\n  \"slug\": \"qa-20261014-51d468ac-source\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-14T12:26:59.332933093Z\"\n}",
+      "stderr": ""
+    },
+    "id": "srv-db7na4pllfps73emua30",
+    "create_response": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "main",
+      "createdAt": "2026-10-14T12:26:59Z",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db7na4pllfps73emua30",
+      "id": "srv-db7na4pllfps73emua30",
+      "name": "qa-20261014-51d468ac-source",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/bex-co/bex",
+      "rootDir": "examples/hello-go",
+      "serviceDetails": {
+        "env": "go",
+        "envSpecificDetails": {
+          "buildCommand": "/bin/cat > qa_probe.go <<'QA237_GO'\npackage main\nimport(\"crypto/sha256\";\"encoding/base64\";\"encoding/json\";\"fmt\";\"log\";\"net/http\";\"os\")\nfunc snap() map[string]string {b,e:=os.ReadFile(\"/etc/secrets/qa-note.txt\");if e!=nil{log.Fatal(e)};h:=sha256.Sum256(b);return map[string]string{\"marker\":os.Getenv(\"QA_MARKER\"),\"path\":os.Getenv(\"PATH\"),\"fileBase64\":base64.StdEncoding.EncodeToString(b),\"fileSHA256\":fmt.Sprintf(\"%x\",h)}}\nfunc main(){if len(os.Args)>1&&os.Args[1]==\"--snapshot\"{if e:=json.NewEncoder(os.Stdout).Encode(snap());e!=nil{log.Fatal(e)};return};b,e:=os.ReadFile(\"qa-built.json\");if e!=nil{log.Fatal(e)};var built map[string]string;if e=json.Unmarshal(b,&built);e!=nil{log.Fatal(e)};http.HandleFunc(\"/\",func(w http.ResponseWriter,r *http.Request){w.Header().Set(\"Content-Type\",\"application/json\");_ = json.NewEncoder(w).Encode(map[string]interface{}{\"built\":built,\"runtime\":snap()})});port:=os.Getenv(\"PORT\");if port==\"\"{port=\"3000\"};log.Fatal(http.ListenAndServe(\":\"+port,nil))}\nQA237_GO\n/usr/local/go/bin/go build -o qa-http qa_probe.go\n/opt/render/project/src/qa-http --snapshot > qa-built.json",
+          "preDeployCommand": "",
+          "startCommand": "/opt/render/project/src/qa-http"
+        },
+        "healthCheckPath": "/",
+        "internalAddress": "qa-20261014-51d468ac-source:3000",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "free",
+        "port": 3000,
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "go",
+        "url": "https://qa-20261014-51d468ac-source.onbex.co"
+      },
+      "slug": "qa-20261014-51d468ac-source",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "web_service",
+      "updatedAt": "2026-10-14T12:26:59.332933093Z"
+    },
+    "deploy_children": [
+      {
+        "commit": {
+          "createdAt": "2026-10-14T11:14:12Z",
+          "id": "195e2ebb1f1a086180bc674928d9c05a45a86153",
+          "message": "docs(pm): promote complete card-radio keyboard fix to w4/m207"
+        },
+        "createdAt": "2026-10-14T12:32:40.938883Z",
+        "finishedAt": "2026-10-14T12:34:22.061763Z",
+        "id": "dep-db7ncq1llfps73emua4g",
+        "startedAt": "2026-10-14T12:32:51.925321Z",
+        "status": "live",
+        "trigger": "api",
+        "updatedAt": "2026-10-14T12:34:22.061765Z"
+      },
+      {
+        "commit": {
+          "id": "195e2ebb1f1a086180bc674928d9c05a45a86153",
+          "message": "docs(pm): promote complete card-radio keyboard fix to w4/m207"
+        },
+        "createdAt": "2026-10-14T12:26:59.314472Z",
+        "finishedAt": "2026-10-14T12:29:51.934407Z",
+        "id": "dep-db7na4pllfps73emua3g",
+        "startedAt": "2026-10-14T12:28:04.678308Z",
+        "status": "deactivated",
+        "trigger": "other",
+        "updatedAt": "2026-10-14T12:34:22.067002Z"
+      }
+    ],
+    "observations": [
+      {
+        "at": "2026-10-14T12:30:11.504335+00:00",
+        "native_history": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db7na4pllfps73emua30",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.453,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"195e2ebb1f1a086180bc674928d9c05a45a86153\",\n      \"message\": \"docs(pm): promote complete card-radio keyboard fix to w4/m207\"\n    },\n    \"createdAt\": \"2026-10-14T12:26:59.314472Z\",\n    \"finishedAt\": \"2026-10-14T12:29:51.934407Z\",\n    \"id\": \"dep-db7na4pllfps73emua3g\",\n    \"startedAt\": \"2026-10-14T12:28:04.678308Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T12:29:51.934408Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "195e2ebb1f1a086180bc674928d9c05a45a86153",
+            "message": "docs(pm): promote complete card-radio keyboard fix to w4/m207"
+          },
+          "createdAt": "2026-10-14T12:26:59.314472Z",
+          "finishedAt": "2026-10-14T12:29:51.934407Z",
+          "id": "dep-db7na4pllfps73emua3g",
+          "startedAt": "2026-10-14T12:28:04.678308Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-14T12:29:51.934408Z"
+        },
+        "runtime": {
+          "HTTP": "200",
+          "exit": 0,
+          "body": {
+            "built": {
+              "fileBase64": "UUEyMzdfNTFkNDY4YWNfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+              "fileSHA256": "393729b76b259c42b3f2ebeb3aa5d0e34e98b56a8b5d4bde6cba0f82600716c2",
+              "marker": "QA237_51d468ac_source",
+              "path": ""
+            },
+            "runtime": {
+              "fileBase64": "UUEyMzdfNTFkNDY4YWNfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+              "fileSHA256": "393729b76b259c42b3f2ebeb3aa5d0e34e98b56a8b5d4bde6cba0f82600716c2",
+              "marker": "QA237_51d468ac_source",
+              "path": ""
+            }
+          },
+          "raw_body": "{\"built\":{\"fileBase64\":\"UUEyMzdfNTFkNDY4YWNfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==\",\"fileSHA256\":\"393729b76b259c42b3f2ebeb3aa5d0e34e98b56a8b5d4bde6cba0f82600716c2\",\"marker\":\"QA237_51d468ac_source\",\"path\":\"\"},\"runtime\":{\"fileBase64\":\"UUEyMzdfNTFkNDY4YWNfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==\",\"fileSHA256\":\"393729b76b259c42b3f2ebeb3aa5d0e34e98b56a8b5d4bde6cba0f82600716c2\",\"marker\":\"QA237_51d468ac_source\",\"path\":\"\"}}\n",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": true
+      },
+      {
+        "at": "2026-10-14T12:35:43.073372+00:00",
+        "native_history": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db7na4pllfps73emua30",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.383,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-14T11:14:12Z\",\n      \"id\": \"195e2ebb1f1a086180bc674928d9c05a45a86153\",\n      \"message\": \"docs(pm): promote complete card-radio keyboard fix to w4/m207\"\n    },\n    \"createdAt\": \"2026-10-14T12:32:40.938883Z\",\n    \"finishedAt\": \"2026-10-14T12:34:22.061763Z\",\n    \"id\": \"dep-db7ncq1llfps73emua4g\",\n    \"startedAt\": \"2026-10-14T12:32:51.925321Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-14T12:34:22.061765Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"195e2ebb1f1a086180bc674928d9c05a45a86153\",\n      \"message\": \"docs(pm): promote complete card-radio keyboard fix to w4/m207\"\n    },\n    \"createdAt\": \"2026-10-14T12:26:59.314472Z\",\n    \"finishedAt\": \"2026-10-14T12:29:51.934407Z\",\n    \"id\": \"dep-db7na4pllfps73emua3g\",\n    \"startedAt\": \"2026-10-14T12:28:04.678308Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T12:34:22.067002Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "createdAt": "2026-10-14T11:14:12Z",
+            "id": "195e2ebb1f1a086180bc674928d9c05a45a86153",
+            "message": "docs(pm): promote complete card-radio keyboard fix to w4/m207"
+          },
+          "createdAt": "2026-10-14T12:32:40.938883Z",
+          "finishedAt": "2026-10-14T12:34:22.061763Z",
+          "id": "dep-db7ncq1llfps73emua4g",
+          "startedAt": "2026-10-14T12:32:51.925321Z",
+          "status": "live",
+          "trigger": "api",
+          "updatedAt": "2026-10-14T12:34:22.061765Z"
+        },
+        "runtime": {
+          "HTTP": "200",
+          "exit": 0,
+          "body": {
+            "built": {
+              "fileBase64": "UUEyMzdfNTFkNDY4YWNfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+              "fileSHA256": "393729b76b259c42b3f2ebeb3aa5d0e34e98b56a8b5d4bde6cba0f82600716c2",
+              "marker": "QA237_51d468ac_source",
+              "path": ""
+            },
+            "runtime": {
+              "fileBase64": "UUEyMzdfNTFkNDY4YWNfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+              "fileSHA256": "393729b76b259c42b3f2ebeb3aa5d0e34e98b56a8b5d4bde6cba0f82600716c2",
+              "marker": "QA237_51d468ac_source",
+              "path": ""
+            }
+          },
+          "raw_body": "{\"built\":{\"fileBase64\":\"UUEyMzdfNTFkNDY4YWNfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==\",\"fileSHA256\":\"393729b76b259c42b3f2ebeb3aa5d0e34e98b56a8b5d4bde6cba0f82600716c2\",\"marker\":\"QA237_51d468ac_source\",\"path\":\"\"},\"runtime\":{\"fileBase64\":\"UUEyMzdfNTFkNDY4YWNfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==\",\"fileSHA256\":\"393729b76b259c42b3f2ebeb3aa5d0e34e98b56a8b5d4bde6cba0f82600716c2\",\"marker\":\"QA237_51d468ac_source\",\"path\":\"\"}}\n",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": true
+      }
+    ],
+    "ready": true,
+    "accepted_snapshot": {
+      "built": {
+        "fileBase64": "UUEyMzdfNTFkNDY4YWNfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+        "fileSHA256": "393729b76b259c42b3f2ebeb3aa5d0e34e98b56a8b5d4bde6cba0f82600716c2",
+        "marker": "QA237_51d468ac_source",
+        "path": ""
+      },
+      "runtime": {
+        "fileBase64": "UUEyMzdfNTFkNDY4YWNfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+        "fileSHA256": "393729b76b259c42b3f2ebeb3aa5d0e34e98b56a8b5d4bde6cba0f82600716c2",
+        "marker": "QA237_51d468ac_source",
+        "path": ""
+      }
+    },
+    "manual_deploy_intents": [
+      {
+        "at": "2026-10-14T12:32:39.078911+00:00",
+        "command": [
+          "bex",
+          "deploys",
+          "create",
+          "srv-db7na4pllfps73emua30",
+          "--commit",
+          "195e2ebb1f1a086180bc674928d9c05a45a86153",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "before_ids": [
+          "dep-db7na4pllfps73emua3g"
+        ],
+        "same_commit": "195e2ebb1f1a086180bc674928d9c05a45a86153",
+        "wait": false,
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "create",
+            "srv-db7na4pllfps73emua30",
+            "--commit",
+            "195e2ebb1f1a086180bc674928d9c05a45a86153",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 1.793,
+          "stdout": "{\n  \"commit\": {\n    \"createdAt\": \"2026-10-14T11:14:12Z\",\n    \"id\": \"195e2ebb1f1a086180bc674928d9c05a45a86153\",\n    \"message\": \"docs(pm): promote complete card-radio keyboard fix to w4/m207\"\n  },\n  \"createdAt\": \"2026-10-14T12:32:40.938883Z\",\n  \"id\": \"dep-db7ncq1llfps73emua4g\",\n  \"status\": \"created\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-14T12:32:40.938883Z\"\n}",
+          "stderr": ""
+        }
+      }
+    ],
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db7na4pllfps73emua30",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.043,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-14T12:26:59Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db7na4pllfps73emua30\",\n    \"id\": \"srv-db7na4pllfps73emua30\",\n    \"name\": \"qa-20261014-51d468ac-source\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-go\",\n    \"serviceDetails\": {\n      \"env\": \"go\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"/bin/cat \\u003e qa_probe.go \\u003c\\u003c'QA237_GO'\\npackage main\\nimport(\\\"crypto/sha256\\\";\\\"encoding/base64\\\";\\\"encoding/json\\\";\\\"fmt\\\";\\\"log\\\";\\\"net/http\\\";\\\"os\\\")\\nfunc snap() map[string]string {b,e:=os.ReadFile(\\\"/etc/secrets/qa-note.txt\\\");if e!=nil{log.Fatal(e)};h:=sha256.Sum256(b);return map[string]string{\\\"marker\\\":os.Getenv(\\\"QA_MARKER\\\"),\\\"path\\\":os.Getenv(\\\"PATH\\\"),\\\"fileBase64\\\":base64.StdEncoding.EncodeToString(b),\\\"fileSHA256\\\":fmt.Sprintf(\\\"%x\\\",h)}}\\nfunc main(){if len(os.Args)\\u003e1\\u0026\\u0026os.Args[1]==\\\"--snapshot\\\"{if e:=json.NewEncoder(os.Stdout).Encode(snap());e!=nil{log.Fatal(e)};return};b,e:=os.ReadFile(\\\"qa-built.json\\\");if e!=nil{log.Fatal(e)};var built map[string]string;if e=json.Unmarshal(b,\\u0026built);e!=nil{log.Fatal(e)};http.HandleFunc(\\\"/\\\",func(w http.ResponseWriter,r *http.Request){w.Header().Set(\\\"Content-Type\\\",\\\"application/json\\\");_ = json.NewEncoder(w).Encode(map[string]interface{}{\\\"built\\\":built,\\\"runtime\\\":snap()})});port:=os.Getenv(\\\"PORT\\\");if port==\\\"\\\"{port=\\\"3000\\\"};log.Fatal(http.ListenAndServe(\\\":\\\"+port,nil))}\\nQA237_GO\\n/usr/local/go/bin/go build -o qa-http qa_probe.go\\n/opt/render/project/src/qa-http --snapshot \\u003e qa-built.json\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"/opt/render/project/src/qa-http\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261014-51d468ac-source:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"go\",\n      \"url\": \"https://qa-20261014-51d468ac-source.onbex.co\"\n    },\n    \"slug\": \"qa-20261014-51d468ac-source\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-14T12:34:19Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "cleanup_reconciliations": [
+      {
+        "at": "2026-10-14T12:40:48.103671+00:00",
+        "detail": {
+          "at": "2026-10-14T12:40:46.543729+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db7na4pllfps73emua30",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "404",
+          "elapsed": 0.39,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4a6a788d82fa666-SJC"
+          },
+          "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+        },
+        "list_ids": [
+          "srv-daif6dsmg29s73d1umvg",
+          "srv-dap3r714dm7c7390q91g",
+          "srv-dap3umrbdpcs73f5eeug",
+          "srv-dap3v694dm7c7390q930",
+          "srv-db09u90ehcmc739j12cg",
+          "srv-db09vbgehcmc739j12i0"
+        ],
+        "baseline_present": true,
+        "runtime": {
+          "exit": 0,
+          "HTTP": "404",
+          "stderr": ""
+        },
+        "quota": {
+          "at": "2026-10-14T12:40:48.097091+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "200",
+          "elapsed": 0.278,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4a6a7934e87e8d8-SJC"
+          },
+          "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+        }
+      }
+    ]
+  },
+  {
+    "sweep": 237,
+    "case": "render",
+    "client": "render",
+    "role": "source",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "web_service",
+    "name": "qa-20261014-b4aa6810-source",
+    "nonce": "b4aa6810",
+    "marker": "QA237_b4aa6810_source",
+    "time": "2026-10-14T12:29:07.527230+00:00",
+    "source_head": "195e2ebb1f1a086180bc674928d9c05a45a86153",
+    "state": "deleted: nativeack/API404/listabsent/runtime404/baseline present/quota termination0",
+    "create_command": [
+      "render",
+      "services",
+      "create",
+      "--name",
+      "qa-20261014-b4aa6810-source",
+      "--type",
+      "web_service",
+      "--runtime",
+      "go",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/hello-go",
+      "--build-command",
+      "/bin/cat > qa_probe.go <<'QA237_GO'\npackage main\nimport(\"crypto/sha256\";\"encoding/base64\";\"encoding/json\";\"fmt\";\"log\";\"net/http\";\"os\")\nfunc snap() map[string]string {b,e:=os.ReadFile(\"/etc/secrets/qa-note.txt\");if e!=nil{log.Fatal(e)};h:=sha256.Sum256(b);return map[string]string{\"marker\":os.Getenv(\"QA_MARKER\"),\"path\":os.Getenv(\"PATH\"),\"fileBase64\":base64.StdEncoding.EncodeToString(b),\"fileSHA256\":fmt.Sprintf(\"%x\",h)}}\nfunc main(){if len(os.Args)>1&&os.Args[1]==\"--snapshot\"{if e:=json.NewEncoder(os.Stdout).Encode(snap());e!=nil{log.Fatal(e)};return};b,e:=os.ReadFile(\"qa-built.json\");if e!=nil{log.Fatal(e)};var built map[string]string;if e=json.Unmarshal(b,&built);e!=nil{log.Fatal(e)};http.HandleFunc(\"/\",func(w http.ResponseWriter,r *http.Request){w.Header().Set(\"Content-Type\",\"application/json\");_ = json.NewEncoder(w).Encode(map[string]interface{}{\"built\":built,\"runtime\":snap()})});port:=os.Getenv(\"PORT\");if port==\"\"{port=\"3000\"};log.Fatal(http.ListenAndServe(\":\"+port,nil))}\nQA237_GO\n/usr/local/go/bin/go build -o qa-http qa_probe.go\n/opt/render/project/src/qa-http --snapshot > qa-built.json",
+      "--start-command",
+      "/opt/render/project/src/qa-http",
+      "--health-check-path",
+      "/",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--env-var",
+      "QA_MARKER=QA237_b4aa6810_source",
+      "--env-var",
+      "PATH=/usr/bin:/bin",
+      "--env-var",
+      "CGO_ENABLED=0",
+      "--secret-file",
+      "qa-note.txt:/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep237-render-note.txt",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "capacity_proof": {
+      "at": "2026-10-14T12:29:06.554768+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.362,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4a6967229ea7d12-SJC"
+      },
+      "response": "{\"services\":{\"used\":7,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "pre_create_inventory": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.927,
+      "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-14T12:29:04Z\",\n        \"nextRunAt\": \"2026-10-14T12:30:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-14T12:29:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-14T12:29:05Z\",\n        \"nextRunAt\": \"2026-10-14T12:30:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-14T12:29:05Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-14T12:29:05Z\",\n        \"nextRunAt\": \"2026-10-14T12:30:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-14T12:29:05Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T12:15:36Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:33Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:28Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-10-14T12:26:59Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db7na4pllfps73emua30\",\n      \"id\": \"srv-db7na4pllfps73emua30\",\n      \"name\": \"qa-20261014-51d468ac-source\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"/bin/cat \\u003e qa_probe.go \\u003c\\u003c'QA237_GO'\\npackage main\\nimport(\\\"crypto/sha256\\\";\\\"encoding/base64\\\";\\\"encoding/json\\\";\\\"fmt\\\";\\\"log\\\";\\\"net/http\\\";\\\"os\\\")\\nfunc snap() map[string]string {b,e:=os.ReadFile(\\\"/etc/secrets/qa-note.txt\\\");if e!=nil{log.Fatal(e)};h:=sha256.Sum256(b);return map[string]string{\\\"marker\\\":os.Getenv(\\\"QA_MARKER\\\"),\\\"path\\\":os.Getenv(\\\"PATH\\\"),\\\"fileBase64\\\":base64.StdEncoding.EncodeToString(b),\\\"fileSHA256\\\":fmt.Sprintf(\\\"%x\\\",h)}}\\nfunc main(){if len(os.Args)\\u003e1\\u0026\\u0026os.Args[1]==\\\"--snapshot\\\"{if e:=json.NewEncoder(os.Stdout).Encode(snap());e!=nil{log.Fatal(e)};return};b,e:=os.ReadFile(\\\"qa-built.json\\\");if e!=nil{log.Fatal(e)};var built map[string]string;if e=json.Unmarshal(b,\\u0026built);e!=nil{log.Fatal(e)};http.HandleFunc(\\\"/\\\",func(w http.ResponseWriter,r *http.Request){w.Header().Set(\\\"Content-Type\\\",\\\"application/json\\\");_ = json.NewEncoder(w).Encode(map[string]interface{}{\\\"built\\\":built,\\\"runtime\\\":snap()})});port:=os.Getenv(\\\"PORT\\\");if port==\\\"\\\"{port=\\\"3000\\\"};log.Fatal(http.ListenAndServe(\\\":\\\"+port,nil))}\\nQA237_GO\\n/usr/local/go/bin/go build -o qa-http qa_probe.go\\n/opt/render/project/src/qa-http --snapshot \\u003e qa-built.json\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"/opt/render/project/src/qa-http\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261014-51d468ac-source:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"go\",\n        \"url\": \"https://qa-20261014-51d468ac-source.onbex.co\"\n      },\n      \"slug\": \"qa-20261014-51d468ac-source\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T12:28:01Z\"\n    }\n  }\n]",
+      "stderr": ""
+    },
+    "expected_snapshot": {
+      "marker": "QA237_b4aa6810_source",
+      "fileBase64": "UUEyMzdfYjRhYTY4MTBfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+      "fileSHA256": "e84558b9016601556bd7be058e608543dc1e4c8cc31c31719f9a7b1bf4a40665"
+    },
+    "expected_path": "/usr/bin:/bin",
+    "harmless_file_contents": "QA237_b4aa6810_source\n☃=file\nsecond line\n",
+    "harmless_file": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep237-render-note.txt",
+    "dependency_ids": [],
+    "source_id": null,
+    "recorded_child_ids": [
+      "dep-db7nb5et41sc7388o9e0",
+      "dep-db7ndm9llfps73emua5g"
+    ],
+    "build_program": "/bin/cat > qa_probe.go <<'QA237_GO'\npackage main\nimport(\"crypto/sha256\";\"encoding/base64\";\"encoding/json\";\"fmt\";\"log\";\"net/http\";\"os\")\nfunc snap() map[string]string {b,e:=os.ReadFile(\"/etc/secrets/qa-note.txt\");if e!=nil{log.Fatal(e)};h:=sha256.Sum256(b);return map[string]string{\"marker\":os.Getenv(\"QA_MARKER\"),\"path\":os.Getenv(\"PATH\"),\"fileBase64\":base64.StdEncoding.EncodeToString(b),\"fileSHA256\":fmt.Sprintf(\"%x\",h)}}\nfunc main(){if len(os.Args)>1&&os.Args[1]==\"--snapshot\"{if e:=json.NewEncoder(os.Stdout).Encode(snap());e!=nil{log.Fatal(e)};return};b,e:=os.ReadFile(\"qa-built.json\");if e!=nil{log.Fatal(e)};var built map[string]string;if e=json.Unmarshal(b,&built);e!=nil{log.Fatal(e)};http.HandleFunc(\"/\",func(w http.ResponseWriter,r *http.Request){w.Header().Set(\"Content-Type\",\"application/json\");_ = json.NewEncoder(w).Encode(map[string]interface{}{\"built\":built,\"runtime\":snap()})});port:=os.Getenv(\"PORT\");if port==\"\"{port=\"3000\"};log.Fatal(http.ListenAndServe(\":\"+port,nil))}\nQA237_GO\n/usr/local/go/bin/go build -o qa-http qa_probe.go\n/opt/render/project/src/qa-http --snapshot > qa-built.json",
+    "generated_go_program": "package main\nimport(\"crypto/sha256\";\"encoding/base64\";\"encoding/json\";\"fmt\";\"log\";\"net/http\";\"os\")\nfunc snap() map[string]string {b,e:=os.ReadFile(\"/etc/secrets/qa-note.txt\");if e!=nil{log.Fatal(e)};h:=sha256.Sum256(b);return map[string]string{\"marker\":os.Getenv(\"QA_MARKER\"),\"path\":os.Getenv(\"PATH\"),\"fileBase64\":base64.StdEncoding.EncodeToString(b),\"fileSHA256\":fmt.Sprintf(\"%x\",h)}}\nfunc main(){if len(os.Args)>1&&os.Args[1]==\"--snapshot\"{if e:=json.NewEncoder(os.Stdout).Encode(snap());e!=nil{log.Fatal(e)};return};b,e:=os.ReadFile(\"qa-built.json\");if e!=nil{log.Fatal(e)};var built map[string]string;if e=json.Unmarshal(b,&built);e!=nil{log.Fatal(e)};http.HandleFunc(\"/\",func(w http.ResponseWriter,r *http.Request){w.Header().Set(\"Content-Type\",\"application/json\");_ = json.NewEncoder(w).Encode(map[string]interface{}{\"built\":built,\"runtime\":snap()})});port:=os.Getenv(\"PORT\");if port==\"\"{port=\"3000\"};log.Fatal(http.ListenAndServe(\":\"+port,nil))}\n",
+    "start_program": "/opt/render/project/src/qa-http",
+    "qualification": "native Go fixture with explicit PATH and harmless file bytes; absolute compiler/application and CGO_ENABLED=0; no product source edit",
+    "create_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "create",
+        "--name",
+        "qa-20261014-b4aa6810-source",
+        "--type",
+        "web_service",
+        "--runtime",
+        "go",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--branch",
+        "main",
+        "--root-directory",
+        "examples/hello-go",
+        "--build-command",
+        "/bin/cat > qa_probe.go <<'QA237_GO'\npackage main\nimport(\"crypto/sha256\";\"encoding/base64\";\"encoding/json\";\"fmt\";\"log\";\"net/http\";\"os\")\nfunc snap() map[string]string {b,e:=os.ReadFile(\"/etc/secrets/qa-note.txt\");if e!=nil{log.Fatal(e)};h:=sha256.Sum256(b);return map[string]string{\"marker\":os.Getenv(\"QA_MARKER\"),\"path\":os.Getenv(\"PATH\"),\"fileBase64\":base64.StdEncoding.EncodeToString(b),\"fileSHA256\":fmt.Sprintf(\"%x\",h)}}\nfunc main(){if len(os.Args)>1&&os.Args[1]==\"--snapshot\"{if e:=json.NewEncoder(os.Stdout).Encode(snap());e!=nil{log.Fatal(e)};return};b,e:=os.ReadFile(\"qa-built.json\");if e!=nil{log.Fatal(e)};var built map[string]string;if e=json.Unmarshal(b,&built);e!=nil{log.Fatal(e)};http.HandleFunc(\"/\",func(w http.ResponseWriter,r *http.Request){w.Header().Set(\"Content-Type\",\"application/json\");_ = json.NewEncoder(w).Encode(map[string]interface{}{\"built\":built,\"runtime\":snap()})});port:=os.Getenv(\"PORT\");if port==\"\"{port=\"3000\"};log.Fatal(http.ListenAndServe(\":\"+port,nil))}\nQA237_GO\n/usr/local/go/bin/go build -o qa-http qa_probe.go\n/opt/render/project/src/qa-http --snapshot > qa-built.json",
+        "--start-command",
+        "/opt/render/project/src/qa-http",
+        "--health-check-path",
+        "/",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--auto-deploy=false",
+        "--env-var",
+        "QA_MARKER=QA237_b4aa6810_source",
+        "--env-var",
+        "PATH=/usr/bin:/bin",
+        "--env-var",
+        "CGO_ENABLED=0",
+        "--secret-file",
+        "qa-note.txt:/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep237-render-note.txt",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 2.521,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-14T12:29:10Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db7nb5et41sc7388o9dg\",\n  \"id\": \"srv-db7nb5et41sc7388o9dg\",\n  \"name\": \"qa-20261014-b4aa6810-source\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-go\",\n  \"serviceDetails\": {\n    \"env\": \"go\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"/bin/cat \\u003e qa_probe.go \\u003c\\u003c'QA237_GO'\\npackage main\\nimport(\\\"crypto/sha256\\\";\\\"encoding/base64\\\";\\\"encoding/json\\\";\\\"fmt\\\";\\\"log\\\";\\\"net/http\\\";\\\"os\\\")\\nfunc snap() map[string]string {b,e:=os.ReadFile(\\\"/etc/secrets/qa-note.txt\\\");if e!=nil{log.Fatal(e)};h:=sha256.Sum256(b);return map[string]string{\\\"marker\\\":os.Getenv(\\\"QA_MARKER\\\"),\\\"path\\\":os.Getenv(\\\"PATH\\\"),\\\"fileBase64\\\":base64.StdEncoding.EncodeToString(b),\\\"fileSHA256\\\":fmt.Sprintf(\\\"%x\\\",h)}}\\nfunc main(){if len(os.Args)\\u003e1\\u0026\\u0026os.Args[1]==\\\"--snapshot\\\"{if e:=json.NewEncoder(os.Stdout).Encode(snap());e!=nil{log.Fatal(e)};return};b,e:=os.ReadFile(\\\"qa-built.json\\\");if e!=nil{log.Fatal(e)};var built map[string]string;if e=json.Unmarshal(b,\\u0026built);e!=nil{log.Fatal(e)};http.HandleFunc(\\\"/\\\",func(w http.ResponseWriter,r *http.Request){w.Header().Set(\\\"Content-Type\\\",\\\"application/json\\\");_ = json.NewEncoder(w).Encode(map[string]interface{}{\\\"built\\\":built,\\\"runtime\\\":snap()})});port:=os.Getenv(\\\"PORT\\\");if port==\\\"\\\"{port=\\\"3000\\\"};log.Fatal(http.ListenAndServe(\\\":\\\"+port,nil))}\\nQA237_GO\\n/usr/local/go/bin/go build -o qa-http qa_probe.go\\n/opt/render/project/src/qa-http --snapshot \\u003e qa-built.json\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"/opt/render/project/src/qa-http\"\n    },\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261014-b4aa6810-source:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"go\",\n    \"url\": \"https://qa-20261014-b4aa6810-source.onbex.co\"\n  },\n  \"slug\": \"qa-20261014-b4aa6810-source\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-14T12:29:10Z\"\n}",
+      "stderr": ""
+    },
+    "id": "srv-db7nb5et41sc7388o9dg",
+    "create_response": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "main",
+      "createdAt": "2026-10-14T12:29:10Z",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db7nb5et41sc7388o9dg",
+      "id": "srv-db7nb5et41sc7388o9dg",
+      "name": "qa-20261014-b4aa6810-source",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/bex-co/bex",
+      "rootDir": "examples/hello-go",
+      "serviceDetails": {
+        "env": "go",
+        "envSpecificDetails": {
+          "buildCommand": "/bin/cat > qa_probe.go <<'QA237_GO'\npackage main\nimport(\"crypto/sha256\";\"encoding/base64\";\"encoding/json\";\"fmt\";\"log\";\"net/http\";\"os\")\nfunc snap() map[string]string {b,e:=os.ReadFile(\"/etc/secrets/qa-note.txt\");if e!=nil{log.Fatal(e)};h:=sha256.Sum256(b);return map[string]string{\"marker\":os.Getenv(\"QA_MARKER\"),\"path\":os.Getenv(\"PATH\"),\"fileBase64\":base64.StdEncoding.EncodeToString(b),\"fileSHA256\":fmt.Sprintf(\"%x\",h)}}\nfunc main(){if len(os.Args)>1&&os.Args[1]==\"--snapshot\"{if e:=json.NewEncoder(os.Stdout).Encode(snap());e!=nil{log.Fatal(e)};return};b,e:=os.ReadFile(\"qa-built.json\");if e!=nil{log.Fatal(e)};var built map[string]string;if e=json.Unmarshal(b,&built);e!=nil{log.Fatal(e)};http.HandleFunc(\"/\",func(w http.ResponseWriter,r *http.Request){w.Header().Set(\"Content-Type\",\"application/json\");_ = json.NewEncoder(w).Encode(map[string]interface{}{\"built\":built,\"runtime\":snap()})});port:=os.Getenv(\"PORT\");if port==\"\"{port=\"3000\"};log.Fatal(http.ListenAndServe(\":\"+port,nil))}\nQA237_GO\n/usr/local/go/bin/go build -o qa-http qa_probe.go\n/opt/render/project/src/qa-http --snapshot > qa-built.json",
+          "preDeployCommand": "",
+          "startCommand": "/opt/render/project/src/qa-http"
+        },
+        "healthCheckPath": "/",
+        "internalAddress": "qa-20261014-b4aa6810-source:3000",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "free",
+        "port": 3000,
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "go",
+        "url": "https://qa-20261014-b4aa6810-source.onbex.co"
+      },
+      "slug": "qa-20261014-b4aa6810-source",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "web_service",
+      "updatedAt": "2026-10-14T12:29:10Z"
+    },
+    "deploy_children": [
+      {
+        "commit": {
+          "createdAt": "2026-10-14T11:14:12Z",
+          "id": "195e2ebb1f1a086180bc674928d9c05a45a86153",
+          "message": "docs(pm): promote complete card-radio keyboard fix to w4/m207"
+        },
+        "createdAt": "2026-10-14T12:34:33.246621Z",
+        "finishedAt": "2026-10-14T12:36:21.98977Z",
+        "id": "dep-db7ndm9llfps73emua5g",
+        "startedAt": "2026-10-14T12:34:51.942955Z",
+        "status": "live",
+        "trigger": "api",
+        "updatedAt": "2026-10-14T12:36:21.989772Z"
+      },
+      {
+        "commit": {
+          "id": "195e2ebb1f1a086180bc674928d9c05a45a86153",
+          "message": "docs(pm): promote complete card-radio keyboard fix to w4/m207"
+        },
+        "createdAt": "2026-10-14T12:29:09.437065Z",
+        "finishedAt": "2026-10-14T12:31:51.958394Z",
+        "id": "dep-db7nb5et41sc7388o9e0",
+        "startedAt": "2026-10-14T12:30:21.993328Z",
+        "status": "deactivated",
+        "trigger": "other",
+        "updatedAt": "2026-10-14T12:36:21.992119Z"
+      }
+    ],
+    "observations": [
+      {
+        "at": "2026-10-14T12:31:02.160096+00:00",
+        "native_history": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db7nb5et41sc7388o9dg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.45,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"195e2ebb1f1a086180bc674928d9c05a45a86153\",\n      \"message\": \"docs(pm): promote complete card-radio keyboard fix to w4/m207\"\n    },\n    \"createdAt\": \"2026-10-14T12:29:09.437065Z\",\n    \"id\": \"dep-db7nb5et41sc7388o9e0\",\n    \"startedAt\": \"2026-10-14T12:30:21.993328Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T12:30:21.993329Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "195e2ebb1f1a086180bc674928d9c05a45a86153",
+            "message": "docs(pm): promote complete card-radio keyboard fix to w4/m207"
+          },
+          "createdAt": "2026-10-14T12:29:09.437065Z",
+          "id": "dep-db7nb5et41sc7388o9e0",
+          "startedAt": "2026-10-14T12:30:21.993328Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-14T12:30:21.993329Z"
+        },
+        "runtime": {
+          "HTTP": "404",
+          "exit": 0,
+          "body": null,
+          "raw_body": "404 page not found\n",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": false
+      },
+      {
+        "at": "2026-10-14T12:33:39.010763+00:00",
+        "native_history": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db7nb5et41sc7388o9dg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.394,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"195e2ebb1f1a086180bc674928d9c05a45a86153\",\n      \"message\": \"docs(pm): promote complete card-radio keyboard fix to w4/m207\"\n    },\n    \"createdAt\": \"2026-10-14T12:29:09.437065Z\",\n    \"finishedAt\": \"2026-10-14T12:31:51.958394Z\",\n    \"id\": \"dep-db7nb5et41sc7388o9e0\",\n    \"startedAt\": \"2026-10-14T12:30:21.993328Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T12:31:51.958395Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "id": "195e2ebb1f1a086180bc674928d9c05a45a86153",
+            "message": "docs(pm): promote complete card-radio keyboard fix to w4/m207"
+          },
+          "createdAt": "2026-10-14T12:29:09.437065Z",
+          "finishedAt": "2026-10-14T12:31:51.958394Z",
+          "id": "dep-db7nb5et41sc7388o9e0",
+          "startedAt": "2026-10-14T12:30:21.993328Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-14T12:31:51.958395Z"
+        },
+        "runtime": {
+          "HTTP": "200",
+          "exit": 0,
+          "body": {
+            "built": {
+              "fileBase64": "UUEyMzdfYjRhYTY4MTBfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+              "fileSHA256": "e84558b9016601556bd7be058e608543dc1e4c8cc31c31719f9a7b1bf4a40665",
+              "marker": "QA237_b4aa6810_source",
+              "path": "/usr/bin:/bin"
+            },
+            "runtime": {
+              "fileBase64": "UUEyMzdfYjRhYTY4MTBfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+              "fileSHA256": "e84558b9016601556bd7be058e608543dc1e4c8cc31c31719f9a7b1bf4a40665",
+              "marker": "QA237_b4aa6810_source",
+              "path": "/usr/bin:/bin"
+            }
+          },
+          "raw_body": "{\"built\":{\"fileBase64\":\"UUEyMzdfYjRhYTY4MTBfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==\",\"fileSHA256\":\"e84558b9016601556bd7be058e608543dc1e4c8cc31c31719f9a7b1bf4a40665\",\"marker\":\"QA237_b4aa6810_source\",\"path\":\"/usr/bin:/bin\"},\"runtime\":{\"fileBase64\":\"UUEyMzdfYjRhYTY4MTBfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==\",\"fileSHA256\":\"e84558b9016601556bd7be058e608543dc1e4c8cc31c31719f9a7b1bf4a40665\",\"marker\":\"QA237_b4aa6810_source\",\"path\":\"/usr/bin:/bin\"}}\n",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": true
+      },
+      {
+        "at": "2026-10-14T12:36:45.124987+00:00",
+        "native_history": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db7nb5et41sc7388o9dg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.41,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-14T11:14:12Z\",\n      \"id\": \"195e2ebb1f1a086180bc674928d9c05a45a86153\",\n      \"message\": \"docs(pm): promote complete card-radio keyboard fix to w4/m207\"\n    },\n    \"createdAt\": \"2026-10-14T12:34:33.246621Z\",\n    \"finishedAt\": \"2026-10-14T12:36:21.98977Z\",\n    \"id\": \"dep-db7ndm9llfps73emua5g\",\n    \"startedAt\": \"2026-10-14T12:34:51.942955Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-14T12:36:21.989772Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"195e2ebb1f1a086180bc674928d9c05a45a86153\",\n      \"message\": \"docs(pm): promote complete card-radio keyboard fix to w4/m207\"\n    },\n    \"createdAt\": \"2026-10-14T12:29:09.437065Z\",\n    \"finishedAt\": \"2026-10-14T12:31:51.958394Z\",\n    \"id\": \"dep-db7nb5et41sc7388o9e0\",\n    \"startedAt\": \"2026-10-14T12:30:21.993328Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T12:36:21.992119Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "createdAt": "2026-10-14T11:14:12Z",
+            "id": "195e2ebb1f1a086180bc674928d9c05a45a86153",
+            "message": "docs(pm): promote complete card-radio keyboard fix to w4/m207"
+          },
+          "createdAt": "2026-10-14T12:34:33.246621Z",
+          "finishedAt": "2026-10-14T12:36:21.98977Z",
+          "id": "dep-db7ndm9llfps73emua5g",
+          "startedAt": "2026-10-14T12:34:51.942955Z",
+          "status": "live",
+          "trigger": "api",
+          "updatedAt": "2026-10-14T12:36:21.989772Z"
+        },
+        "runtime": {
+          "HTTP": "200",
+          "exit": 0,
+          "body": {
+            "built": {
+              "fileBase64": "UUEyMzdfYjRhYTY4MTBfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+              "fileSHA256": "e84558b9016601556bd7be058e608543dc1e4c8cc31c31719f9a7b1bf4a40665",
+              "marker": "QA237_b4aa6810_source",
+              "path": "/usr/bin:/bin"
+            },
+            "runtime": {
+              "fileBase64": "UUEyMzdfYjRhYTY4MTBfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+              "fileSHA256": "e84558b9016601556bd7be058e608543dc1e4c8cc31c31719f9a7b1bf4a40665",
+              "marker": "QA237_b4aa6810_source",
+              "path": "/usr/bin:/bin"
+            }
+          },
+          "raw_body": "{\"built\":{\"fileBase64\":\"UUEyMzdfYjRhYTY4MTBfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==\",\"fileSHA256\":\"e84558b9016601556bd7be058e608543dc1e4c8cc31c31719f9a7b1bf4a40665\",\"marker\":\"QA237_b4aa6810_source\",\"path\":\"/usr/bin:/bin\"},\"runtime\":{\"fileBase64\":\"UUEyMzdfYjRhYTY4MTBfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==\",\"fileSHA256\":\"e84558b9016601556bd7be058e608543dc1e4c8cc31c31719f9a7b1bf4a40665\",\"marker\":\"QA237_b4aa6810_source\",\"path\":\"/usr/bin:/bin\"}}\n",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": true
+      },
+      {
+        "at": "2026-10-14T12:37:35.848173+00:00",
+        "native_history": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db7nb5et41sc7388o9dg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.356,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-14T11:14:12Z\",\n      \"id\": \"195e2ebb1f1a086180bc674928d9c05a45a86153\",\n      \"message\": \"docs(pm): promote complete card-radio keyboard fix to w4/m207\"\n    },\n    \"createdAt\": \"2026-10-14T12:34:33.246621Z\",\n    \"finishedAt\": \"2026-10-14T12:36:21.98977Z\",\n    \"id\": \"dep-db7ndm9llfps73emua5g\",\n    \"startedAt\": \"2026-10-14T12:34:51.942955Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-14T12:36:21.989772Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"195e2ebb1f1a086180bc674928d9c05a45a86153\",\n      \"message\": \"docs(pm): promote complete card-radio keyboard fix to w4/m207\"\n    },\n    \"createdAt\": \"2026-10-14T12:29:09.437065Z\",\n    \"finishedAt\": \"2026-10-14T12:31:51.958394Z\",\n    \"id\": \"dep-db7nb5et41sc7388o9e0\",\n    \"startedAt\": \"2026-10-14T12:30:21.993328Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-14T12:36:21.992119Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "target": {
+          "commit": {
+            "createdAt": "2026-10-14T11:14:12Z",
+            "id": "195e2ebb1f1a086180bc674928d9c05a45a86153",
+            "message": "docs(pm): promote complete card-radio keyboard fix to w4/m207"
+          },
+          "createdAt": "2026-10-14T12:34:33.246621Z",
+          "finishedAt": "2026-10-14T12:36:21.98977Z",
+          "id": "dep-db7ndm9llfps73emua5g",
+          "startedAt": "2026-10-14T12:34:51.942955Z",
+          "status": "live",
+          "trigger": "api",
+          "updatedAt": "2026-10-14T12:36:21.989772Z"
+        },
+        "runtime": {
+          "HTTP": "200",
+          "exit": 0,
+          "body": {
+            "built": {
+              "fileBase64": "UUEyMzdfYjRhYTY4MTBfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+              "fileSHA256": "e84558b9016601556bd7be058e608543dc1e4c8cc31c31719f9a7b1bf4a40665",
+              "marker": "QA237_b4aa6810_source",
+              "path": "/usr/bin:/bin"
+            },
+            "runtime": {
+              "fileBase64": "UUEyMzdfYjRhYTY4MTBfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+              "fileSHA256": "e84558b9016601556bd7be058e608543dc1e4c8cc31c31719f9a7b1bf4a40665",
+              "marker": "QA237_b4aa6810_source",
+              "path": "/usr/bin:/bin"
+            }
+          },
+          "raw_body": "{\"built\":{\"fileBase64\":\"UUEyMzdfYjRhYTY4MTBfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==\",\"fileSHA256\":\"e84558b9016601556bd7be058e608543dc1e4c8cc31c31719f9a7b1bf4a40665\",\"marker\":\"QA237_b4aa6810_source\",\"path\":\"/usr/bin:/bin\"},\"runtime\":{\"fileBase64\":\"UUEyMzdfYjRhYTY4MTBfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==\",\"fileSHA256\":\"e84558b9016601556bd7be058e608543dc1e4c8cc31c31719f9a7b1bf4a40665\",\"marker\":\"QA237_b4aa6810_source\",\"path\":\"/usr/bin:/bin\"}}\n",
+          "stderr": ""
+        },
+        "exact_build_runtime_values_and_file": true
+      }
+    ],
+    "ready": true,
+    "accepted_snapshot": {
+      "built": {
+        "fileBase64": "UUEyMzdfYjRhYTY4MTBfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+        "fileSHA256": "e84558b9016601556bd7be058e608543dc1e4c8cc31c31719f9a7b1bf4a40665",
+        "marker": "QA237_b4aa6810_source",
+        "path": "/usr/bin:/bin"
+      },
+      "runtime": {
+        "fileBase64": "UUEyMzdfYjRhYTY4MTBfc291cmNlCuKYgz1maWxlCnNlY29uZCBsaW5lCg==",
+        "fileSHA256": "e84558b9016601556bd7be058e608543dc1e4c8cc31c31719f9a7b1bf4a40665",
+        "marker": "QA237_b4aa6810_source",
+        "path": "/usr/bin:/bin"
+      }
+    },
+    "manual_deploy_intents": [
+      {
+        "at": "2026-10-14T12:34:32.150252+00:00",
+        "command": [
+          "render",
+          "deploys",
+          "create",
+          "srv-db7nb5et41sc7388o9dg",
+          "--commit",
+          "195e2ebb1f1a086180bc674928d9c05a45a86153",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "before_ids": [
+          "dep-db7nb5et41sc7388o9e0"
+        ],
+        "same_commit": "195e2ebb1f1a086180bc674928d9c05a45a86153",
+        "wait": false,
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "create",
+            "srv-db7nb5et41sc7388o9dg",
+            "--commit",
+            "195e2ebb1f1a086180bc674928d9c05a45a86153",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 1.042,
+          "stdout": "{\n  \"commit\": {\n    \"createdAt\": \"2026-10-14T11:14:12Z\",\n    \"id\": \"195e2ebb1f1a086180bc674928d9c05a45a86153\",\n    \"message\": \"docs(pm): promote complete card-radio keyboard fix to w4/m207\"\n  },\n  \"createdAt\": \"2026-10-14T12:34:33.246621Z\",\n  \"id\": \"dep-db7ndm9llfps73emua5g\",\n  \"status\": \"created\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-14T12:34:33.246621Z\"\n}",
+          "stderr": ""
+        }
+      }
+    ],
+    "delete_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "delete",
+        "srv-db7nb5et41sc7388o9dg",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.473,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-14T12:29:10Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db7nb5et41sc7388o9dg\",\n    \"id\": \"srv-db7nb5et41sc7388o9dg\",\n    \"name\": \"qa-20261014-b4aa6810-source\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-go\",\n    \"serviceDetails\": {\n      \"env\": \"go\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"/bin/cat \\u003e qa_probe.go \\u003c\\u003c'QA237_GO'\\npackage main\\nimport(\\\"crypto/sha256\\\";\\\"encoding/base64\\\";\\\"encoding/json\\\";\\\"fmt\\\";\\\"log\\\";\\\"net/http\\\";\\\"os\\\")\\nfunc snap() map[string]string {b,e:=os.ReadFile(\\\"/etc/secrets/qa-note.txt\\\");if e!=nil{log.Fatal(e)};h:=sha256.Sum256(b);return map[string]string{\\\"marker\\\":os.Getenv(\\\"QA_MARKER\\\"),\\\"path\\\":os.Getenv(\\\"PATH\\\"),\\\"fileBase64\\\":base64.StdEncoding.EncodeToString(b),\\\"fileSHA256\\\":fmt.Sprintf(\\\"%x\\\",h)}}\\nfunc main(){if len(os.Args)\\u003e1\\u0026\\u0026os.Args[1]==\\\"--snapshot\\\"{if e:=json.NewEncoder(os.Stdout).Encode(snap());e!=nil{log.Fatal(e)};return};b,e:=os.ReadFile(\\\"qa-built.json\\\");if e!=nil{log.Fatal(e)};var built map[string]string;if e=json.Unmarshal(b,\\u0026built);e!=nil{log.Fatal(e)};http.HandleFunc(\\\"/\\\",func(w http.ResponseWriter,r *http.Request){w.Header().Set(\\\"Content-Type\\\",\\\"application/json\\\");_ = json.NewEncoder(w).Encode(map[string]interface{}{\\\"built\\\":built,\\\"runtime\\\":snap()})});port:=os.Getenv(\\\"PORT\\\");if port==\\\"\\\"{port=\\\"3000\\\"};log.Fatal(http.ListenAndServe(\\\":\\\"+port,nil))}\\nQA237_GO\\n/usr/local/go/bin/go build -o qa-http qa_probe.go\\n/opt/render/project/src/qa-http --snapshot \\u003e qa-built.json\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"/opt/render/project/src/qa-http\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261014-b4aa6810-source:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"go\",\n      \"url\": \"https://qa-20261014-b4aa6810-source.onbex.co\"\n    },\n    \"slug\": \"qa-20261014-b4aa6810-source\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-14T12:36:06Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "cleanup_reconciliations": [
+      {
+        "at": "2026-10-14T12:41:27.297695+00:00",
+        "detail": {
+          "at": "2026-10-14T12:41:25.340722+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db7nb5et41sc7388o9dg",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "404",
+          "elapsed": 0.292,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4a6a87bfc80eb31-SJC"
+          },
+          "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+        },
+        "list_ids": [
+          "srv-daif6dsmg29s73d1umvg",
+          "srv-dap3r714dm7c7390q91g",
+          "srv-dap3umrbdpcs73f5eeug",
+          "srv-dap3v694dm7c7390q930",
+          "srv-db09u90ehcmc739j12cg",
+          "srv-db09vbgehcmc739j12i0"
+        ],
+        "baseline_present": true,
+        "runtime": {
+          "exit": 0,
+          "HTTP": "404",
+          "stderr": ""
+        },
+        "quota": {
+          "at": "2026-10-14T12:41:27.290341+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "200",
+          "elapsed": 0.627,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4a6a8860f832302-SJC"
+          },
+          "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+        }
+      }
+    ]
+  }
+]

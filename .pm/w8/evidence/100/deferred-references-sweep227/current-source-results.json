@@ -1,0 +1,694 @@
+[
+  {
+    "actual_path": "services[0].envVars[0]",
+    "case": "missing sibling key/second invalid",
+    "expect_valid": false,
+    "expected_path": "services[0].envVars[1]",
+    "location_or_valid_control_pass": false,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"first\"\n        },\n        {\n          \"fromService\": {\n            \"envVarKey\": \"MISSING\",\n            \"name\": \"own-target\",\n            \"type\": \"web\"\n          },\n          \"key\": \"VALUE\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-caller\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"GOOD\",\n          \"value\": \"good\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-target\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"own-caller\": envVars[\"VALUE\"]: fromService.envVarKey references env \"MISSING\" on service \"own-target\", which has no such plainly-defined variable",
+          "line": 5,
+          "column": 9,
+          "path": "services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "services[0].envVars[0]",
+    "case": "missing sibling key/first invalid",
+    "expect_valid": false,
+    "expected_path": "services[0].envVars[0]",
+    "location_or_valid_control_pass": true,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"MISSING\",\n            \"name\": \"own-target\",\n            \"type\": \"web\"\n          },\n          \"key\": \"VALUE\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"second\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-caller\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"GOOD\",\n          \"value\": \"good\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-target\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"own-caller\": envVars[\"VALUE\"]: fromService.envVarKey references env \"MISSING\" on service \"own-target\", which has no such plainly-defined variable",
+          "line": 5,
+          "column": 9,
+          "path": "services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "",
+    "case": "missing sibling key/both valid",
+    "expect_valid": true,
+    "expected_path": "services[0].envVars[1]",
+    "location_or_valid_control_pass": true,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"first\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"second\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-caller\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"GOOD\",\n          \"value\": \"good\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-target\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "own-caller",
+          "own-target"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "own-caller",
+            "sourcePath": "#/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "own-target",
+            "sourcePath": "#/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "projects[0].environments[0].services[0].envVars[0]",
+    "case": "nested missing sibling key/second invalid",
+    "expect_valid": false,
+    "expected_path": "projects[0].environments[0].services[0].envVars[1]",
+    "location_or_valid_control_pass": false,
+    "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"own-env\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"first\"\n                },\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"MISSING\",\n                    \"name\": \"own-target\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"VALUE\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-caller\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"GOOD\",\n                  \"value\": \"good\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-target\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"own-project\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"own-caller\": envVars[\"VALUE\"]: fromService.envVarKey references env \"MISSING\" on service \"own-target\", which has no such plainly-defined variable",
+          "line": 10,
+          "column": 17,
+          "path": "projects[0].environments[0].services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "projects[0].environments[0].services[0].envVars[0]",
+    "case": "nested missing sibling key/first invalid",
+    "expect_valid": false,
+    "expected_path": "projects[0].environments[0].services[0].envVars[0]",
+    "location_or_valid_control_pass": true,
+    "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"own-env\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"MISSING\",\n                    \"name\": \"own-target\",\n                    \"type\": \"web\"\n                  },\n                  \"key\": \"VALUE\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"second\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-caller\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"GOOD\",\n                  \"value\": \"good\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-target\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"own-project\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"own-caller\": envVars[\"VALUE\"]: fromService.envVarKey references env \"MISSING\" on service \"own-target\", which has no such plainly-defined variable",
+          "line": 10,
+          "column": 17,
+          "path": "projects[0].environments[0].services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "",
+    "case": "nested missing sibling key/both valid",
+    "expect_valid": true,
+    "expected_path": "projects[0].environments[0].services[0].envVars[1]",
+    "location_or_valid_control_pass": true,
+    "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"own-env\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"first\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"second\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-caller\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"GOOD\",\n                  \"value\": \"good\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-target\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"own-project\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "own-caller",
+          "own-target"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "own-caller",
+            "sourcePath": "#/projects/0/environments/0/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "own-target",
+            "sourcePath": "#/projects/0/environments/0/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "services[0].envVars[0]",
+    "case": "pool unavailable/second invalid",
+    "expect_valid": false,
+    "expected_path": "services[0].envVars[1]",
+    "location_or_valid_control_pass": false,
+    "manifest": "{\n  \"databases\": [\n    {\n      \"name\": \"own-db\",\n      \"plan\": \"free\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"first\"\n        },\n        {\n          \"fromDatabase\": {\n            \"name\": \"own-db\",\n            \"property\": \"connectionPoolString\"\n          },\n          \"key\": \"VALUE\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-caller\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"GOOD\",\n          \"value\": \"good\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-target\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"own-caller\": envVars[\"VALUE\"]: fromDatabase connectionPoolString requires database \"own-db\" connectionPool: pgbouncer",
+          "line": 11,
+          "column": 9,
+          "path": "services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "services[0].envVars[0]",
+    "case": "pool unavailable/first invalid",
+    "expect_valid": false,
+    "expected_path": "services[0].envVars[0]",
+    "location_or_valid_control_pass": true,
+    "manifest": "{\n  \"databases\": [\n    {\n      \"name\": \"own-db\",\n      \"plan\": \"free\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromDatabase\": {\n            \"name\": \"own-db\",\n            \"property\": \"connectionPoolString\"\n          },\n          \"key\": \"VALUE\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"second\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-caller\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"GOOD\",\n          \"value\": \"good\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-target\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"own-caller\": envVars[\"VALUE\"]: fromDatabase connectionPoolString requires database \"own-db\" connectionPool: pgbouncer",
+          "line": 11,
+          "column": 9,
+          "path": "services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "",
+    "case": "pool unavailable/both valid",
+    "expect_valid": true,
+    "expected_path": "services[0].envVars[1]",
+    "location_or_valid_control_pass": true,
+    "manifest": "{\n  \"databases\": [\n    {\n      \"name\": \"own-db\",\n      \"plan\": \"free\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"first\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"second\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-caller\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"GOOD\",\n          \"value\": \"good\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-target\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "own-caller",
+          "own-target"
+        ],
+        "databases": [
+          "own-db"
+        ],
+        "totalActions": 3,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "postgres",
+            "name": "own-db",
+            "sourcePath": "#/databases/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "own-caller",
+            "sourcePath": "#/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "own-target",
+            "sourcePath": "#/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "projects[0].environments[0].services[0].envVars[0]",
+    "case": "nested pool unavailable/second invalid",
+    "expect_valid": false,
+    "expected_path": "projects[0].environments[0].services[0].envVars[1]",
+    "location_or_valid_control_pass": false,
+    "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"databases\": [\n            {\n              \"name\": \"own-db\",\n              \"plan\": \"free\"\n            }\n          ],\n          \"name\": \"own-env\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"first\"\n                },\n                {\n                  \"fromDatabase\": {\n                    \"name\": \"own-db\",\n                    \"property\": \"connectionPoolString\"\n                  },\n                  \"key\": \"VALUE\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-caller\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"GOOD\",\n                  \"value\": \"good\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-target\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"own-project\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"own-caller\": envVars[\"VALUE\"]: fromDatabase connectionPoolString requires database \"own-db\" connectionPool: pgbouncer",
+          "line": 16,
+          "column": 17,
+          "path": "projects[0].environments[0].services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "projects[0].environments[0].services[0].envVars[0]",
+    "case": "nested pool unavailable/first invalid",
+    "expect_valid": false,
+    "expected_path": "projects[0].environments[0].services[0].envVars[0]",
+    "location_or_valid_control_pass": true,
+    "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"databases\": [\n            {\n              \"name\": \"own-db\",\n              \"plan\": \"free\"\n            }\n          ],\n          \"name\": \"own-env\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromDatabase\": {\n                    \"name\": \"own-db\",\n                    \"property\": \"connectionPoolString\"\n                  },\n                  \"key\": \"VALUE\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"second\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-caller\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"GOOD\",\n                  \"value\": \"good\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-target\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"own-project\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"own-caller\": envVars[\"VALUE\"]: fromDatabase connectionPoolString requires database \"own-db\" connectionPool: pgbouncer",
+          "line": 16,
+          "column": 17,
+          "path": "projects[0].environments[0].services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "",
+    "case": "nested pool unavailable/both valid",
+    "expect_valid": true,
+    "expected_path": "projects[0].environments[0].services[0].envVars[1]",
+    "location_or_valid_control_pass": true,
+    "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"databases\": [\n            {\n              \"name\": \"own-db\",\n              \"plan\": \"free\"\n            }\n          ],\n          \"name\": \"own-env\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"first\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"second\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-caller\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"GOOD\",\n                  \"value\": \"good\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-target\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"own-project\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "own-caller",
+          "own-target"
+        ],
+        "databases": [
+          "own-db"
+        ],
+        "totalActions": 3,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "postgres",
+            "name": "own-db",
+            "sourcePath": "#/projects/0/environments/0/databases/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "own-caller",
+            "sourcePath": "#/projects/0/environments/0/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "own-target",
+            "sourcePath": "#/projects/0/environments/0/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "services[0].envVars[0]",
+    "case": "type mismatch/second invalid",
+    "expect_valid": false,
+    "expected_path": "services[0].envVars[1].fromService.type",
+    "location_or_valid_control_pass": false,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"first\"\n        },\n        {\n          \"fromService\": {\n            \"envVarKey\": \"GOOD\",\n            \"name\": \"own-target\",\n            \"type\": \"worker\"\n          },\n          \"key\": \"VALUE\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-caller\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"GOOD\",\n          \"value\": \"good\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-target\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"own-caller\": envVars[\"VALUE\"] fromService.type \"worker\" does not match \"own-target\" (want type web)",
+          "line": 5,
+          "column": 9,
+          "path": "services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "services[0].envVars[0].fromService.type",
+    "case": "type mismatch/first invalid",
+    "expect_valid": false,
+    "expected_path": "services[0].envVars[0].fromService.type",
+    "location_or_valid_control_pass": true,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"envVarKey\": \"GOOD\",\n            \"name\": \"own-target\",\n            \"type\": \"worker\"\n          },\n          \"key\": \"VALUE\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"second\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-caller\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"GOOD\",\n          \"value\": \"good\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-target\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"own-caller\": envVars[\"VALUE\"] fromService.type \"worker\" does not match \"own-target\" (want type web)",
+          "line": 9,
+          "column": 21,
+          "path": "services[0].envVars[0].fromService.type"
+        }
+      ]
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "",
+    "case": "type mismatch/both valid",
+    "expect_valid": true,
+    "expected_path": "services[0].envVars[1].fromService.type",
+    "location_or_valid_control_pass": true,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"first\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"second\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-caller\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"GOOD\",\n          \"value\": \"good\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-target\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "own-caller",
+          "own-target"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "own-caller",
+            "sourcePath": "#/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "own-target",
+            "sourcePath": "#/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "projects[0].environments[0].services[0].envVars[0]",
+    "case": "nested type mismatch/second invalid",
+    "expect_valid": false,
+    "expected_path": "projects[0].environments[0].services[0].envVars[1].fromService.type",
+    "location_or_valid_control_pass": false,
+    "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"own-env\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"first\"\n                },\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"GOOD\",\n                    \"name\": \"own-target\",\n                    \"type\": \"worker\"\n                  },\n                  \"key\": \"VALUE\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-caller\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"GOOD\",\n                  \"value\": \"good\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-target\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"own-project\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"own-caller\": envVars[\"VALUE\"] fromService.type \"worker\" does not match \"own-target\" (want type web)",
+          "line": 10,
+          "column": 17,
+          "path": "projects[0].environments[0].services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "projects[0].environments[0].services[0].envVars[0].fromService.type",
+    "case": "nested type mismatch/first invalid",
+    "expect_valid": false,
+    "expected_path": "projects[0].environments[0].services[0].envVars[0].fromService.type",
+    "location_or_valid_control_pass": true,
+    "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"own-env\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"envVarKey\": \"GOOD\",\n                    \"name\": \"own-target\",\n                    \"type\": \"worker\"\n                  },\n                  \"key\": \"VALUE\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"second\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-caller\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"GOOD\",\n                  \"value\": \"good\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-target\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"own-project\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"own-caller\": envVars[\"VALUE\"] fromService.type \"worker\" does not match \"own-target\" (want type web)",
+          "line": 14,
+          "column": 29,
+          "path": "projects[0].environments[0].services[0].envVars[0].fromService.type"
+        }
+      ]
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "",
+    "case": "nested type mismatch/both valid",
+    "expect_valid": true,
+    "expected_path": "projects[0].environments[0].services[0].envVars[1].fromService.type",
+    "location_or_valid_control_pass": true,
+    "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"own-env\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"first\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"second\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-caller\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"GOOD\",\n                  \"value\": \"good\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-target\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"own-project\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "own-caller",
+          "own-target"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "own-caller",
+            "sourcePath": "#/projects/0/environments/0/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "own-target",
+            "sourcePath": "#/projects/0/environments/0/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      }
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "services[0].envVars[0]",
+    "case": "no address/second invalid",
+    "expect_valid": false,
+    "expected_path": "services[0].envVars[1]",
+    "location_or_valid_control_pass": false,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"first\"\n        },\n        {\n          \"fromService\": {\n            \"name\": \"own-target\",\n            \"property\": \"host\",\n            \"type\": \"worker\"\n          },\n          \"key\": \"VALUE\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-caller\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"GOOD\",\n          \"value\": \"good\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-target\",\n      \"plan\": \"starter\",\n      \"runtime\": \"image\",\n      \"type\": \"worker\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"own-caller\": envVars[\"VALUE\"] fromService host references \"own-target\" which has no network address (only web/private services are addressable)",
+          "line": 5,
+          "column": 9,
+          "path": "services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "services[0].envVars[0]",
+    "case": "no address/first invalid",
+    "expect_valid": false,
+    "expected_path": "services[0].envVars[0]",
+    "location_or_valid_control_pass": true,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromService\": {\n            \"name\": \"own-target\",\n            \"property\": \"host\",\n            \"type\": \"worker\"\n          },\n          \"key\": \"VALUE\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"second\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-caller\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"GOOD\",\n          \"value\": \"good\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-target\",\n      \"plan\": \"starter\",\n      \"runtime\": \"image\",\n      \"type\": \"worker\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"own-caller\": envVars[\"VALUE\"] fromService host references \"own-target\" which has no network address (only web/private services are addressable)",
+          "line": 5,
+          "column": 9,
+          "path": "services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "",
+    "case": "no address/both valid",
+    "expect_valid": true,
+    "expected_path": "services[0].envVars[1]",
+    "location_or_valid_control_pass": true,
+    "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"first\"\n        },\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"second\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-caller\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    },\n    {\n      \"envVars\": [\n        {\n          \"key\": \"GOOD\",\n          \"value\": \"good\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"own-target\",\n      \"plan\": \"starter\",\n      \"runtime\": \"image\",\n      \"type\": \"worker\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "own-caller",
+          "own-target"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "own-caller",
+            "sourcePath": "#/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "own-target",
+            "sourcePath": "#/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "4.90",
+        "lines": [
+          {
+            "name": "own-target",
+            "resourceKind": "service",
+            "tier": "starter",
+            "tierLabel": "Starter",
+            "monthlyUsd": "4.90",
+            "instanceUsd": "4.90"
+          }
+        ],
+        "variable": []
+      }
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "projects[0].environments[0].services[0].envVars[0]",
+    "case": "nested no address/second invalid",
+    "expect_valid": false,
+    "expected_path": "projects[0].environments[0].services[0].envVars[1]",
+    "location_or_valid_control_pass": false,
+    "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"own-env\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"first\"\n                },\n                {\n                  \"fromService\": {\n                    \"name\": \"own-target\",\n                    \"property\": \"host\",\n                    \"type\": \"worker\"\n                  },\n                  \"key\": \"VALUE\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-caller\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"GOOD\",\n                  \"value\": \"good\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-target\",\n              \"plan\": \"starter\",\n              \"runtime\": \"image\",\n              \"type\": \"worker\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"own-project\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"own-caller\": envVars[\"VALUE\"] fromService host references \"own-target\" which has no network address (only web/private services are addressable)",
+          "line": 10,
+          "column": 17,
+          "path": "projects[0].environments[0].services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "projects[0].environments[0].services[0].envVars[0]",
+    "case": "nested no address/first invalid",
+    "expect_valid": false,
+    "expected_path": "projects[0].environments[0].services[0].envVars[0]",
+    "location_or_valid_control_pass": true,
+    "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"own-env\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"fromService\": {\n                    \"name\": \"own-target\",\n                    \"property\": \"host\",\n                    \"type\": \"worker\"\n                  },\n                  \"key\": \"VALUE\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"second\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-caller\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"GOOD\",\n                  \"value\": \"good\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-target\",\n              \"plan\": \"starter\",\n              \"runtime\": \"image\",\n              \"type\": \"worker\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"own-project\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": false,
+      "errors": [
+        {
+          "error": "service \"own-caller\": envVars[\"VALUE\"] fromService host references \"own-target\" which has no network address (only web/private services are addressable)",
+          "line": 10,
+          "column": 17,
+          "path": "projects[0].environments[0].services[0].envVars[0]"
+        }
+      ]
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  },
+  {
+    "actual_path": "",
+    "case": "nested no address/both valid",
+    "expect_valid": true,
+    "expected_path": "projects[0].environments[0].services[0].envVars[1]",
+    "location_or_valid_control_pass": true,
+    "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"own-env\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"first\"\n                },\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"second\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-caller\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            },\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"GOOD\",\n                  \"value\": \"good\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"own-target\",\n              \"plan\": \"starter\",\n              \"runtime\": \"image\",\n              \"type\": \"worker\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"own-project\"\n    }\n  ]\n}",
+    "qualification": "actual current ValidateBlueprint using fake Kubernetes; no hosted apply or source fix",
+    "validation": {
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "own-caller",
+          "own-target"
+        ],
+        "totalActions": 2,
+        "actions": [
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "own-caller",
+            "sourcePath": "#/projects/0/environments/0/services/0"
+          },
+          {
+            "operation": "create",
+            "kind": "service",
+            "name": "own-target",
+            "sourcePath": "#/projects/0/environments/0/services/1"
+          }
+        ]
+      },
+      "estimatedPricing": {
+        "totalUsd": "4.90",
+        "lines": [
+          {
+            "name": "own-target",
+            "resourceKind": "service",
+            "tier": "starter",
+            "tierLabel": "Starter",
+            "monthlyUsd": "4.90",
+            "instanceUsd": "4.90"
+          }
+        ],
+        "variable": []
+      }
+    },
+    "source_head": "fde35ffccb57ac18bfae6cbfda4b111a23762f20"
+  }
+]

@@ -1,0 +1,1247 @@
+{
+  "nonce": "77144ca8",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "source_head": "195e2ebb1f1a086180bc674928d9c05a45a86153",
+  "name": "qa-20261014-77144ca8 Project café ☃",
+  "environment_names": [
+    "qa-20261014-77144ca8 Plain renamed",
+    "qa-20261014-77144ca8 café ☃",
+    "qa-20261014-77144ca8 comma, stage"
+  ],
+  "time": "2026-10-14T12:04:40.876227+00:00",
+  "baseline_projects": {
+    "at": "2026-10-14T12:04:41.582763+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/projects?ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.655,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4a672ac8b0f6e82-SJC"
+    },
+    "response": "[]\n"
+  },
+  "create_body": {
+    "name": "qa-20261014-77144ca8 Project café ☃",
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "environments": [
+      {
+        "name": "qa-20261014-77144ca8 Plain"
+      },
+      {
+        "name": "qa-20261014-77144ca8 café ☃"
+      },
+      {
+        "name": "qa-20261014-77144ca8 comma, stage"
+      }
+    ]
+  },
+  "state": "all own project/environments deleted",
+  "create_result": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/projects",
+      "body": {
+        "name": "qa-20261014-77144ca8 Project café ☃",
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "environments": [
+          {
+            "name": "qa-20261014-77144ca8 Plain"
+          },
+          {
+            "name": "qa-20261014-77144ca8 café ☃"
+          },
+          {
+            "name": "qa-20261014-77144ca8 comma, stage"
+          }
+        ]
+      },
+      "authorization": "[REDACTED]"
+    },
+    "status": "201",
+    "exit": 0,
+    "response": "{\"id\":\"prj-db7mvm9llfps73emu9s0\",\"name\":\"qa-20261014-77144ca8 Project café ☃\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"QA_PRIVATE_VALUE_REDACTED\",\"type\":\"team\"},\"environmentIds\":[\"evm-db7mvm9llfps73emu9sg\",\"evm-db7mvm9llfps73emu9t0\",\"evm-db7mvm9llfps73emu9tg\"],\"createdAt\":\"2026-10-14T12:04:41.980865Z\",\"updatedAt\":\"2026-10-14T12:04:41.980865Z\"}\n",
+    "stderr": ""
+  },
+  "id": "prj-db7mvm9llfps73emu9s0",
+  "created_view": {
+    "id": "prj-db7mvm9llfps73emu9s0",
+    "name": "qa-20261014-77144ca8 Project café ☃",
+    "owner": {
+      "id": "tea-daif693dqjvc73e7as3g",
+      "name": "bex-canary",
+      "email": "QA_PRIVATE_VALUE_REDACTED",
+      "type": "team"
+    },
+    "environmentIds": [
+      "evm-db7mvm9llfps73emu9sg",
+      "evm-db7mvm9llfps73emu9t0",
+      "evm-db7mvm9llfps73emu9tg"
+    ],
+    "createdAt": "2026-10-14T12:04:41.980865Z",
+    "updatedAt": "2026-10-14T12:04:41.980865Z"
+  },
+  "initial_environments": {
+    "at": "2026-10-14T12:04:43.485858+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/environments?projectId=prj-db7mvm9llfps73emu9s0&limit=100",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 1.132,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4a672b5684015f7-SJC"
+    },
+    "response": "[{\"environment\":{\"id\":\"evm-db7mvm9llfps73emu9sg\",\"projectId\":\"prj-db7mvm9llfps73emu9s0\",\"name\":\"qa-20261014-77144ca8 Plain\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]},\"cursor\":\"evm-db7mvm9llfps73emu9sg\"},{\"environment\":{\"id\":\"evm-db7mvm9llfps73emu9t0\",\"projectId\":\"prj-db7mvm9llfps73emu9s0\",\"name\":\"qa-20261014-77144ca8 café ☃\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]},\"cursor\":\"evm-db7mvm9llfps73emu9t0\"},{\"environment\":{\"id\":\"evm-db7mvm9llfps73emu9tg\",\"projectId\":\"prj-db7mvm9llfps73emu9s0\",\"name\":\"qa-20261014-77144ca8 comma, stage\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]},\"cursor\":\"evm-db7mvm9llfps73emu9tg\"}]\n"
+  },
+  "native_queries": [
+    {
+      "at": "2026-10-14T12:05:04.721016+00:00",
+      "client": "bex",
+      "surface": "projects",
+      "format": "json",
+      "command": [
+        "bex",
+        "projects",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "projects",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.42,
+        "stdout": "[\n  {\n    \"createdAt\": \"2026-10-14T12:04:41.980865Z\",\n    \"environmentIds\": [\n      \"evm-db7mvm9llfps73emu9sg\",\n      \"evm-db7mvm9llfps73emu9t0\",\n      \"evm-db7mvm9llfps73emu9tg\"\n    ],\n    \"id\": \"prj-db7mvm9llfps73emu9s0\",\n    \"name\": \"qa-20261014-77144ca8 Project café ☃\",\n    \"owner\": {\n      \"email\": \"[PRIVATE VALUE REDACTED]\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"updatedAt\": \"2026-10-14T12:04:41.980865Z\"\n  }\n]",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:05:05.530963+00:00",
+      "client": "bex",
+      "surface": "projects",
+      "format": "yaml",
+      "command": [
+        "bex",
+        "projects",
+        "--confirm",
+        "-o",
+        "yaml"
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "projects",
+          "--confirm",
+          "-o",
+          "yaml"
+        ],
+        "exit": 0,
+        "elapsed": 0.648,
+        "stdout": "- createdAt: \"2026-10-14T12:04:41.980865Z\"\n  environmentIds:\n    - evm-db7mvm9llfps73emu9sg\n    - evm-db7mvm9llfps73emu9t0\n    - evm-db7mvm9llfps73emu9tg\n  id: prj-db7mvm9llfps73emu9s0\n  name: qa-20261014-77144ca8 Project café ☃\n  owner:\n    email: [PRIVATE VALUE REDACTED]\n    id: tea-daif693dqjvc73e7as3g\n    name: bex-canary\n    type: team\n  updatedAt: \"2026-10-14T12:04:41.980865Z\"\n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:05:06.005434+00:00",
+      "client": "bex",
+      "surface": "projects",
+      "format": "text",
+      "command": [
+        "bex",
+        "projects",
+        "--confirm",
+        "-o",
+        "text"
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "projects",
+          "--confirm",
+          "-o",
+          "text"
+        ],
+        "exit": 0,
+        "elapsed": 0.312,
+        "stdout": "NAME                                   ID                          \nqa-20261014-77144ca8 Project café ☃    prj-db7mvm9llfps73emu9s0    \n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:05:07.209984+00:00",
+      "client": "bex",
+      "surface": "environments",
+      "format": "json",
+      "command": [
+        "bex",
+        "environments",
+        "prj-db7mvm9llfps73emu9s0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "environments",
+          "prj-db7mvm9llfps73emu9s0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.933,
+        "stdout": "[\n  {\n    \"databasesIds\": [],\n    \"envGroupIds\": [],\n    \"id\": \"evm-db7mvm9llfps73emu9sg\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"Allow all (default)\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"Allow all (default)\"\n      }\n    ],\n    \"name\": \"qa-20261014-77144ca8 Plain\",\n    \"networkIsolationEnabled\": false,\n    \"projectId\": \"prj-db7mvm9llfps73emu9s0\",\n    \"protectedStatus\": \"unprotected\",\n    \"redisIds\": [],\n    \"serviceIds\": []\n  },\n  {\n    \"databasesIds\": [],\n    \"envGroupIds\": [],\n    \"id\": \"evm-db7mvm9llfps73emu9t0\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"Allow all (default)\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"Allow all (default)\"\n      }\n    ],\n    \"name\": \"qa-20261014-77144ca8 café ☃\",\n    \"networkIsolationEnabled\": false,\n    \"projectId\": \"prj-db7mvm9llfps73emu9s0\",\n    \"protectedStatus\": \"unprotected\",\n    \"redisIds\": [],\n    \"serviceIds\": []\n  },\n  {\n    \"databasesIds\": [],\n    \"envGroupIds\": [],\n    \"id\": \"evm-db7mvm9llfps73emu9tg\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"Allow all (default)\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"Allow all (default)\"\n      }\n    ],\n    \"name\": \"qa-20261014-77144ca8 comma, stage\",\n    \"networkIsolationEnabled\": false,\n    \"projectId\": \"prj-db7mvm9llfps73emu9s0\",\n    \"protectedStatus\": \"unprotected\",\n    \"redisIds\": [],\n    \"serviceIds\": []\n  }\n]",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:05:08.088119+00:00",
+      "client": "bex",
+      "surface": "environments",
+      "format": "yaml",
+      "command": [
+        "bex",
+        "environments",
+        "prj-db7mvm9llfps73emu9s0",
+        "--confirm",
+        "-o",
+        "yaml"
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "environments",
+          "prj-db7mvm9llfps73emu9s0",
+          "--confirm",
+          "-o",
+          "yaml"
+        ],
+        "exit": 0,
+        "elapsed": 0.71,
+        "stdout": "- databasesIds: []\n  envGroupIds: []\n  id: evm-db7mvm9llfps73emu9sg\n  ipAllowList:\n    - cidrBlock: 0.0.0.0/0\n      description: Allow all (default)\n    - cidrBlock: ::/0\n      description: Allow all (default)\n  name: qa-20261014-77144ca8 Plain\n  networkIsolationEnabled: false\n  projectId: prj-db7mvm9llfps73emu9s0\n  protectedStatus: unprotected\n  redisIds: []\n  serviceIds: []\n- databasesIds: []\n  envGroupIds: []\n  id: evm-db7mvm9llfps73emu9t0\n  ipAllowList:\n    - cidrBlock: 0.0.0.0/0\n      description: Allow all (default)\n    - cidrBlock: ::/0\n      description: Allow all (default)\n  name: qa-20261014-77144ca8 café ☃\n  networkIsolationEnabled: false\n  projectId: prj-db7mvm9llfps73emu9s0\n  protectedStatus: unprotected\n  redisIds: []\n  serviceIds: []\n- databasesIds: []\n  envGroupIds: []\n  id: evm-db7mvm9llfps73emu9tg\n  ipAllowList:\n    - cidrBlock: 0.0.0.0/0\n      description: Allow all (default)\n    - cidrBlock: ::/0\n      description: Allow all (default)\n  name: qa-20261014-77144ca8 comma, stage\n  networkIsolationEnabled: false\n  projectId: prj-db7mvm9llfps73emu9s0\n  protectedStatus: unprotected\n  redisIds: []\n  serviceIds: []\n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:05:09.194840+00:00",
+      "client": "bex",
+      "surface": "environments",
+      "format": "text",
+      "command": [
+        "bex",
+        "environments",
+        "prj-db7mvm9llfps73emu9s0",
+        "--confirm",
+        "-o",
+        "text"
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "environments",
+          "prj-db7mvm9llfps73emu9s0",
+          "--confirm",
+          "-o",
+          "text"
+        ],
+        "exit": 0,
+        "elapsed": 0.938,
+        "stdout": "NAME                                 PROTECTED      ID                          \nqa-20261014-77144ca8 Plain           unprotected    evm-db7mvm9llfps73emu9sg    \nqa-20261014-77144ca8 café ☃          unprotected    evm-db7mvm9llfps73emu9t0    \nqa-20261014-77144ca8 comma, stage    unprotected    evm-db7mvm9llfps73emu9tg    \n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:05:46.261488+00:00",
+      "client": "render",
+      "surface": "projects",
+      "format": "json",
+      "command": [
+        "render",
+        "projects",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "projects",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.724,
+        "stdout": "[\n  {\n    \"createdAt\": \"2026-10-14T12:04:41.980865Z\",\n    \"environmentIds\": [\n      \"evm-db7mvm9llfps73emu9sg\",\n      \"evm-db7mvm9llfps73emu9t0\",\n      \"evm-db7mvm9llfps73emu9tg\"\n    ],\n    \"id\": \"prj-db7mvm9llfps73emu9s0\",\n    \"name\": \"qa-20261014-77144ca8 Project café ☃\",\n    \"owner\": {\n      \"email\": \"[QA VALUE REDACTED]\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"updatedAt\": \"2026-10-14T12:04:41.980865Z\"\n  }\n]",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:05:46.768152+00:00",
+      "client": "render",
+      "surface": "projects",
+      "format": "yaml",
+      "command": [
+        "render",
+        "projects",
+        "--confirm",
+        "-o",
+        "yaml"
+      ],
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "projects",
+          "--confirm",
+          "-o",
+          "yaml"
+        ],
+        "exit": 0,
+        "elapsed": 0.346,
+        "stdout": "- createdAt: \"2026-10-14T12:04:41.980865Z\"\n  environmentIds:\n    - evm-db7mvm9llfps73emu9sg\n    - evm-db7mvm9llfps73emu9t0\n    - evm-db7mvm9llfps73emu9tg\n  id: prj-db7mvm9llfps73emu9s0\n  name: qa-20261014-77144ca8 Project café ☃\n  owner:\n    email: [QA VALUE REDACTED]\n    id: tea-daif693dqjvc73e7as3g\n    name: bex-canary\n    type: team\n  updatedAt: \"2026-10-14T12:04:41.980865Z\"\n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:05:47.216145+00:00",
+      "client": "render",
+      "surface": "projects",
+      "format": "text",
+      "command": [
+        "render",
+        "projects",
+        "--confirm",
+        "-o",
+        "text"
+      ],
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "projects",
+          "--confirm",
+          "-o",
+          "text"
+        ],
+        "exit": 0,
+        "elapsed": 0.296,
+        "stdout": "NAME                                   ID                          \nqa-20261014-77144ca8 Project café ☃    prj-db7mvm9llfps73emu9s0    \n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:05:48.311256+00:00",
+      "client": "render",
+      "surface": "environments",
+      "format": "json",
+      "command": [
+        "render",
+        "environments",
+        "prj-db7mvm9llfps73emu9s0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "environments",
+          "prj-db7mvm9llfps73emu9s0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.826,
+        "stdout": "[\n  {\n    \"databasesIds\": [],\n    \"envGroupIds\": [],\n    \"id\": \"evm-db7mvm9llfps73emu9sg\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"Allow all (default)\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"Allow all (default)\"\n      }\n    ],\n    \"name\": \"qa-20261014-77144ca8 Plain\",\n    \"networkIsolationEnabled\": false,\n    \"projectId\": \"prj-db7mvm9llfps73emu9s0\",\n    \"protectedStatus\": \"unprotected\",\n    \"redisIds\": [],\n    \"serviceIds\": []\n  },\n  {\n    \"databasesIds\": [],\n    \"envGroupIds\": [],\n    \"id\": \"evm-db7mvm9llfps73emu9t0\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"Allow all (default)\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"Allow all (default)\"\n      }\n    ],\n    \"name\": \"qa-20261014-77144ca8 café ☃\",\n    \"networkIsolationEnabled\": false,\n    \"projectId\": \"prj-db7mvm9llfps73emu9s0\",\n    \"protectedStatus\": \"unprotected\",\n    \"redisIds\": [],\n    \"serviceIds\": []\n  },\n  {\n    \"databasesIds\": [],\n    \"envGroupIds\": [],\n    \"id\": \"evm-db7mvm9llfps73emu9tg\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"Allow all (default)\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"Allow all (default)\"\n      }\n    ],\n    \"name\": \"qa-20261014-77144ca8 comma, stage\",\n    \"networkIsolationEnabled\": false,\n    \"projectId\": \"prj-db7mvm9llfps73emu9s0\",\n    \"protectedStatus\": \"unprotected\",\n    \"redisIds\": [],\n    \"serviceIds\": []\n  }\n]",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:05:50.874278+00:00",
+      "client": "render",
+      "surface": "environments",
+      "format": "yaml",
+      "command": [
+        "render",
+        "environments",
+        "prj-db7mvm9llfps73emu9s0",
+        "--confirm",
+        "-o",
+        "yaml"
+      ],
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "environments",
+          "prj-db7mvm9llfps73emu9s0",
+          "--confirm",
+          "-o",
+          "yaml"
+        ],
+        "exit": 0,
+        "elapsed": 2.4,
+        "stdout": "- databasesIds: []\n  envGroupIds: []\n  id: evm-db7mvm9llfps73emu9sg\n  ipAllowList:\n    - cidrBlock: 0.0.0.0/0\n      description: Allow all (default)\n    - cidrBlock: ::/0\n      description: Allow all (default)\n  name: qa-20261014-77144ca8 Plain\n  networkIsolationEnabled: false\n  projectId: prj-db7mvm9llfps73emu9s0\n  protectedStatus: unprotected\n  redisIds: []\n  serviceIds: []\n- databasesIds: []\n  envGroupIds: []\n  id: evm-db7mvm9llfps73emu9t0\n  ipAllowList:\n    - cidrBlock: 0.0.0.0/0\n      description: Allow all (default)\n    - cidrBlock: ::/0\n      description: Allow all (default)\n  name: qa-20261014-77144ca8 café ☃\n  networkIsolationEnabled: false\n  projectId: prj-db7mvm9llfps73emu9s0\n  protectedStatus: unprotected\n  redisIds: []\n  serviceIds: []\n- databasesIds: []\n  envGroupIds: []\n  id: evm-db7mvm9llfps73emu9tg\n  ipAllowList:\n    - cidrBlock: 0.0.0.0/0\n      description: Allow all (default)\n    - cidrBlock: ::/0\n      description: Allow all (default)\n  name: qa-20261014-77144ca8 comma, stage\n  networkIsolationEnabled: false\n  projectId: prj-db7mvm9llfps73emu9s0\n  protectedStatus: unprotected\n  redisIds: []\n  serviceIds: []\n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:05:51.595782+00:00",
+      "client": "render",
+      "surface": "environments",
+      "format": "text",
+      "command": [
+        "render",
+        "environments",
+        "prj-db7mvm9llfps73emu9s0",
+        "--confirm",
+        "-o",
+        "text"
+      ],
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "environments",
+          "prj-db7mvm9llfps73emu9s0",
+          "--confirm",
+          "-o",
+          "text"
+        ],
+        "exit": 0,
+        "elapsed": 0.545,
+        "stdout": "NAME                                 PROTECTED      ID                          \nqa-20261014-77144ca8 Plain           unprotected    evm-db7mvm9llfps73emu9sg    \nqa-20261014-77144ca8 café ☃          unprotected    evm-db7mvm9llfps73emu9t0    \nqa-20261014-77144ca8 comma, stage    unprotected    evm-db7mvm9llfps73emu9tg    \n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:09:04.330545+00:00",
+      "client": "bex",
+      "surface": "projects",
+      "format": "json",
+      "command": [
+        "bex",
+        "projects",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "projects",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.387,
+        "stdout": "[\n  {\n    \"createdAt\": \"2026-10-14T12:04:41.980865Z\",\n    \"environmentIds\": [\n      \"evm-db7mvm9llfps73emu9sg\",\n      \"evm-db7mvm9llfps73emu9t0\",\n      \"evm-db7mvm9llfps73emu9tg\"\n    ],\n    \"id\": \"prj-db7mvm9llfps73emu9s0\",\n    \"name\": \"qa-20261014-77144ca8 Project café ☃\",\n    \"owner\": {\n      \"email\": \"QA_PRIVATE_VALUE_REDACTED\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"updatedAt\": \"2026-10-14T12:04:41.980865Z\"\n  }\n]",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:09:05.115005+00:00",
+      "client": "bex",
+      "surface": "projects",
+      "format": "yaml",
+      "command": [
+        "bex",
+        "projects",
+        "--confirm",
+        "-o",
+        "yaml"
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "projects",
+          "--confirm",
+          "-o",
+          "yaml"
+        ],
+        "exit": 0,
+        "elapsed": 0.617,
+        "stdout": "- createdAt: \"2026-10-14T12:04:41.980865Z\"\n  environmentIds:\n    - evm-db7mvm9llfps73emu9sg\n    - evm-db7mvm9llfps73emu9t0\n    - evm-db7mvm9llfps73emu9tg\n  id: prj-db7mvm9llfps73emu9s0\n  name: qa-20261014-77144ca8 Project café ☃\n  owner:\n    email: QA_PRIVATE_VALUE_REDACTED\n    id: tea-daif693dqjvc73e7as3g\n    name: bex-canary\n    type: team\n  updatedAt: \"2026-10-14T12:04:41.980865Z\"\n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:09:05.619318+00:00",
+      "client": "bex",
+      "surface": "projects",
+      "format": "text",
+      "command": [
+        "bex",
+        "projects",
+        "--confirm",
+        "-o",
+        "text"
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "projects",
+          "--confirm",
+          "-o",
+          "text"
+        ],
+        "exit": 0,
+        "elapsed": 0.338,
+        "stdout": "NAME                                   ID                          \nqa-20261014-77144ca8 Project café ☃    prj-db7mvm9llfps73emu9s0    \n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:09:06.743150+00:00",
+      "client": "bex",
+      "surface": "environments",
+      "format": "json",
+      "command": [
+        "bex",
+        "environments",
+        "prj-db7mvm9llfps73emu9s0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "environments",
+          "prj-db7mvm9llfps73emu9s0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.842,
+        "stdout": "[\n  {\n    \"databasesIds\": [],\n    \"envGroupIds\": [],\n    \"id\": \"evm-db7mvm9llfps73emu9sg\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"Allow all (default)\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"Allow all (default)\"\n      }\n    ],\n    \"name\": \"qa-20261014-77144ca8 Plain\",\n    \"networkIsolationEnabled\": false,\n    \"projectId\": \"prj-db7mvm9llfps73emu9s0\",\n    \"protectedStatus\": \"unprotected\",\n    \"redisIds\": [],\n    \"serviceIds\": []\n  },\n  {\n    \"databasesIds\": [],\n    \"envGroupIds\": [],\n    \"id\": \"evm-db7mvm9llfps73emu9t0\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"Allow all (default)\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"Allow all (default)\"\n      }\n    ],\n    \"name\": \"qa-20261014-77144ca8 café ☃\",\n    \"networkIsolationEnabled\": false,\n    \"projectId\": \"prj-db7mvm9llfps73emu9s0\",\n    \"protectedStatus\": \"unprotected\",\n    \"redisIds\": [],\n    \"serviceIds\": []\n  },\n  {\n    \"databasesIds\": [],\n    \"envGroupIds\": [],\n    \"id\": \"evm-db7mvm9llfps73emu9tg\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"Allow all (default)\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"Allow all (default)\"\n      }\n    ],\n    \"name\": \"qa-20261014-77144ca8 comma, stage\",\n    \"networkIsolationEnabled\": false,\n    \"projectId\": \"prj-db7mvm9llfps73emu9s0\",\n    \"protectedStatus\": \"unprotected\",\n    \"redisIds\": [],\n    \"serviceIds\": []\n  }\n]",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:09:08.129681+00:00",
+      "client": "bex",
+      "surface": "environments",
+      "format": "yaml",
+      "command": [
+        "bex",
+        "environments",
+        "prj-db7mvm9llfps73emu9s0",
+        "--confirm",
+        "-o",
+        "yaml"
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "environments",
+          "prj-db7mvm9llfps73emu9s0",
+          "--confirm",
+          "-o",
+          "yaml"
+        ],
+        "exit": 0,
+        "elapsed": 1.219,
+        "stdout": "- databasesIds: []\n  envGroupIds: []\n  id: evm-db7mvm9llfps73emu9sg\n  ipAllowList:\n    - cidrBlock: 0.0.0.0/0\n      description: Allow all (default)\n    - cidrBlock: ::/0\n      description: Allow all (default)\n  name: qa-20261014-77144ca8 Plain\n  networkIsolationEnabled: false\n  projectId: prj-db7mvm9llfps73emu9s0\n  protectedStatus: unprotected\n  redisIds: []\n  serviceIds: []\n- databasesIds: []\n  envGroupIds: []\n  id: evm-db7mvm9llfps73emu9t0\n  ipAllowList:\n    - cidrBlock: 0.0.0.0/0\n      description: Allow all (default)\n    - cidrBlock: ::/0\n      description: Allow all (default)\n  name: qa-20261014-77144ca8 café ☃\n  networkIsolationEnabled: false\n  projectId: prj-db7mvm9llfps73emu9s0\n  protectedStatus: unprotected\n  redisIds: []\n  serviceIds: []\n- databasesIds: []\n  envGroupIds: []\n  id: evm-db7mvm9llfps73emu9tg\n  ipAllowList:\n    - cidrBlock: 0.0.0.0/0\n      description: Allow all (default)\n    - cidrBlock: ::/0\n      description: Allow all (default)\n  name: qa-20261014-77144ca8 comma, stage\n  networkIsolationEnabled: false\n  projectId: prj-db7mvm9llfps73emu9s0\n  protectedStatus: unprotected\n  redisIds: []\n  serviceIds: []\n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:09:09.026668+00:00",
+      "client": "bex",
+      "surface": "environments",
+      "format": "text",
+      "command": [
+        "bex",
+        "environments",
+        "prj-db7mvm9llfps73emu9s0",
+        "--confirm",
+        "-o",
+        "text"
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "environments",
+          "prj-db7mvm9llfps73emu9s0",
+          "--confirm",
+          "-o",
+          "text"
+        ],
+        "exit": 0,
+        "elapsed": 0.732,
+        "stdout": "NAME                                 PROTECTED      ID                          \nqa-20261014-77144ca8 Plain           unprotected    evm-db7mvm9llfps73emu9sg    \nqa-20261014-77144ca8 café ☃          unprotected    evm-db7mvm9llfps73emu9t0    \nqa-20261014-77144ca8 comma, stage    unprotected    evm-db7mvm9llfps73emu9tg    \n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:09:43.823977+00:00",
+      "client": "render",
+      "surface": "projects",
+      "format": "json",
+      "command": [
+        "render",
+        "projects",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "projects",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.695,
+        "stdout": "[\n  {\n    \"createdAt\": \"2026-10-14T12:04:41.980865Z\",\n    \"environmentIds\": [\n      \"evm-db7mvm9llfps73emu9sg\",\n      \"evm-db7mvm9llfps73emu9t0\",\n      \"evm-db7mvm9llfps73emu9tg\"\n    ],\n    \"id\": \"prj-db7mvm9llfps73emu9s0\",\n    \"name\": \"qa-20261014-77144ca8 Project café ☃\",\n    \"owner\": {\n      \"email\": \"QA_PRIVATE_VALUE_REDACTED\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"updatedAt\": \"2026-10-14T12:04:41.980865Z\"\n  }\n]",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:09:44.444027+00:00",
+      "client": "render",
+      "surface": "projects",
+      "format": "yaml",
+      "command": [
+        "render",
+        "projects",
+        "--confirm",
+        "-o",
+        "yaml"
+      ],
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "projects",
+          "--confirm",
+          "-o",
+          "yaml"
+        ],
+        "exit": 0,
+        "elapsed": 0.452,
+        "stdout": "- createdAt: \"2026-10-14T12:04:41.980865Z\"\n  environmentIds:\n    - evm-db7mvm9llfps73emu9sg\n    - evm-db7mvm9llfps73emu9t0\n    - evm-db7mvm9llfps73emu9tg\n  id: prj-db7mvm9llfps73emu9s0\n  name: qa-20261014-77144ca8 Project café ☃\n  owner:\n    email: QA_PRIVATE_VALUE_REDACTED\n    id: tea-daif693dqjvc73e7as3g\n    name: bex-canary\n    type: team\n  updatedAt: \"2026-10-14T12:04:41.980865Z\"\n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:09:44.985240+00:00",
+      "client": "render",
+      "surface": "projects",
+      "format": "text",
+      "command": [
+        "render",
+        "projects",
+        "--confirm",
+        "-o",
+        "text"
+      ],
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "projects",
+          "--confirm",
+          "-o",
+          "text"
+        ],
+        "exit": 0,
+        "elapsed": 0.372,
+        "stdout": "NAME                                   ID                          \nqa-20261014-77144ca8 Project café ☃    prj-db7mvm9llfps73emu9s0    \n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:09:46.130896+00:00",
+      "client": "render",
+      "surface": "environments",
+      "format": "json",
+      "command": [
+        "render",
+        "environments",
+        "prj-db7mvm9llfps73emu9s0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "environments",
+          "prj-db7mvm9llfps73emu9s0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.87,
+        "stdout": "[\n  {\n    \"databasesIds\": [],\n    \"envGroupIds\": [],\n    \"id\": \"evm-db7mvm9llfps73emu9sg\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"Allow all (default)\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"Allow all (default)\"\n      }\n    ],\n    \"name\": \"qa-20261014-77144ca8 Plain\",\n    \"networkIsolationEnabled\": false,\n    \"projectId\": \"prj-db7mvm9llfps73emu9s0\",\n    \"protectedStatus\": \"unprotected\",\n    \"redisIds\": [],\n    \"serviceIds\": []\n  },\n  {\n    \"databasesIds\": [],\n    \"envGroupIds\": [],\n    \"id\": \"evm-db7mvm9llfps73emu9t0\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"Allow all (default)\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"Allow all (default)\"\n      }\n    ],\n    \"name\": \"qa-20261014-77144ca8 café ☃\",\n    \"networkIsolationEnabled\": false,\n    \"projectId\": \"prj-db7mvm9llfps73emu9s0\",\n    \"protectedStatus\": \"unprotected\",\n    \"redisIds\": [],\n    \"serviceIds\": []\n  },\n  {\n    \"databasesIds\": [],\n    \"envGroupIds\": [],\n    \"id\": \"evm-db7mvm9llfps73emu9tg\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"Allow all (default)\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"Allow all (default)\"\n      }\n    ],\n    \"name\": \"qa-20261014-77144ca8 comma, stage\",\n    \"networkIsolationEnabled\": false,\n    \"projectId\": \"prj-db7mvm9llfps73emu9s0\",\n    \"protectedStatus\": \"unprotected\",\n    \"redisIds\": [],\n    \"serviceIds\": []\n  }\n]",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:09:47.235194+00:00",
+      "client": "render",
+      "surface": "environments",
+      "format": "yaml",
+      "command": [
+        "render",
+        "environments",
+        "prj-db7mvm9llfps73emu9s0",
+        "--confirm",
+        "-o",
+        "yaml"
+      ],
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "environments",
+          "prj-db7mvm9llfps73emu9s0",
+          "--confirm",
+          "-o",
+          "yaml"
+        ],
+        "exit": 0,
+        "elapsed": 0.942,
+        "stdout": "- databasesIds: []\n  envGroupIds: []\n  id: evm-db7mvm9llfps73emu9sg\n  ipAllowList:\n    - cidrBlock: 0.0.0.0/0\n      description: Allow all (default)\n    - cidrBlock: ::/0\n      description: Allow all (default)\n  name: qa-20261014-77144ca8 Plain\n  networkIsolationEnabled: false\n  projectId: prj-db7mvm9llfps73emu9s0\n  protectedStatus: unprotected\n  redisIds: []\n  serviceIds: []\n- databasesIds: []\n  envGroupIds: []\n  id: evm-db7mvm9llfps73emu9t0\n  ipAllowList:\n    - cidrBlock: 0.0.0.0/0\n      description: Allow all (default)\n    - cidrBlock: ::/0\n      description: Allow all (default)\n  name: qa-20261014-77144ca8 café ☃\n  networkIsolationEnabled: false\n  projectId: prj-db7mvm9llfps73emu9s0\n  protectedStatus: unprotected\n  redisIds: []\n  serviceIds: []\n- databasesIds: []\n  envGroupIds: []\n  id: evm-db7mvm9llfps73emu9tg\n  ipAllowList:\n    - cidrBlock: 0.0.0.0/0\n      description: Allow all (default)\n    - cidrBlock: ::/0\n      description: Allow all (default)\n  name: qa-20261014-77144ca8 comma, stage\n  networkIsolationEnabled: false\n  projectId: prj-db7mvm9llfps73emu9s0\n  protectedStatus: unprotected\n  redisIds: []\n  serviceIds: []\n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:09:48.120160+00:00",
+      "client": "render",
+      "surface": "environments",
+      "format": "text",
+      "command": [
+        "render",
+        "environments",
+        "prj-db7mvm9llfps73emu9s0",
+        "--confirm",
+        "-o",
+        "text"
+      ],
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "environments",
+          "prj-db7mvm9llfps73emu9s0",
+          "--confirm",
+          "-o",
+          "text"
+        ],
+        "exit": 0,
+        "elapsed": 0.723,
+        "stdout": "NAME                                 PROTECTED      ID                          \nqa-20261014-77144ca8 Plain           unprotected    evm-db7mvm9llfps73emu9sg    \nqa-20261014-77144ca8 café ☃          unprotected    evm-db7mvm9llfps73emu9t0    \nqa-20261014-77144ca8 comma, stage    unprotected    evm-db7mvm9llfps73emu9tg    \n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:10:25.454287+00:00",
+      "client": "bex",
+      "surface": "projects",
+      "format": "json",
+      "command": [
+        "bex",
+        "projects",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "projects",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.366,
+        "stdout": "[\n  {\n    \"createdAt\": \"2026-10-14T12:04:41.980865Z\",\n    \"environmentIds\": [\n      \"evm-db7mvm9llfps73emu9sg\",\n      \"evm-db7mvm9llfps73emu9t0\",\n      \"evm-db7mvm9llfps73emu9tg\"\n    ],\n    \"id\": \"prj-db7mvm9llfps73emu9s0\",\n    \"name\": \"qa-20261014-77144ca8 Project café ☃\",\n    \"owner\": {\n      \"email\": \"QA_PRIVATE_VALUE_REDACTED\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"updatedAt\": \"2026-10-14T12:04:41.980865Z\"\n  }\n]",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:10:25.905421+00:00",
+      "client": "bex",
+      "surface": "projects",
+      "format": "yaml",
+      "command": [
+        "bex",
+        "projects",
+        "--confirm",
+        "-o",
+        "yaml"
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "projects",
+          "--confirm",
+          "-o",
+          "yaml"
+        ],
+        "exit": 0,
+        "elapsed": 0.29,
+        "stdout": "- createdAt: \"2026-10-14T12:04:41.980865Z\"\n  environmentIds:\n    - evm-db7mvm9llfps73emu9sg\n    - evm-db7mvm9llfps73emu9t0\n    - evm-db7mvm9llfps73emu9tg\n  id: prj-db7mvm9llfps73emu9s0\n  name: qa-20261014-77144ca8 Project café ☃\n  owner:\n    email: QA_PRIVATE_VALUE_REDACTED\n    id: tea-daif693dqjvc73e7as3g\n    name: bex-canary\n    type: team\n  updatedAt: \"2026-10-14T12:04:41.980865Z\"\n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:10:26.353578+00:00",
+      "client": "bex",
+      "surface": "projects",
+      "format": "text",
+      "command": [
+        "bex",
+        "projects",
+        "--confirm",
+        "-o",
+        "text"
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "projects",
+          "--confirm",
+          "-o",
+          "text"
+        ],
+        "exit": 0,
+        "elapsed": 0.283,
+        "stdout": "NAME                                   ID                          \nqa-20261014-77144ca8 Project café ☃    prj-db7mvm9llfps73emu9s0    \n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:10:27.541238+00:00",
+      "client": "bex",
+      "surface": "environments",
+      "format": "json",
+      "command": [
+        "bex",
+        "environments",
+        "prj-db7mvm9llfps73emu9s0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "environments",
+          "prj-db7mvm9llfps73emu9s0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.904,
+        "stdout": "[\n  {\n    \"databasesIds\": [],\n    \"envGroupIds\": [],\n    \"id\": \"evm-db7mvm9llfps73emu9sg\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"Allow all (default)\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"Allow all (default)\"\n      }\n    ],\n    \"name\": \"qa-20261014-77144ca8 Plain renamed\",\n    \"networkIsolationEnabled\": false,\n    \"projectId\": \"prj-db7mvm9llfps73emu9s0\",\n    \"protectedStatus\": \"unprotected\",\n    \"redisIds\": [],\n    \"serviceIds\": []\n  },\n  {\n    \"databasesIds\": [],\n    \"envGroupIds\": [],\n    \"id\": \"evm-db7mvm9llfps73emu9t0\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"Allow all (default)\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"Allow all (default)\"\n      }\n    ],\n    \"name\": \"qa-20261014-77144ca8 café ☃\",\n    \"networkIsolationEnabled\": false,\n    \"projectId\": \"prj-db7mvm9llfps73emu9s0\",\n    \"protectedStatus\": \"unprotected\",\n    \"redisIds\": [],\n    \"serviceIds\": []\n  },\n  {\n    \"databasesIds\": [],\n    \"envGroupIds\": [],\n    \"id\": \"evm-db7mvm9llfps73emu9tg\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"Allow all (default)\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"Allow all (default)\"\n      }\n    ],\n    \"name\": \"qa-20261014-77144ca8 comma, stage\",\n    \"networkIsolationEnabled\": false,\n    \"projectId\": \"prj-db7mvm9llfps73emu9s0\",\n    \"protectedStatus\": \"unprotected\",\n    \"redisIds\": [],\n    \"serviceIds\": []\n  }\n]",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:10:28.436692+00:00",
+      "client": "bex",
+      "surface": "environments",
+      "format": "yaml",
+      "command": [
+        "bex",
+        "environments",
+        "prj-db7mvm9llfps73emu9s0",
+        "--confirm",
+        "-o",
+        "yaml"
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "environments",
+          "prj-db7mvm9llfps73emu9s0",
+          "--confirm",
+          "-o",
+          "yaml"
+        ],
+        "exit": 0,
+        "elapsed": 0.726,
+        "stdout": "- databasesIds: []\n  envGroupIds: []\n  id: evm-db7mvm9llfps73emu9sg\n  ipAllowList:\n    - cidrBlock: 0.0.0.0/0\n      description: Allow all (default)\n    - cidrBlock: ::/0\n      description: Allow all (default)\n  name: qa-20261014-77144ca8 Plain renamed\n  networkIsolationEnabled: false\n  projectId: prj-db7mvm9llfps73emu9s0\n  protectedStatus: unprotected\n  redisIds: []\n  serviceIds: []\n- databasesIds: []\n  envGroupIds: []\n  id: evm-db7mvm9llfps73emu9t0\n  ipAllowList:\n    - cidrBlock: 0.0.0.0/0\n      description: Allow all (default)\n    - cidrBlock: ::/0\n      description: Allow all (default)\n  name: qa-20261014-77144ca8 café ☃\n  networkIsolationEnabled: false\n  projectId: prj-db7mvm9llfps73emu9s0\n  protectedStatus: unprotected\n  redisIds: []\n  serviceIds: []\n- databasesIds: []\n  envGroupIds: []\n  id: evm-db7mvm9llfps73emu9tg\n  ipAllowList:\n    - cidrBlock: 0.0.0.0/0\n      description: Allow all (default)\n    - cidrBlock: ::/0\n      description: Allow all (default)\n  name: qa-20261014-77144ca8 comma, stage\n  networkIsolationEnabled: false\n  projectId: prj-db7mvm9llfps73emu9s0\n  protectedStatus: unprotected\n  redisIds: []\n  serviceIds: []\n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:10:30.096850+00:00",
+      "client": "bex",
+      "surface": "environments",
+      "format": "text",
+      "command": [
+        "bex",
+        "environments",
+        "prj-db7mvm9llfps73emu9s0",
+        "--confirm",
+        "-o",
+        "text"
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "environments",
+          "prj-db7mvm9llfps73emu9s0",
+          "--confirm",
+          "-o",
+          "text"
+        ],
+        "exit": 0,
+        "elapsed": 1.494,
+        "stdout": "NAME                                  PROTECTED      ID                          \nqa-20261014-77144ca8 Plain renamed    unprotected    evm-db7mvm9llfps73emu9sg    \nqa-20261014-77144ca8 café ☃           unprotected    evm-db7mvm9llfps73emu9t0    \nqa-20261014-77144ca8 comma, stage     unprotected    evm-db7mvm9llfps73emu9tg    \n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:10:51.325282+00:00",
+      "client": "render",
+      "surface": "projects",
+      "format": "json",
+      "command": [
+        "render",
+        "projects",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "projects",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.328,
+        "stdout": "[\n  {\n    \"createdAt\": \"2026-10-14T12:04:41.980865Z\",\n    \"environmentIds\": [\n      \"evm-db7mvm9llfps73emu9sg\",\n      \"evm-db7mvm9llfps73emu9t0\",\n      \"evm-db7mvm9llfps73emu9tg\"\n    ],\n    \"id\": \"prj-db7mvm9llfps73emu9s0\",\n    \"name\": \"qa-20261014-77144ca8 Project café ☃\",\n    \"owner\": {\n      \"email\": \"QA_PRIVATE_VALUE_REDACTED\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"updatedAt\": \"2026-10-14T12:04:41.980865Z\"\n  }\n]",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:10:51.782723+00:00",
+      "client": "render",
+      "surface": "projects",
+      "format": "yaml",
+      "command": [
+        "render",
+        "projects",
+        "--confirm",
+        "-o",
+        "yaml"
+      ],
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "projects",
+          "--confirm",
+          "-o",
+          "yaml"
+        ],
+        "exit": 0,
+        "elapsed": 0.292,
+        "stdout": "- createdAt: \"2026-10-14T12:04:41.980865Z\"\n  environmentIds:\n    - evm-db7mvm9llfps73emu9sg\n    - evm-db7mvm9llfps73emu9t0\n    - evm-db7mvm9llfps73emu9tg\n  id: prj-db7mvm9llfps73emu9s0\n  name: qa-20261014-77144ca8 Project café ☃\n  owner:\n    email: QA_PRIVATE_VALUE_REDACTED\n    id: tea-daif693dqjvc73e7as3g\n    name: bex-canary\n    type: team\n  updatedAt: \"2026-10-14T12:04:41.980865Z\"\n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:10:52.307727+00:00",
+      "client": "render",
+      "surface": "projects",
+      "format": "text",
+      "command": [
+        "render",
+        "projects",
+        "--confirm",
+        "-o",
+        "text"
+      ],
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "projects",
+          "--confirm",
+          "-o",
+          "text"
+        ],
+        "exit": 0,
+        "elapsed": 0.363,
+        "stdout": "NAME                                   ID                          \nqa-20261014-77144ca8 Project café ☃    prj-db7mvm9llfps73emu9s0    \n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:10:53.441930+00:00",
+      "client": "render",
+      "surface": "environments",
+      "format": "json",
+      "command": [
+        "render",
+        "environments",
+        "prj-db7mvm9llfps73emu9s0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "environments",
+          "prj-db7mvm9llfps73emu9s0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.853,
+        "stdout": "[\n  {\n    \"databasesIds\": [],\n    \"envGroupIds\": [],\n    \"id\": \"evm-db7mvm9llfps73emu9sg\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"Allow all (default)\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"Allow all (default)\"\n      }\n    ],\n    \"name\": \"qa-20261014-77144ca8 Plain renamed\",\n    \"networkIsolationEnabled\": false,\n    \"projectId\": \"prj-db7mvm9llfps73emu9s0\",\n    \"protectedStatus\": \"unprotected\",\n    \"redisIds\": [],\n    \"serviceIds\": []\n  },\n  {\n    \"databasesIds\": [],\n    \"envGroupIds\": [],\n    \"id\": \"evm-db7mvm9llfps73emu9t0\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"Allow all (default)\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"Allow all (default)\"\n      }\n    ],\n    \"name\": \"qa-20261014-77144ca8 café ☃\",\n    \"networkIsolationEnabled\": false,\n    \"projectId\": \"prj-db7mvm9llfps73emu9s0\",\n    \"protectedStatus\": \"unprotected\",\n    \"redisIds\": [],\n    \"serviceIds\": []\n  },\n  {\n    \"databasesIds\": [],\n    \"envGroupIds\": [],\n    \"id\": \"evm-db7mvm9llfps73emu9tg\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"Allow all (default)\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"Allow all (default)\"\n      }\n    ],\n    \"name\": \"qa-20261014-77144ca8 comma, stage\",\n    \"networkIsolationEnabled\": false,\n    \"projectId\": \"prj-db7mvm9llfps73emu9s0\",\n    \"protectedStatus\": \"unprotected\",\n    \"redisIds\": [],\n    \"serviceIds\": []\n  }\n]",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:10:54.905691+00:00",
+      "client": "render",
+      "surface": "environments",
+      "format": "yaml",
+      "command": [
+        "render",
+        "environments",
+        "prj-db7mvm9llfps73emu9s0",
+        "--confirm",
+        "-o",
+        "yaml"
+      ],
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "environments",
+          "prj-db7mvm9llfps73emu9s0",
+          "--confirm",
+          "-o",
+          "yaml"
+        ],
+        "exit": 0,
+        "elapsed": 1.296,
+        "stdout": "- databasesIds: []\n  envGroupIds: []\n  id: evm-db7mvm9llfps73emu9sg\n  ipAllowList:\n    - cidrBlock: 0.0.0.0/0\n      description: Allow all (default)\n    - cidrBlock: ::/0\n      description: Allow all (default)\n  name: qa-20261014-77144ca8 Plain renamed\n  networkIsolationEnabled: false\n  projectId: prj-db7mvm9llfps73emu9s0\n  protectedStatus: unprotected\n  redisIds: []\n  serviceIds: []\n- databasesIds: []\n  envGroupIds: []\n  id: evm-db7mvm9llfps73emu9t0\n  ipAllowList:\n    - cidrBlock: 0.0.0.0/0\n      description: Allow all (default)\n    - cidrBlock: ::/0\n      description: Allow all (default)\n  name: qa-20261014-77144ca8 café ☃\n  networkIsolationEnabled: false\n  projectId: prj-db7mvm9llfps73emu9s0\n  protectedStatus: unprotected\n  redisIds: []\n  serviceIds: []\n- databasesIds: []\n  envGroupIds: []\n  id: evm-db7mvm9llfps73emu9tg\n  ipAllowList:\n    - cidrBlock: 0.0.0.0/0\n      description: Allow all (default)\n    - cidrBlock: ::/0\n      description: Allow all (default)\n  name: qa-20261014-77144ca8 comma, stage\n  networkIsolationEnabled: false\n  projectId: prj-db7mvm9llfps73emu9s0\n  protectedStatus: unprotected\n  redisIds: []\n  serviceIds: []\n",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-14T12:10:56.537939+00:00",
+      "client": "render",
+      "surface": "environments",
+      "format": "text",
+      "command": [
+        "render",
+        "environments",
+        "prj-db7mvm9llfps73emu9s0",
+        "--confirm",
+        "-o",
+        "text"
+      ],
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "environments",
+          "prj-db7mvm9llfps73emu9s0",
+          "--confirm",
+          "-o",
+          "text"
+        ],
+        "exit": 0,
+        "elapsed": 1.462,
+        "stdout": "NAME                                  PROTECTED      ID                          \nqa-20261014-77144ca8 Plain renamed    unprotected    evm-db7mvm9llfps73emu9sg    \nqa-20261014-77144ca8 café ☃           unprotected    evm-db7mvm9llfps73emu9t0    \nqa-20261014-77144ca8 comma, stage     unprotected    evm-db7mvm9llfps73emu9tg    \n",
+        "stderr": ""
+      }
+    }
+  ],
+  "comparisons": [
+    {
+      "client": "bex",
+      "surface": "projects",
+      "JSON_YAML_equal": false,
+      "all_own_names_present": true,
+      "text_nonempty": true
+    },
+    {
+      "client": "bex",
+      "surface": "environments",
+      "JSON_YAML_equal": true,
+      "all_own_names_present": true,
+      "text_nonempty": true
+    },
+    {
+      "client": "render",
+      "surface": "projects",
+      "JSON_YAML_equal": false,
+      "all_own_names_present": true,
+      "text_nonempty": true
+    },
+    {
+      "client": "render",
+      "surface": "environments",
+      "JSON_YAML_equal": true,
+      "all_own_names_present": true,
+      "text_nonempty": true
+    },
+    {
+      "client": "bex",
+      "surface": "projects",
+      "JSON_YAML_equal": true,
+      "all_own_names_present": true,
+      "text_nonempty": true
+    },
+    {
+      "client": "bex",
+      "surface": "environments",
+      "JSON_YAML_equal": true,
+      "all_own_names_present": true,
+      "text_nonempty": true
+    },
+    {
+      "client": "render",
+      "surface": "projects",
+      "JSON_YAML_equal": true,
+      "all_own_names_present": true,
+      "text_nonempty": true
+    },
+    {
+      "client": "render",
+      "surface": "environments",
+      "JSON_YAML_equal": true,
+      "all_own_names_present": true,
+      "text_nonempty": true
+    },
+    {
+      "client": "bex",
+      "surface": "projects",
+      "JSON_YAML_equal": true,
+      "all_own_names_present": true,
+      "text_nonempty": true
+    },
+    {
+      "client": "bex",
+      "surface": "environments",
+      "JSON_YAML_equal": true,
+      "all_own_names_present": true,
+      "text_nonempty": true
+    },
+    {
+      "client": "render",
+      "surface": "projects",
+      "JSON_YAML_equal": true,
+      "all_own_names_present": true,
+      "text_nonempty": true
+    },
+    {
+      "client": "render",
+      "surface": "environments",
+      "JSON_YAML_equal": true,
+      "all_own_names_present": true,
+      "text_nonempty": true
+    }
+  ],
+  "rename_intent": {
+    "at": "2026-10-14T12:10:15.359376+00:00",
+    "id": "evm-db7mvm9llfps73emu9sg",
+    "old_name": "qa-20261014-77144ca8 Plain",
+    "body": {
+      "name": "qa-20261014-77144ca8 Plain renamed"
+    }
+  },
+  "rename_result": {
+    "request": {
+      "method": "PATCH",
+      "path": "/v1/environments/evm-db7mvm9llfps73emu9sg",
+      "body": {
+        "name": "qa-20261014-77144ca8 Plain renamed"
+      },
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "exit": 0,
+    "response": "{\"id\":\"evm-db7mvm9llfps73emu9sg\",\"projectId\":\"prj-db7mvm9llfps73emu9s0\",\"name\":\"qa-20261014-77144ca8 Plain renamed\",\"serviceIds\":[],\"databaseIds\":[],\"keyValueIds\":[],\"databasesIds\":[],\"redisIds\":[],\"envGroupIds\":[],\"protectedStatus\":\"unprotected\",\"networkIsolationEnabled\":false,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"Allow all (default)\"},{\"cidrBlock\":\"::/0\",\"description\":\"Allow all (default)\"}]}\n",
+    "stderr": ""
+  },
+  "final_projects": {
+    "at": "2026-10-14T12:15:48.834653+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/projects?ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.253,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4a682f95f8bcfcc-SJC"
+    },
+    "response": "[]\n"
+  }
+}

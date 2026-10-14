@@ -1,0 +1,30 @@
+import pathlib,json,datetime,subprocess,time,shutil,yaml,sys
+p=pathlib.Path(__file__).parent;cp=pathlib.Path('$REPO/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());mode,case=sys.argv[1:];sid=(p/('sweep228-'+case+'-id.txt')).read_text().strip();x=next(v for v in c['resources'] if v.get('id')==sid);assert x['sweep']==228 and x['workspace']=='tea-daif693dqjvc73e7as3g' and x['create_result']['exit']==0 and x['create_response']['id']==sid and not x['state'].startswith('deleted:');assert x['create_response']['serviceDetails']['plan']=='free';cfgfile=p/'render-config/cli.yaml'
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2));cp.chmod(0o600)
+def cli(args):
+ try:
+  if x['client']=='render':shutil.copyfile(p/'config/cli.yaml',cfgfile);cfgfile.chmod(0o600)
+  runner=['python3',str(p/'run-render.py')] if x['client']=='render' else ['python3',str(p/'run.py'),'--release'];return json.loads(subprocess.check_output([*runner,*args],text=True))
+ finally:
+  if x['client']=='render':cfgfile.unlink(missing_ok=True)
+if mode=='recover':
+ assert case in ['empty-pre-bex','empty-pre-render'] and 'recovery_intent' not in x
+ observed={z['target']['id'] for z in x['observations']};assert len(observed)==1
+ original=x['observations'][-1]['target'];x['original_stalled_deploy']=original
+ events=json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET','/v1/services/'+sid+'/events?limit=30'],text=True));assert events['status']=='200' and original['status']=='pre_deploy_failed';matching=[v for v in json.loads(events['response']) if v.get('event',{}).get('serviceId')==sid and v.get('event',{}).get('details',{}).get('deployId')==original['id'] and v.get('event',{}).get('type')=='pre_deploy_ended' and v.get('event',{}).get('details',{}).get('status')=='failed'];assert matching,'No owned terminal pre-deploy event';x['original_latest_events']=events;x['original_predeploy_failed']=True;x['original_failure_age_seconds']=round((datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(x['time'])).total_seconds());save()
+ cfg=yaml.safe_load((p/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token;body={'envVars':[{'key':'PATH','value':'/usr/local/bin:/usr/bin:/bin'}],'saveMode':'save_only'};x['recovery_intent']={'at':now(),'api_only':True,'method':'PATCH','path':'/v1/services/'+sid+'/environment','body':body,'qualification':'Exact-owned PATH-only control; absolute commands, marker/file bytes and original commit unchanged; original deploy terminal pre_deploy_failed; only PATH is broadened for this causal control'};save();file=p/('sweep228-'+case+'-recovery-body.json');file.write_text(json.dumps(body));file.chmod(0o600);auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: render-cli/2.27.0 (macOS - 26.5.1)"\nheader = "X-Bex-Workspace: '+x['workspace']+'"\n'
+ try:
+  r=subprocess.run(['curl','--disable','-sS','--max-time','25','--config','-','-X','PATCH','-H','Content-Type: application/json','--data-binary','@'+str(file),'-w','\n%{http_code}','https://api.bex.co/v1/services/'+sid+'/environment'],input=auth,text=True,capture_output=True,timeout=30);payload,_,status=r.stdout.rpartition('\n');assert token not in payload;x['recovery_setup']={'status':status,'exit':r.returncode,'response':payload,'stderr':r.stderr};save();assert status=='200' and json.loads(payload)['rolledOut'] is False
+ finally:file.unlink(missing_ok=True)
+ commit=original['commit']['id'];assert len(commit)==40 and all(v in '0123456789abcdef' for v in commit);args=['deploys','create',sid,'--commit',commit,'--confirm','-o','json'];x['recovery_native_intent']={'at':now(),'command':[x['client'],*args],'same_initial_commit':True};save();r=cli(args);x['recovery_result']=r;save();assert r['exit']==0;x['recovery_deploy_id']=json.loads(r['stdout'])['id'];save();print(json.dumps({'case':case,'PATH_only_setup':status,'native_exit':r['exit'],'recovery_deploy_id':x['recovery_deploy_id'],'same_commit':commit}),flush=True)
+elif mode=='observe':
+ assert x.get('recovery_deploy_id')
+ for attempt in range(3):
+  r=cli(['deploys','list',sid,'--confirm','-o','json']);assert r['exit']==0;target=next(z for z in json.loads(r['stdout']) if z['id']==x['recovery_deploy_id']);output=p/('sweep228-'+case+'-recovery-runtime.json');rhttp=subprocess.run(['curl','--disable','-sS','--max-time','8','-o',str(output),'-w','%{http_code}',x['create_response']['serviceDetails']['url']+'/'],text=True,capture_output=True,timeout=12);raw=output.read_text() if output.exists() else ''
+  try:body=json.loads(raw)
+  except ValueError:body=None
+  runtime={'exit':rhttp.returncode,'http':rhttp.stdout,'body':body,'raw':raw,'stderr':rhttp.stderr};obs={'at':now(),'native_list':r,'target':target,'runtime':runtime};x.setdefault('recovery_observations',[]).append(obs);save();match=isinstance(body,dict) and body.get('marker')==x['marker'] and body.get('built',{}).get('snapshot')==x['expected_bytes'] and body.get('runtime')==x['expected_bytes'] and body.get('built',{}).get('build_path')==body.get('runtime_path')=='/usr/local/bin:/usr/bin:/bin';print(json.dumps({'case':case,'attempt':attempt,'status':target['status'],'http':rhttp.stdout,'exact_PATH_and_bytes':match}),flush=True)
+  if target['status'] in ['build_failed','update_failed','pre_deploy_failed','canceled'] or target['status']=='live' and rhttp.stdout=='200':x.update(recovery_settled=True,recovery_pass=target['status']=='live' and rhttp.stdout=='200' and match,recovery_deploy=target,recovery_runtime=runtime);save();break
+  if attempt<2:time.sleep(6)
+else:raise ValueError(mode)

@@ -1,0 +1,197 @@
+[
+  {
+    "request": {
+      "method": "GET",
+      "path": "/v1/services/srv-db7ls3mt41sc7388o82g",
+      "raw_body": null,
+      "body": null,
+      "headers": {
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "X-Bex-Cli-Version": "0.3.2",
+        "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g"
+      },
+      "authorization": "[REDACTED]"
+    },
+    "status": 200,
+    "response": "{\"id\":\"srv-db7ls3mt41sc7388o82g\",\"name\":\"qa-20261014-68e976a8-source\",\"immutableName\":\"qa-20261014-68e976a8-source\",\"slug\":\"qa-20261014-68e976a8-source\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7ls3mt41sc7388o82g\",\"createdAt\":\"2026-10-14T10:48:47Z\",\"updatedAt\":\"2026-10-14T10:51:00Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA VALUE REDACTED]\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),crypto=require(\\\"crypto\\\");function snap(){const b=fs.readFileSync(\\\"/etc/secrets/qa-note.txt\\\");return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString(\\\"base64\\\"),fileSHA256:crypto.createHash(\\\"sha256\\\").update(b).digest(\\\"hex\\\")};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),crypto=require(\\\"crypto\\\"),http=require(\\\"http\\\");function snap(){const b=fs.readFileSync(\\\"/etc/secrets/qa-note.txt\\\");return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString(\\\"base64\\\"),fileSHA256:crypto.createHash(\\\"sha256\\\").update(b).digest(\\\"hex\\\")};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261014-68e976a8-source:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261014-68e976a8-source.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261014-68e976a8-source.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+    "response_headers": {
+      "Content-Type": "application/json",
+      "CF-RAY": "a4a609c1ced836e8-SJC"
+    }
+  },
+  {
+    "request": {
+      "method": "GET",
+      "path": "/v1/services/srv-db7ls3mt41sc7388o82g",
+      "raw_body": null,
+      "body": null,
+      "headers": {
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "X-Bex-Cli-Version": "0.3.2",
+        "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g"
+      },
+      "authorization": "[REDACTED]"
+    },
+    "status": 200,
+    "response": "{\"id\":\"srv-db7ls3mt41sc7388o82g\",\"name\":\"qa-20261014-68e976a8-source\",\"immutableName\":\"qa-20261014-68e976a8-source\",\"slug\":\"qa-20261014-68e976a8-source\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7ls3mt41sc7388o82g\",\"createdAt\":\"2026-10-14T10:48:47Z\",\"updatedAt\":\"2026-10-14T10:51:00Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA VALUE REDACTED]\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),crypto=require(\\\"crypto\\\");function snap(){const b=fs.readFileSync(\\\"/etc/secrets/qa-note.txt\\\");return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString(\\\"base64\\\"),fileSHA256:crypto.createHash(\\\"sha256\\\").update(b).digest(\\\"hex\\\")};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),crypto=require(\\\"crypto\\\"),http=require(\\\"http\\\");function snap(){const b=fs.readFileSync(\\\"/etc/secrets/qa-note.txt\\\");return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString(\\\"base64\\\"),fileSHA256:crypto.createHash(\\\"sha256\\\").update(b).digest(\\\"hex\\\")};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261014-68e976a8-source:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261014-68e976a8-source.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261014-68e976a8-source.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+    "response_headers": {
+      "Content-Type": "application/json",
+      "CF-RAY": "a4a609c35893a230-SJC"
+    }
+  },
+  {
+    "request": {
+      "method": "POST",
+      "path": "/v1/services",
+      "raw_body": "{\"autoDeploy\":\"no\",\"branch\":\"main\",\"envVars\":[{\"key\":\"QA_MARKER\",\"value\":\"QA233_2e240b19_clone\"},{\"key\":\"PATH\",\"value\":\"\"}],\"name\":\"qa-20261014-2e240b19-clone\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"repo\":\"https://github.com/bex-co/bex\",\"rootDir\":\"examples/hello-go\",\"secretFiles\":[{\"content\":\"QA233_2e240b19_clone\\n☃=file\\nsecond line\\n\",\"name\":\"qa-note.txt\"}],\"serviceDetails\":{\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),crypto=require(\\\"crypto\\\");function snap(){const b=fs.readFileSync(\\\"/etc/secrets/qa-note.txt\\\");return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString(\\\"base64\\\"),fileSHA256:crypto.createHash(\\\"sha256\\\").update(b).digest(\\\"hex\\\")};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),crypto=require(\\\"crypto\\\"),http=require(\\\"http\\\");function snap(){const b=fs.readFileSync(\\\"/etc/secrets/qa-note.txt\\\");return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString(\\\"base64\\\"),fileSHA256:crypto.createHash(\\\"sha256\\\").update(b).digest(\\\"hex\\\")};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\"},\"healthCheckPath\":\"/\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"region\":\"frankfurt\",\"runtime\":\"node\"},\"type\":\"web_service\"}",
+      "body": {
+        "autoDeploy": "no",
+        "branch": "main",
+        "envVars": [
+          {
+            "key": "QA_MARKER",
+            "value": "QA233_2e240b19_clone"
+          },
+          {
+            "key": "PATH",
+            "value": ""
+          }
+        ],
+        "name": "qa-20261014-2e240b19-clone",
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "repo": "https://github.com/bex-co/bex",
+        "rootDir": "examples/hello-go",
+        "secretFiles": [
+          {
+            "content": "QA233_2e240b19_clone\n☃=file\nsecond line\n",
+            "name": "qa-note.txt"
+          }
+        ],
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "buildCommand": "/usr/local/bin/node -e 'const fs=require(\"fs\"),crypto=require(\"crypto\");function snap(){const b=fs.readFileSync(\"/etc/secrets/qa-note.txt\");return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString(\"base64\"),fileSHA256:crypto.createHash(\"sha256\").update(b).digest(\"hex\")};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'",
+            "startCommand": "/usr/local/bin/node -e 'const fs=require(\"fs\"),crypto=require(\"crypto\"),http=require(\"http\");function snap(){const b=fs.readFileSync(\"/etc/secrets/qa-note.txt\");return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString(\"base64\"),fileSHA256:crypto.createHash(\"sha256\").update(b).digest(\"hex\")};}const built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'"
+          },
+          "healthCheckPath": "/",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "plan": "free",
+          "region": "frankfurt",
+          "runtime": "node"
+        },
+        "type": "web_service"
+      },
+      "headers": {
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "Content-Type": "application/json",
+        "X-Bex-Cli-Version": "0.3.2"
+      },
+      "authorization": "[REDACTED]"
+    },
+    "status": 201,
+    "response": "{\"service\":{\"id\":\"srv-db7lu49llfps73emu97g\",\"name\":\"qa-20261014-2e240b19-clone\",\"immutableName\":\"qa-20261014-2e240b19-clone\",\"slug\":\"qa-20261014-2e240b19-clone\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7lu49llfps73emu97g\",\"createdAt\":\"2026-10-14T10:53:05Z\",\"updatedAt\":\"2026-10-14T10:53:05.050289272Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA VALUE REDACTED]\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),crypto=require(\\\"crypto\\\");function snap(){const b=fs.readFileSync(\\\"/etc/secrets/qa-note.txt\\\");return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString(\\\"base64\\\"),fileSHA256:crypto.createHash(\\\"sha256\\\").update(b).digest(\\\"hex\\\")};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),crypto=require(\\\"crypto\\\"),http=require(\\\"http\\\");function snap(){const b=fs.readFileSync(\\\"/etc/secrets/qa-note.txt\\\");return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString(\\\"base64\\\"),fileSHA256:crypto.createHash(\\\"sha256\\\").update(b).digest(\\\"hex\\\")};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261014-2e240b19-clone:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261014-2e240b19-clone.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"},\"deployId\":\"dep-db7lu49llfps73emu980\"}\n",
+    "response_headers": {
+      "Content-Type": "application/json",
+      "CF-RAY": "a4a609c4dd542368-SJC"
+    }
+  },
+  {
+    "request": {
+      "method": "GET",
+      "path": "/v1/services/srv-db7ls9mt41sc7388o85g",
+      "raw_body": null,
+      "body": null,
+      "headers": {
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+      },
+      "authorization": "[REDACTED]"
+    },
+    "status": 200,
+    "response": "{\"id\":\"srv-db7ls9mt41sc7388o85g\",\"name\":\"qa-20261014-b147ba0b-source\",\"immutableName\":\"qa-20261014-b147ba0b-source\",\"slug\":\"qa-20261014-b147ba0b-source\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7ls9mt41sc7388o85g\",\"createdAt\":\"2026-10-14T10:49:10Z\",\"updatedAt\":\"2026-10-14T10:50:54Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA VALUE REDACTED]\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),crypto=require(\\\"crypto\\\");function snap(){const b=fs.readFileSync(\\\"/etc/secrets/qa-note.txt\\\");return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString(\\\"base64\\\"),fileSHA256:crypto.createHash(\\\"sha256\\\").update(b).digest(\\\"hex\\\")};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),crypto=require(\\\"crypto\\\"),http=require(\\\"http\\\");function snap(){const b=fs.readFileSync(\\\"/etc/secrets/qa-note.txt\\\");return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString(\\\"base64\\\"),fileSHA256:crypto.createHash(\\\"sha256\\\").update(b).digest(\\\"hex\\\")};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261014-b147ba0b-source:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261014-b147ba0b-source.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261014-b147ba0b-source.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+    "response_headers": {
+      "Content-Type": "application/json",
+      "CF-RAY": "a4a60a2dcf2ce678-SJC"
+    }
+  },
+  {
+    "request": {
+      "method": "GET",
+      "path": "/v1/services/srv-db7ls9mt41sc7388o85g",
+      "raw_body": null,
+      "body": null,
+      "headers": {
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+      },
+      "authorization": "[REDACTED]"
+    },
+    "status": 200,
+    "response": "{\"id\":\"srv-db7ls9mt41sc7388o85g\",\"name\":\"qa-20261014-b147ba0b-source\",\"immutableName\":\"qa-20261014-b147ba0b-source\",\"slug\":\"qa-20261014-b147ba0b-source\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7ls9mt41sc7388o85g\",\"createdAt\":\"2026-10-14T10:49:10Z\",\"updatedAt\":\"2026-10-14T10:50:54Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA VALUE REDACTED]\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),crypto=require(\\\"crypto\\\");function snap(){const b=fs.readFileSync(\\\"/etc/secrets/qa-note.txt\\\");return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString(\\\"base64\\\"),fileSHA256:crypto.createHash(\\\"sha256\\\").update(b).digest(\\\"hex\\\")};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),crypto=require(\\\"crypto\\\"),http=require(\\\"http\\\");function snap(){const b=fs.readFileSync(\\\"/etc/secrets/qa-note.txt\\\");return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString(\\\"base64\\\"),fileSHA256:crypto.createHash(\\\"sha256\\\").update(b).digest(\\\"hex\\\")};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261014-b147ba0b-source:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261014-b147ba0b-source.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261014-b147ba0b-source.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+    "response_headers": {
+      "Content-Type": "application/json",
+      "CF-RAY": "a4a60a318cd1de51-SJC"
+    }
+  },
+  {
+    "request": {
+      "method": "POST",
+      "path": "/v1/services",
+      "raw_body": "{\"autoDeploy\":\"no\",\"branch\":\"main\",\"envVars\":[{\"key\":\"QA_MARKER\",\"value\":\"QA233_2955dcef_clone\"},{\"key\":\"PATH\",\"value\":\"/usr/bin:/bin\"}],\"name\":\"qa-20261014-2955dcef-clone\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"repo\":\"https://github.com/bex-co/bex\",\"rootDir\":\"examples/hello-go\",\"secretFiles\":[{\"content\":\"QA233_2955dcef_clone\\n☃=file\\nsecond line\\n\",\"name\":\"qa-note.txt\"}],\"serviceDetails\":{\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),crypto=require(\\\"crypto\\\");function snap(){const b=fs.readFileSync(\\\"/etc/secrets/qa-note.txt\\\");return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString(\\\"base64\\\"),fileSHA256:crypto.createHash(\\\"sha256\\\").update(b).digest(\\\"hex\\\")};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),crypto=require(\\\"crypto\\\"),http=require(\\\"http\\\");function snap(){const b=fs.readFileSync(\\\"/etc/secrets/qa-note.txt\\\");return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString(\\\"base64\\\"),fileSHA256:crypto.createHash(\\\"sha256\\\").update(b).digest(\\\"hex\\\")};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\"},\"healthCheckPath\":\"/\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"region\":\"frankfurt\",\"runtime\":\"node\"},\"type\":\"web_service\"}",
+      "body": {
+        "autoDeploy": "no",
+        "branch": "main",
+        "envVars": [
+          {
+            "key": "QA_MARKER",
+            "value": "QA233_2955dcef_clone"
+          },
+          {
+            "key": "PATH",
+            "value": "/usr/bin:/bin"
+          }
+        ],
+        "name": "qa-20261014-2955dcef-clone",
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "repo": "https://github.com/bex-co/bex",
+        "rootDir": "examples/hello-go",
+        "secretFiles": [
+          {
+            "content": "QA233_2955dcef_clone\n☃=file\nsecond line\n",
+            "name": "qa-note.txt"
+          }
+        ],
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "buildCommand": "/usr/local/bin/node -e 'const fs=require(\"fs\"),crypto=require(\"crypto\");function snap(){const b=fs.readFileSync(\"/etc/secrets/qa-note.txt\");return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString(\"base64\"),fileSHA256:crypto.createHash(\"sha256\").update(b).digest(\"hex\")};}fs.writeFileSync(\"qa-built.json\",JSON.stringify(snap()));'",
+            "startCommand": "/usr/local/bin/node -e 'const fs=require(\"fs\"),crypto=require(\"crypto\"),http=require(\"http\");function snap(){const b=fs.readFileSync(\"/etc/secrets/qa-note.txt\");return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString(\"base64\"),fileSHA256:crypto.createHash(\"sha256\").update(b).digest(\"hex\")};}const built=JSON.parse(fs.readFileSync(\"qa-built.json\"));http.createServer((q,r)=>{r.writeHead(200,{\"Content-Type\":\"application/json\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\"0.0.0.0\");'"
+          },
+          "healthCheckPath": "/",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "plan": "free",
+          "region": "frankfurt",
+          "runtime": "node"
+        },
+        "type": "web_service"
+      },
+      "headers": {
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "Content-Type": "application/json"
+      },
+      "authorization": "[REDACTED]"
+    },
+    "status": 201,
+    "response": "{\"service\":{\"id\":\"srv-db7lu8hllfps73emu99g\",\"name\":\"qa-20261014-2955dcef-clone\",\"immutableName\":\"qa-20261014-2955dcef-clone\",\"slug\":\"qa-20261014-2955dcef-clone\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7lu8hllfps73emu99g\",\"createdAt\":\"2026-10-14T10:53:22Z\",\"updatedAt\":\"2026-10-14T10:53:22.569624273Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA VALUE REDACTED]\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),crypto=require(\\\"crypto\\\");function snap(){const b=fs.readFileSync(\\\"/etc/secrets/qa-note.txt\\\");return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString(\\\"base64\\\"),fileSHA256:crypto.createHash(\\\"sha256\\\").update(b).digest(\\\"hex\\\")};}fs.writeFileSync(\\\"qa-built.json\\\",JSON.stringify(snap()));'\",\"preDeployCommand\":\"\",\"startCommand\":\"/usr/local/bin/node -e 'const fs=require(\\\"fs\\\"),crypto=require(\\\"crypto\\\"),http=require(\\\"http\\\");function snap(){const b=fs.readFileSync(\\\"/etc/secrets/qa-note.txt\\\");return {marker:process.env.QA_MARKER,path:process.env.PATH,fileBase64:b.toString(\\\"base64\\\"),fileSHA256:crypto.createHash(\\\"sha256\\\").update(b).digest(\\\"hex\\\")};}const built=JSON.parse(fs.readFileSync(\\\"qa-built.json\\\"));http.createServer((q,r)=\\u003e{r.writeHead(200,{\\\"Content-Type\\\":\\\"application/json\\\"});r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),\\\"0.0.0.0\\\");'\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261014-2955dcef-clone:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261014-2955dcef-clone.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"},\"deployId\":\"dep-db7lu8hllfps73emu9a0\"}\n",
+    "response_headers": {
+      "Content-Type": "application/json",
+      "CF-RAY": "a4a60a33abb4c6bb-SJC"
+    }
+  }
+]
