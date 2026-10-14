@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { Loader2, Pencil } from "lucide-react";
+import { ChevronDown, Loader2, Pencil } from "lucide-react";
 import { Badge } from "@/common/components/ui/badge";
+import { Skeleton } from "@/common/components/ui/skeleton";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import {
@@ -365,16 +366,22 @@ export function EditableFieldRow({
 /**
  * An {@link EditableFieldRow} before its value is known: the real label and
  * hint (static copy, so they wrap exactly as the ready row does), then the
- * same control row — an empty disabled input beside the pencil slot. It
- * renders no value and binds no mutation; route skeletons place it inside an
- * `inert` card.
+ * same control row — an empty disabled input, or a select-trigger-shaped box
+ * holding a value placeholder — beside the pencil slot. It renders no value
+ * and binds no mutation; route skeletons place it inside an `inert` card.
+ *
+ * `select` previews the select variant, whose value label wraps: it reserves
+ * `narrowLines` 20px lines below `sm` (a long option label such as the
+ * recommended maxmemory policy wraps there) and one line from `sm`.
  */
 export function EditableFieldRowPreview({
   label,
   hint,
+  select,
 }: {
   label: string;
   hint?: ReactNode;
+  select?: { narrowLines: 1 | 2 };
 }) {
   return (
     <div className="space-y-2" data-slot="editable-field-row-preview">
@@ -386,8 +393,32 @@ export function EditableFieldRowPreview({
           <div className="text-muted-foreground mt-1 text-sm">{hint}</div>
         )}
       </div>
-      <div className="flex items-center gap-2">
-        <Input disabled aria-label={label} className="flex-1" />
+      <div
+        className={cn(
+          "flex items-center gap-2",
+          select && "flex-wrap sm:flex-nowrap",
+        )}
+      >
+        {select ? (
+          <div
+            data-slot="select-trigger-preview"
+            className="border-input flex min-h-8 min-w-0 flex-1 items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm opacity-50 shadow-xs"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="flex h-5 items-center">
+                <Skeleton className="h-3.5 w-40 max-w-full" />
+              </span>
+              {select.narrowLines === 2 && (
+                <span className="flex h-5 items-center sm:hidden">
+                  <Skeleton className="h-3.5 w-24" />
+                </span>
+              )}
+            </span>
+            <ChevronDown className="text-muted-foreground size-4 shrink-0 opacity-50" />
+          </div>
+        ) : (
+          <Input disabled aria-label={label} className="flex-1" />
+        )}
         <Button size="icon" variant="ghost" disabled aria-hidden="true">
           <Pencil />
         </Button>

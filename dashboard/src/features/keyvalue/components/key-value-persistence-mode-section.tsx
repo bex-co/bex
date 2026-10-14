@@ -7,9 +7,11 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
-import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { EditableFieldRow } from "@/features/services/components/editable-field-row";
+import {
+  EditableFieldRow,
+  EditableFieldRowPreview,
+} from "@/features/services/components/editable-field-row";
 import { PERSISTENCE_MODES } from "@/features/keyvalue/lib/labels";
 import { useSetKeyValuePersistenceMode } from "@/features/keyvalue/hooks/use-set-key-value-persistence-mode";
 import type { en } from "@/i18n";
@@ -94,7 +96,12 @@ export function KeyValuePersistenceModeSection({
       </CardHeader>
       <CardContent>
         {loading && !mode ? (
-          <Skeleton className="h-9 w-full" />
+          // The field's own anatomy, so the row keeps its bounds (w4/299).
+          <EditableFieldRowPreview
+            label={t("keyvalue.persistenceLabel")}
+            hint={t("keyvalue.fieldPersistenceModeHint")}
+            select={{ narrowLines: 1 }}
+          />
         ) : (
           <EditableFieldRow
             key={`${id}:${editRevision}`}
