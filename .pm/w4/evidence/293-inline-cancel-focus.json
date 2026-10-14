@@ -1,0 +1,604 @@
+{
+  "finding": "Owned service inline cancellation loses the restored Edit button focus",
+  "observedAt": "2026-10-14",
+  "sourceHead": "94c22bec9",
+  "fixture": {
+    "id": "srv-db7ftimt41sc7388o22g",
+    "name": "qa-20261013-a416-health",
+    "plan": "free"
+  },
+  "probes": {
+    "freshDesktop": {
+      "at": "2026-10-14T04:05:58.471Z",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "before": {
+        "tag": "INPUT",
+        "aria": "Health Check Path",
+        "id": ""
+      },
+      "after": {
+        "tag": "BODY",
+        "aria": null,
+        "text": "BbexToggle SidebarDashboardqa-20261013-a416-healthDeploysSettingsMonitorEventsLogsMetricsManageEnvir"
+      },
+      "path": "",
+      "inputDisabledAfterEnter": true,
+      "aria": "- text: Health Check Path An HTTP path bex polls to decide whether your service is healthy; it must answer 2xx or 3xx within 5 seconds, and 60 seconds of consecutive failures restarts the instance — point it at a cheap route. Leave it empty to check only that the process is listening on its port — the right choice when the service has no cheap route that returns 2xx.\n- textbox \"Health Check Path\" [disabled]:\n  - /placeholder: Empty — check the port only\n- button \"Edit Health Check Path\""
+    },
+    "freshMobile": {
+      "at": "2026-10-14T04:06:31.145Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "escapeFocus": {
+        "tag": "BODY",
+        "aria": null
+      },
+      "escapeReopened": false,
+      "cancelFocus": {
+        "tag": "BODY",
+        "aria": null
+      },
+      "cancelReopened": false,
+      "portFocus": {
+        "tag": "BODY",
+        "aria": null
+      },
+      "portReopened": false,
+      "path": "",
+      "port": "8846",
+      "overflow": false
+    },
+    "nativeTabDesktop": {
+      "at": "2026-10-14T04:07:20.906Z",
+      "tabs": 58,
+      "after": {
+        "tag": "BODY",
+        "aria": null
+      },
+      "inputDisabledAfterEnter": true,
+      "service": {
+        "status": 200,
+        "body": {
+          "id": "srv-db7ftimt41sc7388o22g",
+          "name": "qa-20261013-a416-health",
+          "immutableName": "qa-20261013-a416-health",
+          "slug": "qa-20261013-a416-health",
+          "displayName": "",
+          "type": "web_service",
+          "suspended": "not_suspended",
+          "dashboardUrl": "https://dashboard.bex.co/web/srv-db7ftimt41sc7388o22g",
+          "createdAt": "2026-10-14T04:02:18Z",
+          "updatedAt": "2026-10-14T04:05:31Z",
+          "owner": {
+            "id": "tea-d98210cbbpdc73dcrkvg",
+            "name": "bex",
+            "email": "puncsky@gmail.com",
+            "type": "team"
+          },
+          "serviceDetails": {
+            "env": "image",
+            "envSpecificDetails": {
+              "dockerCommand": "exec python -u -c 'exec(\"import http.server,os,time,json\\nstarted=time.time()\\nclass Handler(http.server.BaseHTTPRequestHandler):\\n def do_GET(self):\\n  ok=self.path in ['\"'\"'/'\"'\"', '\"'\"'/qa-a416-ready'\"'\"']\\n  body=json.dumps({'\"'\"'qa'\"'\"':'\"'\"'a416'\"'\"','\"'\"'path'\"'\"':self.path,'\"'\"'started'\"'\"':started}).encode()\\n  self.send_response(200 if ok else 404)\\n  self.send_header('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"')\\n  self.send_header('\"'\"'Content-Length'\"'\"',str(len(body)))\\n  self.end_headers()\\n  self.wfile.write(body)\\n def log_message(self,fmt,*args):\\n  print('\"'\"'QA_A416_HEALTH '\"'\"'+fmt%args,flush=True)\\nhttp.server.HTTPServer(('\"'\"'0.0.0.0'\"'\"',int(os.environ['\"'\"'PORT'\"'\"'])),Handler).serve_forever()\")'"
+            },
+            "internalAddress": "qa-20261013-a416-health:8846",
+            "maintenanceMode": {
+              "enabled": false,
+              "uri": ""
+            },
+            "maxShutdownDelaySeconds": 30,
+            "numInstances": 1,
+            "plan": "free",
+            "port": 8846,
+            "region": "fsn1",
+            "renderSubdomainPolicy": "enabled",
+            "runtime": "image",
+            "url": "https://qa-20261013-a416-health.onbex.co"
+          },
+          "imagePath": "docker.io/library/python:3.13-alpine",
+          "suspenders": [],
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "phase": "Running",
+          "replicas": 1,
+          "revision": "rev-4",
+          "urls": ["https://qa-20261013-a416-health.onbex.co"],
+          "idleTTLSeconds": 0,
+          "autoDeploy": "no",
+          "autoDeployTrigger": "off",
+          "pushDeliveryMethod": "none",
+          "notifyOnFail": "default",
+          "notificationsToSend": "default"
+        }
+      },
+      "deploys": {
+        "status": 200,
+        "body": [
+          {
+            "deploy": {
+              "id": "dep-db7fv01llfps73emu3gg",
+              "serviceId": "srv-db7ftimt41sc7388o22g",
+              "status": "live",
+              "trigger": "service_updated",
+              "bexTrigger": "config_change",
+              "image": {
+                "ref": "docker.io/library/python:3.13-alpine"
+              },
+              "createdAt": "2026-10-14T04:05:20.522088Z",
+              "updatedAt": "2026-10-14T04:05:34.958112Z",
+              "startedAt": "2026-10-14T04:05:22.077193Z",
+              "finishedAt": "2026-10-14T04:05:34.958111Z"
+            },
+            "cursor": "dep-db7fv01llfps73emu3gg"
+          },
+          {
+            "deploy": {
+              "id": "dep-db7fuhut41sc7388o250",
+              "serviceId": "srv-db7ftimt41sc7388o22g",
+              "status": "deactivated",
+              "trigger": "service_updated",
+              "bexTrigger": "config_change",
+              "image": {
+                "ref": "docker.io/library/python:3.13-alpine"
+              },
+              "createdAt": "2026-10-14T04:04:23.700578Z",
+              "updatedAt": "2026-10-14T04:05:34.964404Z",
+              "finishedAt": "2026-10-14T04:04:51.943192Z"
+            },
+            "cursor": "dep-db7fuhut41sc7388o250"
+          },
+          {
+            "deploy": {
+              "id": "dep-db7fu7ut41sc7388o23g",
+              "serviceId": "srv-db7ftimt41sc7388o22g",
+              "status": "deactivated",
+              "trigger": "service_updated",
+              "bexTrigger": "config_change",
+              "image": {
+                "ref": "docker.io/library/python:3.13-alpine"
+              },
+              "createdAt": "2026-10-14T04:03:43.258211Z",
+              "updatedAt": "2026-10-14T04:04:51.945759Z",
+              "startedAt": "2026-10-14T04:03:51.976996Z",
+              "finishedAt": "2026-10-14T04:04:04.679985Z"
+            },
+            "cursor": "dep-db7fu7ut41sc7388o23g"
+          },
+          {
+            "deploy": {
+              "id": "dep-db7ftimt41sc7388o230",
+              "serviceId": "srv-db7ftimt41sc7388o22g",
+              "status": "canceled",
+              "trigger": "other",
+              "bexTrigger": "create",
+              "image": {
+                "ref": "docker.io/library/python:3.13-alpine"
+              },
+              "createdAt": "2026-10-14T04:02:18.669072Z",
+              "updatedAt": "2026-10-14T04:03:51.964566Z",
+              "startedAt": "2026-10-14T04:02:22.057251Z",
+              "finishedAt": "2026-10-14T04:03:51.964564Z",
+              "cancelReason": "Superseded by dep-db7fu7ut41sc7388o23g"
+            },
+            "cursor": "dep-db7ftimt41sc7388o230"
+          }
+        ]
+      },
+      "http": {
+        "status": 200,
+        "body": {
+          "qa": "a416",
+          "path": "/qa-a416-ready",
+          "started": 1791950728.810067
+        }
+      }
+    },
+    "pointerControl": {
+      "at": "2026-10-14T04:07:42.609Z",
+      "pointerReopened": true,
+      "dialog": "- alertdialog \"Delete qa-20261013-a416-health?\":\n  - heading \"Delete qa-20261013-a416-health?\" [level=2]\n  - paragraph: This action cannot be undone. Are you sure you want to delete this web service?\n  - paragraph:\n    - text: Type\n    - strong: sudo delete web service qa-20261013-a416-health\n    - text: below to confirm.\n  - text: Sudo Command\n  - textbox \"Sudo Command\":\n    - /placeholder: sudo delete web service qa-20261013-a416-health\n  - button \"Cancel\"\n  - button \"Delete Service\" [disabled]"
+    }
+  },
+  "authoritativeReads": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.bex.co/v1/services/srv-db7ftimt41sc7388o22g"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "srv-db7ftimt41sc7388o22g",
+          "name": "qa-20261013-a416-health",
+          "immutableName": "qa-20261013-a416-health",
+          "slug": "qa-20261013-a416-health",
+          "displayName": "",
+          "type": "web_service",
+          "suspended": "not_suspended",
+          "dashboardUrl": "https://dashboard.bex.co/web/srv-db7ftimt41sc7388o22g",
+          "createdAt": "2026-10-14T04:02:18Z",
+          "updatedAt": "2026-10-14T04:05:31Z",
+          "owner": {
+            "id": "tea-d98210cbbpdc73dcrkvg",
+            "name": "bex",
+            "email": "puncsky@gmail.com",
+            "type": "team"
+          },
+          "serviceDetails": {
+            "env": "image",
+            "envSpecificDetails": {
+              "dockerCommand": "exec python -u -c 'exec(\"import http.server,os,time,json\\nstarted=time.time()\\nclass Handler(http.server.BaseHTTPRequestHandler):\\n def do_GET(self):\\n  ok=self.path in ['\"'\"'/'\"'\"', '\"'\"'/qa-a416-ready'\"'\"']\\n  body=json.dumps({'\"'\"'qa'\"'\"':'\"'\"'a416'\"'\"','\"'\"'path'\"'\"':self.path,'\"'\"'started'\"'\"':started}).encode()\\n  self.send_response(200 if ok else 404)\\n  self.send_header('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"')\\n  self.send_header('\"'\"'Content-Length'\"'\"',str(len(body)))\\n  self.end_headers()\\n  self.wfile.write(body)\\n def log_message(self,fmt,*args):\\n  print('\"'\"'QA_A416_HEALTH '\"'\"'+fmt%args,flush=True)\\nhttp.server.HTTPServer(('\"'\"'0.0.0.0'\"'\"',int(os.environ['\"'\"'PORT'\"'\"'])),Handler).serve_forever()\")'"
+            },
+            "internalAddress": "qa-20261013-a416-health:8846",
+            "maintenanceMode": {
+              "enabled": false,
+              "uri": ""
+            },
+            "maxShutdownDelaySeconds": 30,
+            "numInstances": 1,
+            "plan": "free",
+            "port": 8846,
+            "region": "fsn1",
+            "renderSubdomainPolicy": "enabled",
+            "runtime": "image",
+            "url": "https://qa-20261013-a416-health.onbex.co"
+          },
+          "imagePath": "docker.io/library/python:3.13-alpine",
+          "suspenders": [],
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "phase": "Running",
+          "replicas": 1,
+          "revision": "rev-4",
+          "urls": ["https://qa-20261013-a416-health.onbex.co"],
+          "idleTTLSeconds": 0,
+          "autoDeploy": "no",
+          "autoDeployTrigger": "off",
+          "pushDeliveryMethod": "none",
+          "notifyOnFail": "default",
+          "notificationsToSend": "default"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.bex.co/v1/services/srv-db7ftimt41sc7388o22g/deploys"
+      },
+      "response": {
+        "status": 200,
+        "body": [
+          {
+            "deploy": {
+              "id": "dep-db7fv01llfps73emu3gg",
+              "serviceId": "srv-db7ftimt41sc7388o22g",
+              "status": "live",
+              "trigger": "service_updated",
+              "bexTrigger": "config_change",
+              "image": {
+                "ref": "docker.io/library/python:3.13-alpine"
+              },
+              "createdAt": "2026-10-14T04:05:20.522088Z",
+              "updatedAt": "2026-10-14T04:05:34.958112Z",
+              "startedAt": "2026-10-14T04:05:22.077193Z",
+              "finishedAt": "2026-10-14T04:05:34.958111Z"
+            },
+            "cursor": "dep-db7fv01llfps73emu3gg"
+          },
+          {
+            "deploy": {
+              "id": "dep-db7fuhut41sc7388o250",
+              "serviceId": "srv-db7ftimt41sc7388o22g",
+              "status": "deactivated",
+              "trigger": "service_updated",
+              "bexTrigger": "config_change",
+              "image": {
+                "ref": "docker.io/library/python:3.13-alpine"
+              },
+              "createdAt": "2026-10-14T04:04:23.700578Z",
+              "updatedAt": "2026-10-14T04:05:34.964404Z",
+              "finishedAt": "2026-10-14T04:04:51.943192Z"
+            },
+            "cursor": "dep-db7fuhut41sc7388o250"
+          },
+          {
+            "deploy": {
+              "id": "dep-db7fu7ut41sc7388o23g",
+              "serviceId": "srv-db7ftimt41sc7388o22g",
+              "status": "deactivated",
+              "trigger": "service_updated",
+              "bexTrigger": "config_change",
+              "image": {
+                "ref": "docker.io/library/python:3.13-alpine"
+              },
+              "createdAt": "2026-10-14T04:03:43.258211Z",
+              "updatedAt": "2026-10-14T04:04:51.945759Z",
+              "startedAt": "2026-10-14T04:03:51.976996Z",
+              "finishedAt": "2026-10-14T04:04:04.679985Z"
+            },
+            "cursor": "dep-db7fu7ut41sc7388o23g"
+          },
+          {
+            "deploy": {
+              "id": "dep-db7ftimt41sc7388o230",
+              "serviceId": "srv-db7ftimt41sc7388o22g",
+              "status": "canceled",
+              "trigger": "other",
+              "bexTrigger": "create",
+              "image": {
+                "ref": "docker.io/library/python:3.13-alpine"
+              },
+              "createdAt": "2026-10-14T04:02:18.669072Z",
+              "updatedAt": "2026-10-14T04:03:51.964566Z",
+              "startedAt": "2026-10-14T04:02:22.057251Z",
+              "finishedAt": "2026-10-14T04:03:51.964564Z",
+              "cancelReason": "Superseded by dep-db7fu7ut41sc7388o23g"
+            },
+            "cursor": "dep-db7ftimt41sc7388o230"
+          }
+        ]
+      }
+    }
+  ],
+  "successfulControls": {
+    "saveWorkingPath": {
+      "at": "2026-10-14T04:04:23.802Z",
+      "status": 200,
+      "request": [
+        {
+          "operationName": "SetHealthCheckPath",
+          "variables": {
+            "id": "srv-db7ftimt41sc7388o22g",
+            "path": "/qa-a416-ready"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation SetHealthCheckPath($id: String!, $path: String!) {\n  setHealthCheckPath(id: $id, path: $path) {\n    id\n    healthCheckPath\n    __typename\n  }\n}"
+        }
+      ],
+      "body": [
+        {
+          "data": {
+            "setHealthCheckPath": {
+              "__typename": "Service",
+              "healthCheckPath": "/qa-a416-ready",
+              "id": "srv-db7ftimt41sc7388o22g"
+            }
+          }
+        }
+      ]
+    },
+    "workingPathSettled": {
+      "at": "2026-10-14T04:05:03.404Z",
+      "service": {
+        "status": 200,
+        "body": {
+          "id": "srv-db7ftimt41sc7388o22g",
+          "name": "qa-20261013-a416-health",
+          "immutableName": "qa-20261013-a416-health",
+          "slug": "qa-20261013-a416-health",
+          "displayName": "",
+          "type": "web_service",
+          "suspended": "not_suspended",
+          "dashboardUrl": "https://dashboard.bex.co/web/srv-db7ftimt41sc7388o22g",
+          "createdAt": "2026-10-14T04:02:18Z",
+          "updatedAt": "2026-10-14T04:04:34Z",
+          "owner": {
+            "id": "tea-d98210cbbpdc73dcrkvg",
+            "name": "bex",
+            "email": "puncsky@gmail.com",
+            "type": "team"
+          },
+          "serviceDetails": {
+            "env": "image",
+            "envSpecificDetails": {
+              "dockerCommand": "exec python -u -c 'exec(\"import http.server,os,time,json\\nstarted=time.time()\\nclass Handler(http.server.BaseHTTPRequestHandler):\\n def do_GET(self):\\n  ok=self.path in ['\"'\"'/'\"'\"', '\"'\"'/qa-a416-ready'\"'\"']\\n  body=json.dumps({'\"'\"'qa'\"'\"':'\"'\"'a416'\"'\"','\"'\"'path'\"'\"':self.path,'\"'\"'started'\"'\"':started}).encode()\\n  self.send_response(200 if ok else 404)\\n  self.send_header('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"')\\n  self.send_header('\"'\"'Content-Length'\"'\"',str(len(body)))\\n  self.end_headers()\\n  self.wfile.write(body)\\n def log_message(self,fmt,*args):\\n  print('\"'\"'QA_A416_HEALTH '\"'\"'+fmt%args,flush=True)\\nhttp.server.HTTPServer(('\"'\"'0.0.0.0'\"'\"',int(os.environ['\"'\"'PORT'\"'\"'])),Handler).serve_forever()\")'"
+            },
+            "healthCheckPath": "/qa-a416-ready",
+            "internalAddress": "qa-20261013-a416-health:8846",
+            "maintenanceMode": {
+              "enabled": false,
+              "uri": ""
+            },
+            "maxShutdownDelaySeconds": 30,
+            "numInstances": 1,
+            "plan": "free",
+            "port": 8846,
+            "region": "fsn1",
+            "renderSubdomainPolicy": "enabled",
+            "runtime": "image",
+            "url": "https://qa-20261013-a416-health.onbex.co"
+          },
+          "imagePath": "docker.io/library/python:3.13-alpine",
+          "suspenders": [],
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "phase": "Running",
+          "replicas": 1,
+          "revision": "rev-3",
+          "urls": ["https://qa-20261013-a416-health.onbex.co"],
+          "idleTTLSeconds": 0,
+          "autoDeploy": "no",
+          "autoDeployTrigger": "off",
+          "pushDeliveryMethod": "none",
+          "notifyOnFail": "default",
+          "notificationsToSend": "default",
+          "healthCheckPath": "/qa-a416-ready"
+        }
+      },
+      "deploys": {
+        "status": 200,
+        "body": [
+          {
+            "deploy": {
+              "id": "dep-db7fuhut41sc7388o250",
+              "serviceId": "srv-db7ftimt41sc7388o22g",
+              "status": "live",
+              "trigger": "service_updated",
+              "bexTrigger": "config_change",
+              "image": {
+                "ref": "docker.io/library/python:3.13-alpine"
+              },
+              "createdAt": "2026-10-14T04:04:23.700578Z",
+              "updatedAt": "2026-10-14T04:04:51.943193Z",
+              "finishedAt": "2026-10-14T04:04:51.943192Z"
+            },
+            "cursor": "dep-db7fuhut41sc7388o250"
+          },
+          {
+            "deploy": {
+              "id": "dep-db7fu7ut41sc7388o23g",
+              "serviceId": "srv-db7ftimt41sc7388o22g",
+              "status": "deactivated",
+              "trigger": "service_updated",
+              "bexTrigger": "config_change",
+              "image": {
+                "ref": "docker.io/library/python:3.13-alpine"
+              },
+              "createdAt": "2026-10-14T04:03:43.258211Z",
+              "updatedAt": "2026-10-14T04:04:51.945759Z",
+              "startedAt": "2026-10-14T04:03:51.976996Z",
+              "finishedAt": "2026-10-14T04:04:04.679985Z"
+            },
+            "cursor": "dep-db7fu7ut41sc7388o23g"
+          },
+          {
+            "deploy": {
+              "id": "dep-db7ftimt41sc7388o230",
+              "serviceId": "srv-db7ftimt41sc7388o22g",
+              "status": "canceled",
+              "trigger": "other",
+              "bexTrigger": "create",
+              "image": {
+                "ref": "docker.io/library/python:3.13-alpine"
+              },
+              "createdAt": "2026-10-14T04:02:18.669072Z",
+              "updatedAt": "2026-10-14T04:03:51.964566Z",
+              "startedAt": "2026-10-14T04:02:22.057251Z",
+              "finishedAt": "2026-10-14T04:03:51.964564Z",
+              "cancelReason": "Superseded by dep-db7fu7ut41sc7388o23g"
+            },
+            "cursor": "dep-db7ftimt41sc7388o230"
+          }
+        ]
+      },
+      "http": {
+        "status": 200,
+        "body": {
+          "qa": "a416",
+          "path": "/qa-a416-ready",
+          "started": 1791950671.024653
+        }
+      }
+    },
+    "clearToTcp": {
+      "at": "2026-10-14T04:05:20.625Z",
+      "request": [
+        {
+          "operationName": "SetHealthCheckPath",
+          "variables": {
+            "id": "srv-db7ftimt41sc7388o22g",
+            "path": ""
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation SetHealthCheckPath($id: String!, $path: String!) {\n  setHealthCheckPath(id: $id, path: $path) {\n    id\n    healthCheckPath\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "setHealthCheckPath": {
+              "__typename": "Service",
+              "healthCheckPath": "",
+              "id": "srv-db7ftimt41sc7388o22g"
+            }
+          }
+        }
+      ]
+    },
+    "freshMobileCleared": {
+      "at": "2026-10-14T04:05:23.574Z",
+      "url": "https://dashboard.bex.co/services/srv-db7ftimt41sc7388o22g/settings",
+      "path": "",
+      "row": "- text: Health Check Path An HTTP path bex polls to decide whether your service is healthy; it must answer 2xx or 3xx within 5 seconds, and 60 seconds of consecutive failures restarts the instance — point it at a cheap route. Leave it empty to check only that the process is listening on its port — the right choice when the service has no cheap route that returns 2xx.\n- textbox \"Health Check Path\" [disabled]:\n  - /placeholder: Empty — check the port only\n- button \"Edit Health Check Path\"",
+      "overflow": false
+    }
+  },
+  "cleanup": {
+    "delete": {
+      "at": "2026-10-14T04:08:22.883Z",
+      "request": [
+        {
+          "operationName": "DeleteService",
+          "variables": {
+            "id": "srv-db7ftimt41sc7388o22g"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "deleteService": true
+          }
+        }
+      ]
+    },
+    "ownedServiceRead": {
+      "status": 404,
+      "body": {
+        "code": "NOT_FOUND",
+        "error": "not found",
+        "id": "not_found",
+        "message": "not found",
+        "params": null
+      }
+    },
+    "deletedPublicCurl": {
+      "chunk_id": "08b481",
+      "wall_time_seconds": 0.449067875,
+      "exit_code": 0,
+      "original_token_count": 42,
+      "output": "HTTP/2 404 \r\ncontent-type: text/plain; charset=utf-8\r\nx-content-type-options: nosniff\r\ncontent-length: 19\r\ndate: Wed, 14 Oct 2026 04:09:29 GMT\r\n\r\n404 page not found\n"
+    },
+    "sevenInventorySetsRestored": true,
+    "sessionRevokeExit": 0,
+    "browser": {
+      "at": "2026-10-14T04:10:06.709Z",
+      "owners": {
+        "url": "https://api.bex.co/v1/owners",
+        "status": 401,
+        "body": "{\"error\":\"unauthorized\",\"id\":\"unauthorized\",\"message\":\"unauthorized\"}\n"
+      },
+      "cookieCount": 0,
+      "pageCount": 1,
+      "url": "about:blank"
+    }
+  },
+  "limits": [
+    "Background-worker creation was skipped because no Free plan was offered; no paid creation submitted.",
+    "Initial Python command incorrectly quoted shell apostrophes and failed; corrected via the native command editor. First failed deploy was canceled and correction, health path, and cleared-path deploys became Live.",
+    "Create response listener incorrectly looked for input.name although native CreateService variables are flat; creation verified by unique owned inventory result and native landing; raw creation response not claimed.",
+    "First deleted-public browser request timed out; separate bounded curl subsequently returned HTTP404.",
+    "Four ERR_CONNECTION_CLOSED console errors were recorded but not reproduced or attributed to a product defect.",
+    "Live focus coverage is text and number variants only; select, searchable combobox, successful-save focus, paid/restricted fields and route aliases unverified."
+  ]
+}
