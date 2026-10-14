@@ -1,0 +1,2080 @@
+{
+  "pass": "a470",
+  "fixture": {
+    "id": "red-db7qh19llfps73emudq0",
+    "name": "qa-20261014-a470-metrics",
+    "private": true,
+    "plan": "free"
+  },
+  "baseline": {
+    "at": "2026-10-14T16:06:12.361Z",
+    "request": {
+      "operationName": "Qaa470Inventory",
+      "query": "query Qaa470Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    }
+  },
+  "create": {
+    "at": "2026-10-14T16:06:30.359Z",
+    "request": {
+      "operationName": "CreateKeyValue",
+      "variables": {
+        "name": "qa-20261014-a470-metrics",
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "plan": "free",
+        "public": false,
+        "maxmemoryPolicy": "allkeys-lru",
+        "persistenceMode": "journal-snapshot"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "mutation CreateKeyValue($name: String!, $ownerId: String, $environmentId: String, $plan: String, $version: String, $storageGB: Int, $public: Boolean, $maxmemoryPolicy: String, $persistenceMode: String) {\n  createKeyValue(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    storageGB: $storageGB\n    public: $public\n    maxmemoryPolicy: $maxmemoryPolicy\n    persistenceMode: $persistenceMode\n  ) {\n    id\n    name\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "createKeyValue": {
+          "__typename": "KeyValue",
+          "environmentId": null,
+          "id": "red-db7qh19llfps73emudq0",
+          "name": "qa-20261014-a470-metrics",
+          "plan": "free",
+          "projectId": null,
+          "status": "creating"
+        }
+      }
+    },
+    "url": "https://dashboard.bex.co/keyvalue/red-db7qh19llfps73emudq0"
+  },
+  "resourceLoading": {
+    "desktop": {
+      "at": "2026-10-14T16:09:48.459Z",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "pending": {
+        "width": 896,
+        "height": 768,
+        "headerHeight": 92,
+        "contentHeight": 618,
+        "skeletons": 14,
+        "body": ""
+      },
+      "ready": {
+        "width": 896,
+        "height": 998.5625,
+        "headerHeight": 40,
+        "contentHeight": 900.5625,
+        "skeletons": 0,
+        "body": "Metrics\nLive resource usage for this instance\nDisk\nCapacity 1 GiB\n0 B\n26.0 KiB\n52.0 KiB\nMemory\n0 B\n536.7 KiB\n1.0 MiB\nConnections\n0\n0.5\n1"
+      },
+      "captures": [
+        {
+          "at": "2026-10-14T16:09:40.231Z",
+          "requests": [
+            {
+              "operationName": "KeyValue",
+              "variables": {
+                "id": "red-db7qh19llfps73emudq0"
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query KeyValue($id: String!) {\n  keyValue(id: $id) {\n    id\n    name\n    plan\n    version\n    status\n    statusReason\n    statusReasonCode\n    suspended\n    createdAt\n    updatedAt\n    externalHost\n    public\n    region\n    __typename\n  }\n}"
+            }
+          ],
+          "status": 200,
+          "responses": [
+            {
+              "data": {
+                "keyValue": {
+                  "__typename": "KeyValue",
+                  "createdAt": "2026-10-14T16:06:29Z",
+                  "externalHost": "",
+                  "id": "red-db7qh19llfps73emudq0",
+                  "name": "qa-20261014-a470-metrics",
+                  "plan": "free",
+                  "public": false,
+                  "region": "fsn1",
+                  "status": "available",
+                  "statusReason": null,
+                  "statusReasonCode": null,
+                  "suspended": "not_suspended",
+                  "updatedAt": "2026-10-14T16:07:02Z",
+                  "version": "8"
+                }
+              }
+            }
+          ],
+          "delayMs": 7000
+        }
+      ]
+    },
+    "mobile": {
+      "at": "2026-10-14T16:10:15.118Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "pending": {
+        "width": 358,
+        "height": 812,
+        "headerHeight": 136,
+        "contentHeight": 618,
+        "skeletons": 14,
+        "body": ""
+      },
+      "ready": {
+        "width": 358,
+        "height": 514.390625,
+        "headerHeight": 40,
+        "contentHeight": 416.390625,
+        "skeletons": 0,
+        "body": "Metrics\nLive resource usage for this instance\nDisk\nCapacity 1 GiB\n0 B\n26.0 KiB\n52.0 KiB\nMemory\n0 B\n536.7 KiB\n1.0 MiB\nConnections\n0\n0.5\n1"
+      },
+      "captures": [
+        {
+          "at": "2026-10-14T16:10:06.889Z",
+          "requests": [
+            {
+              "operationName": "KeyValue",
+              "variables": {
+                "id": "red-db7qh19llfps73emudq0"
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query KeyValue($id: String!) {\n  keyValue(id: $id) {\n    id\n    name\n    plan\n    version\n    status\n    statusReason\n    statusReasonCode\n    suspended\n    createdAt\n    updatedAt\n    externalHost\n    public\n    region\n    __typename\n  }\n}"
+            }
+          ],
+          "status": 200,
+          "responses": [
+            {
+              "data": {
+                "keyValue": {
+                  "__typename": "KeyValue",
+                  "createdAt": "2026-10-14T16:06:29Z",
+                  "externalHost": "",
+                  "id": "red-db7qh19llfps73emudq0",
+                  "name": "qa-20261014-a470-metrics",
+                  "plan": "free",
+                  "public": false,
+                  "region": "fsn1",
+                  "status": "available",
+                  "statusReason": null,
+                  "statusReasonCode": null,
+                  "suspended": "not_suspended",
+                  "updatedAt": "2026-10-14T16:07:02Z",
+                  "version": "8"
+                }
+              }
+            }
+          ],
+          "delayMs": 7000
+        }
+      ]
+    }
+  },
+  "seriesLoading": {
+    "desktop": {
+      "at": "2026-10-14T16:11:10.022Z",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "pending": [
+        {
+          "width": 896,
+          "height": 770,
+          "headerHeight": 40,
+          "contentHeight": 672,
+          "skeletons": [
+            {
+              "width": 854,
+              "height": 180
+            },
+            {
+              "width": 854,
+              "height": 180
+            },
+            {
+              "width": 854,
+              "height": 180
+            }
+          ],
+          "svgs": [],
+          "body": "Metrics\nLive resource usage for this instance\nDisk\nMemory\nConnections"
+        }
+      ],
+      "ready": [
+        {
+          "width": 896,
+          "height": 998.5625,
+          "headerHeight": 40,
+          "contentHeight": 900.5625,
+          "skeletons": [],
+          "svgs": [
+            {
+              "width": 854,
+              "height": 256.1875,
+              "viewBox": "0 0 600 180",
+              "cssHeight": "256.188px",
+              "cssAspectRatio": "auto"
+            },
+            {
+              "width": 854,
+              "height": 256.1875,
+              "viewBox": "0 0 600 180",
+              "cssHeight": "256.188px",
+              "cssAspectRatio": "auto"
+            },
+            {
+              "width": 854,
+              "height": 256.1875,
+              "viewBox": "0 0 600 180",
+              "cssHeight": "256.188px",
+              "cssAspectRatio": "auto"
+            }
+          ],
+          "body": "Metrics\nLive resource usage for this instance\nDisk\nCapacity 1 GiB\n0 B\n26.0 KiB\n52.0 KiB\nMemory\n0 B\n536.7 KiB\n1.0 MiB\nConnections\n0\n0.5\n1"
+        }
+      ],
+      "captures": [
+        {
+          "at": "2026-10-14T16:11:02.489Z",
+          "requests": [
+            {
+              "operationName": "DatastoreMetrics",
+              "variables": {
+                "query": {
+                  "kind": "keyvalue",
+                  "resource": "red-db7qh19llfps73emudq0",
+                  "name": "DISK"
+                }
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query DatastoreMetrics($query: DatastoreMetricsQueryInput!) {\n  datastoreMetrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "DatastoreMetrics",
+              "variables": {
+                "query": {
+                  "kind": "keyvalue",
+                  "resource": "red-db7qh19llfps73emudq0",
+                  "name": "DISK_CAPACITY"
+                }
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query DatastoreMetrics($query: DatastoreMetricsQueryInput!) {\n  datastoreMetrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "DatastoreMetrics",
+              "variables": {
+                "query": {
+                  "kind": "keyvalue",
+                  "resource": "red-db7qh19llfps73emudq0",
+                  "name": "MEMORY"
+                }
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query DatastoreMetrics($query: DatastoreMetricsQueryInput!) {\n  datastoreMetrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "DatastoreMetrics",
+              "variables": {
+                "query": {
+                  "kind": "keyvalue",
+                  "resource": "red-db7qh19llfps73emudq0",
+                  "name": "CONNECTIONS"
+                }
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query DatastoreMetrics($query: DatastoreMetricsQueryInput!) {\n  datastoreMetrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+            }
+          ],
+          "status": 200,
+          "responses": [
+            {
+              "data": {
+                "datastoreMetrics": [
+                  {
+                    "__typename": "MetricSeries",
+                    "labels": [
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "instance",
+                        "value": "red-db7qh19llfps73emudq0-78nvf8t9uas8igvcku85"
+                      },
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "resource",
+                        "value": "red-db7qh19llfps73emudq0"
+                      }
+                    ],
+                    "unit": "bytes",
+                    "values": [
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:08:02Z",
+                        "value": 53248
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:09:02Z",
+                        "value": 53248
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:10:02Z",
+                        "value": 53248
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:11:02Z",
+                        "value": 53248
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "data": {
+                "datastoreMetrics": [
+                  {
+                    "__typename": "MetricSeries",
+                    "labels": [
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "resource",
+                        "value": "red-db7qh19llfps73emudq0"
+                      }
+                    ],
+                    "unit": "bytes",
+                    "values": [
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:11:02Z",
+                        "value": 1073741824
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "data": {
+                "datastoreMetrics": [
+                  {
+                    "__typename": "MetricSeries",
+                    "labels": [
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "instance",
+                        "value": "red-db7qh19llfps73emudq0-3s5lh0fi0dq6k0aipn1c"
+                      },
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "resource",
+                        "value": "red-db7qh19llfps73emudq0"
+                      }
+                    ],
+                    "unit": "bytes",
+                    "values": [
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:08:02Z",
+                        "value": 975744
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:09:02Z",
+                        "value": 1099184
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:10:02Z",
+                        "value": 1099184
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:11:02Z",
+                        "value": 1099184
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "data": {
+                "datastoreMetrics": [
+                  {
+                    "__typename": "MetricSeries",
+                    "labels": [
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "instance",
+                        "value": "red-db7qh19llfps73emudq0-3s5lh0fi0dq6k0aipn1c"
+                      },
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "resource",
+                        "value": "red-db7qh19llfps73emudq0"
+                      }
+                    ],
+                    "unit": "count",
+                    "values": [
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:08:02Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:09:02Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:10:02Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:11:02Z",
+                        "value": 1
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "delayMs": 7000
+        }
+      ]
+    },
+    "mobile": {
+      "at": "2026-10-14T16:11:39.363Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "pending": [
+        {
+          "width": 358,
+          "height": 770,
+          "headerHeight": 40,
+          "contentHeight": 672,
+          "skeletons": [
+            {
+              "width": 316,
+              "height": 180
+            },
+            {
+              "width": 316,
+              "height": 180
+            },
+            {
+              "width": 316,
+              "height": 180
+            }
+          ],
+          "svgs": [],
+          "body": "Metrics\nLive resource usage for this instance\nDisk\nMemory\nConnections"
+        }
+      ],
+      "ready": [
+        {
+          "width": 358,
+          "height": 514.390625,
+          "headerHeight": 40,
+          "contentHeight": 416.390625,
+          "skeletons": [],
+          "svgs": [
+            {
+              "width": 316,
+              "height": 94.796875,
+              "viewBox": "0 0 600 180",
+              "cssHeight": "94.7969px",
+              "cssAspectRatio": "auto"
+            },
+            {
+              "width": 316,
+              "height": 94.796875,
+              "viewBox": "0 0 600 180",
+              "cssHeight": "94.7969px",
+              "cssAspectRatio": "auto"
+            },
+            {
+              "width": 316,
+              "height": 94.796875,
+              "viewBox": "0 0 600 180",
+              "cssHeight": "94.7969px",
+              "cssAspectRatio": "auto"
+            }
+          ],
+          "body": "Metrics\nLive resource usage for this instance\nDisk\nCapacity 1 GiB\n0 B\n26.0 KiB\n52.0 KiB\nMemory\n0 B\n536.7 KiB\n1.0 MiB\nConnections\n0\n0.5\n1"
+        }
+      ],
+      "captures": [
+        {
+          "at": "2026-10-14T16:11:31.903Z",
+          "requests": [
+            {
+              "operationName": "DatastoreMetrics",
+              "variables": {
+                "query": {
+                  "kind": "keyvalue",
+                  "resource": "red-db7qh19llfps73emudq0",
+                  "name": "DISK"
+                }
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query DatastoreMetrics($query: DatastoreMetricsQueryInput!) {\n  datastoreMetrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "DatastoreMetrics",
+              "variables": {
+                "query": {
+                  "kind": "keyvalue",
+                  "resource": "red-db7qh19llfps73emudq0",
+                  "name": "DISK_CAPACITY"
+                }
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query DatastoreMetrics($query: DatastoreMetricsQueryInput!) {\n  datastoreMetrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "DatastoreMetrics",
+              "variables": {
+                "query": {
+                  "kind": "keyvalue",
+                  "resource": "red-db7qh19llfps73emudq0",
+                  "name": "MEMORY"
+                }
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query DatastoreMetrics($query: DatastoreMetricsQueryInput!) {\n  datastoreMetrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "DatastoreMetrics",
+              "variables": {
+                "query": {
+                  "kind": "keyvalue",
+                  "resource": "red-db7qh19llfps73emudq0",
+                  "name": "CONNECTIONS"
+                }
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query DatastoreMetrics($query: DatastoreMetricsQueryInput!) {\n  datastoreMetrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+            }
+          ],
+          "status": 200,
+          "responses": [
+            {
+              "data": {
+                "datastoreMetrics": [
+                  {
+                    "__typename": "MetricSeries",
+                    "labels": [
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "instance",
+                        "value": "red-db7qh19llfps73emudq0-78nvf8t9uas8igvcku85"
+                      },
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "resource",
+                        "value": "red-db7qh19llfps73emudq0"
+                      }
+                    ],
+                    "unit": "bytes",
+                    "values": [
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:08:31Z",
+                        "value": 53248
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:09:31Z",
+                        "value": 53248
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:10:31Z",
+                        "value": 53248
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:11:31Z",
+                        "value": 53248
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "data": {
+                "datastoreMetrics": [
+                  {
+                    "__typename": "MetricSeries",
+                    "labels": [
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "resource",
+                        "value": "red-db7qh19llfps73emudq0"
+                      }
+                    ],
+                    "unit": "bytes",
+                    "values": [
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:11:31Z",
+                        "value": 1073741824
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "data": {
+                "datastoreMetrics": [
+                  {
+                    "__typename": "MetricSeries",
+                    "labels": [
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "instance",
+                        "value": "red-db7qh19llfps73emudq0-3s5lh0fi0dq6k0aipn1c"
+                      },
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "resource",
+                        "value": "red-db7qh19llfps73emudq0"
+                      }
+                    ],
+                    "unit": "bytes",
+                    "values": [
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:07:31Z",
+                        "value": 975744
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:08:31Z",
+                        "value": 1099184
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:09:31Z",
+                        "value": 1099184
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:10:31Z",
+                        "value": 1099184
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:11:31Z",
+                        "value": 1099184
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "data": {
+                "datastoreMetrics": [
+                  {
+                    "__typename": "MetricSeries",
+                    "labels": [
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "instance",
+                        "value": "red-db7qh19llfps73emudq0-3s5lh0fi0dq6k0aipn1c"
+                      },
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "resource",
+                        "value": "red-db7qh19llfps73emudq0"
+                      }
+                    ],
+                    "unit": "count",
+                    "values": [
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:07:31Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:08:31Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:09:31Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:10:31Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:11:31Z",
+                        "value": 1
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "delayMs": 7000
+        }
+      ]
+    }
+  },
+  "completeCropReplays": {
+    "resourceDesktop": {
+      "at": "2026-10-14T16:14:17.112Z",
+      "viewport": {
+        "width": 1440,
+        "height": 1400
+      },
+      "pending": {
+        "width": 896,
+        "height": 768,
+        "headerHeight": 92,
+        "contentHeight": 618,
+        "skeletons": 14,
+        "body": ""
+      },
+      "ready": {
+        "width": 896,
+        "height": 998.5625,
+        "headerHeight": 40,
+        "contentHeight": 900.5625,
+        "skeletons": 0,
+        "body": "Metrics\nLive resource usage for this instance\nDisk\nCapacity 1 GiB\n0 B\n26.0 KiB\n52.0 KiB\nMemory\n0 B\n536.7 KiB\n1.0 MiB\nConnections\n0\n0.5\n1"
+      },
+      "captures": [
+        {
+          "at": "2026-10-14T16:14:08.891Z",
+          "requests": [
+            {
+              "operationName": "KeyValue",
+              "variables": {
+                "id": "red-db7qh19llfps73emudq0"
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query KeyValue($id: String!) {\n  keyValue(id: $id) {\n    id\n    name\n    plan\n    version\n    status\n    statusReason\n    statusReasonCode\n    suspended\n    createdAt\n    updatedAt\n    externalHost\n    public\n    region\n    __typename\n  }\n}"
+            }
+          ],
+          "status": 200,
+          "responses": [
+            {
+              "data": {
+                "keyValue": {
+                  "__typename": "KeyValue",
+                  "createdAt": "2026-10-14T16:06:29Z",
+                  "externalHost": "",
+                  "id": "red-db7qh19llfps73emudq0",
+                  "name": "qa-20261014-a470-metrics",
+                  "plan": "free",
+                  "public": false,
+                  "region": "fsn1",
+                  "status": "available",
+                  "statusReason": null,
+                  "statusReasonCode": null,
+                  "suspended": "not_suspended",
+                  "updatedAt": "2026-10-14T16:07:02Z",
+                  "version": "8"
+                }
+              }
+            }
+          ],
+          "delayMs": 7000
+        }
+      ]
+    },
+    "resourceMobile": {
+      "at": "2026-10-14T16:14:47.538Z",
+      "viewport": {
+        "width": 390,
+        "height": 1400
+      },
+      "pending": {
+        "width": 358,
+        "height": 812,
+        "headerHeight": 136,
+        "contentHeight": 618,
+        "skeletons": 14,
+        "body": ""
+      },
+      "ready": {
+        "width": 358,
+        "height": 514.390625,
+        "headerHeight": 40,
+        "contentHeight": 416.390625,
+        "skeletons": 0,
+        "body": "Metrics\nLive resource usage for this instance\nDisk\nCapacity 1 GiB\n0 B\n26.0 KiB\n52.0 KiB\nMemory\n0 B\n536.7 KiB\n1.0 MiB\nConnections\n0\n0.5\n1"
+      },
+      "captures": [
+        {
+          "at": "2026-10-14T16:14:39.353Z",
+          "requests": [
+            {
+              "operationName": "KeyValue",
+              "variables": {
+                "id": "red-db7qh19llfps73emudq0"
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query KeyValue($id: String!) {\n  keyValue(id: $id) {\n    id\n    name\n    plan\n    version\n    status\n    statusReason\n    statusReasonCode\n    suspended\n    createdAt\n    updatedAt\n    externalHost\n    public\n    region\n    __typename\n  }\n}"
+            }
+          ],
+          "status": 200,
+          "responses": [
+            {
+              "data": {
+                "keyValue": {
+                  "__typename": "KeyValue",
+                  "createdAt": "2026-10-14T16:06:29Z",
+                  "externalHost": "",
+                  "id": "red-db7qh19llfps73emudq0",
+                  "name": "qa-20261014-a470-metrics",
+                  "plan": "free",
+                  "public": false,
+                  "region": "fsn1",
+                  "status": "available",
+                  "statusReason": null,
+                  "statusReasonCode": null,
+                  "suspended": "not_suspended",
+                  "updatedAt": "2026-10-14T16:07:02Z",
+                  "version": "8"
+                }
+              }
+            }
+          ],
+          "delayMs": 7000
+        }
+      ]
+    },
+    "seriesDesktop": {
+      "at": "2026-10-14T16:15:11.243Z",
+      "viewport": {
+        "width": 1440,
+        "height": 1400
+      },
+      "pending": [
+        {
+          "width": 896,
+          "height": 770,
+          "headerHeight": 40,
+          "contentHeight": 672,
+          "skeletons": [
+            {
+              "width": 854,
+              "height": 180
+            },
+            {
+              "width": 854,
+              "height": 180
+            },
+            {
+              "width": 854,
+              "height": 180
+            }
+          ],
+          "svgs": [],
+          "body": "Metrics\nLive resource usage for this instance\nDisk\nMemory\nConnections"
+        }
+      ],
+      "ready": [
+        {
+          "width": 896,
+          "height": 998.5625,
+          "headerHeight": 40,
+          "contentHeight": 900.5625,
+          "skeletons": [],
+          "svgs": [
+            {
+              "width": 854,
+              "height": 256.1875,
+              "viewBox": "0 0 600 180",
+              "cssHeight": "256.188px",
+              "cssAspectRatio": "auto"
+            },
+            {
+              "width": 854,
+              "height": 256.1875,
+              "viewBox": "0 0 600 180",
+              "cssHeight": "256.188px",
+              "cssAspectRatio": "auto"
+            },
+            {
+              "width": 854,
+              "height": 256.1875,
+              "viewBox": "0 0 600 180",
+              "cssHeight": "256.188px",
+              "cssAspectRatio": "auto"
+            }
+          ],
+          "body": "Metrics\nLive resource usage for this instance\nDisk\nCapacity 1 GiB\n0 B\n26.0 KiB\n52.0 KiB\nMemory\n0 B\n536.7 KiB\n1.0 MiB\nConnections\n0\n0.5\n1"
+        }
+      ],
+      "captures": [
+        {
+          "at": "2026-10-14T16:15:03.748Z",
+          "requests": [
+            {
+              "operationName": "DatastoreMetrics",
+              "variables": {
+                "query": {
+                  "kind": "keyvalue",
+                  "resource": "red-db7qh19llfps73emudq0",
+                  "name": "DISK"
+                }
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query DatastoreMetrics($query: DatastoreMetricsQueryInput!) {\n  datastoreMetrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "DatastoreMetrics",
+              "variables": {
+                "query": {
+                  "kind": "keyvalue",
+                  "resource": "red-db7qh19llfps73emudq0",
+                  "name": "DISK_CAPACITY"
+                }
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query DatastoreMetrics($query: DatastoreMetricsQueryInput!) {\n  datastoreMetrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "DatastoreMetrics",
+              "variables": {
+                "query": {
+                  "kind": "keyvalue",
+                  "resource": "red-db7qh19llfps73emudq0",
+                  "name": "MEMORY"
+                }
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query DatastoreMetrics($query: DatastoreMetricsQueryInput!) {\n  datastoreMetrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "DatastoreMetrics",
+              "variables": {
+                "query": {
+                  "kind": "keyvalue",
+                  "resource": "red-db7qh19llfps73emudq0",
+                  "name": "CONNECTIONS"
+                }
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query DatastoreMetrics($query: DatastoreMetricsQueryInput!) {\n  datastoreMetrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+            }
+          ],
+          "status": 200,
+          "responses": [
+            {
+              "data": {
+                "datastoreMetrics": [
+                  {
+                    "__typename": "MetricSeries",
+                    "labels": [
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "instance",
+                        "value": "red-db7qh19llfps73emudq0-78nvf8t9uas8igvcku85"
+                      },
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "resource",
+                        "value": "red-db7qh19llfps73emudq0"
+                      }
+                    ],
+                    "unit": "bytes",
+                    "values": [
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:08:03Z",
+                        "value": 53248
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:09:03Z",
+                        "value": 53248
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:10:03Z",
+                        "value": 53248
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:11:03Z",
+                        "value": 53248
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:12:03Z",
+                        "value": 53248
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:13:03Z",
+                        "value": 53248
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:14:03Z",
+                        "value": 53248
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:15:03Z",
+                        "value": 53248
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "data": {
+                "datastoreMetrics": [
+                  {
+                    "__typename": "MetricSeries",
+                    "labels": [
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "resource",
+                        "value": "red-db7qh19llfps73emudq0"
+                      }
+                    ],
+                    "unit": "bytes",
+                    "values": [
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:15:03Z",
+                        "value": 1073741824
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "data": {
+                "datastoreMetrics": [
+                  {
+                    "__typename": "MetricSeries",
+                    "labels": [
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "instance",
+                        "value": "red-db7qh19llfps73emudq0-3s5lh0fi0dq6k0aipn1c"
+                      },
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "resource",
+                        "value": "red-db7qh19llfps73emudq0"
+                      }
+                    ],
+                    "unit": "bytes",
+                    "values": [
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:08:03Z",
+                        "value": 975744
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:09:03Z",
+                        "value": 1099184
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:10:03Z",
+                        "value": 1099184
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:11:03Z",
+                        "value": 1099184
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:12:03Z",
+                        "value": 1099184
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:13:03Z",
+                        "value": 1099184
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:14:03Z",
+                        "value": 1099184
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:15:03Z",
+                        "value": 1099184
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "data": {
+                "datastoreMetrics": [
+                  {
+                    "__typename": "MetricSeries",
+                    "labels": [
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "instance",
+                        "value": "red-db7qh19llfps73emudq0-3s5lh0fi0dq6k0aipn1c"
+                      },
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "resource",
+                        "value": "red-db7qh19llfps73emudq0"
+                      }
+                    ],
+                    "unit": "count",
+                    "values": [
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:08:03Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:09:03Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:10:03Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:11:03Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:12:03Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:13:03Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:14:03Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:15:03Z",
+                        "value": 1
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "delayMs": 7000
+        }
+      ]
+    },
+    "seriesMobile": {
+      "at": "2026-10-14T16:15:44.639Z",
+      "viewport": {
+        "width": 390,
+        "height": 1400
+      },
+      "pending": [
+        {
+          "width": 358,
+          "height": 770,
+          "headerHeight": 40,
+          "contentHeight": 672,
+          "skeletons": [
+            {
+              "width": 316,
+              "height": 180
+            },
+            {
+              "width": 316,
+              "height": 180
+            },
+            {
+              "width": 316,
+              "height": 180
+            }
+          ],
+          "svgs": [],
+          "body": "Metrics\nLive resource usage for this instance\nDisk\nMemory\nConnections"
+        }
+      ],
+      "ready": [
+        {
+          "width": 358,
+          "height": 514.390625,
+          "headerHeight": 40,
+          "contentHeight": 416.390625,
+          "skeletons": [],
+          "svgs": [
+            {
+              "width": 316,
+              "height": 94.796875,
+              "viewBox": "0 0 600 180",
+              "cssHeight": "94.7969px",
+              "cssAspectRatio": "auto"
+            },
+            {
+              "width": 316,
+              "height": 94.796875,
+              "viewBox": "0 0 600 180",
+              "cssHeight": "94.7969px",
+              "cssAspectRatio": "auto"
+            },
+            {
+              "width": 316,
+              "height": 94.796875,
+              "viewBox": "0 0 600 180",
+              "cssHeight": "94.7969px",
+              "cssAspectRatio": "auto"
+            }
+          ],
+          "body": "Metrics\nLive resource usage for this instance\nDisk\nCapacity 1 GiB\n0 B\n26.0 KiB\n52.0 KiB\nMemory\n0 B\n536.7 KiB\n1.0 MiB\nConnections\n0\n0.5\n1"
+        }
+      ],
+      "captures": [
+        {
+          "at": "2026-10-14T16:15:37.113Z",
+          "requests": [
+            {
+              "operationName": "DatastoreMetrics",
+              "variables": {
+                "query": {
+                  "kind": "keyvalue",
+                  "resource": "red-db7qh19llfps73emudq0",
+                  "name": "DISK"
+                }
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query DatastoreMetrics($query: DatastoreMetricsQueryInput!) {\n  datastoreMetrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "DatastoreMetrics",
+              "variables": {
+                "query": {
+                  "kind": "keyvalue",
+                  "resource": "red-db7qh19llfps73emudq0",
+                  "name": "DISK_CAPACITY"
+                }
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query DatastoreMetrics($query: DatastoreMetricsQueryInput!) {\n  datastoreMetrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "DatastoreMetrics",
+              "variables": {
+                "query": {
+                  "kind": "keyvalue",
+                  "resource": "red-db7qh19llfps73emudq0",
+                  "name": "MEMORY"
+                }
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query DatastoreMetrics($query: DatastoreMetricsQueryInput!) {\n  datastoreMetrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "DatastoreMetrics",
+              "variables": {
+                "query": {
+                  "kind": "keyvalue",
+                  "resource": "red-db7qh19llfps73emudq0",
+                  "name": "CONNECTIONS"
+                }
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query DatastoreMetrics($query: DatastoreMetricsQueryInput!) {\n  datastoreMetrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+            }
+          ],
+          "status": 200,
+          "responses": [
+            {
+              "data": {
+                "datastoreMetrics": [
+                  {
+                    "__typename": "MetricSeries",
+                    "labels": [
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "instance",
+                        "value": "red-db7qh19llfps73emudq0-78nvf8t9uas8igvcku85"
+                      },
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "resource",
+                        "value": "red-db7qh19llfps73emudq0"
+                      }
+                    ],
+                    "unit": "bytes",
+                    "values": [
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:08:37Z",
+                        "value": 53248
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:09:37Z",
+                        "value": 53248
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:10:37Z",
+                        "value": 53248
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:11:37Z",
+                        "value": 53248
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:12:37Z",
+                        "value": 53248
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:13:37Z",
+                        "value": 53248
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:14:37Z",
+                        "value": 53248
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:15:37Z",
+                        "value": 53248
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "data": {
+                "datastoreMetrics": [
+                  {
+                    "__typename": "MetricSeries",
+                    "labels": [
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "resource",
+                        "value": "red-db7qh19llfps73emudq0"
+                      }
+                    ],
+                    "unit": "bytes",
+                    "values": [
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:15:37Z",
+                        "value": 1073741824
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "data": {
+                "datastoreMetrics": [
+                  {
+                    "__typename": "MetricSeries",
+                    "labels": [
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "instance",
+                        "value": "red-db7qh19llfps73emudq0-3s5lh0fi0dq6k0aipn1c"
+                      },
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "resource",
+                        "value": "red-db7qh19llfps73emudq0"
+                      }
+                    ],
+                    "unit": "bytes",
+                    "values": [
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:07:37Z",
+                        "value": 975744
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:08:37Z",
+                        "value": 1099184
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:09:37Z",
+                        "value": 1099184
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:10:37Z",
+                        "value": 1099184
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:11:37Z",
+                        "value": 1099184
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:12:37Z",
+                        "value": 1099184
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:13:37Z",
+                        "value": 1099184
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:14:37Z",
+                        "value": 1099184
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:15:37Z",
+                        "value": 1099184
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "data": {
+                "datastoreMetrics": [
+                  {
+                    "__typename": "MetricSeries",
+                    "labels": [
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "instance",
+                        "value": "red-db7qh19llfps73emudq0-3s5lh0fi0dq6k0aipn1c"
+                      },
+                      {
+                        "__typename": "MetricLabel",
+                        "field": "resource",
+                        "value": "red-db7qh19llfps73emudq0"
+                      }
+                    ],
+                    "unit": "count",
+                    "values": [
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:07:37Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:08:37Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:09:37Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:10:37Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:11:37Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:12:37Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:13:37Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:14:37Z",
+                        "value": 1
+                      },
+                      {
+                        "__typename": "MetricValue",
+                        "time": "2026-10-14T16:15:37Z",
+                        "value": 1
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "delayMs": 7000
+        }
+      ]
+    }
+  },
+  "sizingMechanism": {
+    "at": "2026-10-14T16:16:18.688Z",
+    "labels": [
+      {
+        "text": "0 B",
+        "x": 23.402997970581055,
+        "y": 152.87950134277344,
+        "width": 14.597000122070312,
+        "height": 11.392780303955078,
+        "fontSize": "9px"
+      },
+      {
+        "text": "26.0 KiB",
+        "x": 1.2701478004455566,
+        "y": 76.87950897216797,
+        "width": 36.72985076904297,
+        "height": 11.392780303955078,
+        "fontSize": "9px"
+      },
+      {
+        "text": "52.0 KiB",
+        "x": 1.2701478004455566,
+        "y": 0.8795120120048523,
+        "width": 36.72985076904297,
+        "height": 11.392780303955078,
+        "fontSize": "9px"
+      },
+      {
+        "text": "0 B",
+        "x": 23.402997970581055,
+        "y": 152.87950134277344,
+        "width": 14.597000122070312,
+        "height": 11.392780303955078,
+        "fontSize": "9px"
+      },
+      {
+        "text": "536.7 KiB",
+        "x": -4.159224510192871,
+        "y": 76.87950897216797,
+        "width": 42.15922164916992,
+        "height": 11.392780303955078,
+        "fontSize": "9px"
+      },
+      {
+        "text": "1.0 MiB",
+        "x": 6.402832984924316,
+        "y": 0.8795120120048523,
+        "width": 31.597166061401367,
+        "height": 11.392780303955078,
+        "fontSize": "9px"
+      },
+      {
+        "text": "0",
+        "x": 32.15526580810547,
+        "y": 152.87950134277344,
+        "width": 5.844733715057373,
+        "height": 11.392780303955078,
+        "fontSize": "9px"
+      },
+      {
+        "text": "0.5",
+        "x": 24.233720779418945,
+        "y": 76.87950897216797,
+        "width": 13.766276359558105,
+        "height": 11.392780303955078,
+        "fontSize": "9px"
+      },
+      {
+        "text": "1",
+        "x": 33.63869857788086,
+        "y": 0.8795120120048523,
+        "width": 4.36129903793335,
+        "height": 11.392780303955078,
+        "fontSize": "9px"
+      }
+    ],
+    "rules": [".w-full { width: 100%; }"]
+  },
+  "axisFreshDesktop": {
+    "at": "2026-10-14T16:16:53.354Z",
+    "labels": [
+      {
+        "text": "0 B",
+        "x": 23.387901306152344,
+        "width": 14.612099647521973,
+        "fontSize": "9px"
+      },
+      {
+        "text": "26.0 KiB",
+        "x": 1.2446954250335693,
+        "width": 36.755306243896484,
+        "fontSize": "9px"
+      },
+      {
+        "text": "52.0 KiB",
+        "x": 1.2337172031402588,
+        "width": 36.76628494262695,
+        "fontSize": "9px"
+      },
+      {
+        "text": "0 B",
+        "x": 23.387901306152344,
+        "width": 14.612099647521973,
+        "fontSize": "9px"
+      },
+      {
+        "text": "536.7 KiB",
+        "x": -4.18955659866333,
+        "width": 42.18955612182617,
+        "fontSize": "9px"
+      },
+      {
+        "text": "1.0 MiB",
+        "x": 6.371555328369141,
+        "width": 31.62844467163086,
+        "fontSize": "9px"
+      },
+      {
+        "text": "0",
+        "x": 32.15955352783203,
+        "width": 5.84044885635376,
+        "fontSize": "9px"
+      },
+      {
+        "text": "0.5",
+        "x": 24.23322868347168,
+        "width": 13.766772270202637,
+        "fontSize": "9px"
+      },
+      {
+        "text": "1",
+        "x": 33.6525993347168,
+        "width": 4.3474016189575195,
+        "fontSize": "9px"
+      }
+    ],
+    "navigation": ["reload"]
+  },
+  "earlyEmptyDom": {
+    "at": "2026-10-14T16:07:02.881Z",
+    "card": [
+      {
+        "title": "Metrics",
+        "height": 770,
+        "width": 896,
+        "skeletons": 0,
+        "svg": 0,
+        "body": "Metrics\nLive resource usage for this instance\nDisk\nCapacity 1 GiB\nNo data in range\nMemory\nNo data in range\nConnections\nNo data in range"
+      }
+    ]
+  },
+  "delete": {
+    "at": "2026-10-14T16:16:56.519Z",
+    "request": {
+      "operationName": "DeleteKeyValue",
+      "variables": {
+        "id": "red-db7qh19llfps73emudq0"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "mutation DeleteKeyValue($id: String!, $confirm: String) {\n  deleteKeyValue(id: $id, confirm: $confirm)\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deleteKeyValue": true
+      }
+    },
+    "url": "https://dashboard.bex.co/"
+  },
+  "cleanup": {
+    "at": "2026-10-14T16:17:22.416Z",
+    "request": {
+      "operationName": "Qaa470Inventory",
+      "query": "query Qaa470Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    },
+    "ownedRestStatus": 404
+  },
+  "comparisons": [
+    {
+      "family": "blueprints",
+      "identical": true
+    },
+    {
+      "family": "databases",
+      "identical": true
+    },
+    {
+      "family": "envGroups",
+      "identical": true
+    },
+    {
+      "family": "keyValues",
+      "identical": true
+    },
+    {
+      "family": "projects",
+      "identical": true
+    },
+    {
+      "family": "services",
+      "identical": true
+    },
+    {
+      "family": "webhookEndpoints",
+      "identical": true
+    }
+  ],
+  "revoked": {
+    "at": "2026-10-14T16:18:21.531Z",
+    "whoami": 401,
+    "cookies": 0,
+    "pages": 1,
+    "url": "about:blank"
+  },
+  "limits": [
+    "Only private Free Valkey 8 was live-tested; Postgres, service disks, application/network/scaling/bar consumers are source-traced.",
+    "Resource responses held unchanged for seven seconds in a complete one-operation KeyValue batch; series batches held unchanged contain four DatastoreMetrics operations.",
+    "Failed initial capture attempts did not observe pending and are excluded from findings.",
+    "First short-viewport desktop-ready/mobile-pending crops were clipped; complete replays at same widths and taller 1400px viewport are the cited screenshots.",
+    "An incidental ERR_CONNECTION_CLOSED cleared on fresh navigation; no reproducible network-failure bug filed.",
+    "No cybersecurity or permission testing, data writes, client connections, paid purchases or product implementation.",
+    "True empty UI observed early; unavailable/error/throttle/HA/multiseries transitions were not induced live."
+  ],
+  "screenshots": [
+    "qa-a470-metrics-pending-desktop-complete.png",
+    "qa-a470-metrics-ready-desktop-complete.png",
+    "qa-a470-metrics-pending-mobile-complete.png",
+    "qa-a470-metrics-ready-mobile-complete.png",
+    "qa-a470-series-pending-desktop-complete.png",
+    "qa-a470-series-ready-desktop-complete.png",
+    "qa-a470-series-pending-mobile-complete.png",
+    "qa-a470-series-ready-mobile-complete.png"
+  ]
+}
