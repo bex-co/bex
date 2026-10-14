@@ -265,6 +265,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **301** — [Key Value plan loading card omits the responsive tier grid and footer](301.md) (55m) ← functional QA a454; unchanged owned read expands plan card 70px desktop/234px mobile; catalog/DOM proof, private Free fixture deleted, inventories restored and session revoked.
 - [ ] **295** — [Webhook Settings loading fields put help below inputs](295.md) (50m) ← functional QA a429; owned read-delay desktop/mobile previews reverse field help/control order and compress static text, General card grows66px on mobile; durable DOM/API evidence, disabled endpoint deleted and session revoked.
 - [ ] **296** — [Small nonzero Metrics readings render as zero](296.md) (55m) ← functional QA a431; positive CPU/memory values collapse to identical zero axis labels and tooltips, with a zero CPU headline; fresh desktop/mobile and complete API evidence, owned service deleted and session revoked.
 - [ ] **297** — [Chinese Metrics charts keep English names and empty-state text](297.md) (45m) ← functional QA a434; native language switch and fresh desktop/mobile reads retain English chart image names and five empty-window messages; exact API/DOM evidence, owned service deleted and session revoked.
