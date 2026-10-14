@@ -11,6 +11,7 @@ import { KeyValueMetadataCard } from "@/features/keyvalue/components/key-value-m
 import { ConnectionInfoPanel as KeyValueConnectionInfoPanel } from "@/features/keyvalue/components/connection-info-panel";
 import { KeyValueMaxmemoryPolicySection } from "@/features/keyvalue/components/key-value-maxmemory-policy-section";
 import { KeyValuePersistenceModeSection } from "@/features/keyvalue/components/key-value-persistence-mode-section";
+import { KeyValueNetworkingPanel } from "@/features/keyvalue/components/key-value-networking-panel";
 import type { DatabaseDetailView } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
 
@@ -46,6 +47,15 @@ vi.mock("@/features/keyvalue/hooks/use-set-key-value-persistence-mode", () => ({
     ...modeState,
     saving: false,
     save: vi.fn(),
+  }),
+}));
+// The exercised private store with no rules.
+vi.mock("@/features/keyvalue/hooks/use-key-value-networking", () => ({
+  useKeyValueNetworking: () => ({
+    allowList: [],
+    isPublic: false,
+    savingAllowList: false,
+    saveAllowList: vi.fn(),
   }),
 }));
 const masked = { info: null, loading: false, error: undefined };
@@ -285,4 +295,53 @@ describe("Key Value policy previews (w4/299)", () => {
       ).toBeNull();
     });
   }
+});
+
+describe("Key Value Networking preview (w4/303)", () => {
+  it("previews the ready allowlist form, not one loading block", () => {
+    const pending = card(<KeyValueOverviewSkeleton />, "networking");
+    const readyCard = card(<KeyValueNetworkingPanel id={keyValue.id} />);
+    expect(pending.hasAttribute("inert")).toBe(true);
+    expect(shape(part(pending, "card-header"))).toBe(
+      shape(part(readyCard, "card-header")),
+    );
+    const content = part(pending, "card-content");
+    const readyContent = part(readyCard, "card-content");
+    expect(content.className).toBe(readyContent.className);
+
+    // Status line, then the editor section, as in the ready card.
+    const [status, section] = [...content.children];
+    const [readyStatus, readySection] = [...readyContent.children];
+    expect(content.children).toHaveLength(readyContent.children.length);
+    expect(readyStatus).toHaveClass("text-xs");
+    expect(status).toHaveClass("text-xs");
+    const statusLines = status.querySelectorAll('[data-slot="skeleton"]');
+    expect(statusLines).toHaveLength(2);
+    expect(statusLines[1].parentElement).toHaveClass("sm:hidden");
+
+    // Static help, the inline rule-list slot and the add row.
+    expect(section.className).toBe(readySection.className);
+    const [hint, rules, addRow] = [...section.children];
+    const [readyHint, readyRules, readyAddRow] = [...readySection.children];
+    expect(section.children).toHaveLength(3);
+    expect(shape(hint)).toBe(shape(readyHint));
+    expect(rules.tagName).toBe(readyRules.tagName);
+    expect(rules.className).toBe(readyRules.className);
+    const ruleLines = rules.querySelectorAll('[data-slot="skeleton"]');
+    expect(ruleLines).toHaveLength(2);
+    expect(ruleLines[1]).toHaveClass("sm:hidden");
+    expect(shape(addRow)).toBe(shape(readyAddRow));
+
+    // Inert and value-free: empty disabled inputs, disabled actions, and no
+    // resolved status or rule copy.
+    for (const input of addRow.querySelectorAll("input")) {
+      expect(input.value).toBe("");
+      expect(input.disabled).toBe(true);
+    }
+    for (const button of addRow.querySelectorAll("button")) {
+      expect(button.disabled).toBe(true);
+    }
+    expect(content.textContent).not.toContain(readyStatus.textContent!);
+    expect(content.textContent).not.toContain(readyRules.textContent!);
+  });
 });

@@ -1,5 +1,6 @@
-import { Eye } from "lucide-react";
+import { Eye, Plus } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
+import { Input } from "@/common/components/ui/input";
 import {
   Card,
   CardContent,
@@ -187,6 +188,74 @@ export function KeyValuePolicyPreview({
           hint={t(copy.hint)}
           select={{ narrowLines: copy.narrowLines }}
         />
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * The Key Value Networking card (`KeyValueNetworkingPanel` over
+ * `IPAllowListEditor`) before its resource is known: real title, description
+ * and allowlist help, the ready add row (two empty disabled inputs, disabled
+ * Add and Save) in its flex-wrap, and placeholder lines for the two regions
+ * the data decides — the external-access status line and the rule list.
+ * Those reserve the private, empty state (the default): one status line and
+ * the one-line empty text, each wrapping to two lines below `sm` as their copy
+ * does. A public store drops the status line and a store with rules lists
+ * them; neither is assumed or rendered here (w4/303).
+ */
+export function KeyValueNetworkingPreview() {
+  const { t } = useTranslations();
+  return (
+    <Card inert aria-busy="true">
+      <CardHeader>
+        <CardTitle>{t("keyvalue.networkingTitle")}</CardTitle>
+        <CardDescription>{t("keyvalue.networkingDescription")}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <div data-preview="networking-status" className="text-xs">
+          <span className="flex h-4 items-center">
+            <Skeleton className="h-3 w-full max-w-md" />
+          </span>
+          <span className="flex h-4 items-center sm:hidden">
+            <Skeleton className="h-3 w-1/2" />
+          </span>
+        </div>
+        <section className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            {t("keyvalue.networkingHint")}
+          </p>
+          {/* Inline like the ready empty text, so the add row follows it
+              with no block gap. */}
+          <span
+            data-preview="networking-rules"
+            className="text-sm text-muted-foreground"
+          >
+            <Skeleton className="inline-block h-3.5 w-full align-middle sm:w-80" />
+            <Skeleton className="inline-block h-3.5 w-40 align-middle sm:hidden" />
+          </span>
+          <div className="flex flex-wrap gap-2">
+            <Input
+              disabled
+              placeholder="203.0.113.0/24"
+              aria-label={t("keyvalue.networkingCIDR")}
+              className="max-w-xs"
+            />
+            <Input
+              disabled
+              aria-label={t("keyvalue.networkingDescriptionLabel")}
+              placeholder={t("keyvalue.networkingEntryDescription")}
+              className="max-w-xs"
+            />
+            <Button type="button" variant="outline" size="sm" disabled>
+              <Plus />
+              {t("keyvalue.networkingAdd")}
+            </Button>
+            <Button type="button" size="sm" disabled>
+              {t("keyvalue.networkingSave")}
+            </Button>
+          </div>
+        </section>
       </CardContent>
     </Card>
   );
