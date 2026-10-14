@@ -7,7 +7,7 @@ lego/operator/internal/predeploy/predeploy.go:133
 138: 	deadline := int64(predeployTimeout / time.Second)
 139: 	backoff := int32(0) // never retry a migration — a partial re-run can corrupt data
 140: 	ttl := int32(jobTTL)
-141: 
+141:
 142: 	container := corev1.Container{
 143: 		Name:            containerName,
 144: 		Image:           o.Image,
@@ -39,7 +39,7 @@ lego/operator/internal/controller/app_controller.go:1480
 1497: 		return spec.Builder
 1498: 	}
 1499: }
-1500: 
+1500:
 1501: // relocateBuildSecret copies one App-namespace Secret next to the build Job
 
 lego/operator/internal/controller/app_controller.go:5560
@@ -67,7 +67,7 @@ lego/operator/internal/controller/app_controller.go:5560
 
 lego/operator/internal/controller/app_controller.go:5640
 5640: 	}
-5641: 
+5641:
 5642: 	// The step's container mirrors the app pod: same env, envFrom (the app's
 5643: 	// "<name>-env" Secret a migration reads DATABASE_URL from), pull secrets,
 5644: 	// security context, tier resources, and secret-file volume. Co-located with
@@ -110,7 +110,7 @@ lego/operator/internal/controller/app_controller.go:5640
 5681: 		// failed; the migration itself hasn't reported an outcome.
 5682: 		return ctrl.Result{}, true, err
 5683: 	}
-5684: 
+5684:
 
 lego/operator/internal/controller/app_controller.go:5774
 5774: // verdict never matches it — and held the service in Deploying until it finished.
@@ -118,7 +118,7 @@ lego/operator/internal/controller/app_controller.go:5774
 5776: 	command, _ := preDeployStepCommand(app)
 5777: 	return strings.TrimSpace(command) != "" && scalableRuntime(app) && !canceledOverServed(app)
 5778: }
-5779: 
+5779:
 5780: // preDeployStepCommand is the command a release's pre-deploy step runs: the
 5781: // one-time spec.initialDeployHook until a release has run it to success, then
 5782: // spec.preDeployCommand (w8/m63). The roles stay separate even when the two
@@ -129,7 +129,7 @@ lego/operator/internal/controller/app_controller.go:5774
 5787: 	}
 5788: 	return app.Spec.PreDeployCommand, false
 5789: }
-5790: 
+5790:
 
 lego/operator/internal/build/native.go:265
 265: 		return base

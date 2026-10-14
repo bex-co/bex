@@ -159,7 +159,7 @@ lego/backend/internal/apps/deploy.go:3236
 3328: 	}
 3329: 	return s.view(existing), nil
 3330: }
-3331: 
+3331:
 3332: // recordBlueprintRedeploy records the blueprint redeploy row, building commit,
 3333: // for a changed existing service; a nil Store or an unmanaged App records
 3334: // nothing.
@@ -174,7 +174,7 @@ lego/backend/internal/apps/deploy.go:3236
 3343: 	}
 3344: 	return nil
 3345: }
-3346: 
+3346:
 
 lego/backend/internal/apps/deploy.go:3404
 3404: 		return false
@@ -183,7 +183,7 @@ lego/backend/internal/apps/deploy.go:3404
 3407: 	probe.MaintenanceMode = cur.MaintenanceMode
 3408: 	return reflect.DeepEqual(*probe, cur)
 3409: }
-3410: 
+3410:
 3411: func applyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec, fields map[string]BlueprintField) (bool, error) {
 3412: 	if fields == nil {
 3413: 		before := *dst
@@ -192,16 +192,16 @@ lego/backend/internal/apps/deploy.go:3404
 3416: 	}
 3417: 	return ApplyBlueprintServiceSpec(dst, want, fields)
 3418: }
-3419: 
+3419:
 3420: func blueprintDatabaseSpecChanged(cur *appv1alpha1.Database, want appv1alpha1.DatabaseSpec, fields map[string]BlueprintField) (bool, error) {
 3421: 	return ApplyBlueprintDatabaseSpec(cur.DeepCopy(), want, fields)
 3422: }
-3423: 
+3423:
 3424: func blueprintKeyValueSpecChanged(cur, want appv1alpha1.KeyValueSpec, fields map[string]BlueprintField) bool {
 3425: 	probe := cur
 3426: 	return ApplyBlueprintKeyValueSpec(&probe, want, fields)
 3427: }
-3428: 
+3428:
 
 lego/backend/internal/apps/service.go:334
 334: 	SetAppSuspended(ctx context.Context, id string, suspended bool) error
@@ -267,7 +267,7 @@ lego/backend/internal/store/store.go:1975
 1986: 	}
 1987: 	return nil
 1988: }
-1989: 
+1989:
 1990: // BackfillAppType heals a pre-w6/m46 row that predates the type column. Only
 1991: // matching an empty type is the whole safety story: it makes the write
 1992: // idempotent, race-free between concurrent projector passes, and incapable of
@@ -360,14 +360,14 @@ lego/backend/internal/store/reconciler.go:2072
 2129: 	}
 2130: 	return changed
 2131: }
-2132: 
+2132:
 2133: func projectDisk(d *Disk) *appv1alpha1.DiskSpec {
 2134: 	if d == nil {
 2135: 		return nil
 2136: 	}
 2137: 	return &appv1alpha1.DiskSpec{Name: d.Name, MountPath: d.MountPath, SizeGB: d.SizeGB}
 2138: }
-2139: 
+2139:
 2140: func equalDiskSpecs(a, b *appv1alpha1.DiskSpec) bool {
 2141: 	if a == nil || b == nil {
 2142: 		return a == b
