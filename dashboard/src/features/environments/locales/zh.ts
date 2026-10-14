@@ -225,6 +225,11 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     message: "已更新“{name}”的环境组。",
     description: "Toast shown after environment-group membership is updated",
   },
+  "environments.assignEnvGroupsPlacementUnread": {
+    message: "无法确认“{name}”的环境组当前位置。请重试或重新加载后再移动。",
+    description:
+      "Warning after an environment-group move failed and re-reading the groups' placement failed too; its action re-reads, it never moves again (w4/m206)",
+  },
   "environments.assignEnvGroupsError": {
     message: "更新“{name}”的环境组失败。",
     description:

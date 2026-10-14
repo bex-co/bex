@@ -824,13 +824,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// belongs to environments.Service. Wire the two narrow seams once here so
 	// create_env_group(environmentId) and update_environment(envGroupIds) share the
 	// same workspace authorization and lookup behavior without a package cycle.
-	envGroupsSvc.EnvironmentWorkspace = func(ctx context.Context, environmentID string) (string, error) {
-		e, err := environmentsSvc.Get(ctx, environmentID)
-		if err != nil {
-			return "", err
-		}
-		return e.OwnerID, nil
-	}
+	envGroupsSvc.EnvironmentWorkspace = environmentsSvc.OwnerWorkspace
 	notificationsSvc := &notifications.Service{
 		Base:   base,
 		Store:  d.NotificationsStore,
@@ -1555,7 +1549,7 @@ func (s *Server) executeGraphQL(parent context.Context, body graphqlRequestBody)
 		VariableValues: body.Variables,
 		Context:        ctx,
 	})
-	result.Errors = sanitizeGraphQLErrors(result.Errors)
+	result.Errors = sanitizeGraphQLErrors(result.Errors, opType == gqlTypeMutation)
 	return operation, opType, graphqlResultOutcome(result.Errors), result
 }
 
@@ -1591,6 +1585,11 @@ func graphqlResultOutcome(errs []gqlerrors.FormattedError) string {
 // gqlExecTimeout.
 const queryTimeoutMessage = "query timed out; narrow the time range or the search and try again"
 
+// writeOutcomeUnknownMessage is what a GraphQL client reads when a mutation
+// hits gqlExecTimeout. The work is not rolled back and may still be finishing,
+// so the query advice ("narrow it and try again") would be wrong here.
+const writeOutcomeUnknownMessage = "the change ran out of time and may have been applied in part or in full; reload to see its outcome before trying again"
+
 // sanitizeGraphQLErrors applies core.WriteErr's redaction policy on the GraphQL
 // surface: a resolver error that is not a public/classified error (a raw
 // pgx/Kubernetes failure) has its message replaced with a generic string and the
@@ -1599,7 +1598,7 @@ const queryTimeoutMessage = "query timed out; narrow the time range or the searc
 // resolver error) keep their client-needed message, as do coded and sentinel
 // errors. Shares core.IsPublicError with WriteErr so REST and GraphQL redact the
 // exact same set.
-func sanitizeGraphQLErrors(errs []gqlerrors.FormattedError) []gqlerrors.FormattedError {
+func sanitizeGraphQLErrors(errs []gqlerrors.FormattedError, mutation bool) []gqlerrors.FormattedError {
 	for i := range errs {
 		resolverErr := resolverError(errs[i].OriginalError())
 		// nil → a parse/validation error that wraps no resolver error: keep it.
@@ -1622,6 +1621,11 @@ func sanitizeGraphQLErrors(errs []gqlerrors.FormattedError) []gqlerrors.Formatte
 		if errors.Is(resolverErr, context.DeadlineExceeded) {
 			errs[i].Message = queryTimeoutMessage
 			errs[i].Extensions = map[string]any{"code": core.CodeQueryTimeout}
+			// A write that timed out is not known to have done nothing.
+			if mutation {
+				errs[i].Message = writeOutcomeUnknownMessage
+				errs[i].Extensions = map[string]any{"code": core.CodeWriteOutcomeUnknown}
+			}
 			continue
 		}
 		log.Printf("bex-api graphql: internal error: %v", resolverErr)

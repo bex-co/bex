@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useMutation } from "@apollo/client/react";
+import { useApolloClient, useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { SetEnvironmentEnvGroupsDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -11,20 +11,48 @@ export interface UseSetEnvironmentEnvGroupsResult {
     environmentName: string,
     envGroupIds: string[],
   ) => Promise<boolean>;
+  /**
+   * The environment being written, until its placement has been re-read —
+   * after a failure too, so no second write starts from a stale view.
+   */
   busyId: string | null;
 }
+
+const PLACEMENT_QUERIES = ["Environments", "EnvGroups"];
 
 /** Full-replaces the environment groups scoped to one Environment. */
 export function useSetEnvironmentEnvGroups(): UseSetEnvironmentEnvGroupsResult {
   const { t } = useTranslations();
+  const client = useApolloClient();
   const [mutate] = useMutation(SetEnvironmentEnvGroupsDocument, {
-    refetchQueries: ["Environments", "EnvGroups"],
+    refetchQueries: PLACEMENT_QUERIES,
     awaitRefetchQueries: true,
   });
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const setEnvGroups = useCallback(
     async (id: string, environmentName: string, envGroupIds: string[]) => {
+      // A failed replacement is not known to have changed nothing: groups move
+      // one at a time, and a request that timed out may still have been
+      // applied (w4/m206). Read where the groups are now before the caller
+      // can write again; a failed read offers the read again, never the write.
+      const readPlacement = async () => {
+        try {
+          await client.refetchQueries({ include: PLACEMENT_QUERIES });
+        } catch {
+          toast.warning(
+            t("environments.assignEnvGroupsPlacementUnread", {
+              name: environmentName,
+            }),
+            {
+              action: {
+                label: t("common.tryAgain"),
+                onClick: () => void readPlacement(),
+              },
+            },
+          );
+        }
+      };
       setBusyId(id);
       try {
         await mutate({ variables: { id, envGroupIds } });
@@ -41,12 +69,13 @@ export function useSetEnvironmentEnvGroups(): UseSetEnvironmentEnvGroupsResult {
             t("environments.assignEnvGroupsError", { name: environmentName }),
           ),
         );
+        await readPlacement();
         return false;
       } finally {
         setBusyId(null);
       }
     },
-    [mutate, t],
+    [client, mutate, t],
   );
 
   return { setEnvGroups, busyId };

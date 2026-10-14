@@ -1710,9 +1710,44 @@ func envGroupNameAmbiguous(name, workspace string, ids []string) error {
 	)
 }
 
+// envGroupNameReserved refuses a name whose reservation belongs to a creation
+// that never finished and may still be running. Unlike ENV_GROUP_NAME_EXISTS
+// there is no group to find or rename: the name frees itself once the creator
+// can no longer be active (w4/m206).
+func envGroupNameReserved(name, workspace string, retryAfter time.Duration) error {
+	return core.NewConflictError(
+		"ENV_GROUP_NAME_RESERVED",
+		"An earlier attempt to create an environment group with this name did not finish. The name frees itself shortly; retry in a few minutes.",
+		map[string]any{"name": name, "workspaceId": workspace, "retryAfterSeconds": int(retryAfter.Round(time.Second).Seconds())},
+	)
+}
+
+// envGroupNameClaimGrace is how long a reservation with no group behind it is
+// left alone. A creator writes its group's metadata within its request, and
+// every request path is bounded well under this (25s GraphQL execution inside a
+// 30s HTTP write timeout), so past it the creator is gone.
+const envGroupNameClaimGrace = 2 * time.Minute
+
+// Reservation fields beside id/name/workspace. claimedAt dates a reservation
+// made since w4/m206; orphanSeenAt dates an older one from the first time it
+// was found with no group behind it.
+const (
+	claimFieldClaimedAt    = "claimedAt"
+	claimFieldOrphanSeenAt = "orphanSeenAt"
+)
+
 // claimGroupName combines a fresh legacy-metadata sweep with a CAS-backed name
 // index. The sweep catches pre-index groups; CAS makes concurrent creates and
 // renames across bex-api replicas resolve to exactly one winner.
+//
+// A reservation held by another id is honored while that group exists, or
+// while its creator could still be writing it. One whose group never appeared
+// is taken over after envGroupNameClaimGrace: an interrupted create must not
+// hold a name the workspace can neither find nor delete (w4/m206).
+//
+// A write that fails for any reason but a lost CAS may still have landed, so
+// the reservation is released before the error is returned: no caller can
+// compensate for a claim it was never told it holds.
 func (s *Service) claimGroupName(ctx context.Context, workspace, name, gid string) error {
 	matches, err := s.groupsNamed(ctx, workspace, name, gid)
 	if err != nil {
@@ -1732,17 +1767,55 @@ func (s *Service) claimGroupName(ctx context.Context, workspace, name, gid strin
 			return err
 		}
 		if owner := snapshot.Data["id"]; owner != "" && owner != gid {
-			return envGroupNameExists(name, workspace)
+			if err := s.abandonedNameClaim(ctx, versioned, workspace, name, path, snapshot); err != nil {
+				return err
+			}
 		}
 		if _, err := versioned.PutCAS(groupCtx(ctx, workspace), path, map[string]string{
-			"id": gid, "name": name, "workspace": workspace,
+			"id": gid, "name": name, "workspace": workspace, claimFieldClaimedAt: s.now(),
 		}, snapshot.Version); err == nil {
 			return nil
 		} else if !errors.Is(err, core.ErrConflict) {
-			return err
+			return errors.Join(err, s.releaseGroupName(context.WithoutCancel(ctx), workspace, name, gid))
 		}
 	}
 	return envGroupNameExists(name, workspace)
+}
+
+// abandonedNameClaim returns nil when another id's reservation may be taken
+// over: no group exists under that id and the grace period has passed. It
+// returns the refusal otherwise. A reservation that predates claimedAt gets its
+// first sighting recorded instead, so its grace is measured from a known time.
+func (s *Service) abandonedNameClaim(
+	ctx context.Context,
+	versioned core.VersionedSecretKV,
+	workspace, name, path string,
+	snapshot core.SecretKVSnapshot,
+) error {
+	if _, err := s.readMeta(groupCtx(ctx, workspace), snapshot.Data["id"]); err == nil {
+		return envGroupNameExists(name, workspace)
+	} else if !errors.Is(err, core.ErrNotFound) {
+		return err
+	}
+	since := snapshot.Data[claimFieldClaimedAt]
+	if since == "" {
+		since = snapshot.Data[claimFieldOrphanSeenAt]
+	}
+	seen, err := time.Parse(time.RFC3339Nano, since)
+	if err != nil {
+		marked := maps.Clone(snapshot.Data)
+		marked[claimFieldOrphanSeenAt] = s.now()
+		// A lost CAS means the reservation just changed; the next attempt
+		// reads whatever it became.
+		if _, err := versioned.PutCAS(groupCtx(ctx, workspace), path, marked, snapshot.Version); err != nil && !errors.Is(err, core.ErrConflict) {
+			return err
+		}
+		return envGroupNameReserved(name, workspace, envGroupNameClaimGrace)
+	}
+	if wait := envGroupNameClaimGrace - s.Now().Sub(seen); wait > 0 {
+		return envGroupNameReserved(name, workspace, wait)
+	}
+	return nil
 }
 
 func (s *Service) releaseGroupName(ctx context.Context, workspace, name, gid string) error {

@@ -27,6 +27,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"slices"
 	"strings"
 	"time"
@@ -536,6 +537,26 @@ func (s *Service) Get(ctx context.Context, id string) (EnvironmentView, error) {
 		return EnvironmentView{}, err
 	}
 	return s.toFullView(ctx, e)
+}
+
+// OwnerWorkspace returns the workspace that owns environment id, under exactly the
+// scoping and authorization Get applies. It is for a caller that only needs to
+// place another resource in the environment: Get also composes the full view,
+// which lists every database, Key Value and env group of the workspace to
+// report membership the caller would discard (w4/m206).
+func (s *Service) OwnerWorkspace(ctx context.Context, id string) (string, error) {
+	ctx, err := s.scopeEnvironment(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return "", err
+	}
+	e, err := s.requireEnvironment(ctx, core.RelCanView, id)
+	if err != nil {
+		return "", err
+	}
+	return e.TenantID, nil
 }
 
 // Create creates a new environment under the named project, authorized once in
@@ -1057,19 +1078,44 @@ func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id 
 		}
 		want[wid] = true
 	}
+	// Members change one at a time and an earlier change is not undone when a
+	// later one fails, so a failure after the first change says exactly how far
+	// the replacement got (w4/m206).
+	var changed []string
 	for _, r := range existing {
+		var err error
 		switch {
 		case r.environmentID == e.ID && !want[r.id]:
-			if err := idx.leave(ctx, r.id, e.ID); err != nil {
-				return EnvironmentView{}, err
-			}
+			err = idx.leave(ctx, r.id, e.ID)
 		case r.environmentID != e.ID && want[r.id]:
-			if err := idx.join(ctx, e, r.id); err != nil {
-				return EnvironmentView{}, err
-			}
+			err = idx.join(ctx, e, r.id)
+		default:
+			continue
 		}
+		if err != nil {
+			return EnvironmentView{}, membershipInterrupted(e.ID, changed, r.id, err)
+		}
+		changed = append(changed, r.id)
 	}
 	return s.toFullView(ctx, e)
+}
+
+// membershipInterrupted reports a membership replacement that stopped partway.
+// With nothing changed yet the cause stands alone. Otherwise the refusal is a
+// conflict naming the members already changed and the one that failed: the
+// environment holds neither the old nor the requested membership, and the
+// caller must read it before writing again.
+func membershipInterrupted(environmentID string, changed []string, failed string, cause error) error {
+	if len(changed) == 0 {
+		return cause
+	}
+	// The cause may carry internal detail, so it is logged, not returned.
+	log.Printf("environments: membership of %s stopped at %s after changing %v: %v", environmentID, failed, changed, cause)
+	return core.NewConflictError(
+		"ENVIRONMENT_MEMBERSHIP_PARTIAL",
+		"Only part of this change was applied before it failed. Reload to see the current placement before trying again.",
+		map[string]any{"environmentId": ids.EnvironmentPublicID(environmentID), "changedIds": changed, "failedId": failed},
+	)
 }
 
 // authorizeACLBearingMutation protects the administrator-owned ACL boundary at
