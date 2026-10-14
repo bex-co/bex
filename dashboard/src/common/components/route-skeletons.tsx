@@ -4,6 +4,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardTitle,
   CardHeader,
 } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -26,6 +27,7 @@ import {
   SERVICE_TYPES,
 } from "@/features/services/lib/create-context";
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
+import { CHART_FRAME_STYLE } from "@/features/metrics/components/chart-layout";
 import { InstanceTypePickerCardSkeleton } from "@/features/services/components/instance-type-groups";
 import {
   autoSleepEligibleType,
@@ -2184,18 +2186,52 @@ export function DatastoreLogsSkeleton() {
   );
 }
 
+const DATASTORE_METRIC_SECTIONS = {
+  keyvalue: ["metrics.diskTitle", "metrics.memoryTitle", "metrics.kvConnectionsTitle"],
+  database: ["metrics.diskTitle", "metrics.connectionsTitle", "metrics.replicationLagTitle"],
+} as const;
+
+/**
+ * DatastoreMetricsPanel before its resource resolves (w4/m209): the panel's
+ * real title, description and section headings, no filter row (the panel
+ * has none), and each plot at the populated chart's responsive 600:180 ratio,
+ * so nothing moves when the panel and then its series arrive.
+ */
 export function DatastoreMetricsSkeleton({
   kind,
 }: {
   kind: "database" | "keyvalue";
 }) {
+  const { t } = useTranslations();
   return (
     <PendingFrame
       route={`${kind}-metrics`}
       className="mx-auto w-full max-w-4xl"
     >
       <Region name="datastore-metrics">
-        <MetricsCardSkeleton sections={3} compact />
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("metrics.datastoreMetricsTitle")}</CardTitle>
+            <CardDescription>
+              {t("metrics.datastoreMetricsDescription")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {DATASTORE_METRIC_SECTIONS[kind].map((titleKey) => (
+              <div key={titleKey}>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div className="text-sm font-medium text-foreground">
+                    {t(titleKey)}
+                  </div>
+                </div>
+                <Skeleton
+                  className="w-full rounded-md"
+                  style={CHART_FRAME_STYLE}
+                />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       </Region>
     </PendingFrame>
   );
