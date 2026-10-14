@@ -1,6 +1,6 @@
 # w8 · m64 — Keep Blueprint environment copies consistent across applies
 
-**Worker:** worker8 **Goal:** sibling copies equal the source configuration across group links, seed state, immutable literal priority and own mutable overrides. **Status:** blocked — t001–t005, t007, t008 done and shipped (2026-10-13); t006 needs the API deployed to production plus fresh pinned native validation captures and hosted/snapshot dispositions.
+**Worker:** worker8 **Goal:** sibling copies equal the source configuration across group links, seed state, immutable literal priority and own mutable overrides. **Status:** blocked — implementation tasks shipped; sweep231 accepts observed live group/own-store/literal paths with native wire and cleanup receipts. t006 still needs remaining variants, shared live/snapshot surfaces and the complete inherited DoD.
 
 ## Tasks (in order)
 
@@ -58,3 +58,15 @@ At deploy.go:2640–2662, classifyServiceEnv writes both ordinary literals and s
 Separate effective immutable literals from seed hints when forming the known index; literals, including empty, take priority over mutable seed sources in either authored order. Set seed provenance only when a seed is actually the effective source. Keep later resolved spec.Env references masking same-key literals (w8/102), seed-once retention and unknown-only refusals, groups, generated controls, all parser callers and the names-only own-store guard. Add t00830m before the shared audit, then rerun expanded regressions and complete acceptance.
 
 The source evidence uses real feature methods with fake storage/Kubernetes; process precedence is inferred from persisted state, not observed in a hosted pod. Sixteen native fresh declarations are admitted with exact multipart captures, which proves admission only. No production existing-state/apply claim, source fix or QA ship. This extends the same known-index contract; no duplicate milestone or issue.
+
+## Independent source replay — sweep226
+
+[Current-source verification](../../evidence/current-source-sweep226/README.md) reruns the original relevant diagnostics after the fix. Its source-only scope and remaining production/native/runtime gates are explicit; this receipt does not close the milestone. No QA product implementation or ship.
+
+## Live existing-state acceptance — sweep231
+
+[Owned runtime and exact native wire receipts](evidence/live-env-sweep231/README.md) accept the duplicate/reordered/retained-link, own ordinary/empty refusal and literal/seed priority paths in production. Four same-commit native deploys succeed and all two services, two groups and recorded deploy children are cleaned; the baseline Blueprint remains. This is partial acceptance: remaining variants, shared live surfaces/snapshots and complete original099 dispositions still gate closeout. The conservative all-authored-links-omitted refusal is recorded as a parse-time eligibility limitation, with no new defect filed.
+
+## Nested source/seed acceptance — sweep241
+
+[Sixteen same/split-environment declarations](evidence/nested-source-sweep241/README.md) preserve immutable literal/empty and generated/literal validation decisions against eight actual root-created fake states. Seed-only existing-state refusal locates its sole consumer entry. Both native clients accept all 32 fresh variants with exact multipart/decision receipts. This is source-only existing-state and fresh native validation, not nested apply, hosted current-state/runtime, public-ID or full m64 acceptance. No new defect or hosted fixture; temporary capture configs/relays are cleaned.
