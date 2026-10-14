@@ -1,0 +1,1428 @@
+{
+  "schemaVersion": 1,
+  "pass": "a434",
+  "sourceHead": "98e1ea62d",
+  "scope": "Functional chart localization on one owned Free web service; native account-menu language switch",
+  "fixture": {
+    "id": "srv-db7iqqet41sc7388o4sg",
+    "name": "qa-20261014-a434-locale",
+    "deployId": "dep-db7iqqet41sc7388o4t0"
+  },
+  "create": {
+    "at": "2026-10-14T07:21:13.674Z",
+    "request": [
+      {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "docker.io/library/busybox:1.37",
+          "name": "qa-20261014-a434-locale",
+          "type": "web_service",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "sh -c 'printf \"QA_A434_LOCALE\\n\" >/tmp/index.html; exec httpd -f -p 8861 -h /tmp'",
+          "plan": "free",
+          "port": 8861,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db7iqqet41sc7388o4sg",
+            "latestDeployId": "dep-db7iqqet41sc7388o4t0",
+            "name": "qa-20261014-a434-locale",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      }
+    ],
+    "url": "https://dashboard.bex.co/services/srv-db7iqqet41sc7388o4sg/deploys/dep-db7iqqet41sc7388o4t0"
+  },
+  "initial": {
+    "at": "2026-10-14T07:21:50.471Z",
+    "deployments": [
+      {
+        "deploy": {
+          "id": "dep-db7iqqet41sc7388o4t0",
+          "serviceId": "srv-db7iqqet41sc7388o4sg",
+          "status": "live",
+          "trigger": "other",
+          "bexTrigger": "create",
+          "image": {
+            "ref": "docker.io/library/busybox:1.37"
+          },
+          "createdAt": "2026-10-14T07:21:13.497989Z",
+          "updatedAt": "2026-10-14T07:21:34.803731Z",
+          "startedAt": "2026-10-14T07:21:22.069996Z",
+          "finishedAt": "2026-10-14T07:21:34.80373Z"
+        },
+        "cursor": "dep-db7iqqet41sc7388o4t0"
+      }
+    ],
+    "traffic": [
+      {
+        "at": "2026-10-14T07:21:48.572Z",
+        "path": "/",
+        "status": 200,
+        "body": "QA_A434_LOCALE\n"
+      },
+      {
+        "at": "2026-10-14T07:21:48.756Z",
+        "path": "/",
+        "status": 200,
+        "body": "QA_A434_LOCALE\n"
+      },
+      {
+        "at": "2026-10-14T07:21:48.930Z",
+        "path": "/qa-a434-missing",
+        "status": 404,
+        "body": "<HTML><HEAD><TITLE>404 Not Found</TITLE></HEAD>\n<BODY><H1>404 Not Found</H1>\nThe requested URL was not found\n</BODY></HTML>\n"
+      }
+    ]
+  },
+  "chineseDesktop": {
+    "at": "2026-10-14T07:22:27.153Z",
+    "url": "https://dashboard.bex.co/services/srv-db7iqqet41sc7388o4sg/metrics",
+    "language": "zh",
+    "ui": "- main:\n  - navigation \"面包屑导航\":\n    - link \"项目\":\n      - /url: /\n    - button \"qa-20261014-a434-locale\"\n  - button \"搜索\": 搜索 ⌘ K\n  - button \"新建\"\n  - button \"帮助与资源\"\n  - button \"P\"\n  - text: Web 服务\n  - heading \"qa-20261014-a434-locale\" [level=1]\n  - text: 服务 运行中\n  - 'link \"最新部署: 已上线\"':\n    - /url: /services/srv-db7iqqet41sc7388o4sg/deploys/dep-db7iqqet41sc7388o4t0\n    - text: 最新部署 已上线\n  - link \"Free\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/plan\n  - text: 运行时 image\n  - button \"连接\"\n  - button \"手动部署\"\n  - text: 服务 ID： srv-db7iqqet41sc7388o4sg\n  - button \"复制服务 ID\"\n  - link \"https://qa-20261014-a434-locale.onbex.co\":\n    - /url: https://qa-20261014-a434-locale.onbex.co\n  - button \"复制服务 URL\"\n  - term: Slug\n  - definition: qa-20261014-a434-locale\n  - term: 实例数\n  - definition: \"1\"\n  - term: 版本\n  - definition: rev-1\n  - term: 创建于\n  - definition:\n    - time: 1分钟\n  - combobox \"筛选事件\": 全部事件\n  - combobox \"时间范围\": 过去 12 小时\n  - button \"显示事件时间线\"\n  - text: 应用指标 实例\n  - listbox \"实例\":\n    - option \"srv-db7iqqet41sc7388o4sg-sc37j\"\n  - tablist \"聚合\":\n    - tab \"原始\" [selected]\n    - tab \"最小\"\n    - tab \"最大\"\n    - tab \"平均\"\n  - tablist:\n    - tab \"百分比\" [selected]\n    - tab \"总量\"\n  - text: 内存\n  - link \"限额\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/plan\n  - text: 512 MiB 0.1%\n  - list \"服务事件\":\n    - listitem:\n      - link \"2 个事件\":\n        - /url: /services/srv-db7iqqet41sc7388o4sg/events\n        - text: \"2\"\n  - img \"Line chart with 1 data points\": 0% 0% 0%\n  - text: CPU\n  - link \"限额\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/plan\n  - text: 0.100 cores 0.0%\n  - list \"服务事件\":\n    - listitem:\n      - link \"2 个事件\":\n        - /url: /services/srv-db7iqqet41sc7388o4sg/events\n        - text: \"2\"\n  - img \"Line chart with 1 data points\": 0% 0% 0%\n  - text: 实例总数\n  - link \"管理扩缩容\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/scaling\n  - text: \"1\"\n  - list \"服务事件\":\n    - listitem:\n      - link \"2 个事件\":\n        - /url: /services/srv-db7iqqet41sc7388o4sg/events\n        - text: \"2\"\n  - img \"Line chart with 1 data points\": 0 0.5 1\n  - text: 网络指标 汇总所有实例的数据\n  - combobox \"状态码\": 状态码 全部\n  - combobox \"主机\": 主机 全部\n  - textbox \"路径\":\n    - /placeholder: 路径…\n  - text: 请求总数 3 个请求\n  - combobox \"分组\": 分组 全部请求\n  - list \"服务事件\":\n    - listitem:\n      - link \"2 个事件\":\n        - /url: /services/srv-db7iqqet41sc7388o4sg/events\n        - text: \"2\"\n  - img \"Bar chart with 1 data points\": 0 1.5 3\n  - text: 响应时间\n  - combobox \"百分位\": 百分位 p90\n  - text: No data in range 出站带宽 部分数据\n  - list \"服务事件\":\n    - listitem:\n      - link \"2 个事件\":\n        - /url: /services/srv-db7iqqet41sc7388o4sg/events\n        - text: \"2\"\n  - img \"Line chart with 145 data points\": 0 B 0 B 0 B\n  - paragraph: 本月已使用 0 B *",
+    "charts": [
+      {
+        "role": "img",
+        "name": "Line chart with 1 data points",
+        "tabindex": "0"
+      },
+      {
+        "role": "img",
+        "name": "Line chart with 1 data points",
+        "tabindex": "0"
+      },
+      {
+        "role": "img",
+        "name": "Line chart with 1 data points",
+        "tabindex": "0"
+      },
+      {
+        "role": "img",
+        "name": "Bar chart with 1 data points",
+        "tabindex": null
+      },
+      {
+        "role": "img",
+        "name": "Line chart with 145 data points",
+        "tabindex": "0"
+      }
+    ]
+  },
+  "chineseMobile": {
+    "at": "2026-10-14T07:23:20.643Z",
+    "url": "https://dashboard.bex.co/services/srv-db7iqqet41sc7388o4sg/metrics",
+    "language": "zh",
+    "ui": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"面包屑导航\":\n    - button \"qa-20261014-a434-locale\"\n  - button \"搜索\"\n  - button \"新建\"\n  - button \"P\"\n  - text: Web 服务\n  - heading \"qa-20261014-a434-locale\" [level=1]\n  - text: 服务 运行中\n  - 'link \"最新部署: 已上线\"':\n    - /url: /services/srv-db7iqqet41sc7388o4sg/deploys/dep-db7iqqet41sc7388o4t0\n    - text: 最新部署 已上线\n  - link \"Free\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/plan\n  - text: 运行时 image\n  - button \"连接\"\n  - button \"手动部署\"\n  - text: 服务 ID： srv-db7iqqet41sc7388o4sg\n  - button \"复制服务 ID\"\n  - link \"https://qa-20261014-a434-locale.onbex.co\":\n    - /url: https://qa-20261014-a434-locale.onbex.co\n  - button \"复制服务 URL\"\n  - term: Slug\n  - definition: qa-20261014-a434-locale\n  - term: 实例数\n  - definition: \"1\"\n  - term: 版本\n  - definition: rev-1\n  - term: 创建于\n  - definition:\n    - time: 2分钟\n  - combobox \"筛选事件\": 全部事件\n  - combobox \"时间范围\": 过去 12 小时\n  - button \"显示事件时间线\"\n  - text: 应用指标 实例\n  - listbox \"实例\":\n    - option \"srv-db7iqqet41sc7388o4sg-sc37j\"\n  - tablist \"聚合\":\n    - tab \"原始\" [selected]\n    - tab \"最小\"\n    - tab \"最大\"\n    - tab \"平均\"\n  - tablist:\n    - tab \"百分比\" [selected]\n    - tab \"总量\"\n  - text: 内存\n  - link \"限额\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/plan\n  - text: 512 MiB 0.1%\n  - list \"服务事件\":\n    - listitem:\n      - link \"2 个事件\":\n        - /url: /services/srv-db7iqqet41sc7388o4sg/events\n        - text: \"2\"\n  - img \"Line chart with 1 data points\": 0% 0% 0%\n  - text: CPU\n  - link \"限额\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/plan\n  - text: 0.100 cores 0.1%\n  - list \"服务事件\":\n    - listitem:\n      - link \"2 个事件\":\n        - /url: /services/srv-db7iqqet41sc7388o4sg/events\n        - text: \"2\"\n  - img \"Line chart with 1 data points\": 0% 0% 0%\n  - text: 实例总数\n  - link \"管理扩缩容\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/scaling\n  - text: \"1\"\n  - list \"服务事件\":\n    - listitem:\n      - link \"2 个事件\":\n        - /url: /services/srv-db7iqqet41sc7388o4sg/events\n        - text: \"2\"\n  - img \"Line chart with 1 data points\": 0 0.5 1\n  - text: 网络指标 汇总所有实例的数据\n  - combobox \"状态码\": 状态码 全部\n  - combobox \"主机\": 主机 全部\n  - textbox \"路径\":\n    - /placeholder: 路径…\n  - text: 请求总数 3 个请求\n  - combobox \"分组\": 分组 全部请求\n  - list \"服务事件\":\n    - listitem:\n      - link \"2 个事件\":\n        - /url: /services/srv-db7iqqet41sc7388o4sg/events\n        - text: \"2\"\n  - img \"Bar chart with 1 data points\": 0 1.5 3\n  - text: 响应时间\n  - combobox \"百分位\": 百分位 p90\n  - text: No data in range 出站带宽 部分数据\n  - list \"服务事件\":\n    - listitem:\n      - link \"2 个事件\":\n        - /url: /services/srv-db7iqqet41sc7388o4sg/events\n        - text: \"2\"\n  - img \"Line chart with 145 data points\": 0 B 0 B 0 B\n  - paragraph: 本月已使用 0 B *",
+    "charts": [
+      {
+        "role": "img",
+        "name": "Line chart with 1 data points",
+        "tabindex": "0"
+      },
+      {
+        "role": "img",
+        "name": "Line chart with 1 data points",
+        "tabindex": "0"
+      },
+      {
+        "role": "img",
+        "name": "Line chart with 1 data points",
+        "tabindex": "0"
+      },
+      {
+        "role": "img",
+        "name": "Bar chart with 1 data points",
+        "tabindex": null
+      },
+      {
+        "role": "img",
+        "name": "Line chart with 145 data points",
+        "tabindex": "0"
+      }
+    ],
+    "width": {
+      "viewport": 390,
+      "document": 390
+    }
+  },
+  "readyRange": {
+    "at": "2026-10-14T07:24:30.897Z",
+    "ready": {
+      "at": "2026-10-14T07:24:30.790Z",
+      "url": "https://dashboard.bex.co/services/srv-db7iqqet41sc7388o4sg/metrics?range=30m",
+      "language": "zh",
+      "charts": [
+        {
+          "role": "img",
+          "name": "Line chart with 12 data points"
+        },
+        {
+          "role": "img",
+          "name": "Line chart with 12 data points"
+        },
+        {
+          "role": "img",
+          "name": "Line chart with 13 data points"
+        },
+        {
+          "role": "img",
+          "name": "Bar chart with 1 data points"
+        },
+        {
+          "role": "img",
+          "name": "Line chart with 31 data points"
+        }
+      ],
+      "ui": "- main:\n  - navigation \"面包屑导航\":\n    - link \"项目\":\n      - /url: /\n    - button \"qa-20261014-a434-locale\"\n  - button \"搜索\": 搜索 ⌘ K\n  - button \"新建\"\n  - button \"帮助与资源\"\n  - button \"P\"\n  - text: Web 服务\n  - heading \"qa-20261014-a434-locale\" [level=1]\n  - text: 服务 运行中\n  - 'link \"最新部署: 已上线\"':\n    - /url: /services/srv-db7iqqet41sc7388o4sg/deploys/dep-db7iqqet41sc7388o4t0\n    - text: 最新部署 已上线\n  - link \"Free\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/plan\n  - text: 运行时 image\n  - button \"连接\"\n  - button \"手动部署\"\n  - text: 服务 ID： srv-db7iqqet41sc7388o4sg\n  - button \"复制服务 ID\"\n  - link \"https://qa-20261014-a434-locale.onbex.co\":\n    - /url: https://qa-20261014-a434-locale.onbex.co\n  - button \"复制服务 URL\"\n  - term: Slug\n  - definition: qa-20261014-a434-locale\n  - term: 实例数\n  - definition: \"1\"\n  - term: 版本\n  - definition: rev-1\n  - term: 创建于\n  - definition:\n    - time: 3分钟\n  - combobox \"筛选事件\": 全部事件\n  - combobox \"时间范围\": 过去 30 分钟\n  - button \"显示事件时间线\"\n  - text: 应用指标 实例\n  - listbox \"实例\":\n    - option \"srv-db7iqqet41sc7388o4sg-sc37j\"\n  - tablist \"聚合\":\n    - tab \"原始\" [selected]\n    - tab \"最小\"\n    - tab \"最大\"\n    - tab \"平均\"\n  - tablist:\n    - tab \"百分比\" [selected]\n    - tab \"总量\"\n  - text: 内存\n  - link \"限额\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/plan\n  - text: 512 MiB 0.1%\n  - list \"服务事件\":\n    - listitem:\n      - link \"2 个事件\":\n        - /url: /services/srv-db7iqqet41sc7388o4sg/events\n        - text: \"2\"\n  - img \"Line chart with 12 data points\": 0% 0% 0%\n  - text: CPU\n  - link \"限额\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/plan\n  - text: 0.100 cores 0.1%\n  - list \"服务事件\":\n    - listitem:\n      - link \"2 个事件\":\n        - /url: /services/srv-db7iqqet41sc7388o4sg/events\n        - text: \"2\"\n  - img \"Line chart with 12 data points\": 0% 0% 0%\n  - text: 实例总数\n  - link \"管理扩缩容\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/scaling\n  - text: \"1\"\n  - list \"服务事件\":\n    - listitem:\n      - link \"2 个事件\":\n        - /url: /services/srv-db7iqqet41sc7388o4sg/events\n        - text: \"2\"\n  - img \"Line chart with 13 data points\": 0 0.5 1\n  - text: 网络指标 汇总所有实例的数据\n  - combobox \"状态码\": 状态码 全部\n  - combobox \"主机\": 主机 全部\n  - textbox \"路径\":\n    - /placeholder: 路径…\n  - text: 请求总数 3 个请求\n  - combobox \"分组\": 分组 全部请求\n  - list \"服务事件\":\n    - listitem:\n      - link \"2 个事件\":\n        - /url: /services/srv-db7iqqet41sc7388o4sg/events\n        - text: \"2\"\n  - img \"Bar chart with 1 data points\": 0 1.5 3\n  - text: 响应时间\n  - combobox \"百分位\": 百分位 p90\n  - text: No data in range 出站带宽 部分数据\n  - list \"服务事件\":\n    - listitem:\n      - link \"2 个事件\":\n        - /url: /services/srv-db7iqqet41sc7388o4sg/events\n        - text: \"2\"\n  - img \"Line chart with 31 data points\": 0 B 0 B 0 B\n  - paragraph: 本月已使用 0 B *"
+    },
+    "rangeMenu": "- listbox:\n  - option \"过去 30 分钟\" [selected]\n  - option \"过去一小时\"\n  - option \"过去 4 小时\"\n  - option \"过去 12 小时\"\n  - option \"过去 24 小时\"\n  - option \"过去 2 天\"\n  - option \"过去 7 天\"\n  - option \"过去 14 天\"\n  - option \"过去 30 天\"\n  - option \"自定义…\""
+  },
+  "emptyWindow": {
+    "at": "2026-10-14T07:25:25.892Z",
+    "captured": [
+      {
+        "at": "2026-10-14T07:25:19.378Z",
+        "request": [
+          {
+            "operationName": "ServiceEvents",
+            "variables": {
+              "serviceId": "srv-db7iqqet41sc7388o4sg",
+              "startTime": "2026-10-13T07:00:00.000Z",
+              "endTime": "2026-10-13T07:05:00.000Z",
+              "limit": 100
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query ServiceEvents($serviceId: String!, $startTime: String!, $endTime: String!, $cursor: String, $limit: Int) {\n  serviceEvents(\n    serviceId: $serviceId\n    startTime: $startTime\n    endTime: $endTime\n    cursor: $cursor\n    limit: $limit\n  ) {\n    id\n    type\n    timestamp\n    cursor\n    details {\n      deployId\n      deployStatus\n      preDeployStatus\n      fullDeployStatus\n      failureReason\n      cancelReason\n      stallReason\n      status\n      actor\n      triggeredByUser\n      image\n      commitId\n      commitMessage\n      startedAt\n      finishedAt\n      reasonCode\n      exitCode\n      instanceId\n      fromCount\n      toCount\n      branchFrom\n      branchTo\n      commitUrl\n      projectFrom\n      projectTo\n      environmentFrom\n      environmentTo\n      trigger {\n        firstBuild\n        envUpdated\n        manual\n        deployedByRender\n        clearCache\n        rollback\n        deployHook\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "CPU",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "MEMORY",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "CPU",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3,
+                "percentage": true
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "MEMORY",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3,
+                "percentage": true
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "CPU_LIMIT",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "MEMORY_LIMIT",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "CPU_TARGET",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "MEMORY_TARGET",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "INSTANCES",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "HTTP_REQUESTS",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "HTTP_LATENCY",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3,
+                "parameters": [
+                  {
+                    "quantile": 0.9
+                  }
+                ]
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "BANDWIDTH",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 60
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          }
+        ],
+        "status": 200,
+        "body": [
+          {
+            "data": {
+              "serviceEvents": []
+            }
+          },
+          {
+            "data": {
+              "metrics": []
+            }
+          },
+          {
+            "data": {
+              "metrics": []
+            }
+          },
+          {
+            "data": {
+              "metrics": []
+            }
+          },
+          {
+            "data": {
+              "metrics": []
+            }
+          },
+          {
+            "data": {
+              "metrics": [
+                {
+                  "__typename": "MetricSeries",
+                  "labels": [
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "instance",
+                      "value": "srv-db7iqqet41sc7388o4sg-sc37j2i1ichv9ic37csb"
+                    },
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "resource",
+                      "value": "srv-db7iqqet41sc7388o4sg"
+                    }
+                  ],
+                  "parameters": [],
+                  "unit": "cpu",
+                  "values": [
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T07:25:19Z",
+                      "value": 0.1
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "data": {
+              "metrics": [
+                {
+                  "__typename": "MetricSeries",
+                  "labels": [
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "instance",
+                      "value": "srv-db7iqqet41sc7388o4sg-sc37j2i1ichv9ic37csb"
+                    },
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "resource",
+                      "value": "srv-db7iqqet41sc7388o4sg"
+                    }
+                  ],
+                  "parameters": [],
+                  "unit": "bytes",
+                  "values": [
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T07:25:19Z",
+                      "value": 536870912
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "data": {
+              "metrics": []
+            }
+          },
+          {
+            "data": {
+              "metrics": []
+            }
+          },
+          {
+            "data": {
+              "metrics": []
+            }
+          },
+          {
+            "data": {
+              "metrics": []
+            }
+          },
+          {
+            "data": {
+              "metrics": []
+            }
+          },
+          {
+            "data": {
+              "metrics": [
+                {
+                  "__typename": "MetricSeries",
+                  "labels": [
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "resource",
+                      "value": "srv-db7iqqet41sc7388o4sg"
+                    }
+                  ],
+                  "parameters": [],
+                  "unit": "bytes",
+                  "values": [
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-13T07:00:00Z",
+                      "value": 0
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-13T07:01:00Z",
+                      "value": 0
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-13T07:02:00Z",
+                      "value": 0
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-13T07:03:00Z",
+                      "value": 0
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-13T07:04:00Z",
+                      "value": 0
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-13T07:05:00Z",
+                      "value": 0
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "at": "2026-10-14T07:25:25.434Z",
+        "request": [
+          {
+            "operationName": "MetricsFilters",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "outputFilters": ["INSTANCE", "STATUS_CODE"]
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query MetricsFilters($query: MetricsFiltersQueryInput!) {\n  metricsFilters(query: $query) {\n    values {\n      field\n      values\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "CPU",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "MEMORY",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "CPU",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3,
+                "percentage": true
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "MEMORY",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3,
+                "percentage": true
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "CPU_LIMIT",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "MEMORY_LIMIT",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "CPU_TARGET",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "MEMORY_TARGET",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "INSTANCES",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "LogLabelValues",
+            "variables": {
+              "resource": "srv-db7iqqet41sc7388o4sg",
+              "label": "host"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "HTTP_REQUESTS",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "HTTP_LATENCY",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 3,
+                "parameters": [
+                  {
+                    "quantile": 0.9
+                  }
+                ]
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "Metrics",
+            "variables": {
+              "query": {
+                "filters": [
+                  {
+                    "field": "RESOURCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg"]
+                  }
+                ],
+                "name": "BANDWIDTH",
+                "start": "2026-10-13T07:00:00.000Z",
+                "end": "2026-10-13T07:05:00.000Z",
+                "resolution": 60
+              }
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "MonthToDateBandwidth",
+            "variables": {
+              "resourceId": "srv-db7iqqet41sc7388o4sg"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query MonthToDateBandwidth($resourceId: String!) {\n  monthToDateBandwidth(resourceId: $resourceId) {\n    egressBandwidthMB\n    httpEgressBandwidthMB\n    natEgressBandwidthMB\n    privateLinkEgressBandwidthMB\n    websocketEgressBandwidthMB\n    degradedSources\n    __typename\n  }\n}"
+          },
+          {
+            "operationName": "ServiceEvents",
+            "variables": {
+              "serviceId": "srv-db7iqqet41sc7388o4sg",
+              "startTime": "2026-10-13T07:00:00.000Z",
+              "endTime": "2026-10-13T07:05:00.000Z",
+              "limit": 100
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "query ServiceEvents($serviceId: String!, $startTime: String!, $endTime: String!, $cursor: String, $limit: Int) {\n  serviceEvents(\n    serviceId: $serviceId\n    startTime: $startTime\n    endTime: $endTime\n    cursor: $cursor\n    limit: $limit\n  ) {\n    id\n    type\n    timestamp\n    cursor\n    details {\n      deployId\n      deployStatus\n      preDeployStatus\n      fullDeployStatus\n      failureReason\n      cancelReason\n      stallReason\n      status\n      actor\n      triggeredByUser\n      image\n      commitId\n      commitMessage\n      startedAt\n      finishedAt\n      reasonCode\n      exitCode\n      instanceId\n      fromCount\n      toCount\n      branchFrom\n      branchTo\n      commitUrl\n      projectFrom\n      projectTo\n      environmentFrom\n      environmentTo\n      trigger {\n        firstBuild\n        envUpdated\n        manual\n        deployedByRender\n        clearCache\n        rollback\n        deployHook\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"
+          }
+        ],
+        "status": 200,
+        "body": [
+          {
+            "data": {
+              "metricsFilters": {
+                "__typename": "MetricsFiltersResult",
+                "values": [
+                  {
+                    "__typename": "MetricsFilterValues",
+                    "field": "INSTANCE",
+                    "values": ["srv-db7iqqet41sc7388o4sg-sc37j2i1ichv9ic37csb"]
+                  },
+                  {
+                    "__typename": "MetricsFilterValues",
+                    "field": "STATUS_CODE",
+                    "values": ["200", "404"]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "data": {
+              "metrics": []
+            }
+          },
+          {
+            "data": {
+              "metrics": []
+            }
+          },
+          {
+            "data": {
+              "metrics": []
+            }
+          },
+          {
+            "data": {
+              "metrics": []
+            }
+          },
+          {
+            "data": {
+              "metrics": [
+                {
+                  "__typename": "MetricSeries",
+                  "labels": [
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "instance",
+                      "value": "srv-db7iqqet41sc7388o4sg-sc37j2i1ichv9ic37csb"
+                    },
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "resource",
+                      "value": "srv-db7iqqet41sc7388o4sg"
+                    }
+                  ],
+                  "parameters": [],
+                  "unit": "cpu",
+                  "values": [
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T07:25:24Z",
+                      "value": 0.1
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "data": {
+              "metrics": [
+                {
+                  "__typename": "MetricSeries",
+                  "labels": [
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "instance",
+                      "value": "srv-db7iqqet41sc7388o4sg-sc37j2i1ichv9ic37csb"
+                    },
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "resource",
+                      "value": "srv-db7iqqet41sc7388o4sg"
+                    }
+                  ],
+                  "parameters": [],
+                  "unit": "bytes",
+                  "values": [
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-14T07:25:24Z",
+                      "value": 536870912
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "data": {
+              "metrics": []
+            }
+          },
+          {
+            "data": {
+              "metrics": []
+            }
+          },
+          {
+            "data": {
+              "metrics": []
+            }
+          },
+          {
+            "data": {
+              "logLabelValues": ["qa-20261014-a434-locale.onbex.co"]
+            }
+          },
+          {
+            "data": {
+              "metrics": []
+            }
+          },
+          {
+            "data": {
+              "metrics": []
+            }
+          },
+          {
+            "data": {
+              "metrics": [
+                {
+                  "__typename": "MetricSeries",
+                  "labels": [
+                    {
+                      "__typename": "MetricLabel",
+                      "field": "resource",
+                      "value": "srv-db7iqqet41sc7388o4sg"
+                    }
+                  ],
+                  "parameters": [],
+                  "unit": "bytes",
+                  "values": [
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-13T07:00:00Z",
+                      "value": 0
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-13T07:01:00Z",
+                      "value": 0
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-13T07:02:00Z",
+                      "value": 0
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-13T07:03:00Z",
+                      "value": 0
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-13T07:04:00Z",
+                      "value": 0
+                    },
+                    {
+                      "__typename": "MetricValue",
+                      "time": "2026-10-13T07:05:00Z",
+                      "value": 0
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "data": {
+              "monthToDateBandwidth": {
+                "__typename": "MonthToDateBandwidth",
+                "degradedSources": ["http", "websocket", "direct"],
+                "egressBandwidthMB": 0,
+                "httpEgressBandwidthMB": 0,
+                "natEgressBandwidthMB": 0,
+                "privateLinkEgressBandwidthMB": 0,
+                "websocketEgressBandwidthMB": 0
+              }
+            }
+          },
+          {
+            "data": {
+              "serviceEvents": []
+            }
+          }
+        ]
+      }
+    ],
+    "desktop": {
+      "at": "2026-10-14T07:25:23.156Z",
+      "url": "https://dashboard.bex.co/services/srv-db7iqqet41sc7388o4sg/metrics?range=custom&rangeStart=2026-10-13T07%3A00%3A00.000Z&rangeEnd=2026-10-13T07%3A05%3A00.000Z",
+      "language": "zh",
+      "emptyCount": 5,
+      "ui": "- main:\n  - navigation \"面包屑导航\":\n    - link \"项目\":\n      - /url: /\n    - button \"qa-20261014-a434-locale\"\n  - button \"搜索\": 搜索 ⌘ K\n  - button \"新建\"\n  - button \"帮助与资源\"\n  - button \"P\"\n  - text: Web 服务\n  - heading \"qa-20261014-a434-locale\" [level=1]\n  - text: 服务 运行中\n  - 'link \"最新部署: 已上线\"':\n    - /url: /services/srv-db7iqqet41sc7388o4sg/deploys/dep-db7iqqet41sc7388o4t0\n    - text: 最新部署 已上线\n  - link \"Free\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/plan\n  - text: 运行时 image\n  - button \"连接\"\n  - button \"手动部署\"\n  - text: 服务 ID： srv-db7iqqet41sc7388o4sg\n  - button \"复制服务 ID\"\n  - link \"https://qa-20261014-a434-locale.onbex.co\":\n    - /url: https://qa-20261014-a434-locale.onbex.co\n  - button \"复制服务 URL\"\n  - term: Slug\n  - definition: qa-20261014-a434-locale\n  - term: 实例数\n  - definition: \"1\"\n  - term: 版本\n  - definition: rev-1\n  - term: 创建于\n  - definition:\n    - time: 4分钟\n  - combobox \"筛选事件\": 全部事件\n  - combobox \"时间范围\": 自定义…\n  - button \"编辑自定义范围\"\n  - button \"显示事件时间线\"\n  - text: 应用指标 实例\n  - listbox \"实例\":\n    - option \"srv-db7iqqet41sc7388o4sg-sc37j\"\n  - tablist \"聚合\":\n    - tab \"原始\" [selected]\n    - tab \"最小\"\n    - tab \"最大\"\n    - tab \"平均\"\n  - tablist:\n    - tab \"百分比\" [selected]\n    - tab \"总量\"\n  - text: 内存\n  - link \"限额\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/plan\n  - text: 512 MiB No data in range CPU\n  - link \"限额\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/plan\n  - text: 0.100 cores No data in range 实例总数\n  - link \"管理扩缩容\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/scaling\n  - text: No data in range 网络指标 汇总所有实例的数据\n  - combobox \"状态码\": 状态码 全部\n  - combobox \"主机\": 主机 全部\n  - textbox \"路径\":\n    - /placeholder: 路径…\n  - text: 请求总数\n  - combobox \"分组\": 分组 全部请求\n  - text: No data in range 响应时间\n  - combobox \"百分位\": 百分位 p90\n  - text: No data in range 出站带宽\n  - img \"Line chart with 6 data points\": 0 B 0 B 0 B\n  - paragraph: 本月已使用 0 B *"
+    },
+    "mobile": {
+      "at": "2026-10-14T07:25:25.892Z",
+      "url": "https://dashboard.bex.co/services/srv-db7iqqet41sc7388o4sg/metrics?range=custom&rangeStart=2026-10-13T07%3A00%3A00.000Z&rangeEnd=2026-10-13T07%3A05%3A00.000Z",
+      "language": "zh",
+      "emptyCount": 5,
+      "ui": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"面包屑导航\":\n    - button \"qa-20261014-a434-locale\"\n  - button \"搜索\"\n  - button \"新建\"\n  - button \"P\"\n  - text: Web 服务\n  - heading \"qa-20261014-a434-locale\" [level=1]\n  - text: 服务 运行中\n  - 'link \"最新部署: 已上线\"':\n    - /url: /services/srv-db7iqqet41sc7388o4sg/deploys/dep-db7iqqet41sc7388o4t0\n    - text: 最新部署 已上线\n  - link \"Free\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/plan\n  - text: 运行时 image\n  - button \"连接\"\n  - button \"手动部署\"\n  - text: 服务 ID： srv-db7iqqet41sc7388o4sg\n  - button \"复制服务 ID\"\n  - link \"https://qa-20261014-a434-locale.onbex.co\":\n    - /url: https://qa-20261014-a434-locale.onbex.co\n  - button \"复制服务 URL\"\n  - term: Slug\n  - definition: qa-20261014-a434-locale\n  - term: 实例数\n  - definition: \"1\"\n  - term: 版本\n  - definition: rev-1\n  - term: 创建于\n  - definition:\n    - time: 4分钟\n  - combobox \"筛选事件\": 全部事件\n  - combobox \"时间范围\": 自定义…\n  - button \"编辑自定义范围\"\n  - button \"显示事件时间线\"\n  - text: 应用指标 实例\n  - listbox \"实例\":\n    - option \"srv-db7iqqet41sc7388o4sg-sc37j\"\n  - tablist \"聚合\":\n    - tab \"原始\" [selected]\n    - tab \"最小\"\n    - tab \"最大\"\n    - tab \"平均\"\n  - tablist:\n    - tab \"百分比\" [selected]\n    - tab \"总量\"\n  - text: 内存\n  - link \"限额\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/plan\n  - text: 512 MiB No data in range CPU\n  - link \"限额\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/plan\n  - text: 0.100 cores No data in range 实例总数\n  - link \"管理扩缩容\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/scaling\n  - text: No data in range 网络指标 汇总所有实例的数据\n  - combobox \"状态码\": 状态码 全部\n  - combobox \"主机\": 主机 全部\n  - textbox \"路径\":\n    - /placeholder: 路径…\n  - text: 请求总数\n  - combobox \"分组\": 分组 全部请求\n  - text: No data in range 响应时间\n  - combobox \"百分位\": 百分位 p90\n  - text: No data in range 出站带宽\n  - img \"Line chart with 6 data points\": 0 B 0 B 0 B\n  - paragraph: 本月已使用 0 B *",
+      "width": {
+        "viewport": 390,
+        "document": 390
+      }
+    }
+  },
+  "englishControl": {
+    "at": "2026-10-14T07:26:05.125Z",
+    "url": "https://dashboard.bex.co/services/srv-db7iqqet41sc7388o4sg/metrics?range=custom&rangeStart=2026-10-13T07%3A00%3A00.000Z&rangeEnd=2026-10-13T07%3A05%3A00.000Z",
+    "language": "en",
+    "emptyCount": 5,
+    "ui": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261014-a434-locale\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261014-a434-locale\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db7iqqet41sc7388o4sg/deploys/dep-db7iqqet41sc7388o4t0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db7iqqet41sc7388o4sg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261014-a434-locale.onbex.co\":\n    - /url: https://qa-20261014-a434-locale.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261014-a434-locale\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 4m\n  - combobox \"Filter events\": All events\n  - combobox \"Time range\": Custom…\n  - button \"Edit custom range\"\n  - button \"Show event timeline\"\n  - text: Application Metrics Instances\n  - listbox \"Instances\":\n    - option \"srv-db7iqqet41sc7388o4sg-sc37j\"\n  - tablist \"Aggregation\":\n    - tab \"Raw\" [selected]\n    - tab \"Min\"\n    - tab \"Max\"\n    - tab \"Avg\"\n  - tablist:\n    - tab \"Percentage\" [selected]\n    - tab \"Total\"\n  - text: Memory\n  - link \"Limit\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/plan\n  - text: 512 MiB No data in range CPU\n  - link \"Limit\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/plan\n  - text: 0.100 cores No data in range Total Instances\n  - link \"Manage scaling\":\n    - /url: /services/srv-db7iqqet41sc7388o4sg/scaling\n  - text: No data in range Network Metrics Aggregated across all instances\n  - combobox \"Status Code\": Status Code All\n  - combobox \"Host\": Host All\n  - textbox \"Path\":\n    - /placeholder: Path…\n  - text: Total Requests\n  - combobox \"Group by\": Group by All requests\n  - text: No data in range Response Times\n  - combobox \"Percentile\": Percentile p90\n  - text: No data in range Outbound Bandwidth\n  - img \"Line chart with 6 data points\": 0 B 0 B 0 B\n  - paragraph: 0 B used this month *"
+  },
+  "delete": {
+    "at": "2026-10-14T07:26:58.247Z",
+    "request": [
+      {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db7iqqet41sc7388o4sg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "deleteService": true
+        }
+      }
+    ]
+  },
+  "inventoryCleanup": {
+    "at": "2026-10-14T07:27:04.751Z",
+    "resource": {
+      "id": "srv-db7iqqet41sc7388o4sg",
+      "status": 404,
+      "body": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+    },
+    "request": {
+      "operationName": "Qaa434Inventory",
+      "query": "query Qaa434Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    },
+    "publicResult": {
+      "status": 404,
+      "body": "404 page not found\n"
+    }
+  },
+  "sessionCleanup": {
+    "at": "2026-10-14T07:28:50.298Z",
+    "owners": {
+      "url": "https://api.bex.co/v1/owners",
+      "status": 401,
+      "body": "{\"error\":\"unauthorized\",\"id\":\"unauthorized\",\"message\":\"unauthorized\"}\n"
+    },
+    "cookieCount": 0,
+    "pageCount": 1,
+    "url": "about:blank"
+  },
+  "screenshotsViewed": [
+    ".playwright-mcp/qa-a434-chinese-charts-desktop.png",
+    ".playwright-mcp/qa-a434-chinese-empty-desktop.png",
+    ".playwright-mcp/qa-a434-chinese-empty-mobile.png"
+  ],
+  "limits": [
+    "No operating-system screen reader was run; native roles/names and the browser accessibility snapshot establish the image names.",
+    "Before-create window has empty usage/request/latency arrays; limit and bandwidth responses retain series. No assertion that every metric is empty.",
+    "API numeric values, small-value precision (w4/296), pod IDs, acronyms, units, graphics-symbol label, and no-data semantics are outside this localization fix.",
+    "No datastore, static, or Recent Metrics resource journey was replayed for this finding; they are caller-traced siblings.",
+    "Language was restored to English through the native menu before deleting the fixture."
+  ]
+}
