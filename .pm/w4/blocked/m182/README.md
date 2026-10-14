@@ -52,3 +52,7 @@ Not verified until the live replay:
 ## Live follow-up (2026-10-11)
 
 QA pass193 reproduced a generic public routing404 immediately after a configured-port save, including a fresh3000→3107 replay against an always-healthy /info endpoint. Old/new listener responses then recovered, and the configuration deploy became Live. Unchanged-port Restart returned200 in all ten samples. [t007](t007.md) preserves the complete requests, responses, cleanup, source trace and unverified deployment provenance. It addresses the remaining edge-binding verification before [t006](t006.md) can close; historical t003–t005 results do not validate a future additional patch. The milestone remains blocked until the original live DoD holds.
+
+## Live follow-up (2026-10-14)
+
+QA pass a476 reproduced three generic public 404 responses in each direction of a native 8882→8883→8882 port edit on an owned Free BusyBox web service. Both configuration deploys eventually reached Live and served the requested-port marker. [t007](t007.md#live-follow-up-2026-10-14) and [complete replay evidence](port-edit-a476.json) record the sampled failure, eventual recovery and verified cleanup. Deployment provenance and the other original DoD clauses remain unverified; this extends the existing task and does not establish a regression in a deployed fix. Status remains blocked.
