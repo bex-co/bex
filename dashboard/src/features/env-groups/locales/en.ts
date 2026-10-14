@@ -199,6 +199,16 @@ const enEnvGroups: Record<string, TranslationEntry> = {
     message: "Workspace (no Environment)",
     description: "Standalone Environment Group scope",
   },
+  "envGroups.environmentLookupLoading": {
+    message: "Loading environment…",
+    description:
+      "Group metadata Environment value while the scope lookup is still loading",
+  },
+  "envGroups.environmentLookupFailed": {
+    message: "Couldn't load environment",
+    description:
+      "Group metadata Environment value when the scope lookup request failed",
+  },
   "envGroups.unknownEnvironment": {
     message: "Unknown Environment ({id})",
     description: "Deleted or inaccessible Environment fallback",
