@@ -1,0 +1,1596 @@
+{
+  "schemaVersion": 1,
+  "pass": "a449",
+  "sourceHead": "af4b52eaa",
+  "scope": "Shared PlanCardGrid keyboard radio behavior and create-form group names; no resource creation or plan persistence",
+  "baseline": {
+    "at": "2026-10-14T10:29:47.752Z",
+    "request": {
+      "operationName": "Qaa449Inventory",
+      "query": "query Qaa449Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    }
+  },
+  "probes": {
+    "KvDesktop": {
+      "code": "async(page)=>{await page.setViewportSize({width:1440,height:1000});await page.goto('https://dashboard.bex.co/keyvalue/new');const free=page.getByRole('radio',{name:\"Free $0.00/month 128 MB RAM · 0.1 CPU\",exact:true});await free.waitFor({timeout:20000});await page.waitForTimeout(900);const group=page.getByRole('radiogroup').filter({has:free});if(await group.count()!==1)throw new Error('Ambiguous plan group');const radios=group.getByRole('radio');const mutations=[];const handler=request=>{try{const body=request.postDataJSON();for(const q of (Array.isArray(body)?body:[body]))if(/^\\s*mutation\\b/.test(q?.query||''))mutations.push({operationName:q.operationName??null,variables:q.variables??null,query:q.query})}catch{}};page.on('request',handler);const measure=async()=>({at:new Date().toISOString(),group:await group.ariaSnapshot(),radios:await radios.evaluateAll(es=>es.map(e=>({text:e.textContent,tag:e.tagName,checked:e.getAttribute('aria-checked'),tabIndex:e.tabIndex,disabled:e.disabled,active:e===document.activeElement}))),groupLabels:await group.evaluate(e=>({ariaLabel:e.getAttribute('aria-label'),labelledBy:e.getAttribute('aria-labelledby'),role:e.getAttribute('role')}))});try{await free.focus();const before=await measure();await free.press('ArrowRight');await page.waitForTimeout(150);const right=await measure();await group.screenshot({path:'qa-a449-keyvalue-arrow-desktop.png'});await free.focus();await free.press('ArrowDown');await page.waitForTimeout(150);const down=await measure();await free.focus();await free.press('Tab');const tab=await measure();const starter=radios.nth(1);await starter.focus();await starter.press('Space');await page.waitForTimeout(200);const spaceControl=await measure();await free.focus();await free.press('Space');await page.waitForTimeout(200);const restored=await measure();return{at:new Date().toISOString(),surface:\"keyvalue\",viewport:{width:1440,height:1000},url:page.url(),before,right,down,tab,spaceControl,restored,mutations,createEnabled:await page.getByRole('button',{name:\"Create Key Value Instance\",exact:true}).isEnabled()}}finally{page.off('request',handler)}}",
+      "receipt": {
+        "at": "2026-10-14T10:32:38.677Z",
+        "surface": "keyvalue",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "url": "https://dashboard.bex.co/keyvalue/new",
+        "before": {
+          "at": "2026-10-14T10:32:37.814Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month128 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter$7.00/month256 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard$21.00/month1 GB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "right": {
+          "at": "2026-10-14T10:32:37.995Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month128 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter$7.00/month256 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard$21.00/month1 GB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "down": {
+          "at": "2026-10-14T10:32:38.223Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month128 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter$7.00/month256 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard$21.00/month1 GB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "tab": {
+          "at": "2026-10-14T10:32:38.236Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month128 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Starter$7.00/month256 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Standard$21.00/month1 GB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "spaceControl": {
+          "at": "2026-10-14T10:32:38.449Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\"\n  - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month128 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Starter$7.00/month256 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Standard$21.00/month1 GB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "restored": {
+          "at": "2026-10-14T10:32:38.669Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month128 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter$7.00/month256 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard$21.00/month1 GB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "mutations": [],
+        "createEnabled": false
+      }
+    },
+    "KvMobile": {
+      "code": "async(page)=>{await page.setViewportSize({width:390,height:844});await page.goto('https://dashboard.bex.co/keyvalue/new');const free=page.getByRole('radio',{name:\"Free $0.00/month 128 MB RAM · 0.1 CPU\",exact:true});await free.waitFor({timeout:20000});await page.waitForTimeout(900);const group=page.getByRole('radiogroup').filter({has:free});if(await group.count()!==1)throw new Error('Ambiguous plan group');const radios=group.getByRole('radio');const mutations=[];const handler=request=>{try{const body=request.postDataJSON();for(const q of (Array.isArray(body)?body:[body]))if(/^\\s*mutation\\b/.test(q?.query||''))mutations.push({operationName:q.operationName??null,variables:q.variables??null,query:q.query})}catch{}};page.on('request',handler);const measure=async()=>({at:new Date().toISOString(),group:await group.ariaSnapshot(),radios:await radios.evaluateAll(es=>es.map(e=>({text:e.textContent,tag:e.tagName,checked:e.getAttribute('aria-checked'),tabIndex:e.tabIndex,disabled:e.disabled,active:e===document.activeElement}))),groupLabels:await group.evaluate(e=>({ariaLabel:e.getAttribute('aria-label'),labelledBy:e.getAttribute('aria-labelledby'),role:e.getAttribute('role')}))});try{await free.focus();const before=await measure();await free.press('ArrowRight');await page.waitForTimeout(150);const right=await measure();await group.screenshot({path:'qa-a449-keyvalue-arrow-mobile.png'});await free.focus();await free.press('ArrowDown');await page.waitForTimeout(150);const down=await measure();await free.focus();await free.press('Tab');const tab=await measure();const starter=radios.nth(1);await starter.focus();await starter.press('Space');await page.waitForTimeout(200);const spaceControl=await measure();await free.focus();await free.press('Space');await page.waitForTimeout(200);const restored=await measure();return{at:new Date().toISOString(),surface:\"keyvalue\",viewport:{width:390,height:844},url:page.url(),before,right,down,tab,spaceControl,restored,mutations,createEnabled:await page.getByRole('button',{name:\"Create Key Value Instance\",exact:true}).isEnabled()}}finally{page.off('request',handler)}}",
+      "receipt": {
+        "at": "2026-10-14T10:32:42.529Z",
+        "surface": "keyvalue",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "url": "https://dashboard.bex.co/keyvalue/new",
+        "before": {
+          "at": "2026-10-14T10:32:41.657Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month128 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter$7.00/month256 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard$21.00/month1 GB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "right": {
+          "at": "2026-10-14T10:32:41.833Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month128 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter$7.00/month256 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard$21.00/month1 GB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "down": {
+          "at": "2026-10-14T10:32:42.076Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month128 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter$7.00/month256 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard$21.00/month1 GB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "tab": {
+          "at": "2026-10-14T10:32:42.089Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month128 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Starter$7.00/month256 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Standard$21.00/month1 GB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "spaceControl": {
+          "at": "2026-10-14T10:32:42.302Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\"\n  - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month128 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Starter$7.00/month256 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Standard$21.00/month1 GB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "restored": {
+          "at": "2026-10-14T10:32:42.520Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month128 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter$7.00/month256 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard$21.00/month1 GB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "mutations": [],
+        "createEnabled": false
+      }
+    },
+    "WebDesktop": {
+      "code": "async(page)=>{await page.setViewportSize({width:1440,height:1000});await page.goto('https://dashboard.bex.co/services/new?type=web_service');const free=page.getByRole('radio',{name:\"Free $0.00/month 512 MB RAM · 0.1 CPU\",exact:true});await free.waitFor({timeout:20000});await page.waitForTimeout(900);const group=page.getByRole('radiogroup').filter({has:free});if(await group.count()!==1)throw new Error('Ambiguous plan group');const radios=group.getByRole('radio');const mutations=[];const handler=request=>{try{const body=request.postDataJSON();for(const q of (Array.isArray(body)?body:[body]))if(/^\\s*mutation\\b/.test(q?.query||''))mutations.push({operationName:q.operationName??null,variables:q.variables??null,query:q.query})}catch{}};page.on('request',handler);const measure=async()=>({at:new Date().toISOString(),group:await group.ariaSnapshot(),radios:await radios.evaluateAll(es=>es.map(e=>({text:e.textContent,tag:e.tagName,checked:e.getAttribute('aria-checked'),tabIndex:e.tabIndex,disabled:e.disabled,active:e===document.activeElement}))),groupLabels:await group.evaluate(e=>({ariaLabel:e.getAttribute('aria-label'),labelledBy:e.getAttribute('aria-labelledby'),role:e.getAttribute('role')}))});try{await free.focus();const before=await measure();await free.press('ArrowRight');await page.waitForTimeout(150);const right=await measure();await group.screenshot({path:'qa-a449-services-arrow-desktop.png'});await free.focus();await free.press('ArrowDown');await page.waitForTimeout(150);const down=await measure();await free.focus();await free.press('Tab');const tab=await measure();const starter=radios.nth(1);await starter.focus();await starter.press('Space');await page.waitForTimeout(200);const spaceControl=await measure();await free.focus();await free.press('Space');await page.waitForTimeout(200);const restored=await measure();return{at:new Date().toISOString(),surface:\"services\",viewport:{width:1440,height:1000},url:page.url(),before,right,down,tab,spaceControl,restored,mutations,createEnabled:await page.getByRole('button',{name:\"Deploy Service\",exact:true}).isEnabled()}}finally{page.off('request',handler)}}",
+      "receipt": {
+        "at": "2026-10-14T10:32:48.141Z",
+        "surface": "services",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "url": "https://dashboard.bex.co/services/new?type=web_service",
+        "before": {
+          "at": "2026-10-14T10:32:47.245Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 512 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $4.90/month 512 MB RAM · 0.5 CPU\"\n  - radio \"Standard $17.50/month 2 GB RAM · 1 CPU\"\n  - radio \"Pro $59.50/month 4 GB RAM · 2 CPU\"\n  - radio \"Pro Plus $122.50/month 8 GB RAM · 4 CPU\"\n  - radio \"Pro Max $157.50/month 16 GB RAM · 4 CPU\"\n  - radio \"Pro Ultra $315.00/month 32 GB RAM · 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month512 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter$4.90/month512 MB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard$17.50/month2 GB RAM · 1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro$59.50/month4 GB RAM · 2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus$122.50/month8 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max$157.50/month16 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra$315.00/month32 GB RAM · 8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "right": {
+          "at": "2026-10-14T10:32:47.427Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 512 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $4.90/month 512 MB RAM · 0.5 CPU\"\n  - radio \"Standard $17.50/month 2 GB RAM · 1 CPU\"\n  - radio \"Pro $59.50/month 4 GB RAM · 2 CPU\"\n  - radio \"Pro Plus $122.50/month 8 GB RAM · 4 CPU\"\n  - radio \"Pro Max $157.50/month 16 GB RAM · 4 CPU\"\n  - radio \"Pro Ultra $315.00/month 32 GB RAM · 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month512 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter$4.90/month512 MB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard$17.50/month2 GB RAM · 1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro$59.50/month4 GB RAM · 2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus$122.50/month8 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max$157.50/month16 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra$315.00/month32 GB RAM · 8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "down": {
+          "at": "2026-10-14T10:32:47.675Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 512 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $4.90/month 512 MB RAM · 0.5 CPU\"\n  - radio \"Standard $17.50/month 2 GB RAM · 1 CPU\"\n  - radio \"Pro $59.50/month 4 GB RAM · 2 CPU\"\n  - radio \"Pro Plus $122.50/month 8 GB RAM · 4 CPU\"\n  - radio \"Pro Max $157.50/month 16 GB RAM · 4 CPU\"\n  - radio \"Pro Ultra $315.00/month 32 GB RAM · 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month512 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter$4.90/month512 MB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard$17.50/month2 GB RAM · 1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro$59.50/month4 GB RAM · 2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus$122.50/month8 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max$157.50/month16 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra$315.00/month32 GB RAM · 8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "tab": {
+          "at": "2026-10-14T10:32:47.693Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 512 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $4.90/month 512 MB RAM · 0.5 CPU\"\n  - radio \"Standard $17.50/month 2 GB RAM · 1 CPU\"\n  - radio \"Pro $59.50/month 4 GB RAM · 2 CPU\"\n  - radio \"Pro Plus $122.50/month 8 GB RAM · 4 CPU\"\n  - radio \"Pro Max $157.50/month 16 GB RAM · 4 CPU\"\n  - radio \"Pro Ultra $315.00/month 32 GB RAM · 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month512 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Starter$4.90/month512 MB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Standard$17.50/month2 GB RAM · 1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro$59.50/month4 GB RAM · 2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus$122.50/month8 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max$157.50/month16 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra$315.00/month32 GB RAM · 8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "spaceControl": {
+          "at": "2026-10-14T10:32:47.911Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 512 MB RAM · 0.1 CPU\"\n  - radio \"Starter $4.90/month 512 MB RAM · 0.5 CPU\" [checked]\n  - radio \"Standard $17.50/month 2 GB RAM · 1 CPU\"\n  - radio \"Pro $59.50/month 4 GB RAM · 2 CPU\"\n  - radio \"Pro Plus $122.50/month 8 GB RAM · 4 CPU\"\n  - radio \"Pro Max $157.50/month 16 GB RAM · 4 CPU\"\n  - radio \"Pro Ultra $315.00/month 32 GB RAM · 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month512 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Starter$4.90/month512 MB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Standard$17.50/month2 GB RAM · 1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro$59.50/month4 GB RAM · 2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus$122.50/month8 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max$157.50/month16 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra$315.00/month32 GB RAM · 8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "restored": {
+          "at": "2026-10-14T10:32:48.132Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 512 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $4.90/month 512 MB RAM · 0.5 CPU\"\n  - radio \"Standard $17.50/month 2 GB RAM · 1 CPU\"\n  - radio \"Pro $59.50/month 4 GB RAM · 2 CPU\"\n  - radio \"Pro Plus $122.50/month 8 GB RAM · 4 CPU\"\n  - radio \"Pro Max $157.50/month 16 GB RAM · 4 CPU\"\n  - radio \"Pro Ultra $315.00/month 32 GB RAM · 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month512 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter$4.90/month512 MB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard$17.50/month2 GB RAM · 1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro$59.50/month4 GB RAM · 2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus$122.50/month8 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max$157.50/month16 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra$315.00/month32 GB RAM · 8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "mutations": [],
+        "createEnabled": false
+      }
+    },
+    "WebMobile": {
+      "code": "async(page)=>{await page.setViewportSize({width:390,height:844});await page.goto('https://dashboard.bex.co/services/new?type=web_service');const free=page.getByRole('radio',{name:\"Free $0.00/month 512 MB RAM · 0.1 CPU\",exact:true});await free.waitFor({timeout:20000});await page.waitForTimeout(900);const group=page.getByRole('radiogroup').filter({has:free});if(await group.count()!==1)throw new Error('Ambiguous plan group');const radios=group.getByRole('radio');const mutations=[];const handler=request=>{try{const body=request.postDataJSON();for(const q of (Array.isArray(body)?body:[body]))if(/^\\s*mutation\\b/.test(q?.query||''))mutations.push({operationName:q.operationName??null,variables:q.variables??null,query:q.query})}catch{}};page.on('request',handler);const measure=async()=>({at:new Date().toISOString(),group:await group.ariaSnapshot(),radios:await radios.evaluateAll(es=>es.map(e=>({text:e.textContent,tag:e.tagName,checked:e.getAttribute('aria-checked'),tabIndex:e.tabIndex,disabled:e.disabled,active:e===document.activeElement}))),groupLabels:await group.evaluate(e=>({ariaLabel:e.getAttribute('aria-label'),labelledBy:e.getAttribute('aria-labelledby'),role:e.getAttribute('role')}))});try{await free.focus();const before=await measure();await free.press('ArrowRight');await page.waitForTimeout(150);const right=await measure();await group.screenshot({path:'qa-a449-services-arrow-mobile.png'});await free.focus();await free.press('ArrowDown');await page.waitForTimeout(150);const down=await measure();await free.focus();await free.press('Tab');const tab=await measure();const starter=radios.nth(1);await starter.focus();await starter.press('Space');await page.waitForTimeout(200);const spaceControl=await measure();await free.focus();await free.press('Space');await page.waitForTimeout(200);const restored=await measure();return{at:new Date().toISOString(),surface:\"services\",viewport:{width:390,height:844},url:page.url(),before,right,down,tab,spaceControl,restored,mutations,createEnabled:await page.getByRole('button',{name:\"Deploy Service\",exact:true}).isEnabled()}}finally{page.off('request',handler)}}",
+      "receipt": {
+        "at": "2026-10-14T10:32:54.525Z",
+        "surface": "services",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "url": "https://dashboard.bex.co/services/new?type=web_service",
+        "before": {
+          "at": "2026-10-14T10:32:53.627Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 512 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $4.90/month 512 MB RAM · 0.5 CPU\"\n  - radio \"Standard $17.50/month 2 GB RAM · 1 CPU\"\n  - radio \"Pro $59.50/month 4 GB RAM · 2 CPU\"\n  - radio \"Pro Plus $122.50/month 8 GB RAM · 4 CPU\"\n  - radio \"Pro Max $157.50/month 16 GB RAM · 4 CPU\"\n  - radio \"Pro Ultra $315.00/month 32 GB RAM · 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month512 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter$4.90/month512 MB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard$17.50/month2 GB RAM · 1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro$59.50/month4 GB RAM · 2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus$122.50/month8 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max$157.50/month16 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra$315.00/month32 GB RAM · 8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "right": {
+          "at": "2026-10-14T10:32:53.807Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 512 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $4.90/month 512 MB RAM · 0.5 CPU\"\n  - radio \"Standard $17.50/month 2 GB RAM · 1 CPU\"\n  - radio \"Pro $59.50/month 4 GB RAM · 2 CPU\"\n  - radio \"Pro Plus $122.50/month 8 GB RAM · 4 CPU\"\n  - radio \"Pro Max $157.50/month 16 GB RAM · 4 CPU\"\n  - radio \"Pro Ultra $315.00/month 32 GB RAM · 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month512 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter$4.90/month512 MB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard$17.50/month2 GB RAM · 1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro$59.50/month4 GB RAM · 2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus$122.50/month8 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max$157.50/month16 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra$315.00/month32 GB RAM · 8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "down": {
+          "at": "2026-10-14T10:32:54.063Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 512 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $4.90/month 512 MB RAM · 0.5 CPU\"\n  - radio \"Standard $17.50/month 2 GB RAM · 1 CPU\"\n  - radio \"Pro $59.50/month 4 GB RAM · 2 CPU\"\n  - radio \"Pro Plus $122.50/month 8 GB RAM · 4 CPU\"\n  - radio \"Pro Max $157.50/month 16 GB RAM · 4 CPU\"\n  - radio \"Pro Ultra $315.00/month 32 GB RAM · 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month512 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter$4.90/month512 MB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard$17.50/month2 GB RAM · 1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro$59.50/month4 GB RAM · 2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus$122.50/month8 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max$157.50/month16 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra$315.00/month32 GB RAM · 8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "tab": {
+          "at": "2026-10-14T10:32:54.077Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 512 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $4.90/month 512 MB RAM · 0.5 CPU\"\n  - radio \"Standard $17.50/month 2 GB RAM · 1 CPU\"\n  - radio \"Pro $59.50/month 4 GB RAM · 2 CPU\"\n  - radio \"Pro Plus $122.50/month 8 GB RAM · 4 CPU\"\n  - radio \"Pro Max $157.50/month 16 GB RAM · 4 CPU\"\n  - radio \"Pro Ultra $315.00/month 32 GB RAM · 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month512 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Starter$4.90/month512 MB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Standard$17.50/month2 GB RAM · 1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro$59.50/month4 GB RAM · 2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus$122.50/month8 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max$157.50/month16 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra$315.00/month32 GB RAM · 8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "spaceControl": {
+          "at": "2026-10-14T10:32:54.294Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 512 MB RAM · 0.1 CPU\"\n  - radio \"Starter $4.90/month 512 MB RAM · 0.5 CPU\" [checked]\n  - radio \"Standard $17.50/month 2 GB RAM · 1 CPU\"\n  - radio \"Pro $59.50/month 4 GB RAM · 2 CPU\"\n  - radio \"Pro Plus $122.50/month 8 GB RAM · 4 CPU\"\n  - radio \"Pro Max $157.50/month 16 GB RAM · 4 CPU\"\n  - radio \"Pro Ultra $315.00/month 32 GB RAM · 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month512 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Starter$4.90/month512 MB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Standard$17.50/month2 GB RAM · 1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro$59.50/month4 GB RAM · 2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus$122.50/month8 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max$157.50/month16 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra$315.00/month32 GB RAM · 8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "restored": {
+          "at": "2026-10-14T10:32:54.514Z",
+          "group": "- radiogroup:\n  - radio \"Free $0.00/month 512 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $4.90/month 512 MB RAM · 0.5 CPU\"\n  - radio \"Standard $17.50/month 2 GB RAM · 1 CPU\"\n  - radio \"Pro $59.50/month 4 GB RAM · 2 CPU\"\n  - radio \"Pro Plus $122.50/month 8 GB RAM · 4 CPU\"\n  - radio \"Pro Max $157.50/month 16 GB RAM · 4 CPU\"\n  - radio \"Pro Ultra $315.00/month 32 GB RAM · 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free$0.00/month512 MB RAM · 0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter$4.90/month512 MB RAM · 0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard$17.50/month2 GB RAM · 1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro$59.50/month4 GB RAM · 2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus$122.50/month8 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max$157.50/month16 GB RAM · 4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra$315.00/month32 GB RAM · 8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "groupLabels": {
+            "ariaLabel": null,
+            "labelledBy": null,
+            "role": "radiogroup"
+          }
+        },
+        "mutations": [],
+        "createEnabled": false
+      }
+    }
+  },
+  "cleanup": {
+    "at": "2026-10-14T10:34:42.697Z",
+    "request": {
+      "operationName": "Qaa449Inventory",
+      "query": "query Qaa449Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    }
+  },
+  "inventoryChecks": [
+    {
+      "family": "blueprints",
+      "before": ["blp-d9nqg95cavls73fp8m10"],
+      "after": ["blp-d9nqg95cavls73fp8m10"],
+      "match": true
+    },
+    {
+      "family": "databases",
+      "before": [
+        "dpg-d9nqg95cavls73fp8m20",
+        "dpg-d9rrkoc4h4mc73edurp0",
+        "dpg-d9rs3ee0ccis738kc7c0",
+        "dpg-db34l9bor55s73cqpq9g"
+      ],
+      "after": [
+        "dpg-d9nqg95cavls73fp8m20",
+        "dpg-d9rrkoc4h4mc73edurp0",
+        "dpg-d9rs3ee0ccis738kc7c0",
+        "dpg-db34l9bor55s73cqpq9g"
+      ],
+      "match": true
+    },
+    {
+      "family": "envGroups",
+      "before": ["evg-db0s94c48ccs739jikr0"],
+      "after": ["evg-db0s94c48ccs739jikr0"],
+      "match": true
+    },
+    {
+      "family": "keyValues",
+      "before": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+      "after": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+      "match": true
+    },
+    {
+      "family": "projects",
+      "before": [
+        "prj-d9dgeo0bd9nc73a0vh1g",
+        "prj-d9e5qct5qe4s73b1mjn0",
+        "prj-d9sgfnbjghus73cg6hg0"
+      ],
+      "after": [
+        "prj-d9dgeo0bd9nc73a0vh1g",
+        "prj-d9e5qct5qe4s73b1mjn0",
+        "prj-d9sgfnbjghus73cg6hg0"
+      ],
+      "match": true
+    },
+    {
+      "family": "services",
+      "before": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ],
+      "after": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ],
+      "match": true
+    },
+    {
+      "family": "webhookEndpoints",
+      "before": [],
+      "after": [],
+      "match": true
+    }
+  ],
+  "sessionCleanup": {
+    "at": "2026-10-14T10:36:52.114Z",
+    "owners": {
+      "url": "https://api.bex.co/v1/owners",
+      "status": 401,
+      "body": "{\"error\":\"unauthorized\",\"id\":\"unauthorized\",\"message\":\"unauthorized\"}\n"
+    },
+    "cookieCount": 0,
+    "pageCount": 1,
+    "url": "about:blank"
+  },
+  "screenshotsViewed": [
+    ".playwright-mcp/qa-a449-keyvalue-arrow-desktop.png",
+    ".playwright-mcp/qa-a449-keyvalue-arrow-mobile.png",
+    ".playwright-mcp/qa-a449-services-arrow-desktop.png",
+    ".playwright-mcp/qa-a449-services-arrow-mobile.png"
+  ],
+  "control": {
+    "spaceSelectsStarter": true,
+    "spaceRestoresFree": true,
+    "allFormsUnsubmitted": true,
+    "mutations": 0,
+    "namedDatabaseCallerSource": "database-plan-section.tsx:111–117 already passes ariaLabel(databases.planTitle)"
+  },
+  "primaryReference": {
+    "url": "https://www.w3.org/WAI/ARIA/apg/patterns/radio/",
+    "retrieved": "2026-10-14",
+    "scope": "Non-toolbar radio group keyboard/accessible label contract"
+  },
+  "console": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "limits": [
+    "Right/Down and Tab reproduced; Left/Up, wraparound and reverse-entry not exercised and are implementation verification",
+    "Key Value and Web create forms at two widths exercised; Postgres and Key Value detail plan keyboard behavior is source-traced, not replayed live",
+    "Private/worker/cron create variants, disabled groups, empty/unknown selected tier and changed catalogs unprobed",
+    "Two initial probes ran but failed to return due an undefined harness surface variable; all four final receipts came from corrected fresh probes",
+    "No authenticated membership variants, purchases, submissions, plan-save API or product implementation tested"
+  ]
+}
