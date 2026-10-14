@@ -158,7 +158,49 @@ describe("SQLConsole", () => {
     const rendered = within(row as HTMLElement)
       .getAllByRole("cell")
       .map((cell) => cell.textContent);
-    expect(rendered).toEqual([...cells.slice(0, -1), "NULL"]);
+    expect(rendered.slice(0, -1)).toEqual(cells.slice(0, -1));
+    expect(
+      within(row as HTMLElement).getByRole("cell", {
+        name: "SQL NULL (no value)",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("distinguishes SQL null from the literal text NULL (w4/292)", async () => {
+    mocks.execute.mockResolvedValue({
+      columns: ["value"],
+      rows: [[null], ["NULL"], ["null"], [""], ["雪 café"]],
+      rowCount: 5,
+      truncated: false,
+    });
+    const user = userEvent.setup();
+    render(<SQLConsole id="orders-db" />);
+
+    await user.click(screen.getByRole("button", { name: "Run query" }));
+    await screen.findByText("5 rows returned");
+
+    const table = screen.getByRole("table");
+    const cells = within(table).getAllByRole("cell");
+    const [missing, literal] = cells;
+    // Distinct accessible meanings: exactly one cell is named "NULL" (the
+    // string) and the real null is announced as SQL NULL / no value.
+    expect(within(table).getAllByRole("cell", { name: "NULL" })).toEqual([
+      literal,
+    ]);
+    expect(
+      within(table).getByRole("cell", { name: "SQL NULL (no value)" }),
+    ).toBe(missing);
+    expect(cells.slice(1).map((cell) => cell.textContent)).toEqual([
+      "NULL",
+      "null",
+      "",
+      "雪 café",
+    ]);
+    // The literal string stays a bare, unstyled text node; the null marker is
+    // a separate decorated element, so they cannot render identically.
+    expect(literal.innerHTML).toBe("NULL");
+    expect(missing.innerHTML).not.toBe(literal.innerHTML);
+    expect(within(missing).getByText("NULL")).toHaveClass("italic");
   });
 
   it("shows execution errors without swallowing them", async () => {

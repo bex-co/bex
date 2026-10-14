@@ -1371,6 +1371,11 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "NULL",
     description: "SQL console null cell value",
   },
+  "databases.sqlNullLabel": {
+    message: "SQL NULL（无值）",
+    description:
+      "SQL console accessible meaning of a null cell, distinct from the literal text NULL",
+  },
   "databases.sqlNoRows": {
     message: "查询未返回任何行。",
     description: "SQL console empty result message",

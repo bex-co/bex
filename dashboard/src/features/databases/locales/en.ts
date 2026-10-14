@@ -1422,6 +1422,11 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "NULL",
     description: "SQL console null cell value",
   },
+  "databases.sqlNullLabel": {
+    message: "SQL NULL (no value)",
+    description:
+      "SQL console accessible meaning of a null cell, distinct from the literal text NULL",
+  },
   "databases.sqlNoRows": {
     message: "The query returned no rows.",
     description: "SQL console empty result message",

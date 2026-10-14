@@ -197,9 +197,21 @@ export function SQLConsole({
                                 className="max-w-80 font-mono whitespace-pre-wrap"
                               >
                                 {row[cellIndex] === null ||
-                                row[cellIndex] === undefined
-                                  ? t("databases.sqlNull")
-                                  : row[cellIndex]}
+                                row[cellIndex] === undefined ? (
+                                  <>
+                                    <span
+                                      aria-hidden="true"
+                                      className="rounded-sm border border-dashed px-1 text-xs italic text-muted-foreground"
+                                    >
+                                      {t("databases.sqlNull")}
+                                    </span>
+                                    <span className="sr-only">
+                                      {t("databases.sqlNullLabel")}
+                                    </span>
+                                  </>
+                                ) : (
+                                  row[cellIndex]
+                                )}
                               </TableCell>
                             ))}
                           </TableRow>
