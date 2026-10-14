@@ -1,0 +1,3417 @@
+{
+  "pass": "a475",
+  "fixture": {
+    "id": "srv-db7rd1mt41sc7388odc0",
+    "name": "qa-20261014-a475-history",
+    "plan": "free",
+    "image": "busybox:1.37",
+    "schedule": "0 0 1 1 *"
+  },
+  "baseline": {
+    "at": "2026-10-14T17:05:45.855Z",
+    "request": {
+      "operationName": "Qaa475Inventory",
+      "query": "query Qaa475Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    }
+  },
+  "create": {
+    "at": "2026-10-14T17:06:15.572Z",
+    "request": {
+      "operationName": "CreateService",
+      "variables": {
+        "image": "docker.io/library/busybox:1.37",
+        "name": "qa-20261014-a475-history",
+        "type": "cron_job",
+        "registryCredentialId": "",
+        "runtime": "image",
+        "plan": "free",
+        "schedule": "0 0 1 1 *",
+        "command": "sh -c 'printf QA_A475_OK; exit 0'",
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "createService": {
+          "__typename": "Service",
+          "environmentId": null,
+          "id": "srv-db7rd1mt41sc7388odc0",
+          "latestDeployId": "dep-db7rd1mt41sc7388odcg",
+          "name": "qa-20261014-a475-history",
+          "phase": "",
+          "projectId": null,
+          "registryCredentialId": "",
+          "type": "cron_job"
+        }
+      }
+    },
+    "url": "https://dashboard.bex.co/services/srv-db7rd1mt41sc7388odc0/deploys/dep-db7rd1mt41sc7388odcg"
+  },
+  "initial": {
+    "at": "2026-10-14T17:06:38.671Z",
+    "request": {
+      "operationName": "Qaa475History",
+      "query": "query Qaa475History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+      "variables": {
+        "id": "srv-db7rd1mt41sc7388odc0"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "cronJobRuns": [],
+        "deploys": [
+          {
+            "id": "dep-db7rd1mt41sc7388odcg",
+            "status": "live",
+            "trigger": "create"
+          }
+        ],
+        "server": {
+          "command": "sh -c 'printf QA_A475_OK; exit 0'",
+          "id": "srv-db7rd1mt41sc7388odc0",
+          "lastSuccessfulRunAt": "",
+          "name": "qa-20261014-a475-history",
+          "nextRunAt": "2027-01-01T00:00:00Z",
+          "phase": "Running",
+          "runs": [],
+          "schedule": "0 0 1 1 *"
+        }
+      }
+    }
+  },
+  "successTrigger": {
+    "at": "2026-10-14T17:07:04.637Z",
+    "request": {
+      "operationName": "RunCronJob",
+      "variables": {
+        "id": "srv-db7rd1mt41sc7388odc0"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "mutation RunCronJob($id: String!) {\n  runCronJob(id: $id) {\n    id\n    status\n    startedAt\n    finishedAt\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "runCronJob": {
+          "__typename": "CronRun",
+          "finishedAt": "",
+          "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+          "startedAt": "",
+          "status": "pending"
+        }
+      }
+    },
+    "url": "https://dashboard.bex.co/services/srv-db7rd1mt41sc7388odc0/events"
+  },
+  "success": {
+    "request": {
+      "operationName": "Qaa475History",
+      "query": "query Qaa475History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+      "variables": {
+        "id": "srv-db7rd1mt41sc7388odc0"
+      }
+    },
+    "checks": [
+      {
+        "at": "2026-10-14T17:07:30.492Z",
+        "status": 200,
+        "body": {
+          "data": {
+            "cronJobRuns": [
+              {
+                "finishedAt": "2026-10-14T17:07:08Z",
+                "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                "startedAt": "2026-10-14T17:07:03Z",
+                "status": "successful"
+              }
+            ],
+            "deploys": [
+              {
+                "id": "dep-db7rd1mt41sc7388odcg",
+                "status": "live",
+                "trigger": "create"
+              }
+            ],
+            "server": {
+              "command": "sh -c 'printf QA_A475_OK; exit 0'",
+              "id": "srv-db7rd1mt41sc7388odc0",
+              "lastSuccessfulRunAt": "2026-10-14T17:07:08Z",
+              "name": "qa-20261014-a475-history",
+              "nextRunAt": "2027-01-01T00:00:00Z",
+              "phase": "Running",
+              "runs": [
+                {
+                  "finishedAt": "2026-10-14T17:07:08Z",
+                  "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                  "startedAt": "2026-10-14T17:07:03Z",
+                  "status": "successful"
+                }
+              ],
+              "schedule": "0 0 1 1 *"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "failureSave": {
+    "at": "2026-10-14T17:09:32.732Z",
+    "request": {
+      "operationName": "UpdateCronJob",
+      "variables": {
+        "id": "srv-db7rd1mt41sc7388odc0",
+        "schedule": "0 0 1 1 *",
+        "command": "sh -c 'printf QA_A475_FAIL; exit 7'"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "mutation UpdateCronJob($id: String!, $schedule: String!, $command: String, $confirm: String) {\n  updateCronJob(\n    id: $id\n    schedule: $schedule\n    command: $command\n    confirm: $confirm\n  ) {\n    id\n    schedule\n    command\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "updateCronJob": {
+          "__typename": "Service",
+          "command": "sh -c 'printf QA_A475_FAIL; exit 7'",
+          "id": "srv-db7rd1mt41sc7388odc0",
+          "schedule": "0 0 1 1 *"
+        }
+      }
+    },
+    "url": "https://dashboard.bex.co/services/srv-db7rd1mt41sc7388odc0/settings#deploy"
+  },
+  "failureTrigger": {
+    "at": "2026-10-14T17:09:37.914Z",
+    "request": {
+      "operationName": "RunCronJob",
+      "variables": {
+        "id": "srv-db7rd1mt41sc7388odc0"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "mutation RunCronJob($id: String!) {\n  runCronJob(id: $id) {\n    id\n    status\n    startedAt\n    finishedAt\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "runCronJob": {
+          "__typename": "CronRun",
+          "finishedAt": "",
+          "id": "crr-m9r0i60abb555k0p53vq",
+          "startedAt": "",
+          "status": "pending"
+        }
+      }
+    },
+    "url": "https://dashboard.bex.co/services/srv-db7rd1mt41sc7388odc0/events"
+  },
+  "failureControl": {
+    "request": {
+      "operationName": "Qaa475History",
+      "query": "query Qaa475History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+      "variables": {
+        "id": "srv-db7rd1mt41sc7388odc0"
+      }
+    },
+    "checks": [
+      {
+        "at": "2026-10-14T17:09:51.635Z",
+        "status": 200,
+        "body": {
+          "data": {
+            "cronJobRuns": [
+              {
+                "finishedAt": "2026-10-14T17:09:41Z",
+                "id": "crr-m9r0i60abb555k0p53vq",
+                "startedAt": "2026-10-14T17:09:37Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:07:08Z",
+                "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                "startedAt": "2026-10-14T17:07:03Z",
+                "status": "successful"
+              }
+            ],
+            "deploys": [
+              {
+                "id": "dep-db7reipllfps73emuej0",
+                "status": "live",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rd1mt41sc7388odcg",
+                "status": "deactivated",
+                "trigger": "create"
+              }
+            ],
+            "server": {
+              "command": "sh -c 'printf QA_A475_FAIL; exit 7'",
+              "id": "srv-db7rd1mt41sc7388odc0",
+              "lastSuccessfulRunAt": "2026-10-14T17:07:08Z",
+              "name": "qa-20261014-a475-history",
+              "nextRunAt": "2027-01-01T00:00:00Z",
+              "phase": "Running",
+              "runs": [
+                {
+                  "finishedAt": "2026-10-14T17:09:41Z",
+                  "id": "crr-m9r0i60abb555k0p53vq",
+                  "startedAt": "2026-10-14T17:09:37Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:07:08Z",
+                  "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                  "startedAt": "2026-10-14T17:07:03Z",
+                  "status": "successful"
+                }
+              ],
+              "schedule": "0 0 1 1 *"
+            }
+          }
+        }
+      }
+    ],
+    "fresh": {
+      "at": "2026-10-14T17:09:53.301Z",
+      "times": [
+        {
+          "text": "2m",
+          "dateTime": "2026-10-14T17:07:08Z"
+        },
+        {
+          "text": "in 78d",
+          "dateTime": "2027-01-01T00:00:00Z"
+        },
+        {
+          "text": "3m",
+          "dateTime": "2026-10-14T17:06:14Z"
+        },
+        {
+          "text": "now",
+          "dateTime": "2026-10-14T17:09:41Z"
+        },
+        {
+          "text": "now",
+          "dateTime": "2026-10-14T17:09:37Z"
+        },
+        {
+          "text": "now",
+          "dateTime": "2026-10-14T17:09:34Z"
+        },
+        {
+          "text": "now",
+          "dateTime": "2026-10-14T17:09:31Z"
+        },
+        {
+          "text": "2m",
+          "dateTime": "2026-10-14T17:07:08Z"
+        },
+        {
+          "text": "2m",
+          "dateTime": "2026-10-14T17:07:03Z"
+        },
+        {
+          "text": "3m",
+          "dateTime": "2026-10-14T17:06:21Z"
+        },
+        {
+          "text": "3m",
+          "dateTime": "2026-10-14T17:06:14Z"
+        },
+        {
+          "text": "now",
+          "dateTime": "2026-10-14T17:09:37Z"
+        },
+        {
+          "text": "2m",
+          "dateTime": "2026-10-14T17:07:03Z"
+        }
+      ],
+      "rows": [
+        "StartedDurationStatusActions",
+        "nowRun details, started 10/14/2026, 10:09:37 AM4sFailed",
+        "2mRun details, started 10/14/2026, 10:07:03 AM5sSucceeded"
+      ]
+    }
+  },
+  "boundaryFirstTrigger": {
+    "at": "2026-10-14T17:10:54.657Z",
+    "request": {
+      "operationName": "RunCronJob",
+      "variables": {
+        "id": "srv-db7rd1mt41sc7388odc0"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "mutation RunCronJob($id: String!) {\n  runCronJob(id: $id) {\n    id\n    status\n    startedAt\n    finishedAt\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "runCronJob": {
+          "__typename": "CronRun",
+          "finishedAt": "",
+          "id": "crr-ejqvf8jm48k0v9ovdc9a",
+          "startedAt": "",
+          "status": "pending"
+        }
+      }
+    },
+    "url": "https://dashboard.bex.co/services/srv-db7rd1mt41sc7388odc0/events"
+  },
+  "boundaryBatches": [
+    {
+      "at": "2026-10-14T17:12:00.043Z",
+      "mutations": [
+        {
+          "at": "2026-10-14T17:11:39.762Z",
+          "request": {
+            "operationName": "RunCronJob",
+            "variables": {
+              "id": "srv-db7rd1mt41sc7388odc0"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "mutation RunCronJob($id: String!) {\n  runCronJob(id: $id) {\n    id\n    status\n    startedAt\n    finishedAt\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "runCronJob": {
+                "__typename": "CronRun",
+                "finishedAt": "",
+                "id": "crr-utuf5rbpnci2c4h2am4b",
+                "startedAt": "",
+                "status": "pending"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-14T17:11:46.636Z",
+          "request": {
+            "operationName": "RunCronJob",
+            "variables": {
+              "id": "srv-db7rd1mt41sc7388odc0"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "mutation RunCronJob($id: String!) {\n  runCronJob(id: $id) {\n    id\n    status\n    startedAt\n    finishedAt\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "runCronJob": {
+                "__typename": "CronRun",
+                "finishedAt": "",
+                "id": "crr-tvluoqsvrookmctlc1bh",
+                "startedAt": "",
+                "status": "pending"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-14T17:11:53.783Z",
+          "request": {
+            "operationName": "RunCronJob",
+            "variables": {
+              "id": "srv-db7rd1mt41sc7388odc0"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "mutation RunCronJob($id: String!) {\n  runCronJob(id: $id) {\n    id\n    status\n    startedAt\n    finishedAt\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "runCronJob": {
+                "__typename": "CronRun",
+                "finishedAt": "",
+                "id": "crr-0ecocdmmg1qgudrt0340",
+                "startedAt": "",
+                "status": "pending"
+              }
+            }
+          }
+        }
+      ],
+      "checks": [
+        {
+          "at": "2026-10-14T17:11:39.064Z",
+          "request": {
+            "operationName": "Qaa475History",
+            "query": "query Qaa475History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+            "variables": {
+              "id": "srv-db7rd1mt41sc7388odc0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "cronJobRuns": [
+                {
+                  "finishedAt": "2026-10-14T17:10:57Z",
+                  "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                  "startedAt": "2026-10-14T17:10:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:09:41Z",
+                  "id": "crr-m9r0i60abb555k0p53vq",
+                  "startedAt": "2026-10-14T17:09:37Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:07:08Z",
+                  "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                  "startedAt": "2026-10-14T17:07:03Z",
+                  "status": "successful"
+                }
+              ],
+              "deploys": [
+                {
+                  "id": "dep-db7reipllfps73emuej0",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "id": "dep-db7rd1mt41sc7388odcg",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "command": "sh -c 'printf QA_A475_FAIL; exit 7'",
+                "id": "srv-db7rd1mt41sc7388odc0",
+                "lastSuccessfulRunAt": "2026-10-14T17:07:08Z",
+                "name": "qa-20261014-a475-history",
+                "nextRunAt": "2027-01-01T00:00:00Z",
+                "phase": "Running",
+                "runs": [
+                  {
+                    "finishedAt": "2026-10-14T17:10:57Z",
+                    "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                    "startedAt": "2026-10-14T17:10:53Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:09:41Z",
+                    "id": "crr-m9r0i60abb555k0p53vq",
+                    "startedAt": "2026-10-14T17:09:37Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:07:08Z",
+                    "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                    "startedAt": "2026-10-14T17:07:03Z",
+                    "status": "successful"
+                  }
+                ],
+                "schedule": "0 0 1 1 *"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-14T17:11:46.030Z",
+          "request": {
+            "operationName": "Qaa475History",
+            "query": "query Qaa475History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+            "variables": {
+              "id": "srv-db7rd1mt41sc7388odc0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "cronJobRuns": [
+                {
+                  "finishedAt": "2026-10-14T17:11:44Z",
+                  "id": "crr-utuf5rbpnci2c4h2am4b",
+                  "startedAt": "2026-10-14T17:11:39Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:10:57Z",
+                  "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                  "startedAt": "2026-10-14T17:10:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:09:41Z",
+                  "id": "crr-m9r0i60abb555k0p53vq",
+                  "startedAt": "2026-10-14T17:09:37Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:07:08Z",
+                  "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                  "startedAt": "2026-10-14T17:07:03Z",
+                  "status": "successful"
+                }
+              ],
+              "deploys": [
+                {
+                  "id": "dep-db7reipllfps73emuej0",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "id": "dep-db7rd1mt41sc7388odcg",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "command": "sh -c 'printf QA_A475_FAIL; exit 7'",
+                "id": "srv-db7rd1mt41sc7388odc0",
+                "lastSuccessfulRunAt": "2026-10-14T17:07:08Z",
+                "name": "qa-20261014-a475-history",
+                "nextRunAt": "2027-01-01T00:00:00Z",
+                "phase": "Running",
+                "runs": [
+                  {
+                    "finishedAt": "2026-10-14T17:11:44Z",
+                    "id": "crr-utuf5rbpnci2c4h2am4b",
+                    "startedAt": "2026-10-14T17:11:39Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:10:57Z",
+                    "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                    "startedAt": "2026-10-14T17:10:53Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:09:41Z",
+                    "id": "crr-m9r0i60abb555k0p53vq",
+                    "startedAt": "2026-10-14T17:09:37Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:07:08Z",
+                    "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                    "startedAt": "2026-10-14T17:07:03Z",
+                    "status": "successful"
+                  }
+                ],
+                "schedule": "0 0 1 1 *"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-14T17:11:52.998Z",
+          "request": {
+            "operationName": "Qaa475History",
+            "query": "query Qaa475History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+            "variables": {
+              "id": "srv-db7rd1mt41sc7388odc0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "cronJobRuns": [
+                {
+                  "finishedAt": "2026-10-14T17:11:51Z",
+                  "id": "crr-tvluoqsvrookmctlc1bh",
+                  "startedAt": "2026-10-14T17:11:46Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:44Z",
+                  "id": "crr-utuf5rbpnci2c4h2am4b",
+                  "startedAt": "2026-10-14T17:11:39Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:10:57Z",
+                  "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                  "startedAt": "2026-10-14T17:10:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:09:41Z",
+                  "id": "crr-m9r0i60abb555k0p53vq",
+                  "startedAt": "2026-10-14T17:09:37Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:07:08Z",
+                  "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                  "startedAt": "2026-10-14T17:07:03Z",
+                  "status": "successful"
+                }
+              ],
+              "deploys": [
+                {
+                  "id": "dep-db7reipllfps73emuej0",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "id": "dep-db7rd1mt41sc7388odcg",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "command": "sh -c 'printf QA_A475_FAIL; exit 7'",
+                "id": "srv-db7rd1mt41sc7388odc0",
+                "lastSuccessfulRunAt": "2026-10-14T17:07:08Z",
+                "name": "qa-20261014-a475-history",
+                "nextRunAt": "2027-01-01T00:00:00Z",
+                "phase": "Running",
+                "runs": [
+                  {
+                    "finishedAt": "2026-10-14T17:11:51Z",
+                    "id": "crr-tvluoqsvrookmctlc1bh",
+                    "startedAt": "2026-10-14T17:11:46Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:44Z",
+                    "id": "crr-utuf5rbpnci2c4h2am4b",
+                    "startedAt": "2026-10-14T17:11:39Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:10:57Z",
+                    "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                    "startedAt": "2026-10-14T17:10:53Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:09:41Z",
+                    "id": "crr-m9r0i60abb555k0p53vq",
+                    "startedAt": "2026-10-14T17:09:37Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:07:08Z",
+                    "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                    "startedAt": "2026-10-14T17:07:03Z",
+                    "status": "successful"
+                  }
+                ],
+                "schedule": "0 0 1 1 *"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-14T17:12:00.042Z",
+          "request": {
+            "operationName": "Qaa475History",
+            "query": "query Qaa475History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+            "variables": {
+              "id": "srv-db7rd1mt41sc7388odc0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "cronJobRuns": [
+                {
+                  "finishedAt": "2026-10-14T17:11:58Z",
+                  "id": "crr-0ecocdmmg1qgudrt0340",
+                  "startedAt": "2026-10-14T17:11:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:51Z",
+                  "id": "crr-tvluoqsvrookmctlc1bh",
+                  "startedAt": "2026-10-14T17:11:46Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:44Z",
+                  "id": "crr-utuf5rbpnci2c4h2am4b",
+                  "startedAt": "2026-10-14T17:11:39Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:10:57Z",
+                  "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                  "startedAt": "2026-10-14T17:10:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:09:41Z",
+                  "id": "crr-m9r0i60abb555k0p53vq",
+                  "startedAt": "2026-10-14T17:09:37Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:07:08Z",
+                  "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                  "startedAt": "2026-10-14T17:07:03Z",
+                  "status": "successful"
+                }
+              ],
+              "deploys": [
+                {
+                  "id": "dep-db7reipllfps73emuej0",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "id": "dep-db7rd1mt41sc7388odcg",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "command": "sh -c 'printf QA_A475_FAIL; exit 7'",
+                "id": "srv-db7rd1mt41sc7388odc0",
+                "lastSuccessfulRunAt": "2026-10-14T17:07:08Z",
+                "name": "qa-20261014-a475-history",
+                "nextRunAt": "2027-01-01T00:00:00Z",
+                "phase": "Running",
+                "runs": [
+                  {
+                    "finishedAt": "2026-10-14T17:11:58Z",
+                    "id": "crr-0ecocdmmg1qgudrt0340",
+                    "startedAt": "2026-10-14T17:11:53Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:51Z",
+                    "id": "crr-tvluoqsvrookmctlc1bh",
+                    "startedAt": "2026-10-14T17:11:46Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:44Z",
+                    "id": "crr-utuf5rbpnci2c4h2am4b",
+                    "startedAt": "2026-10-14T17:11:39Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:10:57Z",
+                    "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                    "startedAt": "2026-10-14T17:10:53Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:09:41Z",
+                    "id": "crr-m9r0i60abb555k0p53vq",
+                    "startedAt": "2026-10-14T17:09:37Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:07:08Z",
+                    "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                    "startedAt": "2026-10-14T17:07:03Z",
+                    "status": "successful"
+                  }
+                ],
+                "schedule": "0 0 1 1 *"
+              }
+            }
+          }
+        }
+      ],
+      "last": "crr-0ecocdmmg1qgudrt0340"
+    },
+    {
+      "at": "2026-10-14T17:13:15.239Z",
+      "mutations": [
+        {
+          "at": "2026-10-14T17:12:55.327Z",
+          "request": {
+            "operationName": "RunCronJob",
+            "variables": {
+              "id": "srv-db7rd1mt41sc7388odc0"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "mutation RunCronJob($id: String!) {\n  runCronJob(id: $id) {\n    id\n    status\n    startedAt\n    finishedAt\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "runCronJob": {
+                "__typename": "CronRun",
+                "finishedAt": "",
+                "id": "crr-jq170e7659s36furs5dr",
+                "startedAt": "",
+                "status": "pending"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-14T17:13:02.153Z",
+          "request": {
+            "operationName": "RunCronJob",
+            "variables": {
+              "id": "srv-db7rd1mt41sc7388odc0"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "mutation RunCronJob($id: String!) {\n  runCronJob(id: $id) {\n    id\n    status\n    startedAt\n    finishedAt\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "runCronJob": {
+                "__typename": "CronRun",
+                "finishedAt": "",
+                "id": "crr-pkcn7d3ftoa6raqasotc",
+                "startedAt": "",
+                "status": "pending"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-14T17:13:08.985Z",
+          "request": {
+            "operationName": "RunCronJob",
+            "variables": {
+              "id": "srv-db7rd1mt41sc7388odc0"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "mutation RunCronJob($id: String!) {\n  runCronJob(id: $id) {\n    id\n    status\n    startedAt\n    finishedAt\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "runCronJob": {
+                "__typename": "CronRun",
+                "finishedAt": "",
+                "id": "crr-llbl7tpnkh1s8829c04d",
+                "startedAt": "",
+                "status": "pending"
+              }
+            }
+          }
+        }
+      ],
+      "checks": [
+        {
+          "at": "2026-10-14T17:12:54.790Z",
+          "request": {
+            "operationName": "Qaa475History",
+            "query": "query Qaa475History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+            "variables": {
+              "id": "srv-db7rd1mt41sc7388odc0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "cronJobRuns": [
+                {
+                  "finishedAt": "2026-10-14T17:11:58Z",
+                  "id": "crr-0ecocdmmg1qgudrt0340",
+                  "startedAt": "2026-10-14T17:11:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:51Z",
+                  "id": "crr-tvluoqsvrookmctlc1bh",
+                  "startedAt": "2026-10-14T17:11:46Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:44Z",
+                  "id": "crr-utuf5rbpnci2c4h2am4b",
+                  "startedAt": "2026-10-14T17:11:39Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:10:57Z",
+                  "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                  "startedAt": "2026-10-14T17:10:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:09:41Z",
+                  "id": "crr-m9r0i60abb555k0p53vq",
+                  "startedAt": "2026-10-14T17:09:37Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:07:08Z",
+                  "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                  "startedAt": "2026-10-14T17:07:03Z",
+                  "status": "successful"
+                }
+              ],
+              "deploys": [
+                {
+                  "id": "dep-db7reipllfps73emuej0",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "id": "dep-db7rd1mt41sc7388odcg",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "command": "sh -c 'printf QA_A475_FAIL; exit 7'",
+                "id": "srv-db7rd1mt41sc7388odc0",
+                "lastSuccessfulRunAt": "2026-10-14T17:07:08Z",
+                "name": "qa-20261014-a475-history",
+                "nextRunAt": "2027-01-01T00:00:00Z",
+                "phase": "Running",
+                "runs": [
+                  {
+                    "finishedAt": "2026-10-14T17:11:58Z",
+                    "id": "crr-0ecocdmmg1qgudrt0340",
+                    "startedAt": "2026-10-14T17:11:53Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:51Z",
+                    "id": "crr-tvluoqsvrookmctlc1bh",
+                    "startedAt": "2026-10-14T17:11:46Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:44Z",
+                    "id": "crr-utuf5rbpnci2c4h2am4b",
+                    "startedAt": "2026-10-14T17:11:39Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:10:57Z",
+                    "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                    "startedAt": "2026-10-14T17:10:53Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:09:41Z",
+                    "id": "crr-m9r0i60abb555k0p53vq",
+                    "startedAt": "2026-10-14T17:09:37Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:07:08Z",
+                    "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                    "startedAt": "2026-10-14T17:07:03Z",
+                    "status": "successful"
+                  }
+                ],
+                "schedule": "0 0 1 1 *"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-14T17:13:01.587Z",
+          "request": {
+            "operationName": "Qaa475History",
+            "query": "query Qaa475History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+            "variables": {
+              "id": "srv-db7rd1mt41sc7388odc0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "cronJobRuns": [
+                {
+                  "finishedAt": "2026-10-14T17:12:59Z",
+                  "id": "crr-jq170e7659s36furs5dr",
+                  "startedAt": "2026-10-14T17:12:55Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:58Z",
+                  "id": "crr-0ecocdmmg1qgudrt0340",
+                  "startedAt": "2026-10-14T17:11:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:51Z",
+                  "id": "crr-tvluoqsvrookmctlc1bh",
+                  "startedAt": "2026-10-14T17:11:46Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:44Z",
+                  "id": "crr-utuf5rbpnci2c4h2am4b",
+                  "startedAt": "2026-10-14T17:11:39Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:10:57Z",
+                  "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                  "startedAt": "2026-10-14T17:10:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:09:41Z",
+                  "id": "crr-m9r0i60abb555k0p53vq",
+                  "startedAt": "2026-10-14T17:09:37Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:07:08Z",
+                  "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                  "startedAt": "2026-10-14T17:07:03Z",
+                  "status": "successful"
+                }
+              ],
+              "deploys": [
+                {
+                  "id": "dep-db7reipllfps73emuej0",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "id": "dep-db7rd1mt41sc7388odcg",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "command": "sh -c 'printf QA_A475_FAIL; exit 7'",
+                "id": "srv-db7rd1mt41sc7388odc0",
+                "lastSuccessfulRunAt": "2026-10-14T17:07:08Z",
+                "name": "qa-20261014-a475-history",
+                "nextRunAt": "2027-01-01T00:00:00Z",
+                "phase": "Running",
+                "runs": [
+                  {
+                    "finishedAt": "2026-10-14T17:12:59Z",
+                    "id": "crr-jq170e7659s36furs5dr",
+                    "startedAt": "2026-10-14T17:12:55Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:58Z",
+                    "id": "crr-0ecocdmmg1qgudrt0340",
+                    "startedAt": "2026-10-14T17:11:53Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:51Z",
+                    "id": "crr-tvluoqsvrookmctlc1bh",
+                    "startedAt": "2026-10-14T17:11:46Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:44Z",
+                    "id": "crr-utuf5rbpnci2c4h2am4b",
+                    "startedAt": "2026-10-14T17:11:39Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:10:57Z",
+                    "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                    "startedAt": "2026-10-14T17:10:53Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:09:41Z",
+                    "id": "crr-m9r0i60abb555k0p53vq",
+                    "startedAt": "2026-10-14T17:09:37Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:07:08Z",
+                    "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                    "startedAt": "2026-10-14T17:07:03Z",
+                    "status": "successful"
+                  }
+                ],
+                "schedule": "0 0 1 1 *"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-14T17:13:08.410Z",
+          "request": {
+            "operationName": "Qaa475History",
+            "query": "query Qaa475History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+            "variables": {
+              "id": "srv-db7rd1mt41sc7388odc0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "cronJobRuns": [
+                {
+                  "finishedAt": "2026-10-14T17:13:06Z",
+                  "id": "crr-pkcn7d3ftoa6raqasotc",
+                  "startedAt": "2026-10-14T17:13:02Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:12:59Z",
+                  "id": "crr-jq170e7659s36furs5dr",
+                  "startedAt": "2026-10-14T17:12:55Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:58Z",
+                  "id": "crr-0ecocdmmg1qgudrt0340",
+                  "startedAt": "2026-10-14T17:11:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:51Z",
+                  "id": "crr-tvluoqsvrookmctlc1bh",
+                  "startedAt": "2026-10-14T17:11:46Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:44Z",
+                  "id": "crr-utuf5rbpnci2c4h2am4b",
+                  "startedAt": "2026-10-14T17:11:39Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:10:57Z",
+                  "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                  "startedAt": "2026-10-14T17:10:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:09:41Z",
+                  "id": "crr-m9r0i60abb555k0p53vq",
+                  "startedAt": "2026-10-14T17:09:37Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:07:08Z",
+                  "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                  "startedAt": "2026-10-14T17:07:03Z",
+                  "status": "successful"
+                }
+              ],
+              "deploys": [
+                {
+                  "id": "dep-db7reipllfps73emuej0",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "id": "dep-db7rd1mt41sc7388odcg",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "command": "sh -c 'printf QA_A475_FAIL; exit 7'",
+                "id": "srv-db7rd1mt41sc7388odc0",
+                "lastSuccessfulRunAt": "2026-10-14T17:07:08Z",
+                "name": "qa-20261014-a475-history",
+                "nextRunAt": "2027-01-01T00:00:00Z",
+                "phase": "Running",
+                "runs": [
+                  {
+                    "finishedAt": "2026-10-14T17:13:06Z",
+                    "id": "crr-pkcn7d3ftoa6raqasotc",
+                    "startedAt": "2026-10-14T17:13:02Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:12:59Z",
+                    "id": "crr-jq170e7659s36furs5dr",
+                    "startedAt": "2026-10-14T17:12:55Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:58Z",
+                    "id": "crr-0ecocdmmg1qgudrt0340",
+                    "startedAt": "2026-10-14T17:11:53Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:51Z",
+                    "id": "crr-tvluoqsvrookmctlc1bh",
+                    "startedAt": "2026-10-14T17:11:46Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:44Z",
+                    "id": "crr-utuf5rbpnci2c4h2am4b",
+                    "startedAt": "2026-10-14T17:11:39Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:10:57Z",
+                    "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                    "startedAt": "2026-10-14T17:10:53Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:09:41Z",
+                    "id": "crr-m9r0i60abb555k0p53vq",
+                    "startedAt": "2026-10-14T17:09:37Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:07:08Z",
+                    "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                    "startedAt": "2026-10-14T17:07:03Z",
+                    "status": "successful"
+                  }
+                ],
+                "schedule": "0 0 1 1 *"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-14T17:13:15.238Z",
+          "request": {
+            "operationName": "Qaa475History",
+            "query": "query Qaa475History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+            "variables": {
+              "id": "srv-db7rd1mt41sc7388odc0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "cronJobRuns": [
+                {
+                  "finishedAt": "2026-10-14T17:13:13Z",
+                  "id": "crr-llbl7tpnkh1s8829c04d",
+                  "startedAt": "2026-10-14T17:13:08Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:06Z",
+                  "id": "crr-pkcn7d3ftoa6raqasotc",
+                  "startedAt": "2026-10-14T17:13:02Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:12:59Z",
+                  "id": "crr-jq170e7659s36furs5dr",
+                  "startedAt": "2026-10-14T17:12:55Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:58Z",
+                  "id": "crr-0ecocdmmg1qgudrt0340",
+                  "startedAt": "2026-10-14T17:11:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:51Z",
+                  "id": "crr-tvluoqsvrookmctlc1bh",
+                  "startedAt": "2026-10-14T17:11:46Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:44Z",
+                  "id": "crr-utuf5rbpnci2c4h2am4b",
+                  "startedAt": "2026-10-14T17:11:39Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:10:57Z",
+                  "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                  "startedAt": "2026-10-14T17:10:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:09:41Z",
+                  "id": "crr-m9r0i60abb555k0p53vq",
+                  "startedAt": "2026-10-14T17:09:37Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:07:08Z",
+                  "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                  "startedAt": "2026-10-14T17:07:03Z",
+                  "status": "successful"
+                }
+              ],
+              "deploys": [
+                {
+                  "id": "dep-db7reipllfps73emuej0",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "id": "dep-db7rd1mt41sc7388odcg",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "command": "sh -c 'printf QA_A475_FAIL; exit 7'",
+                "id": "srv-db7rd1mt41sc7388odc0",
+                "lastSuccessfulRunAt": "2026-10-14T17:07:08Z",
+                "name": "qa-20261014-a475-history",
+                "nextRunAt": "2027-01-01T00:00:00Z",
+                "phase": "Running",
+                "runs": [
+                  {
+                    "finishedAt": "2026-10-14T17:13:13Z",
+                    "id": "crr-llbl7tpnkh1s8829c04d",
+                    "startedAt": "2026-10-14T17:13:08Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:13:06Z",
+                    "id": "crr-pkcn7d3ftoa6raqasotc",
+                    "startedAt": "2026-10-14T17:13:02Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:12:59Z",
+                    "id": "crr-jq170e7659s36furs5dr",
+                    "startedAt": "2026-10-14T17:12:55Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:58Z",
+                    "id": "crr-0ecocdmmg1qgudrt0340",
+                    "startedAt": "2026-10-14T17:11:53Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:51Z",
+                    "id": "crr-tvluoqsvrookmctlc1bh",
+                    "startedAt": "2026-10-14T17:11:46Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:44Z",
+                    "id": "crr-utuf5rbpnci2c4h2am4b",
+                    "startedAt": "2026-10-14T17:11:39Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:10:57Z",
+                    "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                    "startedAt": "2026-10-14T17:10:53Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:09:41Z",
+                    "id": "crr-m9r0i60abb555k0p53vq",
+                    "startedAt": "2026-10-14T17:09:37Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:07:08Z",
+                    "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                    "startedAt": "2026-10-14T17:07:03Z",
+                    "status": "successful"
+                  }
+                ],
+                "schedule": "0 0 1 1 *"
+              }
+            }
+          }
+        }
+      ],
+      "last": "crr-llbl7tpnkh1s8829c04d"
+    },
+    {
+      "at": "2026-10-14T17:13:49.492Z",
+      "mutations": [
+        {
+          "at": "2026-10-14T17:13:35.316Z",
+          "request": {
+            "operationName": "RunCronJob",
+            "variables": {
+              "id": "srv-db7rd1mt41sc7388odc0"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "mutation RunCronJob($id: String!) {\n  runCronJob(id: $id) {\n    id\n    status\n    startedAt\n    finishedAt\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "runCronJob": {
+                "__typename": "CronRun",
+                "finishedAt": "",
+                "id": "crr-u1engo2vfc3bb5iu1dho",
+                "startedAt": "",
+                "status": "pending"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-14T17:13:43.084Z",
+          "request": {
+            "operationName": "RunCronJob",
+            "variables": {
+              "id": "srv-db7rd1mt41sc7388odc0"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.1.3"
+              }
+            },
+            "query": "mutation RunCronJob($id: String!) {\n  runCronJob(id: $id) {\n    id\n    status\n    startedAt\n    finishedAt\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "runCronJob": {
+                "__typename": "CronRun",
+                "finishedAt": "",
+                "id": "crr-fqgri7sdoscl0bm67nbi",
+                "startedAt": "",
+                "status": "pending"
+              }
+            }
+          }
+        }
+      ],
+      "checks": [
+        {
+          "at": "2026-10-14T17:13:34.754Z",
+          "request": {
+            "operationName": "Qaa475History",
+            "query": "query Qaa475History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+            "variables": {
+              "id": "srv-db7rd1mt41sc7388odc0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "cronJobRuns": [
+                {
+                  "finishedAt": "2026-10-14T17:13:13Z",
+                  "id": "crr-llbl7tpnkh1s8829c04d",
+                  "startedAt": "2026-10-14T17:13:08Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:06Z",
+                  "id": "crr-pkcn7d3ftoa6raqasotc",
+                  "startedAt": "2026-10-14T17:13:02Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:12:59Z",
+                  "id": "crr-jq170e7659s36furs5dr",
+                  "startedAt": "2026-10-14T17:12:55Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:58Z",
+                  "id": "crr-0ecocdmmg1qgudrt0340",
+                  "startedAt": "2026-10-14T17:11:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:51Z",
+                  "id": "crr-tvluoqsvrookmctlc1bh",
+                  "startedAt": "2026-10-14T17:11:46Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:44Z",
+                  "id": "crr-utuf5rbpnci2c4h2am4b",
+                  "startedAt": "2026-10-14T17:11:39Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:10:57Z",
+                  "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                  "startedAt": "2026-10-14T17:10:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:09:41Z",
+                  "id": "crr-m9r0i60abb555k0p53vq",
+                  "startedAt": "2026-10-14T17:09:37Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:07:08Z",
+                  "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                  "startedAt": "2026-10-14T17:07:03Z",
+                  "status": "successful"
+                }
+              ],
+              "deploys": [
+                {
+                  "id": "dep-db7reipllfps73emuej0",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "id": "dep-db7rd1mt41sc7388odcg",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "command": "sh -c 'printf QA_A475_FAIL; exit 7'",
+                "id": "srv-db7rd1mt41sc7388odc0",
+                "lastSuccessfulRunAt": "2026-10-14T17:07:08Z",
+                "name": "qa-20261014-a475-history",
+                "nextRunAt": "2027-01-01T00:00:00Z",
+                "phase": "Running",
+                "runs": [
+                  {
+                    "finishedAt": "2026-10-14T17:13:13Z",
+                    "id": "crr-llbl7tpnkh1s8829c04d",
+                    "startedAt": "2026-10-14T17:13:08Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:13:06Z",
+                    "id": "crr-pkcn7d3ftoa6raqasotc",
+                    "startedAt": "2026-10-14T17:13:02Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:12:59Z",
+                    "id": "crr-jq170e7659s36furs5dr",
+                    "startedAt": "2026-10-14T17:12:55Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:58Z",
+                    "id": "crr-0ecocdmmg1qgudrt0340",
+                    "startedAt": "2026-10-14T17:11:53Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:51Z",
+                    "id": "crr-tvluoqsvrookmctlc1bh",
+                    "startedAt": "2026-10-14T17:11:46Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:44Z",
+                    "id": "crr-utuf5rbpnci2c4h2am4b",
+                    "startedAt": "2026-10-14T17:11:39Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:10:57Z",
+                    "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                    "startedAt": "2026-10-14T17:10:53Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:09:41Z",
+                    "id": "crr-m9r0i60abb555k0p53vq",
+                    "startedAt": "2026-10-14T17:09:37Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:07:08Z",
+                    "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                    "startedAt": "2026-10-14T17:07:03Z",
+                    "status": "successful"
+                  }
+                ],
+                "schedule": "0 0 1 1 *"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-14T17:13:42.532Z",
+          "request": {
+            "operationName": "Qaa475History",
+            "query": "query Qaa475History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+            "variables": {
+              "id": "srv-db7rd1mt41sc7388odc0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "cronJobRuns": [
+                {
+                  "finishedAt": "2026-10-14T17:13:39Z",
+                  "id": "crr-u1engo2vfc3bb5iu1dho",
+                  "startedAt": "2026-10-14T17:13:35Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:13Z",
+                  "id": "crr-llbl7tpnkh1s8829c04d",
+                  "startedAt": "2026-10-14T17:13:08Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:06Z",
+                  "id": "crr-pkcn7d3ftoa6raqasotc",
+                  "startedAt": "2026-10-14T17:13:02Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:12:59Z",
+                  "id": "crr-jq170e7659s36furs5dr",
+                  "startedAt": "2026-10-14T17:12:55Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:58Z",
+                  "id": "crr-0ecocdmmg1qgudrt0340",
+                  "startedAt": "2026-10-14T17:11:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:51Z",
+                  "id": "crr-tvluoqsvrookmctlc1bh",
+                  "startedAt": "2026-10-14T17:11:46Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:44Z",
+                  "id": "crr-utuf5rbpnci2c4h2am4b",
+                  "startedAt": "2026-10-14T17:11:39Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:10:57Z",
+                  "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                  "startedAt": "2026-10-14T17:10:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:09:41Z",
+                  "id": "crr-m9r0i60abb555k0p53vq",
+                  "startedAt": "2026-10-14T17:09:37Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:07:08Z",
+                  "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                  "startedAt": "2026-10-14T17:07:03Z",
+                  "status": "successful"
+                }
+              ],
+              "deploys": [
+                {
+                  "id": "dep-db7reipllfps73emuej0",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "id": "dep-db7rd1mt41sc7388odcg",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "command": "sh -c 'printf QA_A475_FAIL; exit 7'",
+                "id": "srv-db7rd1mt41sc7388odc0",
+                "lastSuccessfulRunAt": "2026-10-14T17:07:08Z",
+                "name": "qa-20261014-a475-history",
+                "nextRunAt": "2027-01-01T00:00:00Z",
+                "phase": "Running",
+                "runs": [
+                  {
+                    "finishedAt": "2026-10-14T17:13:39Z",
+                    "id": "crr-u1engo2vfc3bb5iu1dho",
+                    "startedAt": "2026-10-14T17:13:35Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:13:13Z",
+                    "id": "crr-llbl7tpnkh1s8829c04d",
+                    "startedAt": "2026-10-14T17:13:08Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:13:06Z",
+                    "id": "crr-pkcn7d3ftoa6raqasotc",
+                    "startedAt": "2026-10-14T17:13:02Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:12:59Z",
+                    "id": "crr-jq170e7659s36furs5dr",
+                    "startedAt": "2026-10-14T17:12:55Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:58Z",
+                    "id": "crr-0ecocdmmg1qgudrt0340",
+                    "startedAt": "2026-10-14T17:11:53Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:51Z",
+                    "id": "crr-tvluoqsvrookmctlc1bh",
+                    "startedAt": "2026-10-14T17:11:46Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:44Z",
+                    "id": "crr-utuf5rbpnci2c4h2am4b",
+                    "startedAt": "2026-10-14T17:11:39Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:10:57Z",
+                    "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                    "startedAt": "2026-10-14T17:10:53Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:09:41Z",
+                    "id": "crr-m9r0i60abb555k0p53vq",
+                    "startedAt": "2026-10-14T17:09:37Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:07:08Z",
+                    "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                    "startedAt": "2026-10-14T17:07:03Z",
+                    "status": "successful"
+                  }
+                ],
+                "schedule": "0 0 1 1 *"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-14T17:13:49.488Z",
+          "request": {
+            "operationName": "Qaa475History",
+            "query": "query Qaa475History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+            "variables": {
+              "id": "srv-db7rd1mt41sc7388odc0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "cronJobRuns": [
+                {
+                  "finishedAt": "2026-10-14T17:07:08Z",
+                  "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                  "startedAt": "2026-10-14T17:07:03Z",
+                  "status": "successful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:47Z",
+                  "id": "crr-fqgri7sdoscl0bm67nbi",
+                  "startedAt": "2026-10-14T17:13:43Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:39Z",
+                  "id": "crr-u1engo2vfc3bb5iu1dho",
+                  "startedAt": "2026-10-14T17:13:35Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:13Z",
+                  "id": "crr-llbl7tpnkh1s8829c04d",
+                  "startedAt": "2026-10-14T17:13:08Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:06Z",
+                  "id": "crr-pkcn7d3ftoa6raqasotc",
+                  "startedAt": "2026-10-14T17:13:02Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:12:59Z",
+                  "id": "crr-jq170e7659s36furs5dr",
+                  "startedAt": "2026-10-14T17:12:55Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:58Z",
+                  "id": "crr-0ecocdmmg1qgudrt0340",
+                  "startedAt": "2026-10-14T17:11:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:51Z",
+                  "id": "crr-tvluoqsvrookmctlc1bh",
+                  "startedAt": "2026-10-14T17:11:46Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:44Z",
+                  "id": "crr-utuf5rbpnci2c4h2am4b",
+                  "startedAt": "2026-10-14T17:11:39Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:10:57Z",
+                  "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                  "startedAt": "2026-10-14T17:10:53Z",
+                  "status": "unsuccessful"
+                }
+              ],
+              "deploys": [
+                {
+                  "id": "dep-db7reipllfps73emuej0",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "id": "dep-db7rd1mt41sc7388odcg",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "command": "sh -c 'printf QA_A475_FAIL; exit 7'",
+                "id": "srv-db7rd1mt41sc7388odc0",
+                "lastSuccessfulRunAt": "2026-10-14T17:07:08Z",
+                "name": "qa-20261014-a475-history",
+                "nextRunAt": "2027-01-01T00:00:00Z",
+                "phase": "Running",
+                "runs": [
+                  {
+                    "finishedAt": "2026-10-14T17:07:08Z",
+                    "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                    "startedAt": "2026-10-14T17:07:03Z",
+                    "status": "successful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:13:47Z",
+                    "id": "crr-fqgri7sdoscl0bm67nbi",
+                    "startedAt": "2026-10-14T17:13:43Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:13:39Z",
+                    "id": "crr-u1engo2vfc3bb5iu1dho",
+                    "startedAt": "2026-10-14T17:13:35Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:13:13Z",
+                    "id": "crr-llbl7tpnkh1s8829c04d",
+                    "startedAt": "2026-10-14T17:13:08Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:13:06Z",
+                    "id": "crr-pkcn7d3ftoa6raqasotc",
+                    "startedAt": "2026-10-14T17:13:02Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:12:59Z",
+                    "id": "crr-jq170e7659s36furs5dr",
+                    "startedAt": "2026-10-14T17:12:55Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:58Z",
+                    "id": "crr-0ecocdmmg1qgudrt0340",
+                    "startedAt": "2026-10-14T17:11:53Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:51Z",
+                    "id": "crr-tvluoqsvrookmctlc1bh",
+                    "startedAt": "2026-10-14T17:11:46Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:11:44Z",
+                    "id": "crr-utuf5rbpnci2c4h2am4b",
+                    "startedAt": "2026-10-14T17:11:39Z",
+                    "status": "unsuccessful"
+                  },
+                  {
+                    "finishedAt": "2026-10-14T17:10:57Z",
+                    "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                    "startedAt": "2026-10-14T17:10:53Z",
+                    "status": "unsuccessful"
+                  }
+                ],
+                "schedule": "0 0 1 1 *"
+              }
+            }
+          }
+        }
+      ],
+      "last": "crr-fqgri7sdoscl0bm67nbi"
+    }
+  ],
+  "repeated": {
+    "checks": [
+      {
+        "at": "2026-10-14T17:14:11.210Z",
+        "request": {
+          "operationName": "Qaa475History",
+          "query": "query Qaa475History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+          "variables": {
+            "id": "srv-db7rd1mt41sc7388odc0"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "cronJobRuns": [
+              {
+                "finishedAt": "2026-10-14T17:07:08Z",
+                "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                "startedAt": "2026-10-14T17:07:03Z",
+                "status": "successful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:47Z",
+                "id": "crr-fqgri7sdoscl0bm67nbi",
+                "startedAt": "2026-10-14T17:13:43Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:39Z",
+                "id": "crr-u1engo2vfc3bb5iu1dho",
+                "startedAt": "2026-10-14T17:13:35Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:13Z",
+                "id": "crr-llbl7tpnkh1s8829c04d",
+                "startedAt": "2026-10-14T17:13:08Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:06Z",
+                "id": "crr-pkcn7d3ftoa6raqasotc",
+                "startedAt": "2026-10-14T17:13:02Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:12:59Z",
+                "id": "crr-jq170e7659s36furs5dr",
+                "startedAt": "2026-10-14T17:12:55Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:11:58Z",
+                "id": "crr-0ecocdmmg1qgudrt0340",
+                "startedAt": "2026-10-14T17:11:53Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:11:51Z",
+                "id": "crr-tvluoqsvrookmctlc1bh",
+                "startedAt": "2026-10-14T17:11:46Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:11:44Z",
+                "id": "crr-utuf5rbpnci2c4h2am4b",
+                "startedAt": "2026-10-14T17:11:39Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:10:57Z",
+                "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                "startedAt": "2026-10-14T17:10:53Z",
+                "status": "unsuccessful"
+              }
+            ],
+            "deploys": [
+              {
+                "id": "dep-db7reipllfps73emuej0",
+                "status": "live",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rd1mt41sc7388odcg",
+                "status": "deactivated",
+                "trigger": "create"
+              }
+            ],
+            "server": {
+              "command": "sh -c 'printf QA_A475_FAIL; exit 7'",
+              "id": "srv-db7rd1mt41sc7388odc0",
+              "lastSuccessfulRunAt": "2026-10-14T17:07:08Z",
+              "name": "qa-20261014-a475-history",
+              "nextRunAt": "2027-01-01T00:00:00Z",
+              "phase": "Running",
+              "runs": [
+                {
+                  "finishedAt": "2026-10-14T17:07:08Z",
+                  "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                  "startedAt": "2026-10-14T17:07:03Z",
+                  "status": "successful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:47Z",
+                  "id": "crr-fqgri7sdoscl0bm67nbi",
+                  "startedAt": "2026-10-14T17:13:43Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:39Z",
+                  "id": "crr-u1engo2vfc3bb5iu1dho",
+                  "startedAt": "2026-10-14T17:13:35Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:13Z",
+                  "id": "crr-llbl7tpnkh1s8829c04d",
+                  "startedAt": "2026-10-14T17:13:08Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:06Z",
+                  "id": "crr-pkcn7d3ftoa6raqasotc",
+                  "startedAt": "2026-10-14T17:13:02Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:12:59Z",
+                  "id": "crr-jq170e7659s36furs5dr",
+                  "startedAt": "2026-10-14T17:12:55Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:58Z",
+                  "id": "crr-0ecocdmmg1qgudrt0340",
+                  "startedAt": "2026-10-14T17:11:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:51Z",
+                  "id": "crr-tvluoqsvrookmctlc1bh",
+                  "startedAt": "2026-10-14T17:11:46Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:44Z",
+                  "id": "crr-utuf5rbpnci2c4h2am4b",
+                  "startedAt": "2026-10-14T17:11:39Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:10:57Z",
+                  "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                  "startedAt": "2026-10-14T17:10:53Z",
+                  "status": "unsuccessful"
+                }
+              ],
+              "schedule": "0 0 1 1 *"
+            }
+          }
+        }
+      },
+      {
+        "at": "2026-10-14T17:14:14.141Z",
+        "request": {
+          "operationName": "Qaa475History",
+          "query": "query Qaa475History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+          "variables": {
+            "id": "srv-db7rd1mt41sc7388odc0"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "cronJobRuns": [
+              {
+                "finishedAt": "2026-10-14T17:07:08Z",
+                "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                "startedAt": "2026-10-14T17:07:03Z",
+                "status": "successful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:47Z",
+                "id": "crr-fqgri7sdoscl0bm67nbi",
+                "startedAt": "2026-10-14T17:13:43Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:39Z",
+                "id": "crr-u1engo2vfc3bb5iu1dho",
+                "startedAt": "2026-10-14T17:13:35Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:13Z",
+                "id": "crr-llbl7tpnkh1s8829c04d",
+                "startedAt": "2026-10-14T17:13:08Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:06Z",
+                "id": "crr-pkcn7d3ftoa6raqasotc",
+                "startedAt": "2026-10-14T17:13:02Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:12:59Z",
+                "id": "crr-jq170e7659s36furs5dr",
+                "startedAt": "2026-10-14T17:12:55Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:11:58Z",
+                "id": "crr-0ecocdmmg1qgudrt0340",
+                "startedAt": "2026-10-14T17:11:53Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:11:51Z",
+                "id": "crr-tvluoqsvrookmctlc1bh",
+                "startedAt": "2026-10-14T17:11:46Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:11:44Z",
+                "id": "crr-utuf5rbpnci2c4h2am4b",
+                "startedAt": "2026-10-14T17:11:39Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:10:57Z",
+                "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                "startedAt": "2026-10-14T17:10:53Z",
+                "status": "unsuccessful"
+              }
+            ],
+            "deploys": [
+              {
+                "id": "dep-db7reipllfps73emuej0",
+                "status": "live",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rd1mt41sc7388odcg",
+                "status": "deactivated",
+                "trigger": "create"
+              }
+            ],
+            "server": {
+              "command": "sh -c 'printf QA_A475_FAIL; exit 7'",
+              "id": "srv-db7rd1mt41sc7388odc0",
+              "lastSuccessfulRunAt": "2026-10-14T17:07:08Z",
+              "name": "qa-20261014-a475-history",
+              "nextRunAt": "2027-01-01T00:00:00Z",
+              "phase": "Running",
+              "runs": [
+                {
+                  "finishedAt": "2026-10-14T17:07:08Z",
+                  "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                  "startedAt": "2026-10-14T17:07:03Z",
+                  "status": "successful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:47Z",
+                  "id": "crr-fqgri7sdoscl0bm67nbi",
+                  "startedAt": "2026-10-14T17:13:43Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:39Z",
+                  "id": "crr-u1engo2vfc3bb5iu1dho",
+                  "startedAt": "2026-10-14T17:13:35Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:13Z",
+                  "id": "crr-llbl7tpnkh1s8829c04d",
+                  "startedAt": "2026-10-14T17:13:08Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:06Z",
+                  "id": "crr-pkcn7d3ftoa6raqasotc",
+                  "startedAt": "2026-10-14T17:13:02Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:12:59Z",
+                  "id": "crr-jq170e7659s36furs5dr",
+                  "startedAt": "2026-10-14T17:12:55Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:58Z",
+                  "id": "crr-0ecocdmmg1qgudrt0340",
+                  "startedAt": "2026-10-14T17:11:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:51Z",
+                  "id": "crr-tvluoqsvrookmctlc1bh",
+                  "startedAt": "2026-10-14T17:11:46Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:44Z",
+                  "id": "crr-utuf5rbpnci2c4h2am4b",
+                  "startedAt": "2026-10-14T17:11:39Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:10:57Z",
+                  "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                  "startedAt": "2026-10-14T17:10:53Z",
+                  "status": "unsuccessful"
+                }
+              ],
+              "schedule": "0 0 1 1 *"
+            }
+          }
+        }
+      },
+      {
+        "at": "2026-10-14T17:14:17.159Z",
+        "request": {
+          "operationName": "Qaa475History",
+          "query": "query Qaa475History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+          "variables": {
+            "id": "srv-db7rd1mt41sc7388odc0"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "cronJobRuns": [
+              {
+                "finishedAt": "2026-10-14T17:07:08Z",
+                "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                "startedAt": "2026-10-14T17:07:03Z",
+                "status": "successful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:47Z",
+                "id": "crr-fqgri7sdoscl0bm67nbi",
+                "startedAt": "2026-10-14T17:13:43Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:39Z",
+                "id": "crr-u1engo2vfc3bb5iu1dho",
+                "startedAt": "2026-10-14T17:13:35Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:13Z",
+                "id": "crr-llbl7tpnkh1s8829c04d",
+                "startedAt": "2026-10-14T17:13:08Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:06Z",
+                "id": "crr-pkcn7d3ftoa6raqasotc",
+                "startedAt": "2026-10-14T17:13:02Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:12:59Z",
+                "id": "crr-jq170e7659s36furs5dr",
+                "startedAt": "2026-10-14T17:12:55Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:11:58Z",
+                "id": "crr-0ecocdmmg1qgudrt0340",
+                "startedAt": "2026-10-14T17:11:53Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:11:51Z",
+                "id": "crr-tvluoqsvrookmctlc1bh",
+                "startedAt": "2026-10-14T17:11:46Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:11:44Z",
+                "id": "crr-utuf5rbpnci2c4h2am4b",
+                "startedAt": "2026-10-14T17:11:39Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:10:57Z",
+                "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                "startedAt": "2026-10-14T17:10:53Z",
+                "status": "unsuccessful"
+              }
+            ],
+            "deploys": [
+              {
+                "id": "dep-db7reipllfps73emuej0",
+                "status": "live",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rd1mt41sc7388odcg",
+                "status": "deactivated",
+                "trigger": "create"
+              }
+            ],
+            "server": {
+              "command": "sh -c 'printf QA_A475_FAIL; exit 7'",
+              "id": "srv-db7rd1mt41sc7388odc0",
+              "lastSuccessfulRunAt": "2026-10-14T17:07:08Z",
+              "name": "qa-20261014-a475-history",
+              "nextRunAt": "2027-01-01T00:00:00Z",
+              "phase": "Running",
+              "runs": [
+                {
+                  "finishedAt": "2026-10-14T17:07:08Z",
+                  "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                  "startedAt": "2026-10-14T17:07:03Z",
+                  "status": "successful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:47Z",
+                  "id": "crr-fqgri7sdoscl0bm67nbi",
+                  "startedAt": "2026-10-14T17:13:43Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:39Z",
+                  "id": "crr-u1engo2vfc3bb5iu1dho",
+                  "startedAt": "2026-10-14T17:13:35Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:13Z",
+                  "id": "crr-llbl7tpnkh1s8829c04d",
+                  "startedAt": "2026-10-14T17:13:08Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:06Z",
+                  "id": "crr-pkcn7d3ftoa6raqasotc",
+                  "startedAt": "2026-10-14T17:13:02Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:12:59Z",
+                  "id": "crr-jq170e7659s36furs5dr",
+                  "startedAt": "2026-10-14T17:12:55Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:58Z",
+                  "id": "crr-0ecocdmmg1qgudrt0340",
+                  "startedAt": "2026-10-14T17:11:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:51Z",
+                  "id": "crr-tvluoqsvrookmctlc1bh",
+                  "startedAt": "2026-10-14T17:11:46Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:44Z",
+                  "id": "crr-utuf5rbpnci2c4h2am4b",
+                  "startedAt": "2026-10-14T17:11:39Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:10:57Z",
+                  "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                  "startedAt": "2026-10-14T17:10:53Z",
+                  "status": "unsuccessful"
+                }
+              ],
+              "schedule": "0 0 1 1 *"
+            }
+          }
+        }
+      },
+      {
+        "at": "2026-10-14T17:14:20.076Z",
+        "request": {
+          "operationName": "Qaa475History",
+          "query": "query Qaa475History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+          "variables": {
+            "id": "srv-db7rd1mt41sc7388odc0"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "cronJobRuns": [
+              {
+                "finishedAt": "2026-10-14T17:07:08Z",
+                "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                "startedAt": "2026-10-14T17:07:03Z",
+                "status": "successful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:47Z",
+                "id": "crr-fqgri7sdoscl0bm67nbi",
+                "startedAt": "2026-10-14T17:13:43Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:39Z",
+                "id": "crr-u1engo2vfc3bb5iu1dho",
+                "startedAt": "2026-10-14T17:13:35Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:13Z",
+                "id": "crr-llbl7tpnkh1s8829c04d",
+                "startedAt": "2026-10-14T17:13:08Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:06Z",
+                "id": "crr-pkcn7d3ftoa6raqasotc",
+                "startedAt": "2026-10-14T17:13:02Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:12:59Z",
+                "id": "crr-jq170e7659s36furs5dr",
+                "startedAt": "2026-10-14T17:12:55Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:11:58Z",
+                "id": "crr-0ecocdmmg1qgudrt0340",
+                "startedAt": "2026-10-14T17:11:53Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:11:51Z",
+                "id": "crr-tvluoqsvrookmctlc1bh",
+                "startedAt": "2026-10-14T17:11:46Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:11:44Z",
+                "id": "crr-utuf5rbpnci2c4h2am4b",
+                "startedAt": "2026-10-14T17:11:39Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:10:57Z",
+                "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                "startedAt": "2026-10-14T17:10:53Z",
+                "status": "unsuccessful"
+              }
+            ],
+            "deploys": [
+              {
+                "id": "dep-db7reipllfps73emuej0",
+                "status": "live",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rd1mt41sc7388odcg",
+                "status": "deactivated",
+                "trigger": "create"
+              }
+            ],
+            "server": {
+              "command": "sh -c 'printf QA_A475_FAIL; exit 7'",
+              "id": "srv-db7rd1mt41sc7388odc0",
+              "lastSuccessfulRunAt": "2026-10-14T17:07:08Z",
+              "name": "qa-20261014-a475-history",
+              "nextRunAt": "2027-01-01T00:00:00Z",
+              "phase": "Running",
+              "runs": [
+                {
+                  "finishedAt": "2026-10-14T17:07:08Z",
+                  "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                  "startedAt": "2026-10-14T17:07:03Z",
+                  "status": "successful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:47Z",
+                  "id": "crr-fqgri7sdoscl0bm67nbi",
+                  "startedAt": "2026-10-14T17:13:43Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:39Z",
+                  "id": "crr-u1engo2vfc3bb5iu1dho",
+                  "startedAt": "2026-10-14T17:13:35Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:13Z",
+                  "id": "crr-llbl7tpnkh1s8829c04d",
+                  "startedAt": "2026-10-14T17:13:08Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:06Z",
+                  "id": "crr-pkcn7d3ftoa6raqasotc",
+                  "startedAt": "2026-10-14T17:13:02Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:12:59Z",
+                  "id": "crr-jq170e7659s36furs5dr",
+                  "startedAt": "2026-10-14T17:12:55Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:58Z",
+                  "id": "crr-0ecocdmmg1qgudrt0340",
+                  "startedAt": "2026-10-14T17:11:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:51Z",
+                  "id": "crr-tvluoqsvrookmctlc1bh",
+                  "startedAt": "2026-10-14T17:11:46Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:44Z",
+                  "id": "crr-utuf5rbpnci2c4h2am4b",
+                  "startedAt": "2026-10-14T17:11:39Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:10:57Z",
+                  "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                  "startedAt": "2026-10-14T17:10:53Z",
+                  "status": "unsuccessful"
+                }
+              ],
+              "schedule": "0 0 1 1 *"
+            }
+          }
+        }
+      },
+      {
+        "at": "2026-10-14T17:14:22.976Z",
+        "request": {
+          "operationName": "Qaa475History",
+          "query": "query Qaa475History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+          "variables": {
+            "id": "srv-db7rd1mt41sc7388odc0"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "cronJobRuns": [
+              {
+                "finishedAt": "2026-10-14T17:07:08Z",
+                "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                "startedAt": "2026-10-14T17:07:03Z",
+                "status": "successful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:47Z",
+                "id": "crr-fqgri7sdoscl0bm67nbi",
+                "startedAt": "2026-10-14T17:13:43Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:39Z",
+                "id": "crr-u1engo2vfc3bb5iu1dho",
+                "startedAt": "2026-10-14T17:13:35Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:13Z",
+                "id": "crr-llbl7tpnkh1s8829c04d",
+                "startedAt": "2026-10-14T17:13:08Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:06Z",
+                "id": "crr-pkcn7d3ftoa6raqasotc",
+                "startedAt": "2026-10-14T17:13:02Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:12:59Z",
+                "id": "crr-jq170e7659s36furs5dr",
+                "startedAt": "2026-10-14T17:12:55Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:11:58Z",
+                "id": "crr-0ecocdmmg1qgudrt0340",
+                "startedAt": "2026-10-14T17:11:53Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:11:51Z",
+                "id": "crr-tvluoqsvrookmctlc1bh",
+                "startedAt": "2026-10-14T17:11:46Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:11:44Z",
+                "id": "crr-utuf5rbpnci2c4h2am4b",
+                "startedAt": "2026-10-14T17:11:39Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:10:57Z",
+                "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                "startedAt": "2026-10-14T17:10:53Z",
+                "status": "unsuccessful"
+              }
+            ],
+            "deploys": [
+              {
+                "id": "dep-db7reipllfps73emuej0",
+                "status": "live",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rd1mt41sc7388odcg",
+                "status": "deactivated",
+                "trigger": "create"
+              }
+            ],
+            "server": {
+              "command": "sh -c 'printf QA_A475_FAIL; exit 7'",
+              "id": "srv-db7rd1mt41sc7388odc0",
+              "lastSuccessfulRunAt": "2026-10-14T17:07:08Z",
+              "name": "qa-20261014-a475-history",
+              "nextRunAt": "2027-01-01T00:00:00Z",
+              "phase": "Running",
+              "runs": [
+                {
+                  "finishedAt": "2026-10-14T17:07:08Z",
+                  "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                  "startedAt": "2026-10-14T17:07:03Z",
+                  "status": "successful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:47Z",
+                  "id": "crr-fqgri7sdoscl0bm67nbi",
+                  "startedAt": "2026-10-14T17:13:43Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:39Z",
+                  "id": "crr-u1engo2vfc3bb5iu1dho",
+                  "startedAt": "2026-10-14T17:13:35Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:13Z",
+                  "id": "crr-llbl7tpnkh1s8829c04d",
+                  "startedAt": "2026-10-14T17:13:08Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:06Z",
+                  "id": "crr-pkcn7d3ftoa6raqasotc",
+                  "startedAt": "2026-10-14T17:13:02Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:12:59Z",
+                  "id": "crr-jq170e7659s36furs5dr",
+                  "startedAt": "2026-10-14T17:12:55Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:58Z",
+                  "id": "crr-0ecocdmmg1qgudrt0340",
+                  "startedAt": "2026-10-14T17:11:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:51Z",
+                  "id": "crr-tvluoqsvrookmctlc1bh",
+                  "startedAt": "2026-10-14T17:11:46Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:44Z",
+                  "id": "crr-utuf5rbpnci2c4h2am4b",
+                  "startedAt": "2026-10-14T17:11:39Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:10:57Z",
+                  "id": "crr-ejqvf8jm48k0v9ovdc9a",
+                  "startedAt": "2026-10-14T17:10:53Z",
+                  "status": "unsuccessful"
+                }
+              ],
+              "schedule": "0 0 1 1 *"
+            }
+          }
+        }
+      }
+    ],
+    "fresh": {
+      "at": "2026-10-14T17:14:26.806Z",
+      "rows": [
+        "StartedDurationStatusActions",
+        "7mRun details, started 10/14/2026, 10:07:03 AM5sSucceeded",
+        "nowRun details, started 10/14/2026, 10:13:43 AM4sFailed",
+        "nowRun details, started 10/14/2026, 10:13:35 AM4sFailed",
+        "1mRun details, started 10/14/2026, 10:13:08 AM5sFailed",
+        "1mRun details, started 10/14/2026, 10:13:02 AM4sFailed"
+      ],
+      "navigation": ["reload"]
+    }
+  },
+  "freshMobileRest": {
+    "at": "2026-10-14T17:16:48.137Z",
+    "rows": [
+      "StartedDurationStatusActions",
+      "9mRun details, started 10/14/2026, 10:07:03 AM5sSucceeded",
+      "3mRun details, started 10/14/2026, 10:13:43 AM4sFailed",
+      "3mRun details, started 10/14/2026, 10:13:35 AM4sFailed",
+      "3mRun details, started 10/14/2026, 10:13:08 AM5sFailed",
+      "3mRun details, started 10/14/2026, 10:13:02 AM4sFailed"
+    ],
+    "rest": {
+      "status": 200,
+      "body": [
+        {
+          "cronJobRun": {
+            "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+            "status": "successful",
+            "startedAt": "2026-10-14T17:07:03Z",
+            "finishedAt": "2026-10-14T17:07:08Z"
+          },
+          "cursor": "crr-mrbv6fhqr1m3ugo8ggq2"
+        },
+        {
+          "cronJobRun": {
+            "id": "crr-fqgri7sdoscl0bm67nbi",
+            "status": "unsuccessful",
+            "startedAt": "2026-10-14T17:13:43Z",
+            "finishedAt": "2026-10-14T17:13:47Z"
+          },
+          "cursor": "crr-fqgri7sdoscl0bm67nbi"
+        },
+        {
+          "cronJobRun": {
+            "id": "crr-u1engo2vfc3bb5iu1dho",
+            "status": "unsuccessful",
+            "startedAt": "2026-10-14T17:13:35Z",
+            "finishedAt": "2026-10-14T17:13:39Z"
+          },
+          "cursor": "crr-u1engo2vfc3bb5iu1dho"
+        },
+        {
+          "cronJobRun": {
+            "id": "crr-llbl7tpnkh1s8829c04d",
+            "status": "unsuccessful",
+            "startedAt": "2026-10-14T17:13:08Z",
+            "finishedAt": "2026-10-14T17:13:13Z"
+          },
+          "cursor": "crr-llbl7tpnkh1s8829c04d"
+        },
+        {
+          "cronJobRun": {
+            "id": "crr-pkcn7d3ftoa6raqasotc",
+            "status": "unsuccessful",
+            "startedAt": "2026-10-14T17:13:02Z",
+            "finishedAt": "2026-10-14T17:13:06Z"
+          },
+          "cursor": "crr-pkcn7d3ftoa6raqasotc"
+        },
+        {
+          "cronJobRun": {
+            "id": "crr-jq170e7659s36furs5dr",
+            "status": "unsuccessful",
+            "startedAt": "2026-10-14T17:12:55Z",
+            "finishedAt": "2026-10-14T17:12:59Z"
+          },
+          "cursor": "crr-jq170e7659s36furs5dr"
+        },
+        {
+          "cronJobRun": {
+            "id": "crr-0ecocdmmg1qgudrt0340",
+            "status": "unsuccessful",
+            "startedAt": "2026-10-14T17:11:53Z",
+            "finishedAt": "2026-10-14T17:11:58Z"
+          },
+          "cursor": "crr-0ecocdmmg1qgudrt0340"
+        },
+        {
+          "cronJobRun": {
+            "id": "crr-tvluoqsvrookmctlc1bh",
+            "status": "unsuccessful",
+            "startedAt": "2026-10-14T17:11:46Z",
+            "finishedAt": "2026-10-14T17:11:51Z"
+          },
+          "cursor": "crr-tvluoqsvrookmctlc1bh"
+        },
+        {
+          "cronJobRun": {
+            "id": "crr-utuf5rbpnci2c4h2am4b",
+            "status": "unsuccessful",
+            "startedAt": "2026-10-14T17:11:39Z",
+            "finishedAt": "2026-10-14T17:11:44Z"
+          },
+          "cursor": "crr-utuf5rbpnci2c4h2am4b"
+        },
+        {
+          "cronJobRun": {
+            "id": "crr-ejqvf8jm48k0v9ovdc9a",
+            "status": "unsuccessful",
+            "startedAt": "2026-10-14T17:10:53Z",
+            "finishedAt": "2026-10-14T17:10:57Z"
+          },
+          "cursor": "crr-ejqvf8jm48k0v9ovdc9a"
+        }
+      ]
+    },
+    "navigation": ["reload"]
+  },
+  "recoverySave": {
+    "at": "2026-10-14T17:17:49.391Z",
+    "request": {
+      "operationName": "UpdateCronJob",
+      "variables": {
+        "id": "srv-db7rd1mt41sc7388odc0",
+        "schedule": "0 0 1 1 *",
+        "command": "sh -c 'printf QA_A475_RECOVER; exit 0'"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "mutation UpdateCronJob($id: String!, $schedule: String!, $command: String, $confirm: String) {\n  updateCronJob(\n    id: $id\n    schedule: $schedule\n    command: $command\n    confirm: $confirm\n  ) {\n    id\n    schedule\n    command\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "updateCronJob": {
+          "__typename": "Service",
+          "command": "sh -c 'printf QA_A475_RECOVER; exit 0'",
+          "id": "srv-db7rd1mt41sc7388odc0",
+          "schedule": "0 0 1 1 *"
+        }
+      }
+    },
+    "url": "https://dashboard.bex.co/services/srv-db7rd1mt41sc7388odc0/settings#deploy"
+  },
+  "recoveryTrigger": {
+    "at": "2026-10-14T17:17:55.634Z",
+    "request": {
+      "operationName": "RunCronJob",
+      "variables": {
+        "id": "srv-db7rd1mt41sc7388odc0"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "mutation RunCronJob($id: String!) {\n  runCronJob(id: $id) {\n    id\n    status\n    startedAt\n    finishedAt\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "runCronJob": {
+          "__typename": "CronRun",
+          "finishedAt": "",
+          "id": "crr-gigqoekra3oikt2a9j5a",
+          "startedAt": "",
+          "status": "pending"
+        }
+      }
+    },
+    "url": "https://dashboard.bex.co/services/srv-db7rd1mt41sc7388odc0/events"
+  },
+  "recovery": {
+    "checks": [
+      {
+        "at": "2026-10-14T17:18:35.650Z",
+        "request": {
+          "operationName": "Qaa475History",
+          "query": "query Qaa475History($id:String!){server(id:$id){id name phase schedule command lastSuccessfulRunAt nextRunAt runs{id status startedAt finishedAt}} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id,limit:20){id status startedAt finishedAt}}",
+          "variables": {
+            "id": "srv-db7rd1mt41sc7388odc0"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "cronJobRuns": [
+              {
+                "finishedAt": "2026-10-14T17:17:59Z",
+                "id": "crr-gigqoekra3oikt2a9j5a",
+                "startedAt": "2026-10-14T17:17:54Z",
+                "status": "successful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:07:08Z",
+                "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                "startedAt": "2026-10-14T17:07:03Z",
+                "status": "successful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:47Z",
+                "id": "crr-fqgri7sdoscl0bm67nbi",
+                "startedAt": "2026-10-14T17:13:43Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:39Z",
+                "id": "crr-u1engo2vfc3bb5iu1dho",
+                "startedAt": "2026-10-14T17:13:35Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:13Z",
+                "id": "crr-llbl7tpnkh1s8829c04d",
+                "startedAt": "2026-10-14T17:13:08Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:13:06Z",
+                "id": "crr-pkcn7d3ftoa6raqasotc",
+                "startedAt": "2026-10-14T17:13:02Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:12:59Z",
+                "id": "crr-jq170e7659s36furs5dr",
+                "startedAt": "2026-10-14T17:12:55Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:11:58Z",
+                "id": "crr-0ecocdmmg1qgudrt0340",
+                "startedAt": "2026-10-14T17:11:53Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:11:51Z",
+                "id": "crr-tvluoqsvrookmctlc1bh",
+                "startedAt": "2026-10-14T17:11:46Z",
+                "status": "unsuccessful"
+              },
+              {
+                "finishedAt": "2026-10-14T17:11:44Z",
+                "id": "crr-utuf5rbpnci2c4h2am4b",
+                "startedAt": "2026-10-14T17:11:39Z",
+                "status": "unsuccessful"
+              }
+            ],
+            "deploys": [
+              {
+                "id": "dep-db7rif1llfps73emuep0",
+                "status": "live",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7reipllfps73emuej0",
+                "status": "deactivated",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rd1mt41sc7388odcg",
+                "status": "deactivated",
+                "trigger": "create"
+              }
+            ],
+            "server": {
+              "command": "sh -c 'printf QA_A475_RECOVER; exit 0'",
+              "id": "srv-db7rd1mt41sc7388odc0",
+              "lastSuccessfulRunAt": "2026-10-14T17:17:59Z",
+              "name": "qa-20261014-a475-history",
+              "nextRunAt": "2027-01-01T00:00:00Z",
+              "phase": "Running",
+              "runs": [
+                {
+                  "finishedAt": "2026-10-14T17:17:59Z",
+                  "id": "crr-gigqoekra3oikt2a9j5a",
+                  "startedAt": "2026-10-14T17:17:54Z",
+                  "status": "successful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:07:08Z",
+                  "id": "crr-mrbv6fhqr1m3ugo8ggq2",
+                  "startedAt": "2026-10-14T17:07:03Z",
+                  "status": "successful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:47Z",
+                  "id": "crr-fqgri7sdoscl0bm67nbi",
+                  "startedAt": "2026-10-14T17:13:43Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:39Z",
+                  "id": "crr-u1engo2vfc3bb5iu1dho",
+                  "startedAt": "2026-10-14T17:13:35Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:13Z",
+                  "id": "crr-llbl7tpnkh1s8829c04d",
+                  "startedAt": "2026-10-14T17:13:08Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:13:06Z",
+                  "id": "crr-pkcn7d3ftoa6raqasotc",
+                  "startedAt": "2026-10-14T17:13:02Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:12:59Z",
+                  "id": "crr-jq170e7659s36furs5dr",
+                  "startedAt": "2026-10-14T17:12:55Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:58Z",
+                  "id": "crr-0ecocdmmg1qgudrt0340",
+                  "startedAt": "2026-10-14T17:11:53Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:51Z",
+                  "id": "crr-tvluoqsvrookmctlc1bh",
+                  "startedAt": "2026-10-14T17:11:46Z",
+                  "status": "unsuccessful"
+                },
+                {
+                  "finishedAt": "2026-10-14T17:11:44Z",
+                  "id": "crr-utuf5rbpnci2c4h2am4b",
+                  "startedAt": "2026-10-14T17:11:39Z",
+                  "status": "unsuccessful"
+                }
+              ],
+              "schedule": "0 0 1 1 *"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "delete": {
+    "at": "2026-10-14T17:19:19.183Z",
+    "request": {
+      "operationName": "DeleteService",
+      "variables": {
+        "id": "srv-db7rd1mt41sc7388odc0"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deleteService": true
+      }
+    },
+    "url": "https://dashboard.bex.co/"
+  },
+  "cleanup": {
+    "at": "2026-10-14T17:19:26.541Z",
+    "request": {
+      "operationName": "Qaa475Inventory",
+      "query": "query Qaa475Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    },
+    "ownedRestStatus": 404,
+    "runsRestStatus": 404
+  },
+  "comparisons": [
+    {
+      "family": "blueprints",
+      "identical": true
+    },
+    {
+      "family": "databases",
+      "identical": true
+    },
+    {
+      "family": "envGroups",
+      "identical": true
+    },
+    {
+      "family": "keyValues",
+      "identical": true
+    },
+    {
+      "family": "projects",
+      "identical": true
+    },
+    {
+      "family": "services",
+      "identical": true
+    },
+    {
+      "family": "webhookEndpoints",
+      "identical": true
+    }
+  ],
+  "revoked": {
+    "at": "2026-10-14T17:20:47.445Z",
+    "whoami": 401,
+    "cookies": 0,
+    "pages": 1,
+    "url": "about:blank"
+  },
+  "screenshots": [
+    "qa-a475-history-reordered-desktop.png",
+    "qa-a475-history-reordered-mobile.png"
+  ],
+  "limits": [
+    "One success followed by ten deliberately unsuccessful normal native manual invocations; a twelfth recovery succeeds. Each previous run settled before the next native confirmation.",
+    "Request command exit7 is known configuration; run status is observed, numeric runtime exit status and stdout were not independently fetched.",
+    "Annual future schedule avoids scheduled executions; scheduled/manual mixes, cancel/preemption/suspend, controller restart, pending-job tombstones, cursor tails and legacy migration are not live-certified.",
+    "REST list and GraphQL histories agree; no MCP/CLI execution or authenticated Render history-retention proof.",
+    "No actual replay or repeated execution was observed; the same old completed run ID is displayed first.",
+    "Fresh mobile boundary capture is390×1200; initial failure-control mobile reload was390×844. No separate boundary844 capture claimed.",
+    "One V8 helper closure failed before any mutation; initial Settings data were read before its deferred Deploy section was mounted. Corrected through native Deploy link.",
+    "Only owned Free cron/normal commands; no cybersecurity, customer mutation or paid action."
+  ]
+}
