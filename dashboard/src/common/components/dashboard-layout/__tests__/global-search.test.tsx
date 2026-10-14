@@ -130,3 +130,92 @@ describe("GlobalSearch close/reopen", () => {
     ).toBeNull();
   });
 });
+
+// w4/291: the Search button is not the dialog's Radix trigger, so dismissing
+// the palette restored focus to nothing: it fell to <body>, and Enter could
+// not reopen the control just used.
+describe("GlobalSearch returns focus when dismissed (w4/291)", () => {
+  const searchButton = () => screen.getByRole("button", { name: "Search" });
+  async function openFromButton() {
+    searchButton().focus();
+    fireEvent.click(searchButton());
+    return screen.findByRole("combobox");
+  }
+
+  it("returns to the Search button after Escape, and Enter opens it again", async () => {
+    render(<GlobalSearch />);
+    const input = await openFromButton();
+    expect(input).toHaveFocus();
+    fireEvent.keyDown(input, { key: "Escape" });
+    await waitClosed();
+    await waitFor(() => expect(searchButton()).toHaveFocus());
+
+    fireEvent.click(document.activeElement!); // Enter on a focused button
+    expect(await screen.findByRole("combobox")).toHaveFocus();
+  });
+
+  it("returns to the Search button after Ctrl+K closes a button-opened palette", async () => {
+    render(<GlobalSearch />);
+    await openFromButton();
+    pressCtrlK();
+    await waitClosed();
+    await waitFor(() => expect(searchButton()).toHaveFocus());
+  });
+
+  it("returns to whatever held focus when the shortcut opened it", async () => {
+    render(
+      <>
+        <button>elsewhere</button>
+        <GlobalSearch />
+      </>,
+    );
+    const elsewhere = screen.getByRole("button", { name: "elsewhere" });
+    elsewhere.focus();
+    const input = await openWithKeyboard();
+    fireEvent.keyDown(input, { key: "Escape" });
+    await waitClosed();
+    await waitFor(() => expect(elsewhere).toHaveFocus());
+  });
+
+  it("falls back to the Search button when the shortcut's opener is gone or was the page itself", async () => {
+    // GlobalSearch keeps its place in the tree; only the opener comes and goes.
+    const page = (withOpener: boolean) => (
+      <>
+        {withOpener ? <button>elsewhere</button> : null}
+        <GlobalSearch />
+      </>
+    );
+    const { rerender } = render(page(true));
+    screen.getByRole("button", { name: "elsewhere" }).focus();
+    let input = await openWithKeyboard();
+    rerender(page(false));
+    input = screen.getByRole("combobox");
+    fireEvent.keyDown(input, { key: "Escape" });
+    await waitClosed();
+    await waitFor(() => expect(searchButton()).toHaveFocus());
+
+    // Opened with nothing focused: the button is the logical place to land.
+    searchButton().blur();
+    input = await openWithKeyboard();
+    fireEvent.keyDown(input, { key: "Escape" });
+    await waitClosed();
+    await waitFor(() => expect(searchButton()).toHaveFocus());
+  });
+
+  it("leaves focus to the destination when a result is chosen", async () => {
+    render(<GlobalSearch />);
+    const input = await openFromButton();
+    type("Environment Groups");
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(navigate).toHaveBeenCalledWith({ to: "/env-groups" });
+    await waitClosed();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(searchButton()).not.toHaveFocus();
+
+    // The next dismissal is a dismissal again.
+    const reopened = await openFromButton();
+    fireEvent.keyDown(reopened, { key: "Escape" });
+    await waitClosed();
+    await waitFor(() => expect(searchButton()).toHaveFocus());
+  });
+});

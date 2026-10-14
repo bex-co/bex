@@ -28,11 +28,24 @@ function CommandDialog({
   // non-empty `label`, that target stays blank and suppresses the placeholder
   // name (m101/t011). aria-label on CommandInput does not win over labelledby.
   label,
+  onCloseAutoFocus,
   ...props
-}: DialogProps & { shouldFilter?: boolean; label?: string }) {
+}: DialogProps & {
+  shouldFilter?: boolean;
+  label?: string;
+  /**
+   * Where focus goes when the dialog closes. A dialog opened from outside its
+   * own Radix trigger has none registered, so Radix's default restores
+   * nothing; such a caller supplies the destination here.
+   */
+  onCloseAutoFocus?: (event: Event) => void;
+}) {
   return (
     <Dialog {...props}>
-      <DialogContent className="overflow-hidden p-0">
+      <DialogContent
+        className="overflow-hidden p-0"
+        onCloseAutoFocus={onCloseAutoFocus}
+      >
         <Command
           shouldFilter={shouldFilter}
           label={label}

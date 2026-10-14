@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -33,10 +33,35 @@ export function GlobalSearch() {
     setIsMac(/Mac|iPhone|iPad/.test(navigator.platform));
   }, []);
 
+  // Where focus was when the search opened, so dismissing it can put focus
+  // back (w4/291): the button for a click, whatever held focus for Cmd/Ctrl+K.
+  const trigger = useRef<HTMLButtonElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
+  const isOpen = useRef(false);
+  useEffect(() => {
+    isOpen.current = open;
+  }, [open]);
+
+  function rememberOpener() {
+    const active = document.activeElement;
+    opener.current =
+      active instanceof HTMLElement && active !== document.body ? active : null;
+  }
+
+  function returnFocus() {
+    // An opener that has left the page falls back to the Search button.
+    const target = opener.current?.isConnected
+      ? opener.current
+      : trigger.current;
+    opener.current = null;
+    target?.focus();
+  }
+
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key.toLowerCase() === "k" && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
+        if (!isOpen.current) rememberOpener();
         setMounted(true);
         setOpen((value) => !value);
       }
@@ -50,6 +75,7 @@ export function GlobalSearch() {
   }
 
   function openDialog() {
+    rememberOpener();
     setMounted(true);
     setOpen(true);
   }
@@ -57,6 +83,7 @@ export function GlobalSearch() {
   return (
     <>
       <Button
+        ref={trigger}
         variant="ghost"
         size="sm"
         className="gap-2 px-2 text-muted-foreground hover:text-foreground sm:px-3"
@@ -73,7 +100,11 @@ export function GlobalSearch() {
       </Button>
       {mounted ? (
         <Suspense fallback={null}>
-          <GlobalSearchDialog open={open} onOpenChange={setOpen} />
+          <GlobalSearchDialog
+            open={open}
+            onOpenChange={setOpen}
+            returnFocus={returnFocus}
+          />
         </Suspense>
       ) : null}
     </>

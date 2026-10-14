@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Bell,
@@ -42,9 +42,16 @@ import {
 export function GlobalSearchDialog({
   open,
   onOpenChange,
+  returnFocus,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Puts focus back where it was before the search opened. Called when the
+   * dialog is dismissed, not when a result is chosen: that navigates, and the
+   * destination must keep its own focus (w4/291).
+   */
+  returnFocus?: () => void;
 }) {
   const { t } = useTranslations();
   const [search, setSearch] = useState("");
@@ -56,6 +63,8 @@ export function GlobalSearchDialog({
     setWasOpen(open);
     if (open) setSearch("");
   }
+  // Set by a result's selection so the close that follows is not a dismissal.
+  const choseResult = useRef(false);
 
   return (
     <CommandDialog
@@ -63,6 +72,16 @@ export function GlobalSearchDialog({
       onOpenChange={onOpenChange}
       shouldFilter={false}
       label={t("common.topbarSearch")}
+      onCloseAutoFocus={(event) => {
+        // The Search button is not this dialog's Radix trigger, so the default
+        // restores focus to nothing and leaves it on <body>.
+        event.preventDefault();
+        if (choseResult.current) {
+          choseResult.current = false;
+          return;
+        }
+        returnFocus?.();
+      }}
     >
       <DialogTitle className="sr-only">{t("common.topbarSearch")}</DialogTitle>
       <DialogDescription className="sr-only">
@@ -75,7 +94,13 @@ export function GlobalSearchDialog({
       />
       <CommandList>
         {open ? (
-          <SearchResults search={search} close={() => onOpenChange(false)} />
+          <SearchResults
+            search={search}
+            close={() => {
+              choseResult.current = true;
+              onOpenChange(false);
+            }}
+          />
         ) : null}
       </CommandList>
     </CommandDialog>
