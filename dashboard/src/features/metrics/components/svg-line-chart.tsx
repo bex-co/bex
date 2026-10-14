@@ -3,6 +3,9 @@ import { formatMetricShort } from "@/features/metrics/lib/format";
 import {
   CHART_WIDTH as WIDTH,
   CHART_HEIGHT as HEIGHT,
+  axisLeftPad,
+  chartFrameStyle,
+  tickLabelX,
   CHART_PAD as PAD,
   groupPointsByTime,
   frameTooltipRows,
@@ -52,23 +55,23 @@ export function SvgLineChart({
   const svgRef = useRef<SVGSVGElement>(null);
 
   const geo = useMemo(
-    () => buildGeometry(series, referenceValue),
-    [series, referenceValue],
+    () => buildGeometry(series, referenceValue, unit),
+    [series, referenceValue, unit],
   );
 
   const eventClusters = useMemo(
     () =>
       geo && markers?.length && markersServiceId
-        ? clusterMarkers(markers, geo.xForT, PAD.left, WIDTH - PAD.right)
+        ? clusterMarkers(markers, geo.xForT, geo.left, WIDTH - PAD.right)
         : [],
     [geo, markers, markersServiceId],
   );
 
   if (!geo) {
-    return <EmptyChart height={HEIGHT} />;
+    return <EmptyChart />;
   }
 
-  const { frames, xForT, yFor, yTicks, paths, referenceY } = geo;
+  const { frames, xForT, yFor, yTicks, paths, referenceY, left } = geo;
 
   function nearestFrameForClientX(clientX: number): number {
     const svg = svgRef.current;
@@ -122,7 +125,7 @@ export function SvgLineChart({
         {yTicks.map((t, i) => (
           <g key={i}>
             <line
-              x1={PAD.left}
+              x1={left}
               x2={WIDTH - PAD.right}
               y1={t.y}
               y2={t.y}
@@ -130,7 +133,7 @@ export function SvgLineChart({
               strokeWidth={1}
             />
             <text
-              x={PAD.left - 6}
+              x={tickLabelX(left)}
               y={t.y}
               textAnchor="end"
               dominantBaseline="middle"
@@ -144,7 +147,7 @@ export function SvgLineChart({
         {/* Reference (e.g. limit): dashed, recessive, above gridlines. */}
         {referenceY != null && (
           <line
-            x1={PAD.left}
+            x1={left}
             x2={WIDTH - PAD.right}
             y1={referenceY}
             y2={referenceY}
@@ -250,16 +253,17 @@ export function ChartTooltip({
 }
 
 export function EmptyChart({
-  height = HEIGHT,
+  height,
   message = "No data in range",
 }: {
+  /** Overrides the chart's responsive ratio with a fixed height. */
   height?: number;
   message?: string;
 }) {
   return (
     <div
-      className="flex items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground"
-      style={{ height }}
+      className="flex w-full items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground"
+      style={chartFrameStyle(height)}
     >
       {message}
     </div>
@@ -305,6 +309,8 @@ interface LineGeometry {
   paths: { linePath: string; areaPath: string; color: string }[];
   /** y of the reference line, when one is drawn. */
   referenceY: number | null;
+  /** The plot's left gutter, sized for its tick labels. */
+  left: number;
 }
 
 /**
@@ -316,6 +322,7 @@ interface LineGeometry {
 function buildGeometry(
   seriesList: LineSeriesInput[],
   referenceValue: number | undefined,
+  unit: string,
 ): LineGeometry | null {
   const drawn = seriesList.filter((s) => s.points.length > 0);
   const allPoints = drawn.flatMap((s) => s.points);
@@ -339,13 +346,17 @@ function buildGeometry(
       : dataMax;
   const span = maxVal - minVal || 1;
 
-  const innerWidth = WIDTH - PAD.left - PAD.right;
+  // Round ticks: min, midpoint, max — enough for a compact PoC axis. Their
+  // formatted widths size the left gutter every x below is measured from.
+  const tickValues = [minVal, (minVal + maxVal) / 2, maxVal];
+  const left = axisLeftPad(tickValues.map((v) => formatMetricShort(unit, v)));
+  const innerWidth = WIDTH - left - PAD.right;
   const innerHeight = HEIGHT - PAD.top - PAD.bottom;
 
   const xForT = (t: number) =>
     maxT === minT
-      ? PAD.left + innerWidth / 2
-      : PAD.left + ((t - minT) / (maxT - minT)) * innerWidth;
+      ? left + innerWidth / 2
+      : left + ((t - minT) / (maxT - minT)) * innerWidth;
   const yFor = (v: number) =>
     PAD.top + innerHeight - ((v - minVal) / span) * innerHeight;
 
@@ -365,8 +376,7 @@ function buildGeometry(
     return { linePath: line, areaPath: area, color: s.color };
   });
 
-  // Round ticks: min, midpoint, max — enough for a compact PoC axis.
-  const yTicks = [minVal, (minVal + maxVal) / 2, maxVal].map((v) => ({
+  const yTicks = tickValues.map((v) => ({
     value: v,
     y: yFor(v),
   }));
@@ -379,5 +389,6 @@ function buildGeometry(
     paths,
     referenceY:
       showReference && referenceValue != null ? yFor(referenceValue) : null,
+    left,
   };
 }

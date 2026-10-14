@@ -8,6 +8,8 @@ import {
   CHART_WIDTH as WIDTH,
   CHART_HEIGHT as HEIGHT,
   CHART_PAD as PAD,
+  axisLeftPad,
+  tickLabelX,
   groupPointsByTime,
   frameTooltipRows,
   type SeriesInput,
@@ -54,6 +56,16 @@ export function SvgBarChart({
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const frames = useMemo(() => groupPointsByTime(series), [series]);
+  // The tick labels' widths size the gutter every slot is measured from.
+  const { maxVal, yTicks, left } = useMemo(() => {
+    const max = Math.max(...frames.map((f) => f.total), 0);
+    const ticks = [0, max / 2, max];
+    return {
+      maxVal: max,
+      yTicks: ticks,
+      left: axisLeftPad(ticks.map((v) => formatMetricShort(unit, v))),
+    };
+  }, [frames, unit]);
 
   // Bars are slot-positioned by index, so the marker x-mapping interpolates a
   // fractional index from the frame times (frames share one query step, so
@@ -62,31 +74,28 @@ export function SvgBarChart({
     if (!markers?.length || !markersServiceId || frames.length === 0) {
       return [];
     }
-    const innerWidth = WIDTH - PAD.left - PAD.right;
+    const innerWidth = WIDTH - left - PAD.right;
     const slot = innerWidth / frames.length;
     const t0 = frames[0].time;
     const tN = frames[frames.length - 1].time;
     const xForT = (t: number) =>
       tN === t0
-        ? PAD.left + innerWidth / 2
-        : PAD.left +
-          (((t - t0) / (tN - t0)) * (frames.length - 1) + 0.5) * slot;
-    return clusterMarkers(markers, xForT, PAD.left, WIDTH - PAD.right);
-  }, [markers, markersServiceId, frames]);
+        ? left + innerWidth / 2
+        : left + (((t - t0) / (tN - t0)) * (frames.length - 1) + 0.5) * slot;
+    return clusterMarkers(markers, xForT, left, WIDTH - PAD.right);
+  }, [markers, markersServiceId, frames, left]);
 
   if (frames.length === 0) {
-    return <EmptyChart height={HEIGHT} />;
+    return <EmptyChart />;
   }
 
-  const maxVal = Math.max(...frames.map((f) => f.total), 0);
-  const innerWidth = WIDTH - PAD.left - PAD.right;
+  const innerWidth = WIDTH - left - PAD.right;
   const innerHeight = HEIGHT - PAD.top - PAD.bottom;
   const baseline = PAD.top + innerHeight;
 
   const slot = innerWidth / frames.length;
   const barWidth = Math.max(1, Math.min(MAX_BAR_WIDTH, slot - BAR_GAP));
 
-  const yTicks = [0, maxVal / 2, maxVal];
   const active = activeIndex != null ? frames[activeIndex] : null;
 
   return (
@@ -109,7 +118,7 @@ export function SvgBarChart({
           return (
             <g key={i}>
               <line
-                x1={PAD.left}
+                x1={left}
                 x2={WIDTH - PAD.right}
                 y1={y}
                 y2={y}
@@ -117,7 +126,7 @@ export function SvgBarChart({
                 strokeWidth={1}
               />
               <text
-                x={PAD.left - 6}
+                x={tickLabelX(left)}
                 y={y}
                 textAnchor="end"
                 dominantBaseline="middle"
@@ -135,7 +144,7 @@ export function SvgBarChart({
         )}
 
         {frames.map((frame, i) => {
-          const x = PAD.left + i * slot + (slot - barWidth) / 2;
+          const x = left + i * slot + (slot - barWidth) / 2;
           const isActive = activeIndex === i;
           const stackH =
             maxVal === 0 ? 0 : (frame.total / maxVal) * innerHeight;
