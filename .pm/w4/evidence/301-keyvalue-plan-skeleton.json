@@ -1510,7 +1510,7 @@
   ],
   "limits": [
     "No plan selection/save or public access changed; only own fixture created/deleted.",
-    "Only resource read delayed 7000ms unchanged; initial catalog loading not independently delayed.",
+    "Original HTTP response selected by owned KeyValue operation delayed 7000ms unchanged; complete selected operation/response entry retained, sibling batch operations/cardinality not retained. Initial catalog loading not independently delayed; no isolated-query or whole-wire-body claim.",
     "Plan radio keyboard work belongs to m207; metadata/connections298 and policy299 remain separate.",
     "Networking captured for context; no networking finding claimed in this pass.",
     "Screenshot scroll origins differ; measured within-card heights are the finding.",
