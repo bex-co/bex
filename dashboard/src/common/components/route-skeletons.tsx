@@ -13,6 +13,7 @@ import { DatastorePlanPreview } from "@/common/components/datastore-plan-preview
 import {
   DatastoreConnectionsPreview,
   DatastoreMetadataPreview,
+  KeyValuePolicyPreview,
 } from "@/common/components/datastore-overview-previews";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { buttonVariants } from "@/common/components/ui/button";
@@ -2384,10 +2385,10 @@ export function KeyValueOverviewSkeleton() {
           <DatastorePlanPreview kind="keyvalue" />
         </Region>
         <Region name="maxmemory-policy">
-          <ReservedCardSkeleton className="h-[174px] sm:h-[134px]" />
+          <KeyValuePolicyPreview policy="maxmemory" />
         </Region>
         <Region name="persistence-mode">
-          <ReservedCardSkeleton className="h-[174px] sm:h-[134px]" />
+          <KeyValuePolicyPreview policy="persistence" />
         </Region>
         <Region
           name="danger-zone"

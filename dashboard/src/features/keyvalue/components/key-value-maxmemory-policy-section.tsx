@@ -6,9 +6,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card";
-import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { EditableFieldRow } from "@/features/services/components/editable-field-row";
+import {
+  EditableFieldRow,
+  EditableFieldRowPreview,
+} from "@/features/services/components/editable-field-row";
 import {
   MAXMEMORY_POLICIES,
   RECOMMENDED_MAXMEMORY_POLICY,
@@ -57,7 +59,12 @@ export function KeyValueMaxmemoryPolicySection({
       </CardHeader>
       <CardContent>
         {loading && !policy ? (
-          <Skeleton className="h-9 w-full" />
+          // The field's own anatomy, so the row keeps its bounds (w4/299).
+          <EditableFieldRowPreview
+            label={t("keyvalue.maxmemoryLabel")}
+            hint={t("keyvalue.fieldMaxmemoryPolicyHint")}
+            select={{ narrowLines: 2 }}
+          />
         ) : (
           <EditableFieldRow
             label={t("keyvalue.maxmemoryLabel")}
