@@ -1,0 +1,1472 @@
+{
+  "pass": "a465",
+  "scope": "existing w4/301 additional catalog-arrival loading state after resource data resolves",
+  "baseline": {
+    "at": "2026-10-14T14:29:58.818Z",
+    "request": {
+      "operationName": "Qaa465Inventory",
+      "query": "query Qaa465Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    }
+  },
+  "firstFixture": {
+    "id": "red-db7p3qet41sc7388obv0",
+    "create": {
+      "at": "2026-10-14T14:30:01.587Z",
+      "status": 200,
+      "request": [
+        {
+          "operationName": "CreateKeyValue",
+          "variables": {
+            "name": "qa-20261014-a465-catalog",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "plan": "free",
+            "public": false,
+            "maxmemoryPolicy": "allkeys-lru",
+            "persistenceMode": "journal-snapshot"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation CreateKeyValue($name: String!, $ownerId: String, $environmentId: String, $plan: String, $version: String, $storageGB: Int, $public: Boolean, $maxmemoryPolicy: String, $persistenceMode: String) {\n  createKeyValue(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    storageGB: $storageGB\n    public: $public\n    maxmemoryPolicy: $maxmemoryPolicy\n    persistenceMode: $persistenceMode\n  ) {\n    id\n    name\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+        }
+      ],
+      "body": [
+        {
+          "data": {
+            "createKeyValue": {
+              "__typename": "KeyValue",
+              "environmentId": null,
+              "id": "red-db7p3qet41sc7388obv0",
+              "name": "qa-20261014-a465-catalog",
+              "plan": "free",
+              "projectId": null,
+              "status": "creating"
+            }
+          }
+        }
+      ],
+      "url": "https://dashboard.bex.co/keyvalue/red-db7p3qet41sc7388obv0"
+    },
+    "desktop": {
+      "at": "2026-10-14T14:33:27.741Z",
+      "captured": [
+        {
+          "at": "2026-10-14T14:33:20.134Z",
+          "url": "https://api.bex.co/graphql",
+          "method": "POST",
+          "operationNames": [
+            "KeyValueInstanceTypes",
+            "KeyValueIpAllowList",
+            "KeyValueMaxmemoryPolicy",
+            "KeyValuePersistenceMode"
+          ],
+          "request": [
+            {
+              "operationName": "KeyValueInstanceTypes",
+              "variables": {},
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query KeyValueInstanceTypes {\n  keyValueInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    monthlyUsd\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "KeyValueIpAllowList",
+              "variables": {
+                "id": "red-db7p3qet41sc7388obv0"
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query KeyValueIpAllowList($id: String!) {\n  keyValue(id: $id) {\n    id\n    public\n    ipAllowListEntries {\n      cidrBlock\n      description\n      __typename\n    }\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "KeyValueMaxmemoryPolicy",
+              "variables": {
+                "id": "red-db7p3qet41sc7388obv0"
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query KeyValueMaxmemoryPolicy($id: String!) {\n  keyValue(id: $id) {\n    id\n    maxmemoryPolicy\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "KeyValuePersistenceMode",
+              "variables": {
+                "id": "red-db7p3qet41sc7388obv0"
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query KeyValuePersistenceMode($id: String!) {\n  keyValue(id: $id) {\n    id\n    persistenceMode\n    __typename\n  }\n}"
+            }
+          ],
+          "status": 200,
+          "body": [
+            {
+              "data": {
+                "keyValueInstanceTypes": [
+                  {
+                    "__typename": "KeyValueInstanceType",
+                    "cpu": "100m",
+                    "id": "free",
+                    "memory": "128Mi",
+                    "monthlyUsd": "0.00",
+                    "name": "Free",
+                    "storageGB": 1
+                  },
+                  {
+                    "__typename": "KeyValueInstanceType",
+                    "cpu": "100m",
+                    "id": "starter",
+                    "memory": "256Mi",
+                    "monthlyUsd": "7.00",
+                    "name": "Starter",
+                    "storageGB": 1
+                  },
+                  {
+                    "__typename": "KeyValueInstanceType",
+                    "cpu": "500m",
+                    "id": "standard",
+                    "memory": "1Gi",
+                    "monthlyUsd": "21.00",
+                    "name": "Standard",
+                    "storageGB": 5
+                  }
+                ]
+              }
+            },
+            {
+              "data": {
+                "keyValue": {
+                  "__typename": "KeyValue",
+                  "id": "red-db7p3qet41sc7388obv0",
+                  "ipAllowListEntries": [],
+                  "public": false
+                }
+              }
+            },
+            {
+              "data": {
+                "keyValue": {
+                  "__typename": "KeyValue",
+                  "id": "red-db7p3qet41sc7388obv0",
+                  "maxmemoryPolicy": "allkeys_lru"
+                }
+              }
+            },
+            {
+              "data": {
+                "keyValue": {
+                  "__typename": "KeyValue",
+                  "id": "red-db7p3qet41sc7388obv0",
+                  "persistenceMode": "journal_snapshot"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "redactions": [],
+      "pending": {
+        "at": "2026-10-14T14:33:20.403Z",
+        "layout": {
+          "section": {
+            "x": 280,
+            "y": 473,
+            "width": 888,
+            "height": 167
+          },
+          "card": {
+            "x": 280,
+            "y": 473,
+            "width": 888,
+            "height": 167
+          },
+          "header": {
+            "x": 281,
+            "y": 494,
+            "width": 886,
+            "height": 40
+          },
+          "content": {
+            "x": 281,
+            "y": 550,
+            "width": 886,
+            "height": 69
+          },
+          "radios": [],
+          "skeletonCount": 0,
+          "routeSkeletonCount": 0,
+          "documentWidth": 1440
+        },
+        "ui": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- radiogroup\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]",
+        "entityHeading": "qa-20261014-a465-catalog"
+      },
+      "ready": {
+        "at": "2026-10-14T14:33:27.695Z",
+        "layout": {
+          "section": {
+            "x": 280,
+            "y": 295,
+            "width": 888,
+            "height": 237
+          },
+          "card": {
+            "x": 280,
+            "y": 295,
+            "width": 888,
+            "height": 237
+          },
+          "header": {
+            "x": 281,
+            "y": 316,
+            "width": 886,
+            "height": 40
+          },
+          "content": {
+            "x": 281,
+            "y": 372,
+            "width": 886,
+            "height": 139
+          },
+          "radios": [
+            {
+              "name": "Free$0.00/month128 MB RAM · 0.1 CPU",
+              "checked": "true",
+              "box": {
+                "x": 301,
+                "y": 372,
+                "width": 274,
+                "height": 70
+              }
+            },
+            {
+              "name": "Starter$7.00/month256 MB RAM · 0.1 CPU",
+              "checked": "false",
+              "box": {
+                "x": 587,
+                "y": 372,
+                "width": 274,
+                "height": 70
+              }
+            },
+            {
+              "name": "Standard$21.00/month1 GB RAM · 0.5 CPU",
+              "checked": "false",
+              "box": {
+                "x": 873,
+                "y": 372,
+                "width": 274,
+                "height": 70
+              }
+            }
+          ],
+          "skeletonCount": 0,
+          "routeSkeletonCount": 0,
+          "documentWidth": 1440
+        },
+        "ui": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- radiogroup:\n  - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\"\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]"
+      }
+    },
+    "mobile": {
+      "at": "2026-10-14T14:34:25.108Z",
+      "captured": [
+        {
+          "at": "2026-10-14T14:34:17.537Z",
+          "url": "https://api.bex.co/graphql",
+          "method": "POST",
+          "operationNames": [
+            "KeyValueInstanceTypes",
+            "KeyValueIpAllowList",
+            "KeyValueMaxmemoryPolicy",
+            "KeyValuePersistenceMode"
+          ],
+          "request": [
+            {
+              "operationName": "KeyValueInstanceTypes",
+              "variables": {},
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query KeyValueInstanceTypes {\n  keyValueInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    monthlyUsd\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "KeyValueIpAllowList",
+              "variables": {
+                "id": "red-db7p3qet41sc7388obv0"
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query KeyValueIpAllowList($id: String!) {\n  keyValue(id: $id) {\n    id\n    public\n    ipAllowListEntries {\n      cidrBlock\n      description\n      __typename\n    }\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "KeyValueMaxmemoryPolicy",
+              "variables": {
+                "id": "red-db7p3qet41sc7388obv0"
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query KeyValueMaxmemoryPolicy($id: String!) {\n  keyValue(id: $id) {\n    id\n    maxmemoryPolicy\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "KeyValuePersistenceMode",
+              "variables": {
+                "id": "red-db7p3qet41sc7388obv0"
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query KeyValuePersistenceMode($id: String!) {\n  keyValue(id: $id) {\n    id\n    persistenceMode\n    __typename\n  }\n}"
+            }
+          ],
+          "status": 200,
+          "body": [
+            {
+              "data": {
+                "keyValueInstanceTypes": [
+                  {
+                    "__typename": "KeyValueInstanceType",
+                    "cpu": "100m",
+                    "id": "free",
+                    "memory": "128Mi",
+                    "monthlyUsd": "0.00",
+                    "name": "Free",
+                    "storageGB": 1
+                  },
+                  {
+                    "__typename": "KeyValueInstanceType",
+                    "cpu": "100m",
+                    "id": "starter",
+                    "memory": "256Mi",
+                    "monthlyUsd": "7.00",
+                    "name": "Starter",
+                    "storageGB": 1
+                  },
+                  {
+                    "__typename": "KeyValueInstanceType",
+                    "cpu": "500m",
+                    "id": "standard",
+                    "memory": "1Gi",
+                    "monthlyUsd": "21.00",
+                    "name": "Standard",
+                    "storageGB": 5
+                  }
+                ]
+              }
+            },
+            {
+              "data": {
+                "keyValue": {
+                  "__typename": "KeyValue",
+                  "id": "red-db7p3qet41sc7388obv0",
+                  "ipAllowListEntries": [],
+                  "public": false
+                }
+              }
+            },
+            {
+              "data": {
+                "keyValue": {
+                  "__typename": "KeyValue",
+                  "id": "red-db7p3qet41sc7388obv0",
+                  "maxmemoryPolicy": "allkeys_lru"
+                }
+              }
+            },
+            {
+              "data": {
+                "keyValue": {
+                  "__typename": "KeyValue",
+                  "id": "red-db7p3qet41sc7388obv0",
+                  "persistenceMode": "journal_snapshot"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "redactions": [],
+      "pending": {
+        "at": "2026-10-14T14:34:17.819Z",
+        "layout": {
+          "section": {
+            "x": 16,
+            "y": 252,
+            "width": 358,
+            "height": 207
+          },
+          "card": {
+            "x": 16,
+            "y": 252,
+            "width": 358,
+            "height": 207
+          },
+          "header": {
+            "x": 17,
+            "y": 273,
+            "width": 356,
+            "height": 80
+          },
+          "content": {
+            "x": 17,
+            "y": 369,
+            "width": 356,
+            "height": 69
+          },
+          "radios": [],
+          "skeletonCount": 0,
+          "routeSkeletonCount": 0,
+          "documentWidth": 390
+        },
+        "ui": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- radiogroup\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]",
+        "entityHeading": "qa-20261014-a465-catalog"
+      },
+      "ready": {
+        "at": "2026-10-14T14:34:25.069Z",
+        "layout": {
+          "section": {
+            "x": 16,
+            "y": 252,
+            "width": 358,
+            "height": 441
+          },
+          "card": {
+            "x": 16,
+            "y": 252,
+            "width": 358,
+            "height": 441
+          },
+          "header": {
+            "x": 17,
+            "y": 273,
+            "width": 356,
+            "height": 80
+          },
+          "content": {
+            "x": 17,
+            "y": 369,
+            "width": 356,
+            "height": 303
+          },
+          "radios": [
+            {
+              "name": "Free$0.00/month128 MB RAM · 0.1 CPU",
+              "checked": "true",
+              "box": {
+                "x": 37,
+                "y": 369,
+                "width": 316,
+                "height": 70
+              }
+            },
+            {
+              "name": "Starter$7.00/month256 MB RAM · 0.1 CPU",
+              "checked": "false",
+              "box": {
+                "x": 37,
+                "y": 451,
+                "width": 316,
+                "height": 70
+              }
+            },
+            {
+              "name": "Standard$21.00/month1 GB RAM · 0.5 CPU",
+              "checked": "false",
+              "box": {
+                "x": 37,
+                "y": 533,
+                "width": 316,
+                "height": 70
+              }
+            }
+          ],
+          "skeletonCount": 0,
+          "routeSkeletonCount": 0,
+          "documentWidth": 390
+        },
+        "ui": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- radiogroup:\n  - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\"\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]"
+      }
+    },
+    "delete": {
+      "at": "2026-10-14T14:36:44.876Z",
+      "status": 200,
+      "request": [
+        {
+          "operationName": "DeleteKeyValue",
+          "variables": {
+            "id": "red-db7p3qet41sc7388obv0"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation DeleteKeyValue($id: String!, $confirm: String) {\n  deleteKeyValue(id: $id, confirm: $confirm)\n}"
+        }
+      ],
+      "body": [
+        {
+          "data": {
+            "deleteKeyValue": true
+          }
+        }
+      ]
+    },
+    "cleanup": {
+      "at": "2026-10-14T14:36:53.074Z",
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      },
+      "matches": [
+        {
+          "family": "blueprints",
+          "exact": true,
+          "count": 1
+        },
+        {
+          "family": "databases",
+          "exact": true,
+          "count": 4
+        },
+        {
+          "family": "envGroups",
+          "exact": true,
+          "count": 1
+        },
+        {
+          "family": "keyValues",
+          "exact": true,
+          "count": 2
+        },
+        {
+          "family": "projects",
+          "exact": true,
+          "count": 3
+        },
+        {
+          "family": "services",
+          "exact": true,
+          "count": 5
+        },
+        {
+          "family": "webhookEndpoints",
+          "exact": true,
+          "count": 0
+        }
+      ],
+      "deleted": {
+        "id": "red-db7p3qet41sc7388obv0",
+        "status": 404
+      }
+    }
+  },
+  "secondFixture": {
+    "id": "red-db7p8u9llfps73emud2g",
+    "create": {
+      "at": "2026-10-14T14:40:57.906Z",
+      "status": 200,
+      "request": [
+        {
+          "operationName": "CreateKeyValue",
+          "variables": {
+            "name": "qa-20261014-a465-card",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "plan": "free",
+            "public": false,
+            "maxmemoryPolicy": "allkeys-lru",
+            "persistenceMode": "journal-snapshot"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation CreateKeyValue($name: String!, $ownerId: String, $environmentId: String, $plan: String, $version: String, $storageGB: Int, $public: Boolean, $maxmemoryPolicy: String, $persistenceMode: String) {\n  createKeyValue(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    storageGB: $storageGB\n    public: $public\n    maxmemoryPolicy: $maxmemoryPolicy\n    persistenceMode: $persistenceMode\n  ) {\n    id\n    name\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+        }
+      ],
+      "body": [
+        {
+          "data": {
+            "createKeyValue": {
+              "__typename": "KeyValue",
+              "environmentId": null,
+              "id": "red-db7p8u9llfps73emud2g",
+              "name": "qa-20261014-a465-card",
+              "plan": "free",
+              "projectId": null,
+              "status": "creating"
+            }
+          }
+        }
+      ],
+      "url": "https://dashboard.bex.co/keyvalue/red-db7p8u9llfps73emud2g"
+    },
+    "desktop": {
+      "at": "2026-10-14T14:41:16.523Z",
+      "captured": [
+        {
+          "at": "2026-10-14T14:41:08.869Z",
+          "url": "https://api.bex.co/graphql",
+          "method": "POST",
+          "operationNames": [
+            "KeyValueInstanceTypes",
+            "KeyValueIpAllowList",
+            "KeyValueMaxmemoryPolicy",
+            "KeyValuePersistenceMode"
+          ],
+          "request": [
+            {
+              "operationName": "KeyValueInstanceTypes",
+              "variables": {},
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query KeyValueInstanceTypes {\n  keyValueInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    monthlyUsd\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "KeyValueIpAllowList",
+              "variables": {
+                "id": "red-db7p8u9llfps73emud2g"
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query KeyValueIpAllowList($id: String!) {\n  keyValue(id: $id) {\n    id\n    public\n    ipAllowListEntries {\n      cidrBlock\n      description\n      __typename\n    }\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "KeyValueMaxmemoryPolicy",
+              "variables": {
+                "id": "red-db7p8u9llfps73emud2g"
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query KeyValueMaxmemoryPolicy($id: String!) {\n  keyValue(id: $id) {\n    id\n    maxmemoryPolicy\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "KeyValuePersistenceMode",
+              "variables": {
+                "id": "red-db7p8u9llfps73emud2g"
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query KeyValuePersistenceMode($id: String!) {\n  keyValue(id: $id) {\n    id\n    persistenceMode\n    __typename\n  }\n}"
+            }
+          ],
+          "status": 200,
+          "body": [
+            {
+              "data": {
+                "keyValueInstanceTypes": [
+                  {
+                    "__typename": "KeyValueInstanceType",
+                    "cpu": "100m",
+                    "id": "free",
+                    "memory": "128Mi",
+                    "monthlyUsd": "0.00",
+                    "name": "Free",
+                    "storageGB": 1
+                  },
+                  {
+                    "__typename": "KeyValueInstanceType",
+                    "cpu": "100m",
+                    "id": "starter",
+                    "memory": "256Mi",
+                    "monthlyUsd": "7.00",
+                    "name": "Starter",
+                    "storageGB": 1
+                  },
+                  {
+                    "__typename": "KeyValueInstanceType",
+                    "cpu": "500m",
+                    "id": "standard",
+                    "memory": "1Gi",
+                    "monthlyUsd": "21.00",
+                    "name": "Standard",
+                    "storageGB": 5
+                  }
+                ]
+              }
+            },
+            {
+              "data": {
+                "keyValue": {
+                  "__typename": "KeyValue",
+                  "id": "red-db7p8u9llfps73emud2g",
+                  "ipAllowListEntries": [],
+                  "public": false
+                }
+              }
+            },
+            {
+              "data": {
+                "keyValue": {
+                  "__typename": "KeyValue",
+                  "id": "red-db7p8u9llfps73emud2g",
+                  "maxmemoryPolicy": "allkeys_lru"
+                }
+              }
+            },
+            {
+              "data": {
+                "keyValue": {
+                  "__typename": "KeyValue",
+                  "id": "red-db7p8u9llfps73emud2g",
+                  "persistenceMode": "journal_snapshot"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "redactions": [],
+      "pending": {
+        "at": "2026-10-14T14:41:09.128Z",
+        "layout": {
+          "section": {
+            "x": 280,
+            "y": 473,
+            "width": 888,
+            "height": 167
+          },
+          "card": {
+            "x": 280,
+            "y": 473,
+            "width": 888,
+            "height": 167
+          },
+          "header": {
+            "x": 281,
+            "y": 494,
+            "width": 886,
+            "height": 40
+          },
+          "content": {
+            "x": 281,
+            "y": 550,
+            "width": 886,
+            "height": 69
+          },
+          "radios": [],
+          "skeletonCount": 0,
+          "routeSkeletonCount": 0,
+          "documentWidth": 1440
+        },
+        "ui": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- radiogroup\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]",
+        "entityHeading": "qa-20261014-a465-card"
+      },
+      "ready": {
+        "at": "2026-10-14T14:41:16.447Z",
+        "layout": {
+          "section": {
+            "x": 280,
+            "y": 295,
+            "width": 888,
+            "height": 237
+          },
+          "card": {
+            "x": 280,
+            "y": 295,
+            "width": 888,
+            "height": 237
+          },
+          "header": {
+            "x": 281,
+            "y": 316,
+            "width": 886,
+            "height": 40
+          },
+          "content": {
+            "x": 281,
+            "y": 372,
+            "width": 886,
+            "height": 139
+          },
+          "radios": [
+            {
+              "name": "Free$0.00/month128 MB RAM · 0.1 CPU",
+              "checked": "true",
+              "box": {
+                "x": 301,
+                "y": 372,
+                "width": 274,
+                "height": 70
+              }
+            },
+            {
+              "name": "Starter$7.00/month256 MB RAM · 0.1 CPU",
+              "checked": "false",
+              "box": {
+                "x": 587,
+                "y": 372,
+                "width": 274,
+                "height": 70
+              }
+            },
+            {
+              "name": "Standard$21.00/month1 GB RAM · 0.5 CPU",
+              "checked": "false",
+              "box": {
+                "x": 873,
+                "y": 372,
+                "width": 274,
+                "height": 70
+              }
+            }
+          ],
+          "skeletonCount": 0,
+          "routeSkeletonCount": 0,
+          "documentWidth": 1440
+        },
+        "ui": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- radiogroup:\n  - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\"\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]"
+      }
+    },
+    "mobile": {
+      "at": "2026-10-14T14:41:47.254Z",
+      "captured": [
+        {
+          "at": "2026-10-14T14:41:39.618Z",
+          "url": "https://api.bex.co/graphql",
+          "method": "POST",
+          "operationNames": [
+            "KeyValueInstanceTypes",
+            "KeyValueIpAllowList",
+            "KeyValueMaxmemoryPolicy",
+            "KeyValuePersistenceMode"
+          ],
+          "request": [
+            {
+              "operationName": "KeyValueInstanceTypes",
+              "variables": {},
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query KeyValueInstanceTypes {\n  keyValueInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    monthlyUsd\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "KeyValueIpAllowList",
+              "variables": {
+                "id": "red-db7p8u9llfps73emud2g"
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query KeyValueIpAllowList($id: String!) {\n  keyValue(id: $id) {\n    id\n    public\n    ipAllowListEntries {\n      cidrBlock\n      description\n      __typename\n    }\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "KeyValueMaxmemoryPolicy",
+              "variables": {
+                "id": "red-db7p8u9llfps73emud2g"
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query KeyValueMaxmemoryPolicy($id: String!) {\n  keyValue(id: $id) {\n    id\n    maxmemoryPolicy\n    __typename\n  }\n}"
+            },
+            {
+              "operationName": "KeyValuePersistenceMode",
+              "variables": {
+                "id": "red-db7p8u9llfps73emud2g"
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "query KeyValuePersistenceMode($id: String!) {\n  keyValue(id: $id) {\n    id\n    persistenceMode\n    __typename\n  }\n}"
+            }
+          ],
+          "status": 200,
+          "body": [
+            {
+              "data": {
+                "keyValueInstanceTypes": [
+                  {
+                    "__typename": "KeyValueInstanceType",
+                    "cpu": "100m",
+                    "id": "free",
+                    "memory": "128Mi",
+                    "monthlyUsd": "0.00",
+                    "name": "Free",
+                    "storageGB": 1
+                  },
+                  {
+                    "__typename": "KeyValueInstanceType",
+                    "cpu": "100m",
+                    "id": "starter",
+                    "memory": "256Mi",
+                    "monthlyUsd": "7.00",
+                    "name": "Starter",
+                    "storageGB": 1
+                  },
+                  {
+                    "__typename": "KeyValueInstanceType",
+                    "cpu": "500m",
+                    "id": "standard",
+                    "memory": "1Gi",
+                    "monthlyUsd": "21.00",
+                    "name": "Standard",
+                    "storageGB": 5
+                  }
+                ]
+              }
+            },
+            {
+              "data": {
+                "keyValue": {
+                  "__typename": "KeyValue",
+                  "id": "red-db7p8u9llfps73emud2g",
+                  "ipAllowListEntries": [],
+                  "public": false
+                }
+              }
+            },
+            {
+              "data": {
+                "keyValue": {
+                  "__typename": "KeyValue",
+                  "id": "red-db7p8u9llfps73emud2g",
+                  "maxmemoryPolicy": "allkeys_lru"
+                }
+              }
+            },
+            {
+              "data": {
+                "keyValue": {
+                  "__typename": "KeyValue",
+                  "id": "red-db7p8u9llfps73emud2g",
+                  "persistenceMode": "journal_snapshot"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "redactions": [],
+      "pending": {
+        "at": "2026-10-14T14:41:39.879Z",
+        "layout": {
+          "section": {
+            "x": 16,
+            "y": 252,
+            "width": 358,
+            "height": 207
+          },
+          "card": {
+            "x": 16,
+            "y": 252,
+            "width": 358,
+            "height": 207
+          },
+          "header": {
+            "x": 17,
+            "y": 273,
+            "width": 356,
+            "height": 80
+          },
+          "content": {
+            "x": 17,
+            "y": 369,
+            "width": 356,
+            "height": 69
+          },
+          "radios": [],
+          "skeletonCount": 0,
+          "routeSkeletonCount": 0,
+          "documentWidth": 390
+        },
+        "ui": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- radiogroup\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]",
+        "entityHeading": "qa-20261014-a465-card"
+      },
+      "ready": {
+        "at": "2026-10-14T14:41:47.176Z",
+        "layout": {
+          "section": {
+            "x": 16,
+            "y": 252,
+            "width": 358,
+            "height": 441
+          },
+          "card": {
+            "x": 16,
+            "y": 252,
+            "width": 358,
+            "height": 441
+          },
+          "header": {
+            "x": 17,
+            "y": 273,
+            "width": 356,
+            "height": 80
+          },
+          "content": {
+            "x": 17,
+            "y": 369,
+            "width": 356,
+            "height": 303
+          },
+          "radios": [
+            {
+              "name": "Free$0.00/month128 MB RAM · 0.1 CPU",
+              "checked": "true",
+              "box": {
+                "x": 37,
+                "y": 369,
+                "width": 316,
+                "height": 70
+              }
+            },
+            {
+              "name": "Starter$7.00/month256 MB RAM · 0.1 CPU",
+              "checked": "false",
+              "box": {
+                "x": 37,
+                "y": 451,
+                "width": 316,
+                "height": 70
+              }
+            },
+            {
+              "name": "Standard$21.00/month1 GB RAM · 0.5 CPU",
+              "checked": "false",
+              "box": {
+                "x": 37,
+                "y": 533,
+                "width": 316,
+                "height": 70
+              }
+            }
+          ],
+          "skeletonCount": 0,
+          "routeSkeletonCount": 0,
+          "documentWidth": 390
+        },
+        "ui": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- radiogroup:\n  - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\"\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]"
+      }
+    },
+    "delete": {
+      "at": "2026-10-14T14:42:39.259Z",
+      "beforeDelete": {
+        "id": "red-db7p8u9llfps73emud2g",
+        "name": "qa-20261014-a465-card",
+        "plan": "free",
+        "public": false,
+        "status": "available",
+        "version": "8"
+      },
+      "status": 200,
+      "request": [
+        {
+          "operationName": "DeleteKeyValue",
+          "variables": {
+            "id": "red-db7p8u9llfps73emud2g"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation DeleteKeyValue($id: String!, $confirm: String) {\n  deleteKeyValue(id: $id, confirm: $confirm)\n}"
+        }
+      ],
+      "body": [
+        {
+          "data": {
+            "deleteKeyValue": true
+          }
+        }
+      ]
+    }
+  },
+  "cleanup": {
+    "at": "2026-10-14T14:42:46.769Z",
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    },
+    "matches": [
+      {
+        "family": "blueprints",
+        "exact": true,
+        "count": 1
+      },
+      {
+        "family": "databases",
+        "exact": true,
+        "count": 4
+      },
+      {
+        "family": "envGroups",
+        "exact": true,
+        "count": 1
+      },
+      {
+        "family": "keyValues",
+        "exact": true,
+        "count": 2
+      },
+      {
+        "family": "projects",
+        "exact": true,
+        "count": 3
+      },
+      {
+        "family": "services",
+        "exact": true,
+        "count": 5
+      },
+      {
+        "family": "webhookEndpoints",
+        "exact": true,
+        "count": 0
+      }
+    ],
+    "deleted": [
+      {
+        "id": "red-db7p3qet41sc7388obv0",
+        "status": 404
+      },
+      {
+        "id": "red-db7p8u9llfps73emud2g",
+        "status": 404
+      }
+    ]
+  },
+  "revoked": {
+    "at": "2026-10-14T14:43:15.921Z",
+    "owners": {
+      "url": "https://api.bex.co/v1/owners",
+      "status": 401,
+      "body": "{\"error\":\"unauthorized\",\"id\":\"unauthorized\",\"message\":\"unauthorized\"}\n"
+    },
+    "cookieCount": 0,
+    "pageCount": 1,
+    "url": "about:blank"
+  },
+  "screenshots": [
+    ".playwright-mcp/qa-a465-card-pending-desktop.png",
+    ".playwright-mcp/qa-a465-card-ready-desktop.png",
+    ".playwright-mcp/qa-a465-card-pending-mobile.png",
+    ".playwright-mcp/qa-a465-card-ready-mobile.png"
+  ],
+  "limits": [
+    "Actual complete JSON request/response bodies retained for each unchanged delayed HTTP batch; no headers/cookies retained, generic sensitive/email redaction applied with zero recorded redactions.",
+    "Batch contains KeyValueInstanceTypes, KeyValueIpAllowList, KeyValueMaxmemoryPolicy and KeyValuePersistenceMode; this is not a catalog-only network delay.",
+    "Resource entity heading is already rendered and route skeleton count zero; plan card itself consumes only catalog/plan/capabilities, not other held policy/networking fields.",
+    "First desktop pending viewport screenshot clipped the plan card after scrolling; card-only second-fixture images are the cited complete pairs.",
+    "No plan selection, purchase, save or settings/client data mutation; only two owned private Free fixtures created/deleted.",
+    "Catalog error/empty/changed-size, locale/permission variants, aliases, Postgres and suites not independently re-certified; no existing complete DoD closure."
+  ]
+}
