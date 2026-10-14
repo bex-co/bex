@@ -1,5 +1,7 @@
 # Plan-card radios ignore arrow keys and omit group names
 
+Source snapshot of inbox **w4/300**, shipped as `a69dd557d`, then promoted to **w4/m207** after a450 independently verified the three other card-radio producers. Its estimate and live limits describe the original a449 scope; the milestone README defines the expanded work.
+
 Why: keyboard users encounter an unnamed radio group whose arrow keys do not select a plan, and must tab through each tier instead.
 
 **Severity:** minor. **Estimate:** 60m. Source: continuous functional `$qa-find-bugs w4`, a449, 2026-10-14 UTC. Goal: usable hosting configuration under ADR008 and the controls' advertised radio semantics. Filing only; no product implementation.
@@ -12,7 +14,7 @@ Repeat from a fresh `/services/new?type=web_service` page with its seven tiers. 
 
 **Positive control:** focus Starter and press Space. Starter becomes the single checked radio on both surfaces. Focus Free and press Space to restore it. The forms remain unsubmitted, their submit buttons remain disabled, and the request observer records **zero mutations** during each probe. This isolates keyboard behavior from missing catalog data, disabled tiers or failed writes. No resource was created and no plan was purchased or saved.
 
-[300-plan-radio-keyboard.json](evidence/300-plan-radio-keyboard.json) contains exact runnable probes, every before/after accessibility tree, native active-element/checked/tab-index receipts, zero-mutation observations, inventory and session cleanup. Viewed cropped plan-only screenshots: `.playwright-mcp/qa-a449-{keyvalue,services}-arrow-{desktop,mobile}.png`. They show the focused Free card after Right Arrow without capturing connected repositories or unrelated page data.
+[300-plan-radio-keyboard.json](../evidence/300-plan-radio-keyboard.json) contains exact runnable probes, every before/after accessibility tree, native active-element/checked/tab-index receipts, zero-mutation observations, inventory and session cleanup. Viewed cropped plan-only screenshots: `.playwright-mcp/qa-a449-{keyvalue,services}-arrow-{desktop,mobile}.png`. They show the focused Free card after Right Arrow without capturing connected repositories or unrelated page data.
 
 The target is the [W3C non-toolbar radio-group interaction](https://www.w3.org/WAI/ARIA/apg/patterns/radio/): arrows move focus and selection between options; Tab enters/exits the group at one option; Space selects the focused option; the group has an accessible label. Left/Up, boundary wrapping and reverse entry were not exercised in this hunt and belong in implementation verification. No signed-in Render keyboard comparison is claimed.
 

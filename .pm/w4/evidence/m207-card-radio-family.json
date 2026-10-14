@@ -1,0 +1,2443 @@
+{
+  "schemaVersion": 1,
+  "pass": "a450",
+  "sourceHead": "a69dd557d",
+  "scope": "Complete card-radio producer family: ServiceTypePicker, service InstanceTypePicker and workspace PlanPicker; PlanCardGrid original a449 retained separately",
+  "baseline": {
+    "at": "2026-10-14T10:47:19.895Z",
+    "request": {
+      "operationName": "Qaa450Inventory",
+      "query": "query Qaa450Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    }
+  },
+  "fixture": {
+    "id": "srv-db7lsfmt41sc7388o87g",
+    "name": "qa-20261014-a450-radio"
+  },
+  "create": {
+    "at": "2026-10-14T10:49:35.140Z",
+    "request": [
+      {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "docker.io/library/busybox:1.37",
+          "name": "qa-20261014-a450-radio",
+          "type": "web_service",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "sh -c 'printf \"QA_A450_RADIO\\n\" >/tmp/index.html; exec httpd -f -p 8870 -h /tmp'",
+          "plan": "free",
+          "port": 8870,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db7lsfmt41sc7388o87g",
+            "latestDeployId": "dep-db7lsfmt41sc7388o880",
+            "name": "qa-20261014-a450-radio",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      }
+    ],
+    "url": "https://dashboard.bex.co/services/srv-db7lsfmt41sc7388o87g/deploys/dep-db7lsfmt41sc7388o880",
+    "ui": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261014-a450-radio\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261014-a450-radio\" [level=1]\n  - text: Service Deploying\n  - 'link \"Latest deploy: Created\"':\n    - /url: /services/srv-db7lsfmt41sc7388o87g/deploys/dep-db7lsfmt41sc7388o880\n    - text: Latest deploy Created\n  - link \"Free\":\n    - /url: /services/srv-db7lsfmt41sc7388o87g/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db7lsfmt41sc7388o87g\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261014-a450-radio.onbex.co\":\n    - /url: https://qa-20261014-a450-radio.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261014-a450-radio\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: —\n  - term: Created\n  - definition:\n    - time: now\n  - text: Deploy status Created First Deploy dep-db7lsfmt41sc7388o880\n  - button \"Cancel deploy dep-db7lsfmt41sc7388o880\": Cancel\n  - paragraph: docker.io/library/busybox:1.37\n  - term: \"Created:\"\n  - definition: October 14, 2026 at 3:49 AM\n  - term: \"Updated:\"\n  - definition: October 14, 2026 at 3:49 AM\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 14, 2026 at 3:49 AM\n    - listitem:\n      - paragraph: Created\n      - time: October 14, 2026 at 3:49 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\"\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: Loading logs…"
+  },
+  "initialServicePlan": {
+    "at": "2026-10-14T10:49:38.874Z",
+    "url": "https://dashboard.bex.co/services/srv-db7lsfmt41sc7388o87g/plan",
+    "group": "- radiogroup \"Pick an Instance Type\":\n  - text: Free\n  - radio \"Free 512 MB (RAM) 0.1 CPU\" [checked]\n  - text: Paid\n  - radio \"Starter 512 MB (RAM) 0.5 CPU\"\n  - radio \"Standard 2 GB (RAM) 1 CPU\"\n  - radio \"Pro 4 GB (RAM) 2 CPU\"\n  - radio \"Pro Plus 8 GB (RAM) 4 CPU\"\n  - radio \"Pro Max 16 GB (RAM) 4 CPU\"\n  - radio \"Pro Ultra 32 GB (RAM) 8 CPU\"",
+    "buttons": [
+      "Toggle Sidebar",
+      "qa-20261014-a450-radio",
+      "Search⌘ K",
+      "NewNew",
+      "P",
+      "Connect",
+      "Manual Deploy",
+      "",
+      "",
+      "Cancel",
+      "Save Changes"
+    ]
+  },
+  "probes": {
+    "TypeDesktop": {
+      "code": "async(page)=>{await page.setViewportSize({width:1440,height:1000});await page.goto(\"https://dashboard.bex.co/services/new?type=web_service\");await page.getByRole('radiogroup').first().waitFor({timeout:20000});await page.waitForTimeout(900);const group=page.getByRole('radiogroup').filter({has:page.getByRole('radio',{name:'Web Service Expose your service on a public URL',exact:true})});if(await group.count()!==1)throw new Error('Ambiguous group');const radios=group.getByRole('radio');const first=radios.nth(0);const second=radios.nth(1);const mutations=[];const handler=request=>{try{const b=request.postDataJSON();for(const q of (Array.isArray(b)?b:[b]))if(/^\\s*mutation\\b/.test(q?.query||''))mutations.push({operationName:q.operationName??null,variables:q.variables??null,query:q.query})}catch{}};page.on('request',handler);const measure=async()=>({at:new Date().toISOString(),group:await group.ariaSnapshot(),radios:await radios.evaluateAll(es=>es.map(e=>({text:e.textContent,tag:e.tagName,checked:e.getAttribute('aria-checked'),tabIndex:e.tabIndex,disabled:e.disabled,active:e===document.activeElement}))),labels:await group.evaluate(e=>({ariaLabel:e.getAttribute('aria-label'),labelledBy:e.getAttribute('aria-labelledby')}))});try{await first.focus();const before=await measure();await first.press('ArrowRight');await page.waitForTimeout(150);const right=await measure();await group.screenshot({path:'qa-a450-type-arrow-desktop.png'});await first.focus();await first.press('ArrowDown');await page.waitForTimeout(150);const down=await measure();await first.focus();await first.press('Tab');const tab=await measure();await second.focus();await second.press('Space');await page.waitForTimeout(400);const space=await measure();await first.focus();await first.press('Space');await page.waitForTimeout(400);const restored=await measure();return{at:new Date().toISOString(),kind:\"type\",viewport:{width:1440,height:1000},url:page.url(),before,right,down,tab,space,restored,mutations}}finally{page.off('request',handler)}}",
+      "receipt": {
+        "at": "2026-10-14T10:48:38.298Z",
+        "kind": "type",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "url": "https://dashboard.bex.co/services/new?type=web_service",
+        "before": {
+          "at": "2026-10-14T10:48:37.017Z",
+          "group": "- radiogroup:\n  - radio \"Web Service Expose your service on a public URL\" [checked]\n  - radio \"Private Service Accessible only within the platform network\"\n  - radio \"Background Worker Run background processing with no port or URL\"\n  - radio \"Cron Job Run a command on a recurring schedule\"\n  - radio \"Static Site Build and serve a static site from object storage\"",
+          "radios": [
+            {
+              "text": "Web ServiceExpose your service on a public URL",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Private ServiceAccessible only within the platform network",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Background WorkerRun background processing with no port or URL",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Cron JobRun a command on a recurring schedule",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Static SiteBuild and serve a static site from object storage",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": null,
+            "labelledBy": null
+          }
+        },
+        "right": {
+          "at": "2026-10-14T10:48:37.190Z",
+          "group": "- radiogroup:\n  - radio \"Web Service Expose your service on a public URL\" [checked]\n  - radio \"Private Service Accessible only within the platform network\"\n  - radio \"Background Worker Run background processing with no port or URL\"\n  - radio \"Cron Job Run a command on a recurring schedule\"\n  - radio \"Static Site Build and serve a static site from object storage\"",
+          "radios": [
+            {
+              "text": "Web ServiceExpose your service on a public URL",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Private ServiceAccessible only within the platform network",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Background WorkerRun background processing with no port or URL",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Cron JobRun a command on a recurring schedule",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Static SiteBuild and serve a static site from object storage",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": null,
+            "labelledBy": null
+          }
+        },
+        "down": {
+          "at": "2026-10-14T10:48:37.432Z",
+          "group": "- radiogroup:\n  - radio \"Web Service Expose your service on a public URL\" [checked]\n  - radio \"Private Service Accessible only within the platform network\"\n  - radio \"Background Worker Run background processing with no port or URL\"\n  - radio \"Cron Job Run a command on a recurring schedule\"\n  - radio \"Static Site Build and serve a static site from object storage\"",
+          "radios": [
+            {
+              "text": "Web ServiceExpose your service on a public URL",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Private ServiceAccessible only within the platform network",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Background WorkerRun background processing with no port or URL",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Cron JobRun a command on a recurring schedule",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Static SiteBuild and serve a static site from object storage",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": null,
+            "labelledBy": null
+          }
+        },
+        "tab": {
+          "at": "2026-10-14T10:48:37.444Z",
+          "group": "- radiogroup:\n  - radio \"Web Service Expose your service on a public URL\" [checked]\n  - radio \"Private Service Accessible only within the platform network\"\n  - radio \"Background Worker Run background processing with no port or URL\"\n  - radio \"Cron Job Run a command on a recurring schedule\"\n  - radio \"Static Site Build and serve a static site from object storage\"",
+          "radios": [
+            {
+              "text": "Web ServiceExpose your service on a public URL",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Private ServiceAccessible only within the platform network",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Background WorkerRun background processing with no port or URL",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Cron JobRun a command on a recurring schedule",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Static SiteBuild and serve a static site from object storage",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": null,
+            "labelledBy": null
+          }
+        },
+        "space": {
+          "at": "2026-10-14T10:48:37.865Z",
+          "group": "- radiogroup:\n  - radio \"Web Service Expose your service on a public URL\"\n  - radio \"Private Service Accessible only within the platform network\" [checked]\n  - radio \"Background Worker Run background processing with no port or URL\"\n  - radio \"Cron Job Run a command on a recurring schedule\"\n  - radio \"Static Site Build and serve a static site from object storage\"",
+          "radios": [
+            {
+              "text": "Web ServiceExpose your service on a public URL",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Private ServiceAccessible only within the platform network",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Background WorkerRun background processing with no port or URL",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Cron JobRun a command on a recurring schedule",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Static SiteBuild and serve a static site from object storage",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": null,
+            "labelledBy": null
+          }
+        },
+        "restored": {
+          "at": "2026-10-14T10:48:38.289Z",
+          "group": "- radiogroup:\n  - radio \"Web Service Expose your service on a public URL\" [checked]\n  - radio \"Private Service Accessible only within the platform network\"\n  - radio \"Background Worker Run background processing with no port or URL\"\n  - radio \"Cron Job Run a command on a recurring schedule\"\n  - radio \"Static Site Build and serve a static site from object storage\"",
+          "radios": [
+            {
+              "text": "Web ServiceExpose your service on a public URL",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Private ServiceAccessible only within the platform network",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Background WorkerRun background processing with no port or URL",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Cron JobRun a command on a recurring schedule",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Static SiteBuild and serve a static site from object storage",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": null,
+            "labelledBy": null
+          }
+        },
+        "mutations": []
+      }
+    },
+    "TypeMobile": {
+      "code": "async(page)=>{await page.setViewportSize({width:390,height:844});await page.goto(\"https://dashboard.bex.co/services/new?type=web_service\");await page.getByRole('radiogroup').first().waitFor({timeout:20000});await page.waitForTimeout(900);const group=page.getByRole('radiogroup').filter({has:page.getByRole('radio',{name:'Web Service Expose your service on a public URL',exact:true})});if(await group.count()!==1)throw new Error('Ambiguous group');const radios=group.getByRole('radio');const first=radios.nth(0);const second=radios.nth(1);const mutations=[];const handler=request=>{try{const b=request.postDataJSON();for(const q of (Array.isArray(b)?b:[b]))if(/^\\s*mutation\\b/.test(q?.query||''))mutations.push({operationName:q.operationName??null,variables:q.variables??null,query:q.query})}catch{}};page.on('request',handler);const measure=async()=>({at:new Date().toISOString(),group:await group.ariaSnapshot(),radios:await radios.evaluateAll(es=>es.map(e=>({text:e.textContent,tag:e.tagName,checked:e.getAttribute('aria-checked'),tabIndex:e.tabIndex,disabled:e.disabled,active:e===document.activeElement}))),labels:await group.evaluate(e=>({ariaLabel:e.getAttribute('aria-label'),labelledBy:e.getAttribute('aria-labelledby')}))});try{await first.focus();const before=await measure();await first.press('ArrowRight');await page.waitForTimeout(150);const right=await measure();await group.screenshot({path:'qa-a450-type-arrow-mobile.png'});await first.focus();await first.press('ArrowDown');await page.waitForTimeout(150);const down=await measure();await first.focus();await first.press('Tab');const tab=await measure();await second.focus();await second.press('Space');await page.waitForTimeout(400);const space=await measure();await first.focus();await first.press('Space');await page.waitForTimeout(400);const restored=await measure();return{at:new Date().toISOString(),kind:\"type\",viewport:{width:390,height:844},url:page.url(),before,right,down,tab,space,restored,mutations}}finally{page.off('request',handler)}}",
+      "receipt": {
+        "at": "2026-10-14T10:48:41.988Z",
+        "kind": "type",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "url": "https://dashboard.bex.co/services/new?type=web_service",
+        "before": {
+          "at": "2026-10-14T10:48:40.682Z",
+          "group": "- radiogroup:\n  - radio \"Web Service Expose your service on a public URL\" [checked]\n  - radio \"Private Service Accessible only within the platform network\"\n  - radio \"Background Worker Run background processing with no port or URL\"\n  - radio \"Cron Job Run a command on a recurring schedule\"\n  - radio \"Static Site Build and serve a static site from object storage\"",
+          "radios": [
+            {
+              "text": "Web ServiceExpose your service on a public URL",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Private ServiceAccessible only within the platform network",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Background WorkerRun background processing with no port or URL",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Cron JobRun a command on a recurring schedule",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Static SiteBuild and serve a static site from object storage",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": null,
+            "labelledBy": null
+          }
+        },
+        "right": {
+          "at": "2026-10-14T10:48:40.863Z",
+          "group": "- radiogroup:\n  - radio \"Web Service Expose your service on a public URL\" [checked]\n  - radio \"Private Service Accessible only within the platform network\"\n  - radio \"Background Worker Run background processing with no port or URL\"\n  - radio \"Cron Job Run a command on a recurring schedule\"\n  - radio \"Static Site Build and serve a static site from object storage\"",
+          "radios": [
+            {
+              "text": "Web ServiceExpose your service on a public URL",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Private ServiceAccessible only within the platform network",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Background WorkerRun background processing with no port or URL",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Cron JobRun a command on a recurring schedule",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Static SiteBuild and serve a static site from object storage",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": null,
+            "labelledBy": null
+          }
+        },
+        "down": {
+          "at": "2026-10-14T10:48:41.116Z",
+          "group": "- radiogroup:\n  - radio \"Web Service Expose your service on a public URL\" [checked]\n  - radio \"Private Service Accessible only within the platform network\"\n  - radio \"Background Worker Run background processing with no port or URL\"\n  - radio \"Cron Job Run a command on a recurring schedule\"\n  - radio \"Static Site Build and serve a static site from object storage\"",
+          "radios": [
+            {
+              "text": "Web ServiceExpose your service on a public URL",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Private ServiceAccessible only within the platform network",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Background WorkerRun background processing with no port or URL",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Cron JobRun a command on a recurring schedule",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Static SiteBuild and serve a static site from object storage",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": null,
+            "labelledBy": null
+          }
+        },
+        "tab": {
+          "at": "2026-10-14T10:48:41.126Z",
+          "group": "- radiogroup:\n  - radio \"Web Service Expose your service on a public URL\" [checked]\n  - radio \"Private Service Accessible only within the platform network\"\n  - radio \"Background Worker Run background processing with no port or URL\"\n  - radio \"Cron Job Run a command on a recurring schedule\"\n  - radio \"Static Site Build and serve a static site from object storage\"",
+          "radios": [
+            {
+              "text": "Web ServiceExpose your service on a public URL",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Private ServiceAccessible only within the platform network",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Background WorkerRun background processing with no port or URL",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Cron JobRun a command on a recurring schedule",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Static SiteBuild and serve a static site from object storage",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": null,
+            "labelledBy": null
+          }
+        },
+        "space": {
+          "at": "2026-10-14T10:48:41.545Z",
+          "group": "- radiogroup:\n  - radio \"Web Service Expose your service on a public URL\"\n  - radio \"Private Service Accessible only within the platform network\" [checked]\n  - radio \"Background Worker Run background processing with no port or URL\"\n  - radio \"Cron Job Run a command on a recurring schedule\"\n  - radio \"Static Site Build and serve a static site from object storage\"",
+          "radios": [
+            {
+              "text": "Web ServiceExpose your service on a public URL",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Private ServiceAccessible only within the platform network",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Background WorkerRun background processing with no port or URL",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Cron JobRun a command on a recurring schedule",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Static SiteBuild and serve a static site from object storage",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": null,
+            "labelledBy": null
+          }
+        },
+        "restored": {
+          "at": "2026-10-14T10:48:41.977Z",
+          "group": "- radiogroup:\n  - radio \"Web Service Expose your service on a public URL\" [checked]\n  - radio \"Private Service Accessible only within the platform network\"\n  - radio \"Background Worker Run background processing with no port or URL\"\n  - radio \"Cron Job Run a command on a recurring schedule\"\n  - radio \"Static Site Build and serve a static site from object storage\"",
+          "radios": [
+            {
+              "text": "Web ServiceExpose your service on a public URL",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Private ServiceAccessible only within the platform network",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Background WorkerRun background processing with no port or URL",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Cron JobRun a command on a recurring schedule",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Static SiteBuild and serve a static site from object storage",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": null,
+            "labelledBy": null
+          }
+        },
+        "mutations": []
+      }
+    },
+    "WorkspaceDesktop": {
+      "code": "async(page)=>{await page.setViewportSize({width:1440,height:1000});await page.goto(\"https://dashboard.bex.co/new/workspace\");await page.getByRole('radiogroup').first().waitFor({timeout:20000});await page.waitForTimeout(900);const group=page.getByRole('radiogroup');if(await group.count()!==1)throw new Error('Ambiguous group');const radios=group.getByRole('radio');const first=radios.nth(0);const second=radios.nth(1);const mutations=[];const handler=request=>{try{const b=request.postDataJSON();for(const q of (Array.isArray(b)?b:[b]))if(/^\\s*mutation\\b/.test(q?.query||''))mutations.push({operationName:q.operationName??null,variables:q.variables??null,query:q.query})}catch{}};page.on('request',handler);const measure=async()=>({at:new Date().toISOString(),group:await group.ariaSnapshot(),radios:await radios.evaluateAll(es=>es.map(e=>({text:e.textContent,tag:e.tagName,checked:e.getAttribute('aria-checked'),tabIndex:e.tabIndex,disabled:e.disabled,active:e===document.activeElement}))),labels:await group.evaluate(e=>({ariaLabel:e.getAttribute('aria-label'),labelledBy:e.getAttribute('aria-labelledby')}))});try{await first.focus();const before=await measure();await first.press('ArrowRight');await page.waitForTimeout(150);const right=await measure();await group.screenshot({path:'qa-a450-workspace-arrow-desktop.png'});await first.focus();await first.press('ArrowDown');await page.waitForTimeout(150);const down=await measure();await first.focus();await first.press('Tab');const tab=await measure();await second.focus();await second.press('Space');await page.waitForTimeout(400);const space=await measure();await first.focus();await first.press('Space');await page.waitForTimeout(400);const restored=await measure();return{at:new Date().toISOString(),kind:\"workspace\",viewport:{width:1440,height:1000},url:page.url(),before,right,down,tab,space,restored,mutations}}finally{page.off('request',handler)}}",
+      "receipt": {
+        "at": "2026-10-14T10:48:45.643Z",
+        "kind": "workspace",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "url": "https://dashboard.bex.co/new/workspace",
+        "before": {
+          "at": "2026-10-14T10:48:44.383Z",
+          "group": "- radiogroup \"Plan\":\n  - radio \"Hobby $0/mo For individuals getting started. 1 member Up to 25 services 5 Hobby workspaces per user Plan selected\" [checked]:\n    - text: Hobby $0/mo\n    - paragraph: For individuals getting started.\n    - list:\n      - listitem: 1 member\n      - listitem: Up to 25 services\n      - listitem: 5 Hobby workspaces per user\n    - text: Plan selected\n  - radio \"Pro $17.50/mo For small teams shipping together. Unlimited members Unlimited services Select plan\":\n    - text: Pro $17.50/mo\n    - paragraph: For small teams shipping together.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n    - text: Select plan\n  - radio \"Scale $349.30/mo For growing teams that need extra roles. Unlimited members Unlimited services Extra roles (Contributor, Viewer, Billing) Select plan\":\n    - text: Scale $349.30/mo\n    - paragraph: For growing teams that need extra roles.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n      - listitem: Extra roles (Contributor, Viewer, Billing)\n    - text: Select plan\n  - radio \"Enterprise Custom terms Custom limits and support. Custom limits Custom support Select plan\":\n    - text: Enterprise Custom terms\n    - paragraph: Custom limits and support.\n    - list:\n      - listitem: Custom limits\n      - listitem: Custom support\n    - text: Select plan",
+          "radios": [
+            {
+              "text": "Hobby$0/moFor individuals getting started.1 memberUp to 25 services5 Hobby workspaces per userPlan selected",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Pro$17.50/moFor small teams shipping together.Unlimited membersUnlimited servicesSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Scale$349.30/moFor growing teams that need extra roles.Unlimited membersUnlimited servicesExtra roles (Contributor, Viewer, Billing)Select plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "EnterpriseCustom termsCustom limits and support.Custom limitsCustom supportSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Plan",
+            "labelledBy": null
+          }
+        },
+        "right": {
+          "at": "2026-10-14T10:48:44.555Z",
+          "group": "- radiogroup \"Plan\":\n  - radio \"Hobby $0/mo For individuals getting started. 1 member Up to 25 services 5 Hobby workspaces per user Plan selected\" [checked]:\n    - text: Hobby $0/mo\n    - paragraph: For individuals getting started.\n    - list:\n      - listitem: 1 member\n      - listitem: Up to 25 services\n      - listitem: 5 Hobby workspaces per user\n    - text: Plan selected\n  - radio \"Pro $17.50/mo For small teams shipping together. Unlimited members Unlimited services Select plan\":\n    - text: Pro $17.50/mo\n    - paragraph: For small teams shipping together.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n    - text: Select plan\n  - radio \"Scale $349.30/mo For growing teams that need extra roles. Unlimited members Unlimited services Extra roles (Contributor, Viewer, Billing) Select plan\":\n    - text: Scale $349.30/mo\n    - paragraph: For growing teams that need extra roles.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n      - listitem: Extra roles (Contributor, Viewer, Billing)\n    - text: Select plan\n  - radio \"Enterprise Custom terms Custom limits and support. Custom limits Custom support Select plan\":\n    - text: Enterprise Custom terms\n    - paragraph: Custom limits and support.\n    - list:\n      - listitem: Custom limits\n      - listitem: Custom support\n    - text: Select plan",
+          "radios": [
+            {
+              "text": "Hobby$0/moFor individuals getting started.1 memberUp to 25 services5 Hobby workspaces per userPlan selected",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Pro$17.50/moFor small teams shipping together.Unlimited membersUnlimited servicesSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Scale$349.30/moFor growing teams that need extra roles.Unlimited membersUnlimited servicesExtra roles (Contributor, Viewer, Billing)Select plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "EnterpriseCustom termsCustom limits and support.Custom limitsCustom supportSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Plan",
+            "labelledBy": null
+          }
+        },
+        "down": {
+          "at": "2026-10-14T10:48:44.801Z",
+          "group": "- radiogroup \"Plan\":\n  - radio \"Hobby $0/mo For individuals getting started. 1 member Up to 25 services 5 Hobby workspaces per user Plan selected\" [checked]:\n    - text: Hobby $0/mo\n    - paragraph: For individuals getting started.\n    - list:\n      - listitem: 1 member\n      - listitem: Up to 25 services\n      - listitem: 5 Hobby workspaces per user\n    - text: Plan selected\n  - radio \"Pro $17.50/mo For small teams shipping together. Unlimited members Unlimited services Select plan\":\n    - text: Pro $17.50/mo\n    - paragraph: For small teams shipping together.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n    - text: Select plan\n  - radio \"Scale $349.30/mo For growing teams that need extra roles. Unlimited members Unlimited services Extra roles (Contributor, Viewer, Billing) Select plan\":\n    - text: Scale $349.30/mo\n    - paragraph: For growing teams that need extra roles.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n      - listitem: Extra roles (Contributor, Viewer, Billing)\n    - text: Select plan\n  - radio \"Enterprise Custom terms Custom limits and support. Custom limits Custom support Select plan\":\n    - text: Enterprise Custom terms\n    - paragraph: Custom limits and support.\n    - list:\n      - listitem: Custom limits\n      - listitem: Custom support\n    - text: Select plan",
+          "radios": [
+            {
+              "text": "Hobby$0/moFor individuals getting started.1 memberUp to 25 services5 Hobby workspaces per userPlan selected",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Pro$17.50/moFor small teams shipping together.Unlimited membersUnlimited servicesSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Scale$349.30/moFor growing teams that need extra roles.Unlimited membersUnlimited servicesExtra roles (Contributor, Viewer, Billing)Select plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "EnterpriseCustom termsCustom limits and support.Custom limitsCustom supportSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Plan",
+            "labelledBy": null
+          }
+        },
+        "tab": {
+          "at": "2026-10-14T10:48:44.811Z",
+          "group": "- radiogroup \"Plan\":\n  - radio \"Hobby $0/mo For individuals getting started. 1 member Up to 25 services 5 Hobby workspaces per user Plan selected\" [checked]:\n    - text: Hobby $0/mo\n    - paragraph: For individuals getting started.\n    - list:\n      - listitem: 1 member\n      - listitem: Up to 25 services\n      - listitem: 5 Hobby workspaces per user\n    - text: Plan selected\n  - radio \"Pro $17.50/mo For small teams shipping together. Unlimited members Unlimited services Select plan\":\n    - text: Pro $17.50/mo\n    - paragraph: For small teams shipping together.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n    - text: Select plan\n  - radio \"Scale $349.30/mo For growing teams that need extra roles. Unlimited members Unlimited services Extra roles (Contributor, Viewer, Billing) Select plan\":\n    - text: Scale $349.30/mo\n    - paragraph: For growing teams that need extra roles.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n      - listitem: Extra roles (Contributor, Viewer, Billing)\n    - text: Select plan\n  - radio \"Enterprise Custom terms Custom limits and support. Custom limits Custom support Select plan\":\n    - text: Enterprise Custom terms\n    - paragraph: Custom limits and support.\n    - list:\n      - listitem: Custom limits\n      - listitem: Custom support\n    - text: Select plan",
+          "radios": [
+            {
+              "text": "Hobby$0/moFor individuals getting started.1 memberUp to 25 services5 Hobby workspaces per userPlan selected",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro$17.50/moFor small teams shipping together.Unlimited membersUnlimited servicesSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Scale$349.30/moFor growing teams that need extra roles.Unlimited membersUnlimited servicesExtra roles (Contributor, Viewer, Billing)Select plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "EnterpriseCustom termsCustom limits and support.Custom limitsCustom supportSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Plan",
+            "labelledBy": null
+          }
+        },
+        "space": {
+          "at": "2026-10-14T10:48:45.222Z",
+          "group": "- radiogroup \"Plan\":\n  - radio \"Hobby $0/mo For individuals getting started. 1 member Up to 25 services 5 Hobby workspaces per user Select plan\":\n    - text: Hobby $0/mo\n    - paragraph: For individuals getting started.\n    - list:\n      - listitem: 1 member\n      - listitem: Up to 25 services\n      - listitem: 5 Hobby workspaces per user\n    - text: Select plan\n  - radio \"Pro $17.50/mo For small teams shipping together. Unlimited members Unlimited services Plan selected\" [checked]:\n    - text: Pro $17.50/mo\n    - paragraph: For small teams shipping together.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n    - text: Plan selected\n  - radio \"Scale $349.30/mo For growing teams that need extra roles. Unlimited members Unlimited services Extra roles (Contributor, Viewer, Billing) Select plan\":\n    - text: Scale $349.30/mo\n    - paragraph: For growing teams that need extra roles.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n      - listitem: Extra roles (Contributor, Viewer, Billing)\n    - text: Select plan\n  - radio \"Enterprise Custom terms Custom limits and support. Custom limits Custom support Select plan\":\n    - text: Enterprise Custom terms\n    - paragraph: Custom limits and support.\n    - list:\n      - listitem: Custom limits\n      - listitem: Custom support\n    - text: Select plan",
+          "radios": [
+            {
+              "text": "Hobby$0/moFor individuals getting started.1 memberUp to 25 services5 Hobby workspaces per userSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro$17.50/moFor small teams shipping together.Unlimited membersUnlimited servicesPlan selected",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Scale$349.30/moFor growing teams that need extra roles.Unlimited membersUnlimited servicesExtra roles (Contributor, Viewer, Billing)Select plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "EnterpriseCustom termsCustom limits and support.Custom limitsCustom supportSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Plan",
+            "labelledBy": null
+          }
+        },
+        "restored": {
+          "at": "2026-10-14T10:48:45.636Z",
+          "group": "- radiogroup \"Plan\":\n  - radio \"Hobby $0/mo For individuals getting started. 1 member Up to 25 services 5 Hobby workspaces per user Plan selected\" [checked]:\n    - text: Hobby $0/mo\n    - paragraph: For individuals getting started.\n    - list:\n      - listitem: 1 member\n      - listitem: Up to 25 services\n      - listitem: 5 Hobby workspaces per user\n    - text: Plan selected\n  - radio \"Pro $17.50/mo For small teams shipping together. Unlimited members Unlimited services Select plan\":\n    - text: Pro $17.50/mo\n    - paragraph: For small teams shipping together.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n    - text: Select plan\n  - radio \"Scale $349.30/mo For growing teams that need extra roles. Unlimited members Unlimited services Extra roles (Contributor, Viewer, Billing) Select plan\":\n    - text: Scale $349.30/mo\n    - paragraph: For growing teams that need extra roles.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n      - listitem: Extra roles (Contributor, Viewer, Billing)\n    - text: Select plan\n  - radio \"Enterprise Custom terms Custom limits and support. Custom limits Custom support Select plan\":\n    - text: Enterprise Custom terms\n    - paragraph: Custom limits and support.\n    - list:\n      - listitem: Custom limits\n      - listitem: Custom support\n    - text: Select plan",
+          "radios": [
+            {
+              "text": "Hobby$0/moFor individuals getting started.1 memberUp to 25 services5 Hobby workspaces per userPlan selected",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Pro$17.50/moFor small teams shipping together.Unlimited membersUnlimited servicesSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Scale$349.30/moFor growing teams that need extra roles.Unlimited membersUnlimited servicesExtra roles (Contributor, Viewer, Billing)Select plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "EnterpriseCustom termsCustom limits and support.Custom limitsCustom supportSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Plan",
+            "labelledBy": null
+          }
+        },
+        "mutations": []
+      }
+    },
+    "WorkspaceMobile": {
+      "code": "async(page)=>{await page.setViewportSize({width:390,height:844});await page.goto(\"https://dashboard.bex.co/new/workspace\");await page.getByRole('radiogroup').first().waitFor({timeout:20000});await page.waitForTimeout(900);const group=page.getByRole('radiogroup');if(await group.count()!==1)throw new Error('Ambiguous group');const radios=group.getByRole('radio');const first=radios.nth(0);const second=radios.nth(1);const mutations=[];const handler=request=>{try{const b=request.postDataJSON();for(const q of (Array.isArray(b)?b:[b]))if(/^\\s*mutation\\b/.test(q?.query||''))mutations.push({operationName:q.operationName??null,variables:q.variables??null,query:q.query})}catch{}};page.on('request',handler);const measure=async()=>({at:new Date().toISOString(),group:await group.ariaSnapshot(),radios:await radios.evaluateAll(es=>es.map(e=>({text:e.textContent,tag:e.tagName,checked:e.getAttribute('aria-checked'),tabIndex:e.tabIndex,disabled:e.disabled,active:e===document.activeElement}))),labels:await group.evaluate(e=>({ariaLabel:e.getAttribute('aria-label'),labelledBy:e.getAttribute('aria-labelledby')}))});try{await first.focus();const before=await measure();await first.press('ArrowRight');await page.waitForTimeout(150);const right=await measure();await group.screenshot({path:'qa-a450-workspace-arrow-mobile.png'});await first.focus();await first.press('ArrowDown');await page.waitForTimeout(150);const down=await measure();await first.focus();await first.press('Tab');const tab=await measure();await second.focus();await second.press('Space');await page.waitForTimeout(400);const space=await measure();await first.focus();await first.press('Space');await page.waitForTimeout(400);const restored=await measure();return{at:new Date().toISOString(),kind:\"workspace\",viewport:{width:390,height:844},url:page.url(),before,right,down,tab,space,restored,mutations}}finally{page.off('request',handler)}}",
+      "receipt": {
+        "at": "2026-10-14T10:48:49.234Z",
+        "kind": "workspace",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "url": "https://dashboard.bex.co/new/workspace",
+        "before": {
+          "at": "2026-10-14T10:48:47.973Z",
+          "group": "- radiogroup \"Plan\":\n  - radio \"Hobby $0/mo For individuals getting started. 1 member Up to 25 services 5 Hobby workspaces per user Plan selected\" [checked]:\n    - text: Hobby $0/mo\n    - paragraph: For individuals getting started.\n    - list:\n      - listitem: 1 member\n      - listitem: Up to 25 services\n      - listitem: 5 Hobby workspaces per user\n    - text: Plan selected\n  - radio \"Pro $17.50/mo For small teams shipping together. Unlimited members Unlimited services Select plan\":\n    - text: Pro $17.50/mo\n    - paragraph: For small teams shipping together.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n    - text: Select plan\n  - radio \"Scale $349.30/mo For growing teams that need extra roles. Unlimited members Unlimited services Extra roles (Contributor, Viewer, Billing) Select plan\":\n    - text: Scale $349.30/mo\n    - paragraph: For growing teams that need extra roles.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n      - listitem: Extra roles (Contributor, Viewer, Billing)\n    - text: Select plan\n  - radio \"Enterprise Custom terms Custom limits and support. Custom limits Custom support Select plan\":\n    - text: Enterprise Custom terms\n    - paragraph: Custom limits and support.\n    - list:\n      - listitem: Custom limits\n      - listitem: Custom support\n    - text: Select plan",
+          "radios": [
+            {
+              "text": "Hobby$0/moFor individuals getting started.1 memberUp to 25 services5 Hobby workspaces per userPlan selected",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Pro$17.50/moFor small teams shipping together.Unlimited membersUnlimited servicesSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Scale$349.30/moFor growing teams that need extra roles.Unlimited membersUnlimited servicesExtra roles (Contributor, Viewer, Billing)Select plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "EnterpriseCustom termsCustom limits and support.Custom limitsCustom supportSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Plan",
+            "labelledBy": null
+          }
+        },
+        "right": {
+          "at": "2026-10-14T10:48:48.145Z",
+          "group": "- radiogroup \"Plan\":\n  - radio \"Hobby $0/mo For individuals getting started. 1 member Up to 25 services 5 Hobby workspaces per user Plan selected\" [checked]:\n    - text: Hobby $0/mo\n    - paragraph: For individuals getting started.\n    - list:\n      - listitem: 1 member\n      - listitem: Up to 25 services\n      - listitem: 5 Hobby workspaces per user\n    - text: Plan selected\n  - radio \"Pro $17.50/mo For small teams shipping together. Unlimited members Unlimited services Select plan\":\n    - text: Pro $17.50/mo\n    - paragraph: For small teams shipping together.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n    - text: Select plan\n  - radio \"Scale $349.30/mo For growing teams that need extra roles. Unlimited members Unlimited services Extra roles (Contributor, Viewer, Billing) Select plan\":\n    - text: Scale $349.30/mo\n    - paragraph: For growing teams that need extra roles.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n      - listitem: Extra roles (Contributor, Viewer, Billing)\n    - text: Select plan\n  - radio \"Enterprise Custom terms Custom limits and support. Custom limits Custom support Select plan\":\n    - text: Enterprise Custom terms\n    - paragraph: Custom limits and support.\n    - list:\n      - listitem: Custom limits\n      - listitem: Custom support\n    - text: Select plan",
+          "radios": [
+            {
+              "text": "Hobby$0/moFor individuals getting started.1 memberUp to 25 services5 Hobby workspaces per userPlan selected",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Pro$17.50/moFor small teams shipping together.Unlimited membersUnlimited servicesSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Scale$349.30/moFor growing teams that need extra roles.Unlimited membersUnlimited servicesExtra roles (Contributor, Viewer, Billing)Select plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "EnterpriseCustom termsCustom limits and support.Custom limitsCustom supportSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Plan",
+            "labelledBy": null
+          }
+        },
+        "down": {
+          "at": "2026-10-14T10:48:48.384Z",
+          "group": "- radiogroup \"Plan\":\n  - radio \"Hobby $0/mo For individuals getting started. 1 member Up to 25 services 5 Hobby workspaces per user Plan selected\" [checked]:\n    - text: Hobby $0/mo\n    - paragraph: For individuals getting started.\n    - list:\n      - listitem: 1 member\n      - listitem: Up to 25 services\n      - listitem: 5 Hobby workspaces per user\n    - text: Plan selected\n  - radio \"Pro $17.50/mo For small teams shipping together. Unlimited members Unlimited services Select plan\":\n    - text: Pro $17.50/mo\n    - paragraph: For small teams shipping together.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n    - text: Select plan\n  - radio \"Scale $349.30/mo For growing teams that need extra roles. Unlimited members Unlimited services Extra roles (Contributor, Viewer, Billing) Select plan\":\n    - text: Scale $349.30/mo\n    - paragraph: For growing teams that need extra roles.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n      - listitem: Extra roles (Contributor, Viewer, Billing)\n    - text: Select plan\n  - radio \"Enterprise Custom terms Custom limits and support. Custom limits Custom support Select plan\":\n    - text: Enterprise Custom terms\n    - paragraph: Custom limits and support.\n    - list:\n      - listitem: Custom limits\n      - listitem: Custom support\n    - text: Select plan",
+          "radios": [
+            {
+              "text": "Hobby$0/moFor individuals getting started.1 memberUp to 25 services5 Hobby workspaces per userPlan selected",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Pro$17.50/moFor small teams shipping together.Unlimited membersUnlimited servicesSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Scale$349.30/moFor growing teams that need extra roles.Unlimited membersUnlimited servicesExtra roles (Contributor, Viewer, Billing)Select plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "EnterpriseCustom termsCustom limits and support.Custom limitsCustom supportSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Plan",
+            "labelledBy": null
+          }
+        },
+        "tab": {
+          "at": "2026-10-14T10:48:48.395Z",
+          "group": "- radiogroup \"Plan\":\n  - radio \"Hobby $0/mo For individuals getting started. 1 member Up to 25 services 5 Hobby workspaces per user Plan selected\" [checked]:\n    - text: Hobby $0/mo\n    - paragraph: For individuals getting started.\n    - list:\n      - listitem: 1 member\n      - listitem: Up to 25 services\n      - listitem: 5 Hobby workspaces per user\n    - text: Plan selected\n  - radio \"Pro $17.50/mo For small teams shipping together. Unlimited members Unlimited services Select plan\":\n    - text: Pro $17.50/mo\n    - paragraph: For small teams shipping together.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n    - text: Select plan\n  - radio \"Scale $349.30/mo For growing teams that need extra roles. Unlimited members Unlimited services Extra roles (Contributor, Viewer, Billing) Select plan\":\n    - text: Scale $349.30/mo\n    - paragraph: For growing teams that need extra roles.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n      - listitem: Extra roles (Contributor, Viewer, Billing)\n    - text: Select plan\n  - radio \"Enterprise Custom terms Custom limits and support. Custom limits Custom support Select plan\":\n    - text: Enterprise Custom terms\n    - paragraph: Custom limits and support.\n    - list:\n      - listitem: Custom limits\n      - listitem: Custom support\n    - text: Select plan",
+          "radios": [
+            {
+              "text": "Hobby$0/moFor individuals getting started.1 memberUp to 25 services5 Hobby workspaces per userPlan selected",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro$17.50/moFor small teams shipping together.Unlimited membersUnlimited servicesSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Scale$349.30/moFor growing teams that need extra roles.Unlimited membersUnlimited servicesExtra roles (Contributor, Viewer, Billing)Select plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "EnterpriseCustom termsCustom limits and support.Custom limitsCustom supportSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Plan",
+            "labelledBy": null
+          }
+        },
+        "space": {
+          "at": "2026-10-14T10:48:48.809Z",
+          "group": "- radiogroup \"Plan\":\n  - radio \"Hobby $0/mo For individuals getting started. 1 member Up to 25 services 5 Hobby workspaces per user Select plan\":\n    - text: Hobby $0/mo\n    - paragraph: For individuals getting started.\n    - list:\n      - listitem: 1 member\n      - listitem: Up to 25 services\n      - listitem: 5 Hobby workspaces per user\n    - text: Select plan\n  - radio \"Pro $17.50/mo For small teams shipping together. Unlimited members Unlimited services Plan selected\" [checked]:\n    - text: Pro $17.50/mo\n    - paragraph: For small teams shipping together.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n    - text: Plan selected\n  - radio \"Scale $349.30/mo For growing teams that need extra roles. Unlimited members Unlimited services Extra roles (Contributor, Viewer, Billing) Select plan\":\n    - text: Scale $349.30/mo\n    - paragraph: For growing teams that need extra roles.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n      - listitem: Extra roles (Contributor, Viewer, Billing)\n    - text: Select plan\n  - radio \"Enterprise Custom terms Custom limits and support. Custom limits Custom support Select plan\":\n    - text: Enterprise Custom terms\n    - paragraph: Custom limits and support.\n    - list:\n      - listitem: Custom limits\n      - listitem: Custom support\n    - text: Select plan",
+          "radios": [
+            {
+              "text": "Hobby$0/moFor individuals getting started.1 memberUp to 25 services5 Hobby workspaces per userSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro$17.50/moFor small teams shipping together.Unlimited membersUnlimited servicesPlan selected",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Scale$349.30/moFor growing teams that need extra roles.Unlimited membersUnlimited servicesExtra roles (Contributor, Viewer, Billing)Select plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "EnterpriseCustom termsCustom limits and support.Custom limitsCustom supportSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Plan",
+            "labelledBy": null
+          }
+        },
+        "restored": {
+          "at": "2026-10-14T10:48:49.226Z",
+          "group": "- radiogroup \"Plan\":\n  - radio \"Hobby $0/mo For individuals getting started. 1 member Up to 25 services 5 Hobby workspaces per user Plan selected\" [checked]:\n    - text: Hobby $0/mo\n    - paragraph: For individuals getting started.\n    - list:\n      - listitem: 1 member\n      - listitem: Up to 25 services\n      - listitem: 5 Hobby workspaces per user\n    - text: Plan selected\n  - radio \"Pro $17.50/mo For small teams shipping together. Unlimited members Unlimited services Select plan\":\n    - text: Pro $17.50/mo\n    - paragraph: For small teams shipping together.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n    - text: Select plan\n  - radio \"Scale $349.30/mo For growing teams that need extra roles. Unlimited members Unlimited services Extra roles (Contributor, Viewer, Billing) Select plan\":\n    - text: Scale $349.30/mo\n    - paragraph: For growing teams that need extra roles.\n    - list:\n      - listitem: Unlimited members\n      - listitem: Unlimited services\n      - listitem: Extra roles (Contributor, Viewer, Billing)\n    - text: Select plan\n  - radio \"Enterprise Custom terms Custom limits and support. Custom limits Custom support Select plan\":\n    - text: Enterprise Custom terms\n    - paragraph: Custom limits and support.\n    - list:\n      - listitem: Custom limits\n      - listitem: Custom support\n    - text: Select plan",
+          "radios": [
+            {
+              "text": "Hobby$0/moFor individuals getting started.1 memberUp to 25 services5 Hobby workspaces per userPlan selected",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Pro$17.50/moFor small teams shipping together.Unlimited membersUnlimited servicesSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Scale$349.30/moFor growing teams that need extra roles.Unlimited membersUnlimited servicesExtra roles (Contributor, Viewer, Billing)Select plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "EnterpriseCustom termsCustom limits and support.Custom limitsCustom supportSelect plan",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Plan",
+            "labelledBy": null
+          }
+        },
+        "mutations": []
+      }
+    },
+    "InstanceDesktop": {
+      "code": "async(page)=>{await page.setViewportSize({width:1440,height:1000});await page.goto('https://dashboard.bex.co/services/srv-db7lsfmt41sc7388o87g/plan');const group=page.getByRole('radiogroup',{name:'Pick an Instance Type',exact:true});await group.waitFor({timeout:20000});await page.waitForTimeout(900);const radios=group.getByRole('radio');const first=radios.nth(0),second=radios.nth(1);const mutations=[];const handler=request=>{try{const b=request.postDataJSON();for(const q of (Array.isArray(b)?b:[b]))if(/^\\s*mutation\\b/.test(q?.query||''))mutations.push({operationName:q.operationName??null,variables:q.variables??null,query:q.query})}catch{}};page.on('request',handler);const measure=async()=>({at:new Date().toISOString(),group:await group.ariaSnapshot(),radios:await radios.evaluateAll(es=>es.map(e=>({text:e.textContent,tag:e.tagName,checked:e.getAttribute('aria-checked'),tabIndex:e.tabIndex,disabled:e.disabled,active:e===document.activeElement}))),labels:await group.evaluate(e=>({ariaLabel:e.getAttribute('aria-label'),labelledBy:e.getAttribute('aria-labelledby')})),saveEnabled:await page.getByRole('button',{name:'Save Changes',exact:true}).isEnabled()});try{await first.focus();const before=await measure();await first.press('ArrowRight');await page.waitForTimeout(150);const right=await measure();await group.screenshot({path:'qa-a450-instance-arrow-desktop.png'});await first.focus();await first.press('ArrowDown');await page.waitForTimeout(150);const down=await measure();await first.focus();await first.press('Tab');const tab=await measure();await second.focus();await second.press('Space');await page.waitForTimeout(250);const space=await measure();await first.focus();await first.press('Space');await page.waitForTimeout(250);const restored=await measure();const r=await page.request.post('https://api.bex.co/graphql',{data:{query:'query($id:String!){server(id:$id){id plan type phase}}',variables:{id:'srv-db7lsfmt41sc7388o87g'}}});return{at:new Date().toISOString(),viewport:{width:1440,height:1000},url:page.url(),before,right,down,tab,space,restored,mutations,persisted:{status:r.status(),body:await r.json()}}}finally{page.off('request',handler)}}",
+      "receipt": {
+        "at": "2026-10-14T10:50:35.862Z",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "url": "https://dashboard.bex.co/services/srv-db7lsfmt41sc7388o87g/plan",
+        "before": {
+          "at": "2026-10-14T10:50:34.559Z",
+          "group": "- radiogroup \"Pick an Instance Type\":\n  - text: Free\n  - radio \"Free 512 MB (RAM) 0.1 CPU\" [checked]\n  - text: Paid\n  - radio \"Starter 512 MB (RAM) 0.5 CPU\"\n  - radio \"Standard 2 GB (RAM) 1 CPU\"\n  - radio \"Pro 4 GB (RAM) 2 CPU\"\n  - radio \"Pro Plus 8 GB (RAM) 4 CPU\"\n  - radio \"Pro Max 16 GB (RAM) 4 CPU\"\n  - radio \"Pro Ultra 32 GB (RAM) 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free512 MB (RAM)0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter512 MB (RAM)0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard2 GB (RAM)1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro4 GB (RAM)2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus8 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max16 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra32 GB (RAM)8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Pick an Instance Type",
+            "labelledBy": null
+          },
+          "saveEnabled": false
+        },
+        "right": {
+          "at": "2026-10-14T10:50:34.737Z",
+          "group": "- radiogroup \"Pick an Instance Type\":\n  - text: Free\n  - radio \"Free 512 MB (RAM) 0.1 CPU\" [checked]\n  - text: Paid\n  - radio \"Starter 512 MB (RAM) 0.5 CPU\"\n  - radio \"Standard 2 GB (RAM) 1 CPU\"\n  - radio \"Pro 4 GB (RAM) 2 CPU\"\n  - radio \"Pro Plus 8 GB (RAM) 4 CPU\"\n  - radio \"Pro Max 16 GB (RAM) 4 CPU\"\n  - radio \"Pro Ultra 32 GB (RAM) 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free512 MB (RAM)0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter512 MB (RAM)0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard2 GB (RAM)1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro4 GB (RAM)2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus8 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max16 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra32 GB (RAM)8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Pick an Instance Type",
+            "labelledBy": null
+          },
+          "saveEnabled": false
+        },
+        "down": {
+          "at": "2026-10-14T10:50:34.961Z",
+          "group": "- radiogroup \"Pick an Instance Type\":\n  - text: Free\n  - radio \"Free 512 MB (RAM) 0.1 CPU\" [checked]\n  - text: Paid\n  - radio \"Starter 512 MB (RAM) 0.5 CPU\"\n  - radio \"Standard 2 GB (RAM) 1 CPU\"\n  - radio \"Pro 4 GB (RAM) 2 CPU\"\n  - radio \"Pro Plus 8 GB (RAM) 4 CPU\"\n  - radio \"Pro Max 16 GB (RAM) 4 CPU\"\n  - radio \"Pro Ultra 32 GB (RAM) 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free512 MB (RAM)0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter512 MB (RAM)0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard2 GB (RAM)1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro4 GB (RAM)2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus8 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max16 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra32 GB (RAM)8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Pick an Instance Type",
+            "labelledBy": null
+          },
+          "saveEnabled": false
+        },
+        "tab": {
+          "at": "2026-10-14T10:50:34.978Z",
+          "group": "- radiogroup \"Pick an Instance Type\":\n  - text: Free\n  - radio \"Free 512 MB (RAM) 0.1 CPU\" [checked]\n  - text: Paid\n  - radio \"Starter 512 MB (RAM) 0.5 CPU\"\n  - radio \"Standard 2 GB (RAM) 1 CPU\"\n  - radio \"Pro 4 GB (RAM) 2 CPU\"\n  - radio \"Pro Plus 8 GB (RAM) 4 CPU\"\n  - radio \"Pro Max 16 GB (RAM) 4 CPU\"\n  - radio \"Pro Ultra 32 GB (RAM) 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free512 MB (RAM)0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Starter512 MB (RAM)0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Standard2 GB (RAM)1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro4 GB (RAM)2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus8 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max16 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra32 GB (RAM)8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Pick an Instance Type",
+            "labelledBy": null
+          },
+          "saveEnabled": false
+        },
+        "space": {
+          "at": "2026-10-14T10:50:35.244Z",
+          "group": "- radiogroup \"Pick an Instance Type\":\n  - text: Free\n  - radio \"Free 512 MB (RAM) 0.1 CPU\"\n  - text: Paid\n  - radio \"Starter 512 MB (RAM) 0.5 CPU\" [checked]\n  - radio \"Standard 2 GB (RAM) 1 CPU\"\n  - radio \"Pro 4 GB (RAM) 2 CPU\"\n  - radio \"Pro Plus 8 GB (RAM) 4 CPU\"\n  - radio \"Pro Max 16 GB (RAM) 4 CPU\"\n  - radio \"Pro Ultra 32 GB (RAM) 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free512 MB (RAM)0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Starter512 MB (RAM)0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Standard2 GB (RAM)1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro4 GB (RAM)2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus8 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max16 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra32 GB (RAM)8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Pick an Instance Type",
+            "labelledBy": null
+          },
+          "saveEnabled": true
+        },
+        "restored": {
+          "at": "2026-10-14T10:50:35.509Z",
+          "group": "- radiogroup \"Pick an Instance Type\":\n  - text: Free\n  - radio \"Free 512 MB (RAM) 0.1 CPU\" [checked]\n  - text: Paid\n  - radio \"Starter 512 MB (RAM) 0.5 CPU\"\n  - radio \"Standard 2 GB (RAM) 1 CPU\"\n  - radio \"Pro 4 GB (RAM) 2 CPU\"\n  - radio \"Pro Plus 8 GB (RAM) 4 CPU\"\n  - radio \"Pro Max 16 GB (RAM) 4 CPU\"\n  - radio \"Pro Ultra 32 GB (RAM) 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free512 MB (RAM)0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter512 MB (RAM)0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard2 GB (RAM)1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro4 GB (RAM)2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus8 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max16 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra32 GB (RAM)8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Pick an Instance Type",
+            "labelledBy": null
+          },
+          "saveEnabled": false
+        },
+        "mutations": [],
+        "persisted": {
+          "status": 200,
+          "body": {
+            "data": {
+              "server": {
+                "id": "srv-db7lsfmt41sc7388o87g",
+                "phase": "Running",
+                "plan": "free",
+                "type": "web_service"
+              }
+            }
+          }
+        }
+      }
+    },
+    "InstanceMobile": {
+      "code": "async(page)=>{await page.setViewportSize({width:390,height:844});await page.goto('https://dashboard.bex.co/services/srv-db7lsfmt41sc7388o87g/plan');const group=page.getByRole('radiogroup',{name:'Pick an Instance Type',exact:true});await group.waitFor({timeout:20000});await page.waitForTimeout(900);const radios=group.getByRole('radio');const first=radios.nth(0),second=radios.nth(1);const mutations=[];const handler=request=>{try{const b=request.postDataJSON();for(const q of (Array.isArray(b)?b:[b]))if(/^\\s*mutation\\b/.test(q?.query||''))mutations.push({operationName:q.operationName??null,variables:q.variables??null,query:q.query})}catch{}};page.on('request',handler);const measure=async()=>({at:new Date().toISOString(),group:await group.ariaSnapshot(),radios:await radios.evaluateAll(es=>es.map(e=>({text:e.textContent,tag:e.tagName,checked:e.getAttribute('aria-checked'),tabIndex:e.tabIndex,disabled:e.disabled,active:e===document.activeElement}))),labels:await group.evaluate(e=>({ariaLabel:e.getAttribute('aria-label'),labelledBy:e.getAttribute('aria-labelledby')})),saveEnabled:await page.getByRole('button',{name:'Save Changes',exact:true}).isEnabled()});try{await first.focus();const before=await measure();await first.press('ArrowRight');await page.waitForTimeout(150);const right=await measure();await group.screenshot({path:'qa-a450-instance-arrow-mobile.png'});await first.focus();await first.press('ArrowDown');await page.waitForTimeout(150);const down=await measure();await first.focus();await first.press('Tab');const tab=await measure();await second.focus();await second.press('Space');await page.waitForTimeout(250);const space=await measure();await first.focus();await first.press('Space');await page.waitForTimeout(250);const restored=await measure();const r=await page.request.post('https://api.bex.co/graphql',{data:{query:'query($id:String!){server(id:$id){id plan type phase}}',variables:{id:'srv-db7lsfmt41sc7388o87g'}}});return{at:new Date().toISOString(),viewport:{width:390,height:844},url:page.url(),before,right,down,tab,space,restored,mutations,persisted:{status:r.status(),body:await r.json()}}}finally{page.off('request',handler)}}",
+      "receipt": {
+        "at": "2026-10-14T10:50:40.547Z",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "url": "https://dashboard.bex.co/services/srv-db7lsfmt41sc7388o87g/plan",
+        "before": {
+          "at": "2026-10-14T10:50:39.381Z",
+          "group": "- radiogroup \"Pick an Instance Type\":\n  - text: Free\n  - radio \"Free 512 MB (RAM) 0.1 CPU\" [checked]\n  - text: Paid\n  - radio \"Starter 512 MB (RAM) 0.5 CPU\"\n  - radio \"Standard 2 GB (RAM) 1 CPU\"\n  - radio \"Pro 4 GB (RAM) 2 CPU\"\n  - radio \"Pro Plus 8 GB (RAM) 4 CPU\"\n  - radio \"Pro Max 16 GB (RAM) 4 CPU\"\n  - radio \"Pro Ultra 32 GB (RAM) 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free512 MB (RAM)0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter512 MB (RAM)0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard2 GB (RAM)1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro4 GB (RAM)2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus8 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max16 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra32 GB (RAM)8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Pick an Instance Type",
+            "labelledBy": null
+          },
+          "saveEnabled": false
+        },
+        "right": {
+          "at": "2026-10-14T10:50:39.557Z",
+          "group": "- radiogroup \"Pick an Instance Type\":\n  - text: Free\n  - radio \"Free 512 MB (RAM) 0.1 CPU\" [checked]\n  - text: Paid\n  - radio \"Starter 512 MB (RAM) 0.5 CPU\"\n  - radio \"Standard 2 GB (RAM) 1 CPU\"\n  - radio \"Pro 4 GB (RAM) 2 CPU\"\n  - radio \"Pro Plus 8 GB (RAM) 4 CPU\"\n  - radio \"Pro Max 16 GB (RAM) 4 CPU\"\n  - radio \"Pro Ultra 32 GB (RAM) 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free512 MB (RAM)0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter512 MB (RAM)0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard2 GB (RAM)1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro4 GB (RAM)2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus8 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max16 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra32 GB (RAM)8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Pick an Instance Type",
+            "labelledBy": null
+          },
+          "saveEnabled": false
+        },
+        "down": {
+          "at": "2026-10-14T10:50:39.778Z",
+          "group": "- radiogroup \"Pick an Instance Type\":\n  - text: Free\n  - radio \"Free 512 MB (RAM) 0.1 CPU\" [checked]\n  - text: Paid\n  - radio \"Starter 512 MB (RAM) 0.5 CPU\"\n  - radio \"Standard 2 GB (RAM) 1 CPU\"\n  - radio \"Pro 4 GB (RAM) 2 CPU\"\n  - radio \"Pro Plus 8 GB (RAM) 4 CPU\"\n  - radio \"Pro Max 16 GB (RAM) 4 CPU\"\n  - radio \"Pro Ultra 32 GB (RAM) 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free512 MB (RAM)0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter512 MB (RAM)0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard2 GB (RAM)1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro4 GB (RAM)2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus8 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max16 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra32 GB (RAM)8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Pick an Instance Type",
+            "labelledBy": null
+          },
+          "saveEnabled": false
+        },
+        "tab": {
+          "at": "2026-10-14T10:50:39.793Z",
+          "group": "- radiogroup \"Pick an Instance Type\":\n  - text: Free\n  - radio \"Free 512 MB (RAM) 0.1 CPU\" [checked]\n  - text: Paid\n  - radio \"Starter 512 MB (RAM) 0.5 CPU\"\n  - radio \"Standard 2 GB (RAM) 1 CPU\"\n  - radio \"Pro 4 GB (RAM) 2 CPU\"\n  - radio \"Pro Plus 8 GB (RAM) 4 CPU\"\n  - radio \"Pro Max 16 GB (RAM) 4 CPU\"\n  - radio \"Pro Ultra 32 GB (RAM) 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free512 MB (RAM)0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Starter512 MB (RAM)0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Standard2 GB (RAM)1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro4 GB (RAM)2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus8 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max16 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra32 GB (RAM)8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Pick an Instance Type",
+            "labelledBy": null
+          },
+          "saveEnabled": false
+        },
+        "space": {
+          "at": "2026-10-14T10:50:40.056Z",
+          "group": "- radiogroup \"Pick an Instance Type\":\n  - text: Free\n  - radio \"Free 512 MB (RAM) 0.1 CPU\"\n  - text: Paid\n  - radio \"Starter 512 MB (RAM) 0.5 CPU\" [checked]\n  - radio \"Standard 2 GB (RAM) 1 CPU\"\n  - radio \"Pro 4 GB (RAM) 2 CPU\"\n  - radio \"Pro Plus 8 GB (RAM) 4 CPU\"\n  - radio \"Pro Max 16 GB (RAM) 4 CPU\"\n  - radio \"Pro Ultra 32 GB (RAM) 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free512 MB (RAM)0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Starter512 MB (RAM)0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Standard2 GB (RAM)1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro4 GB (RAM)2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus8 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max16 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra32 GB (RAM)8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Pick an Instance Type",
+            "labelledBy": null
+          },
+          "saveEnabled": true
+        },
+        "restored": {
+          "at": "2026-10-14T10:50:40.321Z",
+          "group": "- radiogroup \"Pick an Instance Type\":\n  - text: Free\n  - radio \"Free 512 MB (RAM) 0.1 CPU\" [checked]\n  - text: Paid\n  - radio \"Starter 512 MB (RAM) 0.5 CPU\"\n  - radio \"Standard 2 GB (RAM) 1 CPU\"\n  - radio \"Pro 4 GB (RAM) 2 CPU\"\n  - radio \"Pro Plus 8 GB (RAM) 4 CPU\"\n  - radio \"Pro Max 16 GB (RAM) 4 CPU\"\n  - radio \"Pro Ultra 32 GB (RAM) 8 CPU\"",
+          "radios": [
+            {
+              "text": "Free512 MB (RAM)0.1 CPU",
+              "tag": "BUTTON",
+              "checked": "true",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": true
+            },
+            {
+              "text": "Starter512 MB (RAM)0.5 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Standard2 GB (RAM)1 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro4 GB (RAM)2 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Plus8 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Max16 GB (RAM)4 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            },
+            {
+              "text": "Pro Ultra32 GB (RAM)8 CPU",
+              "tag": "BUTTON",
+              "checked": "false",
+              "tabIndex": 0,
+              "disabled": false,
+              "active": false
+            }
+          ],
+          "labels": {
+            "ariaLabel": "Pick an Instance Type",
+            "labelledBy": null
+          },
+          "saveEnabled": false
+        },
+        "mutations": [],
+        "persisted": {
+          "status": 200,
+          "body": {
+            "data": {
+              "server": {
+                "id": "srv-db7lsfmt41sc7388o87g",
+                "phase": "Running",
+                "plan": "free",
+                "type": "web_service"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "delete": {
+    "at": "2026-10-14T10:53:23.472Z",
+    "request": [
+      {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db7lsfmt41sc7388o87g"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "deleteService": true
+        }
+      }
+    ]
+  },
+  "cleanup": {
+    "at": "2026-10-14T10:53:34.648Z",
+    "resource": {
+      "id": "srv-db7lsfmt41sc7388o87g",
+      "status": 404,
+      "body": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+    },
+    "public": {
+      "status": 404,
+      "body": "404 page not found\n"
+    },
+    "request": {
+      "operationName": "Qaa450Inventory",
+      "query": "query Qaa450Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    }
+  },
+  "inventoryChecks": [
+    {
+      "family": "blueprints",
+      "before": ["blp-d9nqg95cavls73fp8m10"],
+      "after": ["blp-d9nqg95cavls73fp8m10"],
+      "match": true
+    },
+    {
+      "family": "databases",
+      "before": [
+        "dpg-d9nqg95cavls73fp8m20",
+        "dpg-d9rrkoc4h4mc73edurp0",
+        "dpg-d9rs3ee0ccis738kc7c0",
+        "dpg-db34l9bor55s73cqpq9g"
+      ],
+      "after": [
+        "dpg-d9nqg95cavls73fp8m20",
+        "dpg-d9rrkoc4h4mc73edurp0",
+        "dpg-d9rs3ee0ccis738kc7c0",
+        "dpg-db34l9bor55s73cqpq9g"
+      ],
+      "match": true
+    },
+    {
+      "family": "envGroups",
+      "before": ["evg-db0s94c48ccs739jikr0"],
+      "after": ["evg-db0s94c48ccs739jikr0"],
+      "match": true
+    },
+    {
+      "family": "keyValues",
+      "before": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+      "after": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+      "match": true
+    },
+    {
+      "family": "projects",
+      "before": [
+        "prj-d9dgeo0bd9nc73a0vh1g",
+        "prj-d9e5qct5qe4s73b1mjn0",
+        "prj-d9sgfnbjghus73cg6hg0"
+      ],
+      "after": [
+        "prj-d9dgeo0bd9nc73a0vh1g",
+        "prj-d9e5qct5qe4s73b1mjn0",
+        "prj-d9sgfnbjghus73cg6hg0"
+      ],
+      "match": true
+    },
+    {
+      "family": "services",
+      "before": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ],
+      "after": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ],
+      "match": true
+    },
+    {
+      "family": "webhookEndpoints",
+      "before": [],
+      "after": [],
+      "match": true
+    }
+  ],
+  "sessionCleanup": {
+    "at": "2026-10-14T10:56:44.058Z",
+    "owners": {
+      "url": "https://api.bex.co/v1/owners",
+      "status": 401,
+      "body": "{\"error\":\"unauthorized\",\"id\":\"unauthorized\",\"message\":\"unauthorized\"}\n"
+    },
+    "cookieCount": 0,
+    "pageCount": 1,
+    "url": "about:blank"
+  },
+  "screenshotsViewed": [
+    ".playwright-mcp/qa-a450-type-arrow-desktop.png",
+    ".playwright-mcp/qa-a450-type-arrow-mobile.png",
+    ".playwright-mcp/qa-a450-workspace-arrow-desktop.png",
+    ".playwright-mcp/qa-a450-workspace-arrow-mobile.png",
+    ".playwright-mcp/qa-a450-instance-arrow-desktop.png",
+    ".playwright-mcp/qa-a450-instance-arrow-mobile.png"
+  ],
+  "console": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "sourceInventory": {
+    "producerFiles": [
+      "common/components/plan-card-grid.tsx",
+      "features/services/components/service-type-picker.tsx",
+      "features/services/components/instance-type-picker.tsx",
+      "features/workspaces/components/plan-picker.tsx"
+    ],
+    "productionBoundaryCallers": 8,
+    "internalInstanceTypeCardRenderReferences": 2,
+    "groupNames": {
+      "missing": [
+        "Service create tiers",
+        "Key Value create tiers",
+        "Key Value detail tiers",
+        "Service type"
+      ],
+      "present": [
+        "Postgres detail tiers",
+        "Service Instance Type",
+        "Workspace create plan",
+        "Workspace Change Plan dialog"
+      ]
+    }
+  },
+  "limits": [
+    "GraphQL mutation observer recorded zero during key/Space controls; explicit fixture Create/Delete were the only product writes authorized in this pass",
+    "No workspace created, billing attempt confirmed, card entered, plan saved or paid resource provisioned; default drafts restored",
+    "Workspace Change Plan dialog and Postgres/Key Value detail keyboard paths remain source-traced, not live replayed",
+    "Left/Up, wrapping, reverse entry, empty/unknown/changed catalog and disabled controls unprobed",
+    "No screen-reader speech, signed-in Render keyboard comparison, runtime scale test or product-code test suites"
+  ]
+}
