@@ -164,6 +164,7 @@ export function NewKeyValuePage() {
                 <PlanCardGrid
                   instanceTypes={instanceTypes}
                   value={plan}
+                  ariaLabel={t("keyvalue.fieldPlan")}
                   onChange={setPlanOverride}
                 />
               </div>

@@ -67,6 +67,7 @@ export function KeyValuePlanSection({
           instanceTypes={instanceTypes}
           value={selected}
           disabled={operateDenied}
+          ariaLabel={t("keyvalue.planTitle")}
           onChange={setSelected}
         />
 

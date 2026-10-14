@@ -469,6 +469,7 @@ export function NewServicePage() {
                       <PlanCardGrid
                         instanceTypes={instanceTypes}
                         value={form.plan}
+                        ariaLabel={t("services.createFieldPlan")}
                         onChange={(planOverride) => set({ planOverride })}
                       />
                     )}

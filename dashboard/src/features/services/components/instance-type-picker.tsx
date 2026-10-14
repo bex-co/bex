@@ -10,6 +10,10 @@ import { Button } from "@/common/components/ui/button";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
+  useCardRadioGroup,
+  type CardRadioProps,
+} from "@/common/hooks/use-card-radio-group";
+import {
   useInstanceTypes,
   type InstanceTypeView,
 } from "@/features/services/hooks/use-instance-types";
@@ -54,6 +58,15 @@ export function InstanceTypePicker({
   const { updatePlan, busy } = useUpdatePlan();
   const [selected, setSelected] = useState<string | null>(currentPlan);
   const [confirming, setConfirming] = useState(false);
+  const offered = offeredInstanceTypes(serviceType, instanceTypes);
+  const free = offered.filter((it) => it.id === "free");
+  const paid = offered.filter((it) => it.id !== "free");
+  // One radio group spanning both sections, in their visual order.
+  const radio = useCardRadioGroup(
+    [...free, ...paid].map((it) => it.id),
+    selected ?? undefined,
+    setSelected,
+  );
 
   if (error) {
     return (
@@ -70,9 +83,6 @@ export function InstanceTypePicker({
     );
   }
 
-  const offered = offeredInstanceTypes(serviceType, instanceTypes);
-  const free = offered.filter((it) => it.id === "free");
-  const paid = offered.filter((it) => it.id !== "free");
   const selectedType = offered.find((it) => it.id === selected);
   const canSave = selected != null && selected !== currentPlan;
 
@@ -110,6 +120,7 @@ export function InstanceTypePicker({
                     instanceType={it}
                     selected={selected === it.id}
                     onSelect={() => setSelected(it.id)}
+                    radio={radio(it.id)}
                   />
                 ))}
               </InstanceTypeGroup>
@@ -122,6 +133,7 @@ export function InstanceTypePicker({
                     instanceType={it}
                     selected={selected === it.id}
                     onSelect={() => setSelected(it.id)}
+                    radio={radio(it.id)}
                   />
                 ))}
               </InstanceTypeGroup>
@@ -173,13 +185,16 @@ function InstanceTypeCard({
   instanceType,
   selected,
   onSelect,
+  radio,
 }: {
   instanceType: InstanceTypeView;
   selected: boolean;
   onSelect: () => void;
+  radio: CardRadioProps;
 }) {
   return (
     <button
+      {...radio}
       type="button"
       role="radio"
       aria-checked={selected}

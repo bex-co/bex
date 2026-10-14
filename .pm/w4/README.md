@@ -258,7 +258,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 - [ ] **m210** — [Keep capped cron history chronological](m210/README.md) (7 tasks; 2h55) ← functional QA a475; old success becomes first after run11, wrong retained set/order agrees across fresh desktop/mobile, REST and GraphQL; recovery/control and exact cleanup, filing only.
 - [ ] **m209** — [Keep metrics geometry stable and labels readable](m209/README.md) (8 tasks; 4h) ← functional QA a470; KV resource/chart loading shifts at both widths and a fresh byte tick clips outside its SVG; separate causes, complete original responses, shared consumer audit, exact cleanup; filing only.
 - [ ] **m208** — [Datastore plan previews match their ready cards](m208/README.md) (7 tasks; 2h40) ← promoted w4/301 after functional QA a454/a465/a466 found both datastore families' resource/catalog mismatches and traced six loading producers; full receipts, exact cleanup; filing only.
-- [ ] **m207** — [Make card-radio pickers work with the keyboard](m207/README.md) (6 tasks; 2h35) ← promoted from w4/300 after functional QA a449/a450 independently verified all four producers; eight consumers traced, complete keyboard/cleanup evidence, filing only.
+- [ ] **m207** — [Make card-radio pickers work with the keyboard](blocked/m207/README.md) — **BLOCKED (2026-10-14: t001–t004 done — one W3C card-radio keyboard contract across all four producers, all eight consumers named; needs the dashboard deployed to production plus the live desktop/mobile replay of the five observed surfaces with owned Free fixtures and cleanup (t005/t006))**
 
 ## Historical execution order (2026-07-09 brainstorm)
 

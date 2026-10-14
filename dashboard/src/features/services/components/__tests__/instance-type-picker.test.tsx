@@ -105,6 +105,26 @@ describe("InstanceTypePicker", () => {
     expect(screen.getByRole("button", { name: "Save Changes" })).toBeEnabled();
   });
 
+  // w4/m207: one Tab stop across the Free and Paid sections; the arrows move
+  // the draft, Save follows it, and restoring the plan disables Save again.
+  it("moves the draft across Free and Paid with the arrows, without saving", async () => {
+    const user = userEvent.setup();
+    renderPicker("free");
+    const free = await screen.findByRole("radio", { name: /^Free/ });
+    expect(free).toHaveAttribute("tabindex", "0");
+    expect(screen.getByRole("radio", { name: /Standard/ })).toHaveAttribute("tabindex", "-1");
+    free.focus();
+    await user.keyboard("{ArrowRight}");
+    const standard = screen.getByRole("radio", { name: /Standard/ });
+    expect(document.activeElement).toBe(standard);
+    expect(standard).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("button", { name: "Save Changes" })).toBeEnabled();
+    await user.keyboard("{ArrowLeft}");
+    expect(free).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("button", { name: "Save Changes" })).toBeDisabled();
+    expect(updatePlan).not.toHaveBeenCalled();
+  });
+
   it("offers no Free tier for a background worker (w6/025 paid-only)", async () => {
     renderPicker("standard", "background_worker");
 
