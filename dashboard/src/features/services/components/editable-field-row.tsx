@@ -361,3 +361,37 @@ export function EditableFieldRow({
     </div>
   );
 }
+
+/**
+ * An {@link EditableFieldRow} before its value is known: the real label and
+ * hint (static copy, so they wrap exactly as the ready row does), then the
+ * same control row — an empty disabled input beside the pencil slot. It
+ * renders no value and binds no mutation; route skeletons place it inside an
+ * `inert` card.
+ */
+export function EditableFieldRowPreview({
+  label,
+  hint,
+}: {
+  label: string;
+  hint?: ReactNode;
+}) {
+  return (
+    <div className="space-y-2" data-slot="editable-field-row-preview">
+      <div>
+        <div className="flex items-center gap-2 text-sm font-medium">
+          {label}
+        </div>
+        {hint != null && (
+          <div className="text-muted-foreground mt-1 text-sm">{hint}</div>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <Input disabled aria-label={label} className="flex-1" />
+        <Button size="icon" variant="ghost" disabled aria-hidden="true">
+          <Pencil />
+        </Button>
+      </div>
+    </div>
+  );
+}

@@ -10,6 +10,10 @@ import {
 } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { DatastorePlanPreview } from "@/common/components/datastore-plan-preview";
+import {
+  DatastoreConnectionsPreview,
+  DatastoreMetadataPreview,
+} from "@/common/components/datastore-overview-previews";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { buttonVariants } from "@/common/components/ui/button";
 import {
@@ -458,29 +462,6 @@ function SettingsActionCardSkeleton({
       </CardHeader>
       <CardContent>
         <Skeleton className="h-9 w-28" />
-      </CardContent>
-    </Card>
-  );
-}
-
-function EditableMetadataSkeleton({ rows }: { rows: number }) {
-  return (
-    <Card>
-      <CardHeader>
-        <Skeleton className="h-5 w-32" />
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {Array.from({ length: rows }, (_, index) => (
-            <div
-              key={index}
-              className="flex min-h-[2.875rem] items-center justify-between gap-4 border-b pb-2 sm:min-h-[3.75rem]"
-            >
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className={index % 3 === 0 ? "h-9 w-28" : "h-4 w-20"} />
-            </div>
-          ))}
-        </div>
       </CardContent>
     </Card>
   );
@@ -2278,10 +2259,10 @@ export function DatabaseOverviewSkeleton() {
       <ResponsiveSectionNavigationSkeleton count={10} />
       <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
         <Region name="metadata">
-          <EditableMetadataSkeleton rows={10} />
+          <DatastoreMetadataPreview kind="postgres" />
         </Region>
         <Region name="connection">
-          <CardSkeleton rows={2} />
+          <DatastoreConnectionsPreview kind="postgres" />
         </Region>
         <Region name="sql-console">
           <ReservedCardSkeleton height={375} />
@@ -2391,10 +2372,10 @@ export function KeyValueOverviewSkeleton() {
       <ResponsiveSectionNavigationSkeleton count={7} />
       <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
         <Region name="metadata">
-          <EditableMetadataSkeleton rows={8} />
+          <DatastoreMetadataPreview kind="keyvalue" />
         </Region>
         <Region name="connection">
-          <ReservedCardSkeleton className="h-[174px] sm:h-[134px]" />
+          <DatastoreConnectionsPreview kind="keyvalue" />
         </Region>
         <Region name="networking">
           <ReservedCardSkeleton className="h-[358px] sm:h-[246px]" />
