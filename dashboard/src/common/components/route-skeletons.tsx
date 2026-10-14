@@ -2111,47 +2111,109 @@ export function WebhookActivitySkeleton() {
   );
 }
 
+/** A ready `Label`'s line box (`text-sm leading-none font-medium`). */
+function ReservedLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative flex w-fit text-sm leading-none font-medium">
+      <ReservedText>{children}</ReservedText>
+    </div>
+  );
+}
+
+/** A ready muted help paragraph, wrapping as its translated copy does. */
+function ReservedHelp({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="relative text-sm text-muted-foreground">
+      <ReservedText>{children}</ReservedText>
+    </p>
+  );
+}
+
+/**
+ * Mirrors `WebhookSettingsCard` (w4/295): the plain status row (label + help
+ * beside the switch), Name and Destination URL as label → help → input, and
+ * the mint-once secret note — each static string reserved with its own
+ * translated copy so it wraps as the ready page does. No endpoint value shows.
+ */
 export function WebhookSettingsSkeleton() {
+  const { t } = useTranslations();
   return (
     <PendingFrame route="webhook-settings" className="space-y-6">
       <Region name="settings-general">
         <Card>
           <CardHeader>
-            <Skeleton className="h-5 w-28" />
+            <CardTitle className="relative w-fit">
+              <ReservedText>{t("webhooks.settingsGeneral")}</ReservedText>
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <ToggleRowSkeleton />
-            <FieldRowSkeleton hint />
-            <FieldRowSkeleton hint />
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-4/5" />
+            <div
+              data-skeleton-region="settings-status"
+              className="flex items-start justify-between gap-4"
+            >
+              <div>
+                <ReservedLabel>{t("webhooks.settingsStatus")}</ReservedLabel>
+                <ReservedHelp>{t("webhooks.settingsStatusHelp")}</ReservedHelp>
+              </div>
+              <Skeleton className="h-5 w-9 shrink-0 rounded-full" />
+            </div>
+            {(
+              [
+                ["webhooks.fieldName", "webhooks.fieldNameHelp"],
+                ["webhooks.fieldUrl", "webhooks.fieldUrlHelp"],
+              ] as const
+            ).map(([label, help]) => (
+              <div
+                key={label}
+                data-skeleton-region="settings-field"
+                className="space-y-2"
+              >
+                <ReservedLabel>{t(label)}</ReservedLabel>
+                <ReservedHelp>{t(help)}</ReservedHelp>
+                <Skeleton className="h-9 w-full" />
+              </div>
+            ))}
+            <div data-skeleton-region="settings-secret" className="space-y-1">
+              <ReservedLabel>{t("webhooks.secretLabel")}</ReservedLabel>
+              <ReservedHelp>{t("webhooks.secretMintOnceNote")}</ReservedHelp>
             </div>
           </CardContent>
         </Card>
       </Region>
       <Region name="settings-events">
         <Card>
-          <CardHeader className="space-y-2">
-            <Skeleton className="h-5 w-28" />
-            <Skeleton className="h-4 w-4/5" />
+          <CardHeader>
+            <CardTitle className="relative w-fit">
+              <ReservedText>{t("webhooks.settingsEvents")}</ReservedText>
+            </CardTitle>
+            <CardDescription className="relative">
+              <ReservedText>{t("webhooks.fieldEventsHelp")}</ReservedText>
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <WebhookEventPickerSkeleton />
             <div className="flex justify-end">
-              <Skeleton className="h-9 w-28" />
+              <ReservedButton variant="default">
+                {t("webhooks.saveChanges")}
+              </ReservedButton>
             </div>
           </CardContent>
         </Card>
       </Region>
       <Region name="danger-zone">
         <Card>
-          <CardHeader className="space-y-2">
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="h-4 w-4/5" />
+          <CardHeader>
+            <CardTitle className="relative w-fit text-destructive">
+              <ReservedText>{t("webhooks.deleteSection")}</ReservedText>
+            </CardTitle>
+            <CardDescription className="relative">
+              <ReservedText>{t("webhooks.deleteConfirmBody")}</ReservedText>
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <Skeleton className="h-9 w-32" />
+            <ReservedButton variant="destructive">
+              {t("webhooks.delete")}
+            </ReservedButton>
           </CardContent>
         </Card>
       </Region>
