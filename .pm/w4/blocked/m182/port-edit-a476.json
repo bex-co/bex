@@ -1,0 +1,866 @@
+{
+  "pass": "a476",
+  "fixture": {
+    "id": "srv-db7rpvmt41sc7388odi0",
+    "name": "qa-20261014-a476-port",
+    "plan": "free",
+    "image": "busybox:1.37",
+    "initialPort": 8882,
+    "singleInstance": true,
+    "disks": [],
+    "healthCheckPath": "",
+    "command": "sh -c 'sleep 8; mkdir -p /tmp/qa-a476-www; printf \"QA_A476_%s\\n\" \"$PORT\" > /tmp/qa-a476-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a476-www'"
+  },
+  "forward": {
+    "harnessError": "Error: apiRequestContext.post: read ECONNRESET",
+    "mutation": {
+      "at": "2026-10-14T17:36:47.490Z",
+      "request": {
+        "operationName": "SetPort",
+        "variables": {
+          "id": "srv-db7rpvmt41sc7388odi0",
+          "port": 8883
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation SetPort($id: String!, $port: Int!) {\n  setPort(id: $id, port: $port) {\n    id\n    port\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setPort": {
+            "__typename": "Service",
+            "id": "srv-db7rpvmt41sc7388odi0",
+            "port": 8883
+          }
+        }
+      }
+    },
+    "samples": [
+      {
+        "start": "2026-10-14T17:36:47.179Z",
+        "end": "2026-10-14T17:36:47.353Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:36:47.757Z",
+        "end": "2026-10-14T17:36:47.928Z",
+        "status": 404,
+        "body": "404 page not found\n"
+      },
+      {
+        "start": "2026-10-14T17:36:48.331Z",
+        "end": "2026-10-14T17:36:48.500Z",
+        "status": 404,
+        "body": "404 page not found\n"
+      },
+      {
+        "start": "2026-10-14T17:36:48.905Z",
+        "end": "2026-10-14T17:36:49.081Z",
+        "status": 404,
+        "body": "404 page not found\n"
+      },
+      {
+        "start": "2026-10-14T17:36:49.484Z",
+        "end": "2026-10-14T17:36:49.664Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:36:50.070Z",
+        "end": "2026-10-14T17:36:50.243Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:36:50.645Z",
+        "end": "2026-10-14T17:36:50.859Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:36:51.261Z",
+        "end": "2026-10-14T17:36:51.433Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:36:51.836Z",
+        "end": "2026-10-14T17:36:52.014Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:36:52.417Z",
+        "end": "2026-10-14T17:36:52.593Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:36:52.997Z",
+        "end": "2026-10-14T17:36:53.169Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:36:53.573Z",
+        "end": "2026-10-14T17:36:53.750Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:36:54.153Z",
+        "end": "2026-10-14T17:36:54.325Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:36:54.729Z",
+        "end": "2026-10-14T17:36:54.926Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:36:55.329Z",
+        "end": "2026-10-14T17:36:55.502Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:36:55.905Z",
+        "end": "2026-10-14T17:36:56.077Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:36:56.480Z",
+        "end": "2026-10-14T17:36:56.657Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:36:57.061Z",
+        "end": "2026-10-14T17:36:57.241Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      }
+    ],
+    "checks": [
+      {
+        "at": "2026-10-14T17:36:47.763Z",
+        "request": {
+          "operationName": "Qaa476State",
+          "query": "query Qaa476State($id:String!){server(id:$id){id name phase port revision undeployedChanges startCommand healthCheckPath} deploys(serviceId:$id){id status trigger}}",
+          "variables": {
+            "id": "srv-db7rpvmt41sc7388odi0"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "id": "dep-db7rrbpllfps73emuesg",
+                "status": "created",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rpvmt41sc7388odig",
+                "status": "live",
+                "trigger": "create"
+              }
+            ],
+            "server": {
+              "healthCheckPath": "",
+              "id": "srv-db7rpvmt41sc7388odi0",
+              "name": "qa-20261014-a476-port",
+              "phase": "Deploying",
+              "port": 8883,
+              "revision": "rev-1",
+              "startCommand": "sh -c 'sleep 8; mkdir -p /tmp/qa-a476-www; printf \"QA_A476_%s\\n\" \"$PORT\" > /tmp/qa-a476-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a476-www'",
+              "undeployedChanges": false
+            }
+          }
+        }
+      },
+      {
+        "at": "2026-10-14T17:36:51.034Z",
+        "request": {
+          "operationName": "Qaa476State",
+          "query": "query Qaa476State($id:String!){server(id:$id){id name phase port revision undeployedChanges startCommand healthCheckPath} deploys(serviceId:$id){id status trigger}}",
+          "variables": {
+            "id": "srv-db7rpvmt41sc7388odi0"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "id": "dep-db7rrbpllfps73emuesg",
+                "status": "created",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rpvmt41sc7388odig",
+                "status": "live",
+                "trigger": "create"
+              }
+            ],
+            "server": {
+              "healthCheckPath": "",
+              "id": "srv-db7rpvmt41sc7388odi0",
+              "name": "qa-20261014-a476-port",
+              "phase": "Deploying",
+              "port": 8883,
+              "revision": "rev-1",
+              "startCommand": "sh -c 'sleep 8; mkdir -p /tmp/qa-a476-www; printf \"QA_A476_%s\\n\" \"$PORT\" > /tmp/qa-a476-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a476-www'",
+              "undeployedChanges": false
+            }
+          }
+        }
+      },
+      {
+        "at": "2026-10-14T17:36:54.283Z",
+        "request": {
+          "operationName": "Qaa476State",
+          "query": "query Qaa476State($id:String!){server(id:$id){id name phase port revision undeployedChanges startCommand healthCheckPath} deploys(serviceId:$id){id status trigger}}",
+          "variables": {
+            "id": "srv-db7rpvmt41sc7388odi0"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "id": "dep-db7rrbpllfps73emuesg",
+                "status": "update_in_progress",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rpvmt41sc7388odig",
+                "status": "live",
+                "trigger": "create"
+              }
+            ],
+            "server": {
+              "healthCheckPath": "",
+              "id": "srv-db7rpvmt41sc7388odi0",
+              "name": "qa-20261014-a476-port",
+              "phase": "Deploying",
+              "port": 8883,
+              "revision": "rev-1",
+              "startCommand": "sh -c 'sleep 8; mkdir -p /tmp/qa-a476-www; printf \"QA_A476_%s\\n\" \"$PORT\" > /tmp/qa-a476-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a476-www'",
+              "undeployedChanges": false
+            }
+          }
+        }
+      }
+    ]
+  },
+  "reverse": {
+    "at": "2026-10-14T17:42:54.060Z",
+    "mutation": {
+      "at": "2026-10-14T17:42:34.128Z",
+      "request": {
+        "operationName": "SetPort",
+        "variables": {
+          "id": "srv-db7rpvmt41sc7388odi0",
+          "port": 8882
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation SetPort($id: String!, $port: Int!) {\n  setPort(id: $id, port: $port) {\n    id\n    port\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setPort": {
+            "__typename": "Service",
+            "id": "srv-db7rpvmt41sc7388odi0",
+            "port": 8882
+          }
+        }
+      }
+    },
+    "samples": [
+      {
+        "start": "2026-10-14T17:42:33.836Z",
+        "end": "2026-10-14T17:42:34.015Z",
+        "status": 200,
+        "body": "QA_A476_8883\n"
+      },
+      {
+        "start": "2026-10-14T17:42:34.416Z",
+        "end": "2026-10-14T17:42:34.585Z",
+        "status": 404,
+        "body": "404 page not found\n"
+      },
+      {
+        "start": "2026-10-14T17:42:34.986Z",
+        "end": "2026-10-14T17:42:35.158Z",
+        "status": 404,
+        "body": "404 page not found\n"
+      },
+      {
+        "start": "2026-10-14T17:42:35.561Z",
+        "end": "2026-10-14T17:42:35.728Z",
+        "status": 404,
+        "body": "404 page not found\n"
+      },
+      {
+        "start": "2026-10-14T17:42:36.132Z",
+        "end": "2026-10-14T17:42:36.310Z",
+        "status": 200,
+        "body": "QA_A476_8883\n"
+      },
+      {
+        "start": "2026-10-14T17:42:36.714Z",
+        "end": "2026-10-14T17:42:36.885Z",
+        "status": 200,
+        "body": "QA_A476_8883\n"
+      },
+      {
+        "start": "2026-10-14T17:42:37.286Z",
+        "end": "2026-10-14T17:42:37.462Z",
+        "status": 200,
+        "body": "QA_A476_8883\n"
+      },
+      {
+        "start": "2026-10-14T17:42:37.864Z",
+        "end": "2026-10-14T17:42:38.039Z",
+        "status": 200,
+        "body": "QA_A476_8883\n"
+      },
+      {
+        "start": "2026-10-14T17:42:38.441Z",
+        "end": "2026-10-14T17:42:38.614Z",
+        "status": 200,
+        "body": "QA_A476_8883\n"
+      },
+      {
+        "start": "2026-10-14T17:42:39.014Z",
+        "end": "2026-10-14T17:42:39.193Z",
+        "status": 200,
+        "body": "QA_A476_8883\n"
+      },
+      {
+        "start": "2026-10-14T17:42:39.596Z",
+        "end": "2026-10-14T17:42:39.769Z",
+        "status": 200,
+        "body": "QA_A476_8883\n"
+      },
+      {
+        "start": "2026-10-14T17:42:40.172Z",
+        "end": "2026-10-14T17:42:40.348Z",
+        "status": 200,
+        "body": "QA_A476_8883\n"
+      },
+      {
+        "start": "2026-10-14T17:42:40.749Z",
+        "end": "2026-10-14T17:42:40.927Z",
+        "status": 200,
+        "body": "QA_A476_8883\n"
+      },
+      {
+        "start": "2026-10-14T17:42:41.328Z",
+        "end": "2026-10-14T17:42:41.504Z",
+        "status": 200,
+        "body": "QA_A476_8883\n"
+      },
+      {
+        "start": "2026-10-14T17:42:41.907Z",
+        "end": "2026-10-14T17:42:42.085Z",
+        "status": 200,
+        "body": "QA_A476_8883\n"
+      },
+      {
+        "start": "2026-10-14T17:42:42.487Z",
+        "end": "2026-10-14T17:42:42.662Z",
+        "status": 200,
+        "body": "QA_A476_8883\n"
+      },
+      {
+        "start": "2026-10-14T17:42:43.065Z",
+        "end": "2026-10-14T17:42:43.239Z",
+        "status": 200,
+        "body": "QA_A476_8883\n"
+      },
+      {
+        "start": "2026-10-14T17:42:43.642Z",
+        "end": "2026-10-14T17:42:43.821Z",
+        "status": 200,
+        "body": "QA_A476_8883\n"
+      },
+      {
+        "start": "2026-10-14T17:42:44.224Z",
+        "end": "2026-10-14T17:42:44.419Z",
+        "status": 200,
+        "body": "QA_A476_8883\n"
+      },
+      {
+        "start": "2026-10-14T17:42:44.822Z",
+        "end": "2026-10-14T17:42:44.995Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:42:45.399Z",
+        "end": "2026-10-14T17:42:45.576Z",
+        "status": 200,
+        "body": "QA_A476_8883\n"
+      },
+      {
+        "start": "2026-10-14T17:42:45.979Z",
+        "end": "2026-10-14T17:42:46.156Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:42:46.560Z",
+        "end": "2026-10-14T17:42:46.732Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:42:47.135Z",
+        "end": "2026-10-14T17:42:47.307Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:42:47.710Z",
+        "end": "2026-10-14T17:42:47.886Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:42:48.287Z",
+        "end": "2026-10-14T17:42:48.461Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:42:48.864Z",
+        "end": "2026-10-14T17:42:49.041Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:42:49.444Z",
+        "end": "2026-10-14T17:42:49.618Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:42:50.023Z",
+        "end": "2026-10-14T17:42:50.196Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:42:50.602Z",
+        "end": "2026-10-14T17:42:50.777Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:42:51.181Z",
+        "end": "2026-10-14T17:42:51.354Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:42:51.758Z",
+        "end": "2026-10-14T17:42:51.933Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:42:52.337Z",
+        "end": "2026-10-14T17:42:52.509Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:42:52.913Z",
+        "end": "2026-10-14T17:42:53.084Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      },
+      {
+        "start": "2026-10-14T17:42:53.485Z",
+        "end": "2026-10-14T17:42:53.658Z",
+        "status": 200,
+        "body": "QA_A476_8882\n"
+      }
+    ],
+    "checks": [
+      {
+        "at": "2026-10-14T17:42:34.364Z",
+        "request": {
+          "operationName": "Qaa476State",
+          "query": "query Qaa476State($id:String!){server(id:$id){id name phase port revision undeployedChanges startCommand healthCheckPath} deploys(serviceId:$id){id status trigger}}",
+          "variables": {
+            "id": "srv-db7rpvmt41sc7388odi0"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "id": "dep-db7ru2hllfps73emueug",
+                "status": "created",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rrbpllfps73emuesg",
+                "status": "live",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rpvmt41sc7388odig",
+                "status": "deactivated",
+                "trigger": "create"
+              }
+            ],
+            "server": {
+              "healthCheckPath": "",
+              "id": "srv-db7rpvmt41sc7388odi0",
+              "name": "qa-20261014-a476-port",
+              "phase": "Deploying",
+              "port": 8882,
+              "revision": "rev-2",
+              "startCommand": "sh -c 'sleep 8; mkdir -p /tmp/qa-a476-www; printf \"QA_A476_%s\\n\" \"$PORT\" > /tmp/qa-a476-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a476-www'",
+              "undeployedChanges": false
+            }
+          }
+        }
+      },
+      {
+        "at": "2026-10-14T17:42:37.618Z",
+        "request": {
+          "operationName": "Qaa476State",
+          "query": "query Qaa476State($id:String!){server(id:$id){id name phase port revision undeployedChanges startCommand healthCheckPath} deploys(serviceId:$id){id status trigger}}",
+          "variables": {
+            "id": "srv-db7rpvmt41sc7388odi0"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "id": "dep-db7ru2hllfps73emueug",
+                "status": "update_in_progress",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rrbpllfps73emuesg",
+                "status": "live",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rpvmt41sc7388odig",
+                "status": "deactivated",
+                "trigger": "create"
+              }
+            ],
+            "server": {
+              "healthCheckPath": "",
+              "id": "srv-db7rpvmt41sc7388odi0",
+              "name": "qa-20261014-a476-port",
+              "phase": "Deploying",
+              "port": 8882,
+              "revision": "rev-2",
+              "startCommand": "sh -c 'sleep 8; mkdir -p /tmp/qa-a476-www; printf \"QA_A476_%s\\n\" \"$PORT\" > /tmp/qa-a476-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a476-www'",
+              "undeployedChanges": false
+            }
+          }
+        }
+      },
+      {
+        "at": "2026-10-14T17:42:40.938Z",
+        "request": {
+          "operationName": "Qaa476State",
+          "query": "query Qaa476State($id:String!){server(id:$id){id name phase port revision undeployedChanges startCommand healthCheckPath} deploys(serviceId:$id){id status trigger}}",
+          "variables": {
+            "id": "srv-db7rpvmt41sc7388odi0"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "id": "dep-db7ru2hllfps73emueug",
+                "status": "update_in_progress",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rrbpllfps73emuesg",
+                "status": "live",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rpvmt41sc7388odig",
+                "status": "deactivated",
+                "trigger": "create"
+              }
+            ],
+            "server": {
+              "healthCheckPath": "",
+              "id": "srv-db7rpvmt41sc7388odi0",
+              "name": "qa-20261014-a476-port",
+              "phase": "Deploying",
+              "port": 8882,
+              "revision": "rev-2",
+              "startCommand": "sh -c 'sleep 8; mkdir -p /tmp/qa-a476-www; printf \"QA_A476_%s\\n\" \"$PORT\" > /tmp/qa-a476-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a476-www'",
+              "undeployedChanges": false
+            }
+          }
+        }
+      },
+      {
+        "at": "2026-10-14T17:42:44.194Z",
+        "request": {
+          "operationName": "Qaa476State",
+          "query": "query Qaa476State($id:String!){server(id:$id){id name phase port revision undeployedChanges startCommand healthCheckPath} deploys(serviceId:$id){id status trigger}}",
+          "variables": {
+            "id": "srv-db7rpvmt41sc7388odi0"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "id": "dep-db7ru2hllfps73emueug",
+                "status": "update_in_progress",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rrbpllfps73emuesg",
+                "status": "live",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rpvmt41sc7388odig",
+                "status": "deactivated",
+                "trigger": "create"
+              }
+            ],
+            "server": {
+              "healthCheckPath": "",
+              "id": "srv-db7rpvmt41sc7388odi0",
+              "name": "qa-20261014-a476-port",
+              "phase": "Deploying",
+              "port": 8882,
+              "revision": "rev-2",
+              "startCommand": "sh -c 'sleep 8; mkdir -p /tmp/qa-a476-www; printf \"QA_A476_%s\\n\" \"$PORT\" > /tmp/qa-a476-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a476-www'",
+              "undeployedChanges": false
+            }
+          }
+        }
+      },
+      {
+        "at": "2026-10-14T17:42:47.444Z",
+        "request": {
+          "operationName": "Qaa476State",
+          "query": "query Qaa476State($id:String!){server(id:$id){id name phase port revision undeployedChanges startCommand healthCheckPath} deploys(serviceId:$id){id status trigger}}",
+          "variables": {
+            "id": "srv-db7rpvmt41sc7388odi0"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "id": "dep-db7ru2hllfps73emueug",
+                "status": "update_in_progress",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rrbpllfps73emuesg",
+                "status": "live",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rpvmt41sc7388odig",
+                "status": "deactivated",
+                "trigger": "create"
+              }
+            ],
+            "server": {
+              "healthCheckPath": "",
+              "id": "srv-db7rpvmt41sc7388odi0",
+              "name": "qa-20261014-a476-port",
+              "phase": "Running",
+              "port": 8882,
+              "revision": "rev-3",
+              "startCommand": "sh -c 'sleep 8; mkdir -p /tmp/qa-a476-www; printf \"QA_A476_%s\\n\" \"$PORT\" > /tmp/qa-a476-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a476-www'",
+              "undeployedChanges": false
+            }
+          }
+        }
+      },
+      {
+        "at": "2026-10-14T17:42:50.697Z",
+        "request": {
+          "operationName": "Qaa476State",
+          "query": "query Qaa476State($id:String!){server(id:$id){id name phase port revision undeployedChanges startCommand healthCheckPath} deploys(serviceId:$id){id status trigger}}",
+          "variables": {
+            "id": "srv-db7rpvmt41sc7388odi0"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "id": "dep-db7ru2hllfps73emueug",
+                "status": "update_in_progress",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rrbpllfps73emuesg",
+                "status": "live",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rpvmt41sc7388odig",
+                "status": "deactivated",
+                "trigger": "create"
+              }
+            ],
+            "server": {
+              "healthCheckPath": "",
+              "id": "srv-db7rpvmt41sc7388odi0",
+              "name": "qa-20261014-a476-port",
+              "phase": "Running",
+              "port": 8882,
+              "revision": "rev-3",
+              "startCommand": "sh -c 'sleep 8; mkdir -p /tmp/qa-a476-www; printf \"QA_A476_%s\\n\" \"$PORT\" > /tmp/qa-a476-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a476-www'",
+              "undeployedChanges": false
+            }
+          }
+        }
+      },
+      {
+        "at": "2026-10-14T17:42:54.020Z",
+        "request": {
+          "operationName": "Qaa476State",
+          "query": "query Qaa476State($id:String!){server(id:$id){id name phase port revision undeployedChanges startCommand healthCheckPath} deploys(serviceId:$id){id status trigger}}",
+          "variables": {
+            "id": "srv-db7rpvmt41sc7388odi0"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "id": "dep-db7ru2hllfps73emueug",
+                "status": "live",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rrbpllfps73emuesg",
+                "status": "deactivated",
+                "trigger": "config_change"
+              },
+              {
+                "id": "dep-db7rpvmt41sc7388odig",
+                "status": "deactivated",
+                "trigger": "create"
+              }
+            ],
+            "server": {
+              "healthCheckPath": "",
+              "id": "srv-db7rpvmt41sc7388odi0",
+              "name": "qa-20261014-a476-port",
+              "phase": "Running",
+              "port": 8882,
+              "revision": "rev-3",
+              "startCommand": "sh -c 'sleep 8; mkdir -p /tmp/qa-a476-www; printf \"QA_A476_%s\\n\" \"$PORT\" > /tmp/qa-a476-www/index.html; exec httpd -f -p \"$PORT\" -h /tmp/qa-a476-www'",
+              "undeployedChanges": false
+            }
+          }
+        }
+      }
+    ]
+  },
+  "delete": {
+    "at": "2026-10-14T17:48:53.034Z",
+    "request": {
+      "operationName": "DeleteService",
+      "variables": {
+        "id": "srv-db7rpvmt41sc7388odi0"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deleteService": true
+      }
+    },
+    "url": "https://dashboard.bex.co/"
+  },
+  "cleanup": {
+    "at": "2026-10-14T17:49:04.410Z",
+    "resource": {
+      "status": 404,
+      "body": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+    },
+    "public": {
+      "status": 404,
+      "body": "404 page not found\n"
+    },
+    "inventoryMatches": {
+      "blueprints": true,
+      "databases": true,
+      "envGroups": true,
+      "keyValues": true,
+      "projects": true,
+      "services": true,
+      "webhookEndpoints": true
+    }
+  },
+  "logout": {
+    "helper": "exact own a476c jar; bounded curl wrapper",
+    "exitCode": 0,
+    "result": "ok logged-out",
+    "browser": {
+      "at": "2026-10-14T17:49:26.738Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "limits": [
+    "Forward API polling stopped on ECONNRESET; this is a harness/transport error, not a filed product bug.",
+    "Operator/edge deployment provenance and Kubernetes intermediate objects were not inspected.",
+    "Original milestone's private/slug/EndpointSlice, adoption and full Restart controls were not rerun.",
+    "An own-session cookie was printed in an earlier request error. That exact session was revoked via helper exit 0 before the fresh session; credential headers are excluded from this ledger."
+  ]
+}
