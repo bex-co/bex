@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslations } from "@/common/hooks/use-translations";
 import { formatMetricShort } from "@/features/metrics/lib/format";
 import {
   ChartTooltip,
@@ -53,6 +54,7 @@ export function SvgBarChart({
   markers,
   markersServiceId,
 }: SvgBarChartProps) {
+  const { t } = useTranslations();
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const frames = useMemo(() => groupPointsByTime(series), [series]);
@@ -110,7 +112,7 @@ export function SvgBarChart({
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         className="w-full"
         role="img"
-        aria-label={`Bar chart with ${frames.length} data points`}
+        aria-label={t("metrics.barChartLabel", { count: frames.length })}
       >
         {/* Keyed by position, not value — an all-zero series repeats 0 at every tick. */}
         {yTicks.map((v, i) => {
@@ -154,7 +156,10 @@ export function SvgBarChart({
               key={frame.time + i}
               tabIndex={0}
               role="graphics-symbol"
-              aria-label={`${formatMetricShort(unit, frame.total)} at ${new Date(frame.time).toLocaleTimeString()}`}
+              aria-label={t("metrics.barValueAt", {
+                value: formatMetricShort(unit, frame.total),
+                time: new Date(frame.time).toLocaleTimeString(),
+              })}
               onPointerEnter={() => setActiveIndex(i)}
               onFocus={() => setActiveIndex(i)}
               onPointerLeave={() =>

@@ -351,7 +351,7 @@ describe("NetworkMetricsCard", () => {
     renderCard();
 
     expect(
-      screen.getByRole("img", { name: /Bar chart with 1 data points/ }),
+      screen.getByRole("img", { name: /Bar chart with 1 data point$/ }),
     ).toBeInTheDocument();
   });
 
@@ -517,7 +517,7 @@ describe("NetworkMetricsCard", () => {
     expect(screen.queryByText("200")).not.toBeInTheDocument();
     // …but both series stack into the single shared time bucket.
     expect(
-      screen.getByRole("img", { name: /Bar chart with 1 data points/ }),
+      screen.getByRole("img", { name: /Bar chart with 1 data point$/ }),
     ).toBeInTheDocument();
   });
 

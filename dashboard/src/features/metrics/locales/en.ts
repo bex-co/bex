@@ -60,6 +60,36 @@ const enMetrics: Record<string, TranslationEntry> = {
     description:
       "Accessible label for a clustered chart event marker (count badge, plural)",
   },
+  "metrics.lineChartLabel_one": {
+    message: "Line chart with {count} data point",
+    description:
+      "Accessible name of a metrics line chart; count is the number of distinct sample times (singular)",
+  },
+  "metrics.lineChartLabel_other": {
+    message: "Line chart with {count} data points",
+    description:
+      "Accessible name of a metrics line chart; count is the number of distinct sample times (plural)",
+  },
+  "metrics.barChartLabel_one": {
+    message: "Bar chart with {count} data point",
+    description:
+      "Accessible name of a metrics bar chart; count is the number of time buckets (singular)",
+  },
+  "metrics.barChartLabel_other": {
+    message: "Bar chart with {count} data points",
+    description:
+      "Accessible name of a metrics bar chart; count is the number of time buckets (plural)",
+  },
+  "metrics.barValueAt": {
+    message: "{value} at {time}",
+    description:
+      "Accessible name of one focusable bar: its formatted value (e.g. 42 or 1.2K) and its local sample time",
+  },
+  "metrics.chartEmpty": {
+    message: "No data in range",
+    description:
+      "Default empty state of a metrics chart when the settled query returned no samples in the selected time range",
+  },
   "metrics.eventMarkerHint": {
     message: "Click to view details",
     description: "Footer line of the chart event-marker hover tooltip",
