@@ -1,15 +1,17 @@
 import { InvitationFrame } from "@/features/invites/invitation-frame";
 import { useRouterState, useSearch } from "@tanstack/react-router";
+import { Pencil } from "lucide-react";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardTitle,
   CardHeader,
+  CardTitle,
 } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { DatastorePlanPreview } from "@/common/components/datastore-plan-preview";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { buttonVariants } from "@/common/components/ui/button";
 import {
   CardSkeleton,
   FieldRowSkeleton,
@@ -92,6 +94,41 @@ function Region({
     <div data-skeleton-region={name} className={className}>
       {children}
     </div>
+  );
+}
+
+/**
+ * Static copy's footprint without its ink: the ready page's own translated
+ * string laid out invisibly (so it wraps exactly as it will at this width and
+ * in this language) under a bar. The parent carries the ready element's type
+ * classes plus `relative`.
+ */
+function ReservedText({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <span className="invisible">{children}</span>
+      <Skeleton className="absolute inset-0" />
+    </>
+  );
+}
+
+/** A ready button's exact box — same variant, size and label — as a bar. */
+function ReservedButton({
+  variant,
+  size,
+  children,
+}: {
+  variant: "outline" | "destructive" | "default";
+  size?: "sm";
+  children: React.ReactNode;
+}) {
+  return (
+    <span className="relative inline-flex shrink-0">
+      <span className={cn(buttonVariants({ variant, size }), "invisible")}>
+        {children}
+      </span>
+      <Skeleton className="absolute inset-0" />
+    </span>
   );
 }
 
@@ -812,7 +849,14 @@ export function ProjectEnvironmentCardSkeleton() {
   );
 }
 
+/**
+ * Mirrors `ProjectSettingsPage` in read mode (w4/294): the `text-xl` heading,
+ * the name card's title, wrapping description and input + Edit row, and the
+ * delete card's title, description and button. Static copy is reserved with
+ * its own translated text; the unresolved project name never appears.
+ */
 export function ProjectSettingsPageSkeleton() {
+  const { t } = useTranslations();
   return (
     <PendingFrame
       route="project-settings"
@@ -820,13 +864,52 @@ export function ProjectSettingsPageSkeleton() {
     >
       <div className="w-full max-w-2xl space-y-6">
         <Region name="page-header">
-          <Skeleton className="h-6 w-44" />
+          <div className="relative w-fit text-xl font-semibold">
+            <ReservedText>{t("projects.settingsTitle")}</ReservedText>
+          </div>
         </Region>
         <Region name="project-name">
-          <CardSkeleton rows={2} />
+          <Card>
+            <CardHeader>
+              <CardTitle className="relative w-fit">
+                <ReservedText>{t("projects.nameCardTitle")}</ReservedText>
+              </CardTitle>
+              <CardDescription className="relative">
+                <ReservedText>{t("projects.nameCardDescription")}</ReservedText>
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div
+                data-skeleton-region="project-name-row"
+                className="flex items-center gap-2"
+              >
+                <Skeleton className="h-9 min-w-0 flex-1" />
+                <ReservedButton variant="outline" size="sm">
+                  <Pencil />
+                  {t("projects.editNameButton")}
+                </ReservedButton>
+              </div>
+            </CardContent>
+          </Card>
         </Region>
         <Region name="danger-zone">
-          <CardSkeleton rows={2} />
+          <Card className="border-destructive/50">
+            <CardHeader>
+              <CardTitle className="relative w-fit text-destructive">
+                <ReservedText>{t("projects.deleteCardTitle")}</ReservedText>
+              </CardTitle>
+              <CardDescription className="relative">
+                <ReservedText>
+                  {t("projects.deleteCardDescription")}
+                </ReservedText>
+              </CardDescription>
+            </CardHeader>
+            <CardContent data-skeleton-region="project-delete-action">
+              <ReservedButton variant="destructive">
+                {t("projects.deleteCardButton")}
+              </ReservedButton>
+            </CardContent>
+          </Card>
         </Region>
       </div>
     </PendingFrame>

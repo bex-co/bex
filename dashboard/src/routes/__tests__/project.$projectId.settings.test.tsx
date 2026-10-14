@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
@@ -10,6 +10,8 @@ import {
 } from "@tanstack/react-router";
 import { ProjectSettingsPage } from "../project.$projectId.settings";
 import type { ProjectView } from "@/features/projects/hooks/use-projects";
+import { ProjectSettingsPageSkeleton } from "@/common/components/route-skeletons";
+import i18n from "@/i18n/init";
 
 const projectsState: {
   projects: ProjectView[];
@@ -164,4 +166,100 @@ describe("ProjectSettingsPage", () => {
 
     expect(remove).toHaveBeenCalledWith("prj-1", "storefront");
   });
+});
+
+/**
+ * The geometry-bearing anatomy of the read-mode page: heading type, each card's
+ * border, header slots with their (wrapping) static copy, the content row's
+ * layout, its h-9 field slot and the exact button box. jsdom cannot measure
+ * pixels, so this pins the structure that decides them (w4/294).
+ */
+/** Classes a reservation adds to position its bar, not to size the box. */
+function stripReserve(classes: string) {
+  return classes
+    .split(" ")
+    .filter((name) => !["relative", "w-fit", "invisible"].includes(name))
+    .join(" ");
+}
+
+/** A ready button's classes, or a reserved slot's invisible button box. */
+function buttonBox(element: Element): string | undefined {
+  if (element.matches("button")) return element.className;
+  const reserved = element.querySelector(":scope > span.invisible");
+  return reserved ? stripReserve(reserved.className) : undefined;
+}
+
+function settingsAnatomy(root: HTMLElement) {
+  const container = root.querySelector<HTMLElement>(".max-w-2xl")!;
+  const heading = container.firstElementChild!;
+  const headingText =
+    heading.tagName === "H1" ? heading : heading.firstElementChild!;
+  return {
+    container: container.className,
+    heading: {
+      classes: stripReserve(headingText.className),
+      text: headingText.textContent,
+    },
+    cards: [
+      ...container.querySelectorAll<HTMLElement>('[data-slot="card"]'),
+    ].map((card) => {
+      const header = card.querySelector('[data-slot="card-header"]')!;
+      const content = card.querySelector<HTMLElement>(
+        '[data-slot="card-content"]',
+      )!;
+      const row = content.firstElementChild!;
+      const action = buttonBox(row);
+      return {
+        card: card.className,
+        header: [...header.children].map((slot) => [
+          slot.getAttribute("data-slot"),
+          stripReserve(slot.className),
+          slot.textContent,
+        ]),
+        content: content.className,
+        row: action
+          ? { button: action }
+          : {
+              layout: row.className,
+              field: row.firstElementChild!.classList.contains("h-9"),
+              button: buttonBox(row.lastElementChild!),
+            },
+      };
+    }),
+  };
+}
+
+describe("ProjectSettingsPageSkeleton (w4/294)", () => {
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it.each(["en", "zh"])(
+    "previews the read-mode page's heading, cards, copy and action slots (%s)",
+    async (language) => {
+      await i18n.changeLanguage(language);
+      projectsState.projects = [
+        {
+          id: "prj-1",
+          name: "storefront",
+          ownerId: "tea-1",
+          serviceIds: [],
+          databaseIds: [],
+          keyValueIds: [],
+        },
+      ];
+      const ready = renderSettingsPage();
+      await screen.findByDisplayValue("storefront");
+      const pending = render(<ProjectSettingsPageSkeleton />);
+
+      expect(settingsAnatomy(pending.container)).toEqual(
+        settingsAnatomy(ready.container),
+      );
+      // Inert and nameless: no controls, no unresolved project name.
+      const frame = pending.container.querySelector("[data-skeleton-frame]")!;
+      expect(frame).toHaveAttribute("aria-hidden", "true");
+      expect(frame.querySelector("button, input")).toBeNull();
+      expect(frame.textContent).not.toContain("storefront");
+    },
+  );
 });
