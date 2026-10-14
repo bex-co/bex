@@ -245,6 +245,32 @@ describe("useEnvGroupMutations", () => {
     expect(toastSuccess).toHaveBeenCalledWith("Created shared");
   });
 
+  // w4/m206: a create whose answer was lost may still have been saved. The
+  // list is re-read before the user can retry, and the create is not repeated.
+  it("re-reads the list after a failed create, without creating again", async () => {
+    const mutate = vi.fn().mockRejectedValue(new Error("timed out"));
+    mockUseMutation.mockImplementation(() => [mutate]);
+    const refetch = vi.fn().mockResolvedValue([]);
+
+    const { result } = renderHook(() => useEnvGroupMutations(refetch));
+    let id: string | null = "unset";
+    await act(async () => {
+      id = await result.current.createGroup({
+        name: "shared",
+        envVars: [],
+        secretFiles: [],
+        serviceIds: [],
+      });
+    });
+
+    expect(id).toBeNull();
+    expect(mutate).toHaveBeenCalledTimes(1);
+    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(toastError).toHaveBeenCalledTimes(1);
+    expect(toastSuccess).not.toHaveBeenCalled();
+    expect(result.current.busy).toBe(false);
+  });
+
   it("refuses to create until the switcher's workspace resolves", async () => {
     currentWorkspaceId = null;
     const mutate = vi.fn();

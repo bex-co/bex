@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -49,7 +50,7 @@ func TestSanitizeGraphQLErrors(t *testing.T) {
 
 	out := sanitizeGraphQLErrors([]gqlerrors.FormattedError{
 		wrap(leaky), wrap(classified), wrap(coded), parseErr,
-	})
+	}, false)
 
 	if out[0].Message != "internal error" {
 		t.Errorf("unclassified resolver error not redacted: %q", out[0].Message)
@@ -72,7 +73,7 @@ func TestSanitizeGraphQLErrorsKeepsAWrappedCode(t *testing.T) {
 	wrapped := fmt.Errorf("%w: %q", coded, "shop.example.com")
 	out := sanitizeGraphQLErrors([]gqlerrors.FormattedError{
 		gqlerrors.FormatError(gqlerrors.NewError(wrapped.Error(), nil, "", nil, nil, wrapped)),
-	})
+	}, false)
 	if out[0].Extensions["code"] != "CUSTOM_DOMAIN_IN_USE" || out[0].Message != wrapped.Error() {
 		t.Fatalf("wrapped coded error = %q %v, want its message and code", out[0].Message, out[0].Extensions)
 	}
@@ -94,11 +95,40 @@ func TestSanitizeGraphQLErrorsNamesAQueryTimeout(t *testing.T) {
 	upstream := &url.Error{Op: "Get", URL: "http://loki/loki/api/v1/query_range", Err: context.DeadlineExceeded}
 	out := sanitizeGraphQLErrors([]gqlerrors.FormattedError{
 		gqlerrors.FormatError(gqlerrors.NewError(upstream.Error(), nil, "", nil, nil, fmt.Errorf("query logs: %w", upstream))),
-	})
+	}, false)
 	if out[0].Message != queryTimeoutMessage {
 		t.Fatalf("message = %q, want the timeout guidance", out[0].Message)
 	}
 	if out[0].Extensions["code"] != core.CodeQueryTimeout {
 		t.Fatalf("extensions = %v, want code %s", out[0].Extensions, core.CodeQueryTimeout)
+	}
+}
+
+// w4/m206: a mutation that hits the same deadline is not a query to narrow. It
+// is not rolled back and may still be finishing, so it reads as an unknown
+// write outcome with advice to look before writing again.
+func TestSanitizeGraphQLErrorsNamesATimedOutWriteAsOutcomeUnknown(t *testing.T) {
+	timedOut := func() []gqlerrors.FormattedError {
+		return []gqlerrors.FormattedError{
+			gqlerrors.FormatError(gqlerrors.NewError("deadline", nil, "", nil, nil, fmt.Errorf("set members: %w", context.DeadlineExceeded))),
+		}
+	}
+	write := sanitizeGraphQLErrors(timedOut(), true)
+	if write[0].Message != writeOutcomeUnknownMessage || write[0].Extensions["code"] != core.CodeWriteOutcomeUnknown {
+		t.Fatalf("mutation timeout = %q %v, want the unknown-outcome code and message", write[0].Message, write[0].Extensions)
+	}
+	if strings.Contains(write[0].Message, "narrow") {
+		t.Fatalf("mutation timeout carries the query advice: %q", write[0].Message)
+	}
+	read := sanitizeGraphQLErrors(timedOut(), false)
+	if read[0].Extensions["code"] != core.CodeQueryTimeout {
+		t.Fatalf("query timeout = %v, want it unchanged", read[0].Extensions)
+	}
+	// A coded refusal inside a mutation keeps its own code.
+	coded := sanitizeGraphQLErrors([]gqlerrors.FormattedError{
+		gqlerrors.FormatError(gqlerrors.NewError("x", nil, "", nil, nil, core.NewConflictError("ENV_GROUP_NAME_EXISTS", "exists", nil))),
+	}, true)
+	if coded[0].Extensions["code"] != "ENV_GROUP_NAME_EXISTS" {
+		t.Fatalf("coded refusal in a mutation = %v, want its own code", coded[0].Extensions)
 	}
 }

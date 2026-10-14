@@ -235,6 +235,12 @@ const enEnvironments: Record<string, TranslationEntry> = {
     message: 'Environment groups for "{name}" updated.',
     description: "Toast shown after environment-group membership is updated",
   },
+  "environments.assignEnvGroupsPlacementUnread": {
+    message:
+      'Couldn\'t confirm where the groups for "{name}" are now. Try again or reload before moving them again.',
+    description:
+      "Warning after an environment-group move failed and re-reading the groups' placement failed too; its action re-reads, it never moves again (w4/m206)",
+  },
   "environments.assignEnvGroupsError": {
     message: 'Failed to update environment groups for "{name}".',
     description:

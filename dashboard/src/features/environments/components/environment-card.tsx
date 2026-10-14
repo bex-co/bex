@@ -175,6 +175,16 @@ export function EnvironmentCard({
     envGroups,
   ]);
   const visibleRows = filterProjectResources(rows, resourceFilter);
+  // A selection only counts while its resource is still in this environment:
+  // a move that failed partway, or timed out after it was applied, leaves keys
+  // for rows that are gone (w4/m206). Judged against the whole membership, so
+  // a row merely hidden by the search stays selected; and derived, not
+  // deleted, so a list that is momentarily unread loses nothing.
+  const selectedHere = useMemo(() => {
+    const here = new Set(rows.map(resourceSelectionKey));
+    const kept = [...selectedKeys].filter((key) => here.has(key));
+    return kept.length === selectedKeys.size ? selectedKeys : new Set(kept);
+  }, [rows, selectedKeys]);
   const counts = countProjectResources(rows);
   const moveTargets = allEnvironments.filter(
     (candidate) => candidate.id !== environment.id,
@@ -211,10 +221,10 @@ export function EnvironmentCard({
     const target = moveTargets.find(
       (candidate) => candidate.id === moveTargetId,
     );
-    if (!target || selectedKeys.size === 0) return;
+    if (!target || selectedHere.size === 0) return;
 
     const selectedRows = rows.filter((row) =>
-      selectedKeys.has(resourceSelectionKey(row)),
+      selectedHere.has(resourceSelectionKey(row)),
     );
     // One entry per resource kind: which of the target's ids that kind already
     // holds, and the setter that replaces them. All four setters share the same
@@ -259,7 +269,7 @@ export function EnvironmentCard({
         .flatMap((result) => result.keys),
     );
     setSelectedKeys(
-      new Set([...selectedKeys].filter((key) => !succeeded.has(key))),
+      new Set([...selectedHere].filter((key) => !succeeded.has(key))),
     );
   }
 
@@ -346,7 +356,7 @@ export function EnvironmentCard({
               aria-live="polite"
             >
               <span className="text-sm text-muted-foreground">
-                {t("projects.selectedCount", { count: selectedKeys.size })}
+                {t("projects.selectedCount", { count: selectedHere.size })}
               </span>
               <Select value={moveTargetId} onValueChange={setMoveTargetId}>
                 <SelectTrigger
@@ -369,7 +379,7 @@ export function EnvironmentCard({
               <Button
                 variant="outline"
                 size="sm"
-                disabled={selectedKeys.size === 0 || !moveTargetId || moving}
+                disabled={selectedHere.size === 0 || !moveTargetId || moving}
                 onClick={() => void handleMove()}
               >
                 {moving ? <Loader2 className="animate-spin" /> : null}
@@ -383,7 +393,7 @@ export function EnvironmentCard({
               onDatabaseDeleted={onDatabaseDeleted}
               onKeyValueDeleted={onKeyValueDeleted}
               projectMetadata
-              selectedKeys={selectedKeys}
+              selectedKeys={selectedHere}
               onSelectedKeysChange={setSelectedKeys}
             />
           </div>

@@ -381,6 +381,11 @@ const NotFoundCode = "NOT_FOUND"
 // (w4/m140).
 const CodeQueryTimeout = "QUERY_TIMEOUT"
 
+// CodeWriteOutcomeUnknown marks a write that ran out of its execution budget.
+// Unlike a read, it may have been applied in part or in full: the client must
+// read the current state before deciding whether to write again (w4/m206).
+const CodeWriteOutcomeUnknown = "WRITE_OUTCOME_UNKNOWN"
+
 // NewConflictError returns a machine-readable 409 error for a valid operation
 // that the resource's current state makes unsafe.
 func NewConflictError(code, msg string, params map[string]any) *CodedError {
