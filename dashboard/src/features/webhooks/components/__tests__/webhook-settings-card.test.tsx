@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
@@ -10,6 +10,8 @@ import {
   createMemoryHistory,
 } from "@tanstack/react-router";
 import { WebhookSettingsCard } from "@/features/webhooks/components/webhook-settings-card";
+import { WebhookSettingsSkeleton } from "@/common/components/route-skeletons";
+import i18n from "@/i18n/init";
 import type { WebhookEndpointView } from "@/features/webhooks/types";
 import type {
   AcceptedWebhookFields,
@@ -347,4 +349,101 @@ describe("WebhookSettingsCard — accepted save (w4/271)", () => {
     expect(screen.getByRole("checkbox", { name: "All events" })).toBeChecked();
     expect(save).toBeDisabled();
   });
+});
+
+/** Classes a reservation adds to position its bar, not to size the box. */
+function stripReserve(classes: string) {
+  return classes
+    .split(" ")
+    .filter((name) => !["relative", "w-fit", "invisible"].includes(name))
+    .join(" ");
+}
+
+/** A form part's kind and static copy, ready element or reserved slot alike. */
+function part(element: Element): (string | null)[] | null {
+  if (element.matches('[data-slot="label"], .leading-none.font-medium'))
+    return ["label", element.textContent];
+  if (element.matches("p.text-muted-foreground"))
+    return ["help", element.textContent];
+  if (element.matches('input, [data-slot="skeleton"].h-9')) return ["input"];
+  if (element.matches('[data-slot="switch"], [data-slot="skeleton"].w-9'))
+    return ["switch"];
+  return null;
+}
+
+function parts(element: Element): (string | null)[][] {
+  const own = part(element);
+  return own ? [own] : [...element.children].flatMap(parts);
+}
+
+/** A card's final action: the ready button, or a reserved button box. */
+function actionBox(content: Element): string | undefined {
+  const ready = [...content.querySelectorAll("button:not([role])")].at(-1);
+  if (ready) return ready.className;
+  const reserved = [
+    ...content.querySelectorAll("span.invisible.inline-flex"),
+  ].at(-1);
+  return reserved && stripReserve(reserved.className);
+}
+
+/**
+ * Webhook Settings' geometry-bearing anatomy: every card's header slots and
+ * static copy, the General card's rows in order (label → help → input, the
+ * plain status row beside its switch, the secret note), and each later card's
+ * action box. jsdom cannot measure pixels; this pins what decides them.
+ */
+function settingsAnatomy(root: Element) {
+  return [...root.querySelectorAll('[data-slot="card"]')].map((card, index) => {
+    const header = card.querySelector('[data-slot="card-header"]')!;
+    const content = card.querySelector('[data-slot="card-content"]')!;
+    return {
+      card: card.className,
+      header: [...header.children].map((slot) => [
+        slot.getAttribute("data-slot"),
+        stripReserve(slot.className),
+        slot.textContent,
+      ]),
+      content: content.className,
+      rows:
+        index === 0
+          ? [...content.children].map((row) => ({
+              layout: row.className,
+              parts: parts(row),
+            }))
+          : undefined,
+      action: index === 0 ? undefined : actionBox(content),
+    };
+  });
+}
+
+describe("WebhookSettingsSkeleton (w4/295)", () => {
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it.each(["en", "zh"])(
+    "previews the ready General form's row order, copy and following cards (%s)",
+    async (language) => {
+      await i18n.changeLanguage(language);
+      const ready = renderCard({ ...ENDPOINT, enabled: false });
+      await screen.findByRole("switch");
+      const pending = render(<WebhookSettingsSkeleton />);
+
+      const readyAnatomy = settingsAnatomy(ready.container);
+      expect(readyAnatomy).toHaveLength(3);
+      expect(settingsAnatomy(pending.container)).toEqual(readyAnatomy);
+      // What w4/295 measured: help sits between the label and the input.
+      expect(readyAnatomy[0].rows?.[1].parts.map(([kind]) => kind)).toEqual([
+        "label",
+        "help",
+        "input",
+      ]);
+
+      const frame = pending.container.querySelector("[data-skeleton-frame]")!;
+      expect(frame).toHaveAttribute("aria-hidden", "true");
+      expect(frame.querySelector("button, input")).toBeNull();
+      expect(frame.textContent).not.toContain(ENDPOINT.name);
+      expect(frame.textContent).not.toContain(ENDPOINT.url);
+    },
+  );
 });
