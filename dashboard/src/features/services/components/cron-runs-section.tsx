@@ -287,10 +287,7 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
                         {expanded ? (
                           <TableRow>
                             <TableCell colSpan={4} className="bg-muted/30">
-                              <CronRunDetail
-                                serviceId={serviceId}
-                                runId={run.id}
-                              />
+                              <CronRunDetail serviceId={serviceId} run={run} />
                             </TableCell>
                           </TableRow>
                         ) : null}
@@ -368,19 +365,31 @@ function absoluteTime(value: string | null): string {
  * One run's detail, freshly read via `cronJobRun` (w5/m60) when its row is
  * expanded: status, absolute start/finish timestamps, computed duration, and the
  * run id. A stale/unknown run id renders an explicit error, never a blank panel.
+ *
+ * While that first read is in flight the panel renders the same five-field grid
+ * with every value masked (w4/305): the history row's run sizes the hidden
+ * values so columns, wrapping and table widths match the ready detail, but none
+ * of it is shown or announced as the fresh detail.
  */
 function CronRunDetail({
   serviceId,
-  runId,
+  run: historyRun,
 }: {
   serviceId: string;
-  runId: string;
+  run: CronRunView;
 }) {
   const { t } = useTranslations();
-  const { run, loading, error } = useCronRun(serviceId, runId);
+  const { run, loading, error } = useCronRun(serviceId, historyRun.id);
 
   if (loading && !run) {
-    return <Skeleton className="h-16 w-full" />;
+    return (
+      <>
+        <span role="status" className="sr-only">
+          {t("services.cronRunDetailLoading")}
+        </span>
+        <CronRunFields run={historyRun} masked />
+      </>
+    );
   }
   if (error || !run) {
     return (
@@ -389,38 +398,62 @@ function CronRunDetail({
       </p>
     );
   }
+  return <CronRunFields run={run} masked={false} />;
+}
+
+/** The detail's five-field grid — one layout for the masked preview and the
+ *  ready detail, so the two cannot drift apart. */
+function CronRunFields({ run, masked }: { run: CronRunView; masked: boolean }) {
+  const { t } = useTranslations();
   return (
-    <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-4">
-      <DetailField label={t("services.cronRunColStatus")}>
+    <dl
+      aria-busy={masked || undefined}
+      className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-4"
+    >
+      <DetailField label={t("services.cronRunColStatus")} masked={masked}>
         <CronRunStatusBadge status={run.status} />
       </DetailField>
-      <DetailField label={t("services.cronRunDetailStarted")}>
+      <DetailField label={t("services.cronRunDetailStarted")} masked={masked}>
         <span className="tabular-nums">{absoluteTime(run.startedAt)}</span>
       </DetailField>
-      <DetailField label={t("services.cronRunDetailFinished")}>
+      <DetailField label={t("services.cronRunDetailFinished")} masked={masked}>
         <span className="tabular-nums">{absoluteTime(run.finishedAt)}</span>
       </DetailField>
-      <DetailField label={t("services.cronRunColDuration")}>
+      <DetailField label={t("services.cronRunColDuration")} masked={masked}>
         <span className="tabular-nums">{duration(run)}</span>
       </DetailField>
-      <DetailField label={t("services.cronRunDetailId")}>
+      <DetailField label={t("services.cronRunDetailId")} masked={masked}>
         <span className="font-mono text-xs">{run.id}</span>
       </DetailField>
     </dl>
   );
 }
 
+/** A labelled value. Masked, the value still lays out — sizing the cell exactly
+ *  as the ready value would — but is invisible, hidden from assistive tech, and
+ *  covered by a skeleton. */
 function DetailField({
   label,
+  masked,
   children,
 }: {
   label: string;
+  masked: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-0.5">
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd>{children}</dd>
+      {masked ? (
+        <dd className="relative">
+          <span aria-hidden="true" className="invisible">
+            {children}
+          </span>
+          <Skeleton aria-hidden="true" className="absolute inset-0" />
+        </dd>
+      ) : (
+        <dd>{children}</dd>
+      )}
     </div>
   );
 }
