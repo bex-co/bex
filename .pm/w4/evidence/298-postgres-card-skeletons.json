@@ -1,0 +1,1607 @@
+{
+  "schemaVersion": 1,
+  "pass": "a437",
+  "sourceHead": "232f5b90e",
+  "scope": "Postgres Details and masked Connections pending/ready card geometry; one owned private Free Postgres18",
+  "fixture": {
+    "id": "dpg-db7je3hllfps73emu6mg",
+    "name": "qa-20261014-a437-layout"
+  },
+  "create": {
+    "at": "2026-10-14T08:02:22.130Z",
+    "request": [
+      {
+        "operationName": "CreateDatabase",
+        "variables": {
+          "name": "qa-20261014-a437-layout",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "plan": "free",
+          "public": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateDatabase($name: String!, $databaseName: String, $databaseUser: String, $ownerId: String, $environmentId: String, $plan: String, $version: String, $diskSizeGB: Int, $public: Boolean) {\n  createDatabase(\n    name: $name\n    databaseName: $databaseName\n    databaseUser: $databaseUser\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    diskSizeGB: $diskSizeGB\n    public: $public\n  ) {\n    id\n    name\n    databaseName\n    databaseUser\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "createDatabase": {
+            "__typename": "Database",
+            "databaseName": "dpg_db7je3hllfps73emu6mg",
+            "databaseUser": "dpg_db7je3hllfps73emu6mg_user",
+            "environmentId": null,
+            "id": "dpg-db7je3hllfps73emu6mg",
+            "name": "qa-20261014-a437-layout",
+            "plan": "free",
+            "projectId": null,
+            "status": "creating"
+          }
+        }
+      }
+    ],
+    "url": "https://dashboard.bex.co/databases/dpg-db7je3hllfps73emu6mg"
+  },
+  "desktopProbeCode": "async(page)=>{\nawait page.setViewportSize({width:1440,height:1000});await page.goto('https://dashboard.bex.co/env-groups');await page.getByRole('heading',{name:'Environment Groups',exact:true}).waitFor({timeout:25000});await page.waitForFunction(()=>!!window.__TSR_ROUTER__,{},{timeout:15000});\nconst captured=[];const handler=async route=>{const request=route.request();let list=[];try{const data=request.postDataJSON();list=Array.isArray(data)?data:[data]}catch{}const index=list.findIndex(q=>q?.operationName==='Database'&&q.variables?.id==='dpg-db7je3hllfps73emu6mg');if(index<0){await route.continue();return}const response=await route.fetch();const body=await response.json();captured.push({request:list[index],status:response.status(),body:Array.isArray(body)?body[index]:body});await page.waitForTimeout(7000);await route.fulfill({response})};\nconst measure=()=>{const box=el=>{if(!el)return null;const r=el.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height}};const main=document.querySelector('main');return{main:box(main),frames:[...document.querySelectorAll('[data-route-skeleton]')].map(el=>({route:el.getAttribute('data-route-skeleton'),box:box(el)})),regions:[...document.querySelectorAll('main [data-skeleton-region]')].map(el=>({name:el.getAttribute('data-skeleton-region'),box:box(el)})),sections:[...document.querySelectorAll('main section[id]')].map(el=>({id:el.id,box:box(el)})),cards:[...document.querySelectorAll('main [data-slot=\"card\"]')].map(el=>({box:box(el),header:box(el.querySelector('[data-slot=\"card-header\"]')),content:box(el.querySelector('[data-slot=\"card-content\"]')),title:el.querySelector('[data-slot=\"card-title\"]')?.textContent||null,descriptions:el.querySelectorAll('[data-slot=\"card-description\"]').length,inputs:el.querySelectorAll('input').length,buttons:el.querySelectorAll('button').length})),width:{viewport:innerWidth,document:document.documentElement.scrollWidth}}};\nawait page.route('**/graphql',handler);\ntry{await page.evaluate(()=>{void window.__TSR_ROUTER__.navigate({to:'/databases/dpg-db7je3hllfps73emu6mg'})});await page.locator('[data-route-skeleton=\"database-overview\"]').waitFor({timeout:15000});await page.waitForTimeout(350);const pending={at:new Date().toISOString(),layout:await page.evaluate(measure),ui:await page.locator('main').ariaSnapshot()};await page.screenshot({path:'qa-a437-pending-desktop.png'});await page.getByRole('heading',{name:'qa-20261014-a437-layout',exact:true}).waitFor({timeout:25000});await page.getByRole('button',{name:'Reveal connection info',exact:true}).waitFor({timeout:25000});await page.waitForTimeout(500);const ready={at:new Date().toISOString(),layout:await page.evaluate(measure),ui:await page.locator('main').ariaSnapshot()};await page.screenshot({path:'qa-a437-ready-desktop.png'});return{at:new Date().toISOString(),captured,pending,ready}}finally{await page.unroute('**/graphql',handler)}\n}",
+  "mobileProbeCode": "async(page)=>{\nawait page.setViewportSize({width:390,height:844});await page.goto('https://dashboard.bex.co/env-groups');await page.getByRole('heading',{name:'Environment Groups',exact:true}).waitFor({timeout:25000});await page.waitForFunction(()=>!!window.__TSR_ROUTER__,{},{timeout:15000});\nconst captured=[];const handler=async route=>{const request=route.request();let list=[];try{const data=request.postDataJSON();list=Array.isArray(data)?data:[data]}catch{}const index=list.findIndex(q=>q?.operationName==='Database'&&q.variables?.id==='dpg-db7je3hllfps73emu6mg');if(index<0){await route.continue();return}const response=await route.fetch();const body=await response.json();captured.push({request:list[index],status:response.status(),body:Array.isArray(body)?body[index]:body});await page.waitForTimeout(7000);await route.fulfill({response})};\nconst measure=()=>{const box=el=>{if(!el)return null;const r=el.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height}};const main=document.querySelector('main');return{main:box(main),frames:[...document.querySelectorAll('[data-route-skeleton]')].map(el=>({route:el.getAttribute('data-route-skeleton'),box:box(el)})),regions:[...document.querySelectorAll('main [data-skeleton-region]')].map(el=>({name:el.getAttribute('data-skeleton-region'),box:box(el)})),sections:[...document.querySelectorAll('main section[id]')].map(el=>({id:el.id,box:box(el)})),cards:[...document.querySelectorAll('main [data-slot=\"card\"]')].map(el=>({box:box(el),header:box(el.querySelector('[data-slot=\"card-header\"]')),content:box(el.querySelector('[data-slot=\"card-content\"]')),title:el.querySelector('[data-slot=\"card-title\"]')?.textContent||null,descriptions:el.querySelectorAll('[data-slot=\"card-description\"]').length,inputs:el.querySelectorAll('input').length,buttons:el.querySelectorAll('button').length})),width:{viewport:innerWidth,document:document.documentElement.scrollWidth}}};\nawait page.route('**/graphql',handler);\ntry{await page.evaluate(()=>{void window.__TSR_ROUTER__.navigate({to:'/databases/dpg-db7je3hllfps73emu6mg'})});await page.locator('[data-route-skeleton=\"database-overview\"]').waitFor({timeout:15000});await page.waitForTimeout(350);const pending={at:new Date().toISOString(),layout:await page.evaluate(measure),ui:await page.locator('main').ariaSnapshot()};await page.screenshot({path:'qa-a437-pending-mobile.png'});await page.getByRole('heading',{name:'qa-20261014-a437-layout',exact:true}).waitFor({timeout:25000});await page.getByRole('button',{name:'Reveal connection info',exact:true}).waitFor({timeout:25000});await page.waitForTimeout(500);const ready={at:new Date().toISOString(),layout:await page.evaluate(measure),ui:await page.locator('main').ariaSnapshot()};await page.screenshot({path:'qa-a437-ready-mobile.png'});return{at:new Date().toISOString(),captured,pending,ready}}finally{await page.unroute('**/graphql',handler)}\n}",
+  "desktop": {
+    "at": "2026-10-14T08:04:15.458Z",
+    "captured": [
+      {
+        "request": {
+          "operationName": "Database",
+          "variables": {
+            "id": "dpg-db7je3hllfps73emu6mg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query Database($id: String!) {\n  database(id: $id) {\n    id\n    name\n    plan\n    version\n    status\n    statusReason\n    statusReasonCode\n    databaseName\n    databaseUser\n    diskSizeGB\n    diskAutoscalingEnabled\n    highAvailabilityEnabled\n    readReplicas {\n      name\n      connectionInfo {\n        internalHost\n        externalHost\n        __typename\n      }\n      __typename\n    }\n    suspended\n    createdAt\n    updatedAt\n    externalHost\n    public\n    poolerEnabled\n    backupsEnabled\n    ipAllowList\n    region\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "database": {
+              "__typename": "Database",
+              "backupsEnabled": false,
+              "createdAt": "2026-10-14T08:02:22Z",
+              "databaseName": "dpg_db7je3hllfps73emu6mg",
+              "databaseUser": "dpg_db7je3hllfps73emu6mg_user",
+              "diskAutoscalingEnabled": false,
+              "diskSizeGB": 1,
+              "externalHost": "",
+              "highAvailabilityEnabled": false,
+              "id": "dpg-db7je3hllfps73emu6mg",
+              "ipAllowList": [],
+              "name": "qa-20261014-a437-layout",
+              "plan": "free",
+              "poolerEnabled": false,
+              "public": false,
+              "readReplicas": [],
+              "region": "fsn1",
+              "status": "available",
+              "statusReason": null,
+              "statusReasonCode": null,
+              "suspended": "not_suspended",
+              "updatedAt": "2026-10-14T08:04:04Z",
+              "version": "18"
+            }
+          }
+        }
+      }
+    ],
+    "pending": {
+      "at": "2026-10-14T08:04:08.554Z",
+      "layout": {
+        "main": {
+          "x": 256,
+          "y": 0,
+          "width": 1184,
+          "height": 1000
+        },
+        "frames": [
+          {
+            "route": "database-detail",
+            "box": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0
+            }
+          },
+          {
+            "route": "database-overview",
+            "box": {
+              "x": 280,
+              "y": 180,
+              "width": 1136,
+              "height": 2703
+            }
+          }
+        ],
+        "regions": [
+          {
+            "name": "resource-header",
+            "box": {
+              "x": 256,
+              "y": 48,
+              "width": 1184,
+              "height": 69
+            }
+          },
+          {
+            "name": "resource-title",
+            "box": {
+              "x": 280,
+              "y": 70,
+              "width": 264,
+              "height": 24
+            }
+          },
+          {
+            "name": "resource-actions",
+            "box": {
+              "x": 1380,
+              "y": 64,
+              "width": 36,
+              "height": 36
+            }
+          },
+          {
+            "name": "tabs",
+            "box": {
+              "x": 256,
+              "y": 117,
+              "width": 1184,
+              "height": 39
+            }
+          },
+          {
+            "name": "active-tab",
+            "box": {
+              "x": 256,
+              "y": 156,
+              "width": 1184,
+              "height": 844
+            }
+          },
+          {
+            "name": "section-navigation",
+            "box": {
+              "x": 1208,
+              "y": 204,
+              "width": 208,
+              "height": 356
+            }
+          },
+          {
+            "name": "metadata",
+            "box": {
+              "x": 280,
+              "y": 180,
+              "width": 888,
+              "height": 430
+            }
+          },
+          {
+            "name": "connection",
+            "box": {
+              "x": 280,
+              "y": 634,
+              "width": 888,
+              "height": 126
+            }
+          },
+          {
+            "name": "sql-console",
+            "box": {
+              "x": 280,
+              "y": 784,
+              "width": 888,
+              "height": 375
+            }
+          },
+          {
+            "name": "high-availability",
+            "box": {
+              "x": 280,
+              "y": 1183,
+              "width": 888,
+              "height": 160
+            }
+          },
+          {
+            "name": "metrics",
+            "box": {
+              "x": 280,
+              "y": 1367,
+              "width": 888,
+              "height": 320
+            }
+          },
+          {
+            "name": "plan",
+            "box": {
+              "x": 280,
+              "y": 1711,
+              "width": 888,
+              "height": 200
+            }
+          },
+          {
+            "name": "insights",
+            "box": {
+              "x": 280,
+              "y": 1935,
+              "width": 888,
+              "height": 360
+            }
+          },
+          {
+            "name": "recovery",
+            "box": {
+              "x": 280,
+              "y": 2319,
+              "width": 888,
+              "height": 240
+            }
+          },
+          {
+            "name": "access-control",
+            "box": {
+              "x": 280,
+              "y": 2583,
+              "width": 888,
+              "height": 240
+            }
+          },
+          {
+            "name": "danger-zone",
+            "box": {
+              "x": 280,
+              "y": 2847,
+              "width": 888,
+              "height": 36
+            }
+          }
+        ],
+        "sections": [],
+        "cards": [
+          {
+            "box": {
+              "x": 280,
+              "y": 180,
+              "width": 888,
+              "height": 430
+            },
+            "header": {
+              "x": 281,
+              "y": 201,
+              "width": 886,
+              "height": 24
+            },
+            "content": {
+              "x": 281,
+              "y": 241,
+              "width": 886,
+              "height": 348
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 280,
+              "y": 634,
+              "width": 888,
+              "height": 126
+            },
+            "header": {
+              "x": 281,
+              "y": 655,
+              "width": 886,
+              "height": 24
+            },
+            "content": {
+              "x": 281,
+              "y": 695,
+              "width": 886,
+              "height": 44
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 280,
+              "y": 784,
+              "width": 888,
+              "height": 375
+            },
+            "header": {
+              "x": 281,
+              "y": 805,
+              "width": 886,
+              "height": 24
+            },
+            "content": {
+              "x": 281,
+              "y": 845,
+              "width": 886,
+              "height": 293
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 280,
+              "y": 1183,
+              "width": 888,
+              "height": 160
+            },
+            "header": {
+              "x": 281,
+              "y": 1204,
+              "width": 886,
+              "height": 24
+            },
+            "content": {
+              "x": 281,
+              "y": 1244,
+              "width": 886,
+              "height": 78
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 280,
+              "y": 1367,
+              "width": 888,
+              "height": 320
+            },
+            "header": {
+              "x": 281,
+              "y": 1388,
+              "width": 886,
+              "height": 24
+            },
+            "content": {
+              "x": 281,
+              "y": 1428,
+              "width": 886,
+              "height": 238
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 280,
+              "y": 1711,
+              "width": 888,
+              "height": 200
+            },
+            "header": {
+              "x": 281,
+              "y": 1732,
+              "width": 886,
+              "height": 24
+            },
+            "content": {
+              "x": 281,
+              "y": 1772,
+              "width": 886,
+              "height": 118
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 280,
+              "y": 1935,
+              "width": 888,
+              "height": 360
+            },
+            "header": {
+              "x": 281,
+              "y": 1956,
+              "width": 886,
+              "height": 24
+            },
+            "content": {
+              "x": 281,
+              "y": 1996,
+              "width": 886,
+              "height": 278
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 280,
+              "y": 2319,
+              "width": 888,
+              "height": 240
+            },
+            "header": {
+              "x": 281,
+              "y": 2340,
+              "width": 886,
+              "height": 24
+            },
+            "content": {
+              "x": 281,
+              "y": 2380,
+              "width": 886,
+              "height": 158
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 280,
+              "y": 2583,
+              "width": 888,
+              "height": 240
+            },
+            "header": {
+              "x": 281,
+              "y": 2604,
+              "width": 886,
+              "height": 24
+            },
+            "content": {
+              "x": 281,
+              "y": 2644,
+              "width": 886,
+              "height": 158
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          }
+        ],
+        "width": {
+          "viewport": 1440,
+          "document": 1440
+        }
+      },
+      "ui": "- main:\n  - navigation \"Breadcrumbs\": Database dpg-db7je3hllfps73emu6mg\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - navigation \"Database details\":\n    - button \"Overview\"\n    - button \"Logs\""
+    },
+    "ready": {
+      "at": "2026-10-14T08:04:15.406Z",
+      "layout": {
+        "main": {
+          "x": 256,
+          "y": 0,
+          "width": 1184,
+          "height": 1000
+        },
+        "frames": [],
+        "regions": [],
+        "sections": [
+          {
+            "id": "metadata",
+            "box": {
+              "x": 280,
+              "y": 176,
+              "width": 888,
+              "height": 392
+            }
+          },
+          {
+            "id": "connection",
+            "box": {
+              "x": 280,
+              "y": 592,
+              "width": 888,
+              "height": 134
+            }
+          },
+          {
+            "id": "sql-console",
+            "box": {
+              "x": 280,
+              "y": 750,
+              "width": 888,
+              "height": 375
+            }
+          },
+          {
+            "id": "high-availability",
+            "box": {
+              "x": 280,
+              "y": 1149,
+              "width": 888,
+              "height": 156
+            }
+          },
+          {
+            "id": "metrics",
+            "box": {
+              "x": 280,
+              "y": 1329,
+              "width": 888,
+              "height": 320
+            }
+          },
+          {
+            "id": "plan",
+            "box": {
+              "x": 280,
+              "y": 1673,
+              "width": 888,
+              "height": 200
+            }
+          },
+          {
+            "id": "insights",
+            "box": {
+              "x": 280,
+              "y": 1897,
+              "width": 888,
+              "height": 360
+            }
+          },
+          {
+            "id": "recovery",
+            "box": {
+              "x": 280,
+              "y": 2281,
+              "width": 888,
+              "height": 240
+            }
+          },
+          {
+            "id": "access-control",
+            "box": {
+              "x": 280,
+              "y": 2545,
+              "width": 888,
+              "height": 240
+            }
+          },
+          {
+            "id": "danger-zone",
+            "box": {
+              "x": 280,
+              "y": 2809,
+              "width": 888,
+              "height": 36
+            }
+          }
+        ],
+        "cards": [
+          {
+            "box": {
+              "x": 280,
+              "y": 176,
+              "width": 888,
+              "height": 392
+            },
+            "header": {
+              "x": 281,
+              "y": 197,
+              "width": 886,
+              "height": 20
+            },
+            "content": {
+              "x": 281,
+              "y": 233,
+              "width": 886,
+              "height": 314
+            },
+            "title": "Details",
+            "descriptions": 0,
+            "inputs": 1,
+            "buttons": 1
+          },
+          {
+            "box": {
+              "x": 280,
+              "y": 592,
+              "width": 888,
+              "height": 134
+            },
+            "header": {
+              "x": 281,
+              "y": 613,
+              "width": 886,
+              "height": 40
+            },
+            "content": {
+              "x": 281,
+              "y": 669,
+              "width": 886,
+              "height": 36
+            },
+            "title": "Connections",
+            "descriptions": 1,
+            "inputs": 0,
+            "buttons": 1
+          },
+          {
+            "box": {
+              "x": 280,
+              "y": 750,
+              "width": 888,
+              "height": 375
+            },
+            "header": {
+              "x": 281,
+              "y": 771,
+              "width": 886,
+              "height": 40
+            },
+            "content": {
+              "x": 281,
+              "y": 827,
+              "width": 886,
+              "height": 277
+            },
+            "title": "SQL console",
+            "descriptions": 1,
+            "inputs": 0,
+            "buttons": 1
+          },
+          {
+            "box": {
+              "x": 280,
+              "y": 1149,
+              "width": 888,
+              "height": 156
+            },
+            "header": {
+              "x": 281,
+              "y": 1170,
+              "width": 886,
+              "height": 40
+            },
+            "content": {
+              "x": 281,
+              "y": 1226,
+              "width": 886,
+              "height": 58
+            },
+            "title": "High Availability",
+            "descriptions": 1,
+            "inputs": 0,
+            "buttons": 0
+          }
+        ],
+        "width": {
+          "viewport": 1440,
+          "document": 1440
+        }
+      },
+      "ui": "- main:\n  - navigation \"Breadcrumbs\": Database qa-20261014-a437-layout\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - heading \"qa-20261014-a437-layout\" [level=1]\n  - text: Available\n  - button \"Open actions menu\"\n  - navigation \"Database details\":\n    - button \"Overview\"\n    - button \"Logs\"\n  - navigation \"Database sections\":\n    - link \"Details\":\n      - /url: \"#metadata\"\n    - link \"Connections\":\n      - /url: \"#connection\"\n    - link \"SQL console\":\n      - /url: \"#sql-console\"\n    - link \"High Availability\":\n      - /url: \"#high-availability\"\n    - link \"Metrics\":\n      - /url: \"#metrics\"\n    - link \"Instance type\":\n      - /url: \"#plan\"\n    - link \"Insights\":\n      - /url: \"#insights\"\n    - link \"Recovery\":\n      - /url: \"#recovery\"\n    - link \"Access control\":\n      - /url: \"#access-control\"\n    - link \"Danger Zone\":\n      - /url: \"#danger-zone\"\n  - text: Details Name Change the display name. The database ID and all connection details stay the same.\n  - textbox \"Name\" [disabled]: qa-20261014-a437-layout\n  - button \"Edit database name\"\n  - term: Status\n  - definition: Available\n  - term: Instance type\n  - definition: Free\n  - term: Version\n  - definition: PostgreSQL 18\n  - term: Database\n  - definition: dpg_db7je3hllfps73emu6mg\n  - term: User\n  - definition: dpg_db7je3hllfps73emu6mg_user\n  - term: Storage\n  - definition: 1 GB\n  - term: High availability\n  - definition: \"No\"\n  - term: Public access\n  - definition: \"No\"\n  - term: Region\n  - definition: fsn1\n  - term: Created\n  - definition:\n    - time: 1m\n  - text: Connections Connection strings and the database password. Revealed only when you ask — never shown automatically.\n  - button \"Reveal connection info\"\n  - text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n  - textbox \"SQL query\": SELECT version();\n  - paragraph: Press Ctrl+Enter or ⌘+Enter to run\n  - button \"Run query\"\n  - paragraph: Query history\n  - paragraph: Queries run in this browser session appear here.\n  - text: High Availability Replicated cluster with automatic failover. When enabled, a standby is always ready to take over. Status Disabled\n  - paragraph: High availability requires a plan with at least 1 CPU. This database's plan does not offer it.\n  - button \"Delete Database\"\n  - button \"Restart Database\"\n  - button \"Suspend Database\""
+    }
+  },
+  "mobile": {
+    "at": "2026-10-14T08:05:21.820Z",
+    "captured": [
+      {
+        "request": {
+          "operationName": "Database",
+          "variables": {
+            "id": "dpg-db7je3hllfps73emu6mg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query Database($id: String!) {\n  database(id: $id) {\n    id\n    name\n    plan\n    version\n    status\n    statusReason\n    statusReasonCode\n    databaseName\n    databaseUser\n    diskSizeGB\n    diskAutoscalingEnabled\n    highAvailabilityEnabled\n    readReplicas {\n      name\n      connectionInfo {\n        internalHost\n        externalHost\n        __typename\n      }\n      __typename\n    }\n    suspended\n    createdAt\n    updatedAt\n    externalHost\n    public\n    poolerEnabled\n    backupsEnabled\n    ipAllowList\n    region\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "database": {
+              "__typename": "Database",
+              "backupsEnabled": false,
+              "createdAt": "2026-10-14T08:02:22Z",
+              "databaseName": "dpg_db7je3hllfps73emu6mg",
+              "databaseUser": "dpg_db7je3hllfps73emu6mg_user",
+              "diskAutoscalingEnabled": false,
+              "diskSizeGB": 1,
+              "externalHost": "",
+              "highAvailabilityEnabled": false,
+              "id": "dpg-db7je3hllfps73emu6mg",
+              "ipAllowList": [],
+              "name": "qa-20261014-a437-layout",
+              "plan": "free",
+              "poolerEnabled": false,
+              "public": false,
+              "readReplicas": [],
+              "region": "fsn1",
+              "status": "available",
+              "statusReason": null,
+              "statusReasonCode": null,
+              "suspended": "not_suspended",
+              "updatedAt": "2026-10-14T08:04:04Z",
+              "version": "18"
+            }
+          }
+        }
+      }
+    ],
+    "pending": {
+      "at": "2026-10-14T08:05:14.937Z",
+      "layout": {
+        "main": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844
+        },
+        "frames": [
+          {
+            "route": "database-detail",
+            "box": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0
+            }
+          },
+          {
+            "route": "database-overview",
+            "box": {
+              "x": 16,
+              "y": 172,
+              "width": 358,
+              "height": 2997
+            }
+          }
+        ],
+        "regions": [
+          {
+            "name": "resource-header",
+            "box": {
+              "x": 0,
+              "y": 48,
+              "width": 390,
+              "height": 69
+            }
+          },
+          {
+            "name": "resource-title",
+            "box": {
+              "x": 16,
+              "y": 70,
+              "width": 264,
+              "height": 24
+            }
+          },
+          {
+            "name": "resource-actions",
+            "box": {
+              "x": 338,
+              "y": 64,
+              "width": 36,
+              "height": 36
+            }
+          },
+          {
+            "name": "tabs",
+            "box": {
+              "x": 0,
+              "y": 117,
+              "width": 390,
+              "height": 39
+            }
+          },
+          {
+            "name": "active-tab",
+            "box": {
+              "x": 0,
+              "y": 156,
+              "width": 390,
+              "height": 688
+            }
+          },
+          {
+            "name": "section-navigation",
+            "box": {
+              "x": 0,
+              "y": 172,
+              "width": 390,
+              "height": 50
+            }
+          },
+          {
+            "name": "metadata",
+            "box": {
+              "x": 16,
+              "y": 246,
+              "width": 358,
+              "height": 650
+            }
+          },
+          {
+            "name": "connection",
+            "box": {
+              "x": 16,
+              "y": 920,
+              "width": 358,
+              "height": 126
+            }
+          },
+          {
+            "name": "sql-console",
+            "box": {
+              "x": 16,
+              "y": 1070,
+              "width": 358,
+              "height": 375
+            }
+          },
+          {
+            "name": "high-availability",
+            "box": {
+              "x": 16,
+              "y": 1469,
+              "width": 358,
+              "height": 160
+            }
+          },
+          {
+            "name": "metrics",
+            "box": {
+              "x": 16,
+              "y": 1653,
+              "width": 358,
+              "height": 320
+            }
+          },
+          {
+            "name": "plan",
+            "box": {
+              "x": 16,
+              "y": 1997,
+              "width": 358,
+              "height": 200
+            }
+          },
+          {
+            "name": "insights",
+            "box": {
+              "x": 16,
+              "y": 2221,
+              "width": 358,
+              "height": 360
+            }
+          },
+          {
+            "name": "recovery",
+            "box": {
+              "x": 16,
+              "y": 2605,
+              "width": 358,
+              "height": 240
+            }
+          },
+          {
+            "name": "access-control",
+            "box": {
+              "x": 16,
+              "y": 2869,
+              "width": 358,
+              "height": 240
+            }
+          },
+          {
+            "name": "danger-zone",
+            "box": {
+              "x": 16,
+              "y": 3133,
+              "width": 358,
+              "height": 36
+            }
+          }
+        ],
+        "sections": [],
+        "cards": [
+          {
+            "box": {
+              "x": 16,
+              "y": 246,
+              "width": 358,
+              "height": 650
+            },
+            "header": {
+              "x": 17,
+              "y": 267,
+              "width": 356,
+              "height": 24
+            },
+            "content": {
+              "x": 17,
+              "y": 307,
+              "width": 356,
+              "height": 568
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 16,
+              "y": 920,
+              "width": 358,
+              "height": 126
+            },
+            "header": {
+              "x": 17,
+              "y": 941,
+              "width": 356,
+              "height": 24
+            },
+            "content": {
+              "x": 17,
+              "y": 981,
+              "width": 356,
+              "height": 44
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 16,
+              "y": 1070,
+              "width": 358,
+              "height": 375
+            },
+            "header": {
+              "x": 17,
+              "y": 1091,
+              "width": 356,
+              "height": 24
+            },
+            "content": {
+              "x": 17,
+              "y": 1131,
+              "width": 356,
+              "height": 293
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 16,
+              "y": 1469,
+              "width": 358,
+              "height": 160
+            },
+            "header": {
+              "x": 17,
+              "y": 1490,
+              "width": 356,
+              "height": 24
+            },
+            "content": {
+              "x": 17,
+              "y": 1530,
+              "width": 356,
+              "height": 78
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 16,
+              "y": 1653,
+              "width": 358,
+              "height": 320
+            },
+            "header": {
+              "x": 17,
+              "y": 1674,
+              "width": 356,
+              "height": 24
+            },
+            "content": {
+              "x": 17,
+              "y": 1714,
+              "width": 356,
+              "height": 238
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 16,
+              "y": 1997,
+              "width": 358,
+              "height": 200
+            },
+            "header": {
+              "x": 17,
+              "y": 2018,
+              "width": 356,
+              "height": 24
+            },
+            "content": {
+              "x": 17,
+              "y": 2058,
+              "width": 356,
+              "height": 118
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 16,
+              "y": 2221,
+              "width": 358,
+              "height": 360
+            },
+            "header": {
+              "x": 17,
+              "y": 2242,
+              "width": 356,
+              "height": 24
+            },
+            "content": {
+              "x": 17,
+              "y": 2282,
+              "width": 356,
+              "height": 278
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 16,
+              "y": 2605,
+              "width": 358,
+              "height": 240
+            },
+            "header": {
+              "x": 17,
+              "y": 2626,
+              "width": 356,
+              "height": 24
+            },
+            "content": {
+              "x": 17,
+              "y": 2666,
+              "width": 356,
+              "height": 158
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          },
+          {
+            "box": {
+              "x": 16,
+              "y": 2869,
+              "width": 358,
+              "height": 240
+            },
+            "header": {
+              "x": 17,
+              "y": 2890,
+              "width": 356,
+              "height": 24
+            },
+            "content": {
+              "x": 17,
+              "y": 2930,
+              "width": 356,
+              "height": 158
+            },
+            "title": null,
+            "descriptions": 0,
+            "inputs": 0,
+            "buttons": 0
+          }
+        ],
+        "width": {
+          "viewport": 390,
+          "document": 390
+        }
+      },
+      "ui": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\": dpg-db7je3hllfps73emu6mg\n  - button \"Search\"\n  - button \"New\"\n  - navigation \"Database details\":\n    - button \"Overview\"\n    - button \"Logs\""
+    },
+    "ready": {
+      "at": "2026-10-14T08:05:21.797Z",
+      "layout": {
+        "main": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844
+        },
+        "frames": [],
+        "regions": [],
+        "sections": [
+          {
+            "id": "metadata",
+            "box": {
+              "x": 16,
+              "y": 286,
+              "width": 358,
+              "height": 616
+            }
+          },
+          {
+            "id": "connection",
+            "box": {
+              "x": 16,
+              "y": 926,
+              "width": 358,
+              "height": 174
+            }
+          },
+          {
+            "id": "sql-console",
+            "box": {
+              "x": 16,
+              "y": 1124,
+              "width": 358,
+              "height": 280
+            }
+          },
+          {
+            "id": "high-availability",
+            "box": {
+              "x": 16,
+              "y": 1428,
+              "width": 358,
+              "height": 160
+            }
+          },
+          {
+            "id": "metrics",
+            "box": {
+              "x": 16,
+              "y": 1612,
+              "width": 358,
+              "height": 320
+            }
+          },
+          {
+            "id": "plan",
+            "box": {
+              "x": 16,
+              "y": 1956,
+              "width": 358,
+              "height": 200
+            }
+          },
+          {
+            "id": "insights",
+            "box": {
+              "x": 16,
+              "y": 2180,
+              "width": 358,
+              "height": 360
+            }
+          },
+          {
+            "id": "recovery",
+            "box": {
+              "x": 16,
+              "y": 2564,
+              "width": 358,
+              "height": 240
+            }
+          },
+          {
+            "id": "access-control",
+            "box": {
+              "x": 16,
+              "y": 2828,
+              "width": 358,
+              "height": 240
+            }
+          },
+          {
+            "id": "danger-zone",
+            "box": {
+              "x": 16,
+              "y": 3092,
+              "width": 358,
+              "height": 84
+            }
+          }
+        ],
+        "cards": [
+          {
+            "box": {
+              "x": 16,
+              "y": 286,
+              "width": 358,
+              "height": 616
+            },
+            "header": {
+              "x": 17,
+              "y": 307,
+              "width": 356,
+              "height": 20
+            },
+            "content": {
+              "x": 17,
+              "y": 343,
+              "width": 356,
+              "height": 538
+            },
+            "title": "Details",
+            "descriptions": 0,
+            "inputs": 1,
+            "buttons": 1
+          },
+          {
+            "box": {
+              "x": 16,
+              "y": 926,
+              "width": 358,
+              "height": 174
+            },
+            "header": {
+              "x": 17,
+              "y": 947,
+              "width": 356,
+              "height": 80
+            },
+            "content": {
+              "x": 17,
+              "y": 1043,
+              "width": 356,
+              "height": 36
+            },
+            "title": "Connections",
+            "descriptions": 1,
+            "inputs": 0,
+            "buttons": 1
+          }
+        ],
+        "width": {
+          "viewport": 390,
+          "document": 390
+        }
+      },
+      "ui": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\": qa-20261014-a437-layout\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - heading \"qa-20261014-a437-layout\" [level=1]\n  - text: Available\n  - button \"Open actions menu\"\n  - navigation \"Database details\":\n    - button \"Overview\"\n    - button \"Logs\"\n  - navigation \"Database sections\":\n    - link \"Details\":\n      - /url: \"#metadata\"\n    - link \"Connections\":\n      - /url: \"#connection\"\n    - link \"SQL console\":\n      - /url: \"#sql-console\"\n    - link \"High Availability\":\n      - /url: \"#high-availability\"\n    - link \"Metrics\":\n      - /url: \"#metrics\"\n    - link \"Instance type\":\n      - /url: \"#plan\"\n    - link \"Insights\":\n      - /url: \"#insights\"\n    - link \"Recovery\":\n      - /url: \"#recovery\"\n    - link \"Access control\":\n      - /url: \"#access-control\"\n    - link \"Danger Zone\":\n      - /url: \"#danger-zone\"\n  - text: Details Name Change the display name. The database ID and all connection details stay the same.\n  - textbox \"Name\" [disabled]: qa-20261014-a437-layout\n  - button \"Edit database name\"\n  - term: Status\n  - definition: Available\n  - term: Instance type\n  - definition: Free\n  - term: Version\n  - definition: PostgreSQL 18\n  - term: Database\n  - definition: dpg_db7je3hllfps73emu6mg\n  - term: User\n  - definition: dpg_db7je3hllfps73emu6mg_user\n  - term: Storage\n  - definition: 1 GB\n  - term: High availability\n  - definition: \"No\"\n  - term: Public access\n  - definition: \"No\"\n  - term: Region\n  - definition: fsn1\n  - term: Created\n  - definition:\n    - time: 2m\n  - text: Connections Connection strings and the database password. Revealed only when you ask — never shown automatically.\n  - button \"Reveal connection info\"\n  - button \"Delete Database\"\n  - button \"Restart Database\"\n  - button \"Suspend Database\""
+    }
+  },
+  "readyDetails": {
+    "at": "2026-10-14T08:07:15.792Z",
+    "header": {
+      "html": "<div data-slot=\"card-header\" class=\"@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1 px-5 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-4\"><div data-slot=\"card-title\" class=\"leading-none font-semibold\">Details</div></div>",
+      "style": {
+        "height": "20px",
+        "display": "grid",
+        "gap": "4px"
+      },
+      "children": [
+        {
+          "slot": "card-title",
+          "height": 16
+        }
+      ]
+    },
+    "metadata": {
+      "lead": [
+        {
+          "class": "mb-4 border-b pb-4",
+          "box": {
+            "x": 37,
+            "y": 343,
+            "width": 316,
+            "height": 125
+          }
+        }
+      ],
+      "rows": [
+        {
+          "label": "Status",
+          "box": {
+            "x": 37,
+            "y": 484,
+            "width": 316,
+            "height": 29
+          },
+          "valueHeight": 20
+        },
+        {
+          "label": "Instance type",
+          "box": {
+            "x": 37,
+            "y": 525,
+            "width": 316,
+            "height": 29
+          },
+          "valueHeight": 20
+        },
+        {
+          "label": "Version",
+          "box": {
+            "x": 37,
+            "y": 566,
+            "width": 316,
+            "height": 29
+          },
+          "valueHeight": 20
+        },
+        {
+          "label": "Database",
+          "box": {
+            "x": 37,
+            "y": 607,
+            "width": 316,
+            "height": 29
+          },
+          "valueHeight": 20
+        },
+        {
+          "label": "User",
+          "box": {
+            "x": 37,
+            "y": 648,
+            "width": 316,
+            "height": 29
+          },
+          "valueHeight": 20
+        },
+        {
+          "label": "Storage",
+          "box": {
+            "x": 37,
+            "y": 689,
+            "width": 316,
+            "height": 29
+          },
+          "valueHeight": 20
+        },
+        {
+          "label": "High availability",
+          "box": {
+            "x": 37,
+            "y": 730,
+            "width": 316,
+            "height": 29
+          },
+          "valueHeight": 20
+        },
+        {
+          "label": "Public access",
+          "box": {
+            "x": 37,
+            "y": 771,
+            "width": 316,
+            "height": 29
+          },
+          "valueHeight": 20
+        },
+        {
+          "label": "Region",
+          "box": {
+            "x": 37,
+            "y": 812,
+            "width": 316,
+            "height": 29
+          },
+          "valueHeight": 20
+        },
+        {
+          "label": "Created",
+          "box": {
+            "x": 37,
+            "y": 853,
+            "width": 316,
+            "height": 28
+          },
+          "valueHeight": 20
+        }
+      ]
+    }
+  },
+  "delete": {
+    "at": "2026-10-14T08:08:56.797Z",
+    "request": [
+      {
+        "operationName": "DeleteDatabase",
+        "variables": {
+          "id": "dpg-db7je3hllfps73emu6mg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteDatabase($id: String!, $confirm: String) {\n  deleteDatabase(id: $id, confirm: $confirm)\n}"
+      }
+    ],
+    "status": 200,
+    "body": [
+      {
+        "data": {
+          "deleteDatabase": true
+        }
+      }
+    ]
+  },
+  "inventoryCleanup": {
+    "at": "2026-10-14T08:09:05.434Z",
+    "resource": {
+      "id": "dpg-db7je3hllfps73emu6mg",
+      "status": 404,
+      "body": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+    },
+    "request": {
+      "operationName": "Qaa437Inventory",
+      "query": "query Qaa437Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name url eventTypes enabled}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    }
+  },
+  "sessionCleanup": {
+    "at": "2026-10-14T08:11:37.334Z",
+    "owners": {
+      "url": "https://api.bex.co/v1/owners",
+      "status": 401,
+      "body": "{\"error\":\"unauthorized\",\"id\":\"unauthorized\",\"message\":\"unauthorized\"}\n"
+    },
+    "cookieCount": 0,
+    "pageCount": 1,
+    "url": "about:blank"
+  },
+  "screenshotsViewed": [
+    ".playwright-mcp/qa-a437-pending-desktop.png",
+    ".playwright-mcp/qa-a437-ready-desktop.png",
+    ".playwright-mcp/qa-a437-pending-mobile.png",
+    ".playwright-mcp/qa-a437-ready-mobile.png"
+  ],
+  "limits": [
+    "Both owned Database read responses were fetched normally, held7seconds and fulfilled unchanged; finally unroute removed the handler.",
+    "Navigation used the actual public window.__TSR_ROUTER__.navigate, not a claimed pointer click.",
+    "No connection reveal, SQL execution, database writes, public endpoint, version change, or foreign mutation.",
+    "Parent header's mobile wrap and below-viewport SQL DeferredMount reservation differences appear in captures but are outside the two-card fix.",
+    "Key Value helper caller, public/HA/older-version/failed-state cases and Chinese wrapping were not replayed live.",
+    "Initial computed-layout snippet referenced document outside page.evaluate; corrected with no product mutation."
+  ]
+}
