@@ -1,16 +1,25 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import {
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { I18nextProvider } from "react-i18next";
 import i18n from "@/i18n/init";
 import zhResources from "@/i18n/resources-zh";
 import { UserNav } from "@/common/components/user-nav";
 
-const { navigate, invalidate, endBrowserSession } = vi.hoisted(() => ({
-  navigate: vi.fn(),
-  invalidate: vi.fn(),
-  endBrowserSession: vi.fn(),
-}));
+const { navigate, invalidate, endBrowserSession, setTheme, viewport } =
+  vi.hoisted(() => ({
+    navigate: vi.fn(),
+    invalidate: vi.fn(),
+    endBrowserSession: vi.fn(),
+    setTheme: vi.fn(),
+    viewport: { isMobile: false },
+  }));
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => navigate,
@@ -22,11 +31,11 @@ vi.mock("@/common/lib/ory/logout", () => ({
 }));
 
 vi.mock("@/common/providers/theme-provider", () => ({
-  useTheme: () => ({ theme: "light", setTheme: vi.fn() }),
+  useTheme: () => ({ theme: "light", setTheme }),
 }));
 
 vi.mock("@/common/hooks/use-mobile", () => ({
-  useIsMobile: () => false,
+  useIsMobile: () => viewport.isMobile,
 }));
 
 vi.mock("@/common/hooks/use-root-context", () => ({
@@ -113,5 +122,91 @@ describe("UserNav language switch (w6/m103 Bug A)", () => {
       expect(i18n.hasResourceBundle("zh", "translation")).toBe(true);
       expect(i18n.language).toBe("zh");
     });
+  });
+});
+
+describe("UserNav at narrow widths (w4/302)", () => {
+  beforeEach(async () => {
+    viewport.isMobile = true;
+    navigate.mockReset();
+    setTheme.mockReset();
+    vi.mocked(localStorage.setItem).mockClear();
+    await i18n.changeLanguage("en");
+  });
+
+  afterEach(async () => {
+    viewport.isMobile = false;
+    await i18n.changeLanguage("en");
+  });
+
+  function renderNav() {
+    return render(
+      <I18nextProvider i18n={i18n}>
+        <UserNav />
+      </I18nextProvider>,
+    );
+  }
+
+  it("opens the avatar menu instead of navigating to Settings", async () => {
+    const user = userEvent.setup();
+    renderNav();
+
+    const avatar = screen.getByRole("button");
+    expect(avatar).toHaveAttribute("aria-haspopup", "menu");
+    await user.click(avatar);
+
+    expect(await screen.findByRole("menu")).toBeInTheDocument();
+    expect(navigate).not.toHaveBeenCalled();
+    // Account Settings is still one tap away, with its original target.
+    await user.click(
+      screen.getByRole("menuitem", { name: "Account Settings" }),
+    );
+    expect(navigate).toHaveBeenCalledWith({ to: "/settings" });
+  });
+
+  it("lists every theme and language inline (no hover-only flyout)", async () => {
+    const user = userEvent.setup();
+    renderNav();
+    await user.click(screen.getByRole("button"));
+
+    const theme = await screen.findByRole("group", { name: "Theme" });
+    const language = screen.getByRole("group", { name: "Language" });
+    for (const name of ["Light", "Dark", "System"]) {
+      expect(within(theme).getByRole("menuitem", { name })).toBeVisible();
+    }
+    for (const name of ["English", "中文"]) {
+      expect(
+        within(language).getByRole("menuitem", { name: new RegExp(name) }),
+      ).toBeVisible();
+    }
+    // Inline groups replace the desktop submenu triggers on narrow widths.
+    expect(
+      screen.queryByRole("menuitem", { name: /^Theme/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("applies a theme with a tap and stays on the page", async () => {
+    const user = userEvent.setup();
+    renderNav();
+    await user.click(screen.getByRole("button"));
+    await user.click(await screen.findByRole("menuitem", { name: "Dark" }));
+
+    expect(setTheme).toHaveBeenCalledWith("dark");
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("switches and persists the language from the keyboard", async () => {
+    const user = userEvent.setup();
+    renderNav();
+    screen.getByRole("button").focus();
+    await user.keyboard("{Enter}");
+    const zh = await screen.findByRole("menuitem", { name: "中文" });
+    zh.focus();
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => expect(i18n.language).toBe("zh"));
+    // persistLanguage writes the reload-surviving copy (cookie + storage).
+    expect(localStorage.setItem).toHaveBeenCalledWith("i18nextLng", "zh");
+    expect(navigate).not.toHaveBeenCalled();
   });
 });
