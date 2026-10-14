@@ -13,6 +13,7 @@ import { DatastorePlanPreview } from "@/common/components/datastore-plan-preview
 import {
   DatastoreConnectionsPreview,
   DatastoreMetadataPreview,
+  KeyValueNetworkingPreview,
   KeyValuePolicyPreview,
 } from "@/common/components/datastore-overview-previews";
 import { Skeleton } from "@/common/components/ui/skeleton";
@@ -2379,7 +2380,7 @@ export function KeyValueOverviewSkeleton() {
           <DatastoreConnectionsPreview kind="keyvalue" />
         </Region>
         <Region name="networking">
-          <ReservedCardSkeleton className="h-[358px] sm:h-[246px]" />
+          <KeyValueNetworkingPreview />
         </Region>
         <Region name="plan">
           <DatastorePlanPreview kind="keyvalue" />
