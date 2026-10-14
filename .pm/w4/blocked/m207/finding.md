@@ -18,7 +18,7 @@ Every row was driven from fresh pages at 1440×1000 and 390×844 after actual op
 
 Correct group names do not fix the arrow failure. On the owned service, Space enables Save Changes; restoring Free disables it. Both API checks still say `plan: free`. No save/confirmation was invoked.
 
-[m207-card-radio-family.json](../evidence/m207-card-radio-family.json) preserves six new complete probe/receipt pairs, fixture create/delete, persisted-plan reads and cleanup. Four a449 pairs remain in [300-plan-radio-keyboard.json](../evidence/300-plan-radio-keyboard.json): ten receipts across five surfaces. The observer recorded zero GraphQL mutations during each key/Space sequence. Forms were not submitted; no workspace, paid resource or billing attempt was created.
+[m207-card-radio-family.json](../../evidence/m207-card-radio-family.json) preserves six new complete probe/receipt pairs, fixture create/delete, persisted-plan reads and cleanup. Four a449 pairs remain in [300-plan-radio-keyboard.json](../../evidence/300-plan-radio-keyboard.json): ten receipts across five surfaces. The observer recorded zero GraphQL mutations during each key/Space sequence. Forms were not submitted; no workspace, paid resource or billing attempt was created.
 
 All ten cropped radio-only screenshots were viewed: `.playwright-mcp/qa-a449-{keyvalue,services}-arrow-{desktop,mobile}.png` and `qa-a450-{type,workspace,instance}-arrow-{desktop,mobile}.png`. The JSON carries durable keyboard proof; the ignored screenshots expose only choice cards.
 

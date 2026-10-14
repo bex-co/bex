@@ -1,5 +1,6 @@
 import { useId } from "react";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCardRadioGroup } from "@/common/hooks/use-card-radio-group";
 import { cn } from "@/common/lib/utils/utils.ts";
 import {
   WORKSPACE_PLAN_CATALOG,
@@ -25,6 +26,12 @@ export function PlanPicker({
 }: PlanPickerProps) {
   const { t } = useTranslations();
   const usageNoteId = useId();
+  const radio = useCardRadioGroup(
+    WORKSPACE_PLAN_CATALOG.map((plan) => plan.id),
+    selected,
+    onSelect,
+    disabled,
+  );
 
   return (
     <div className="space-y-3">
@@ -39,6 +46,7 @@ export function PlanPicker({
           return (
             <button
               key={plan.id}
+              {...radio(plan.id)}
               type="button"
               role="radio"
               aria-checked={checked}

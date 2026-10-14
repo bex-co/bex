@@ -1,16 +1,16 @@
 # w4 · m207 — Make card-radio pickers work with the keyboard
 
-**Worker:** worker4 **Goal:** the four card-radio producers support focus/selection navigation, one group Tab stop, and meaningful group names across their eight consumers. **Status:** todo
+**Worker:** worker4 **Goal:** the four card-radio producers support focus/selection navigation, one group Tab stop, and meaningful group names across their eight consumers. **Status:** blocked — t001–t004 done and shipped (2026-10-14: one card-radio keyboard contract across all four producers, all eight consumers named); t005 live desktop/mobile replay and t006 need the dashboard deployed to production.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Give card radios one complete controlled keyboard contract | 45m | — |
-| t002 | Integrate the four producers and audit all eight consumers | 40m | t001 |
-| t003 | Render parity | 15m | t002 |
-| t004 | Simplify | 10m | t003 |
-| t005 | Test coverage | 35m | t003 |
+| t001 | Give card radios one complete controlled keyboard contract — **DONE 2026-10-14** | 45m | — |
+| t002 | Integrate the four producers and audit all eight consumers — **DONE 2026-10-14** | 40m | t001 |
+| t003 | Render parity — **DONE 2026-10-14** | 15m | t002 |
+| t004 | Simplify — **DONE 2026-10-14** | 10m | t003 |
+| t005 | Test coverage — local done; **BLOCKED: live replay after deploy** | 35m | t003 |
 | t006 | Closeout | 10m | t004, t005 |
 
 ## Definition of done
@@ -23,8 +23,8 @@
 
 ## Source + Goal linkage
 
-- **Source:** continuous functional `$qa-find-bugs w4`, a449/a450, 2026-10-14, muse.env consumed only by the login helper. Inbox w4/300 is promoted here: [original source](source-300.md), [expanded finding](finding.md), [a449 receipts](../evidence/300-plan-radio-keyboard.json), [a450 receipts](../evidence/m207-card-radio-family.json). Severity minor; Tab/Space remains a workaround.
-- **Goal linkage:** usable hosting setup/configuration under [ADR008](../../../docs/ADR008-vision.md) and advertised radio semantics, with existing UI shapes under [ADR018](../../../docs/ADR018-render-parity.md).
+- **Source:** continuous functional `$qa-find-bugs w4`, a449/a450, 2026-10-14, muse.env consumed only by the login helper. Inbox w4/300 is promoted here: [original source](source-300.md), [expanded finding](finding.md), [a449 receipts](../../evidence/300-plan-radio-keyboard.json), [a450 receipts](../../evidence/m207-card-radio-family.json). Severity minor; Tab/Space remains a workaround.
+- **Goal linkage:** usable hosting setup/configuration under [ADR008](../../../../docs/ADR008-vision.md) and advertised radio semantics, with existing UI shapes under [ADR018](../../../../docs/ADR018-render-parity.md).
 - **Expected outcome:** keyboard users can select a service type, resource tier or workspace plan using normal card-radio interaction, and can identify each group by name.
 - **Why now:** independent live probes verified the missing interaction in every explicit card-radio producer; correcting one grid leaves three producers broken. Four of eight consumers also lack a group name. Existing callbacks update drafts, so the correction belongs in UI interaction.
 - **Scope/size:** 2h35 across common interaction, integration/caller audit, parity and meaningful verification. Filing only. The standalone `300.md` is moved, with no duplicate active inbox item or stub.

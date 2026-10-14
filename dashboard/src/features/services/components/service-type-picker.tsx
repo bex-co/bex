@@ -1,5 +1,6 @@
 import { Globe, Lock, Cpu, Clock, Layers } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCardRadioGroup } from "@/common/hooks/use-card-radio-group";
 import { cn } from "@/common/lib/utils/utils";
 import type { ServiceType } from "@/features/services/lib/create-context";
 
@@ -49,13 +50,23 @@ export function ServiceTypePicker({
   onChange: (type: ServiceType) => void;
 }) {
   const { t } = useTranslations();
+  const radio = useCardRadioGroup(
+    SERVICE_TYPE_DEFS.map((def) => def.type),
+    value,
+    onChange,
+  );
   return (
-    <div role="radiogroup" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <div
+      role="radiogroup"
+      aria-label={t("services.createTypePickerTitle")}
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+    >
       {SERVICE_TYPE_DEFS.map(({ type, icon, labelKey, descKey }) => {
         const selected = type === value;
         return (
           <button
             key={type}
+            {...radio(type)}
             type="button"
             role="radio"
             aria-checked={selected}
