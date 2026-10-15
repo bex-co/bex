@@ -270,6 +270,9 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **311** — [Chinese sidebar keeps English navigation and resize labels](311.md) (minor, 35m) ← functional QA 2026-10-15 a595; mobile drawer/toggle and desktop separator text bypass locale selection; native actions pass, language/width/resources/session restored.
+- [ ] **310** — [Chinese dialogs keep an English accessible Close label](310.md) (minor, 25m) ← functional QA 2026-10-15 a595; Chinese project and Postgres dialogs expose the shared English Close name; 32 render sites researched, owned project/session cleaned and English restored.
+
 - [ ] **309** — [Static sites return 404 for uppercase or mixed-case URL hostnames](309.md) (minor, 45m) ← functional QA 2026-10-15 a585; 27 native reads reproduce case-sensitive lookup, browser normalization and public Render controls verified; owned site/session cleaned.
 
 - [ ] **308** — [PostgreSQL upgrades offer and accept targets the operator rejects](308.md) (major, 55m) ← functional QA 2026-10-15 a580/a581; native 13→14/15 writes fail CNPG's target≥16 guard while original SQL remains available; seeded 13→16 control succeeds, both owned databases/sessions cleaned.
