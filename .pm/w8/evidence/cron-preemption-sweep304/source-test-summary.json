@@ -1,0 +1,9 @@
+{
+  "command": "GOWORK=off GOTOOLCHAIN=go1.26.8 go test -json -count=1 ./internal/controller -run ^(TestManualIntentNewTriggerDuringAcknowledgementPreemptsUnobservedJob|TestLegacyActiveManualJobAdoptionAllowsUnobservedPreemption|TestCanceledManualRunStaysDeadAfterAnUnrelatedCancel|TestCronPreemptionWaitsForEveryActiveRun)$",
+  "exit": 0,
+  "named_parent_subtest_passes": 6,
+  "top_level_tests": 4,
+  "source_HEAD": "499590c8b99c83d3da7936f392da3684e642e1a9",
+  "full_operator_envtest_suite": false,
+  "product_changes_by_QA": false
+}

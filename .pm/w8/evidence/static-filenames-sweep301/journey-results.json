@@ -1,0 +1,2869 @@
+{
+  "resources": [
+    {
+      "sweep": 301,
+      "client": "installed",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "nonce": "5dde04",
+      "name": "qa-20261015-5dde04-filenames",
+      "type": "static_site",
+      "time": "2026-10-15T17:28:22.006213+00:00",
+      "source_head": "3990e38795f47aee3171defc2bb2f5f2454e7b84",
+      "capacity": {
+        "at": "2026-10-15T17:28:20.918526+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "authorization": "[REDACTED]"
+        },
+        "status": "200",
+        "elapsed": 0.801,
+        "curl_exit": 0,
+        "stderr": "",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4b08a26b973a927-DFW"
+        },
+        "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+      },
+      "pre_inventory": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.035,
+        "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T17:28:04Z\",\n        \"nextRunAt\": \"2026-10-15T17:29:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T17:28:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T17:28:06Z\",\n        \"nextRunAt\": \"2026-10-15T17:29:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T17:28:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T17:28:03Z\",\n        \"nextRunAt\": \"2026-10-15T17:29:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T17:28:03Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T10:17:00Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T12:22:37Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T06:54:00Z\"\n    }\n  }\n]",
+        "stderr": "",
+        "native_exit": 0
+      },
+      "pre_ids": [
+        "srv-dap3v694dm7c7390q930",
+        "srv-dap3umrbdpcs73f5eeug",
+        "srv-dap3r714dm7c7390q91g",
+        "srv-daif6dsmg29s73d1umvg",
+        "srv-db09vbgehcmc739j12i0",
+        "srv-db09u90ehcmc739j12cg"
+      ],
+      "expected": {
+        "index.html": "QA301_5dde04:index.html\n",
+        "plain.txt": "QA301_5dde04:plain.txt\n",
+        "space name.txt": "QA301_5dde04:space name.txt\n",
+        "plus+name.txt": "QA301_5dde04:plus+name.txt\n",
+        "snowman-☃.txt": "QA301_5dde04:snowman-☃.txt\n",
+        "你好.txt": "QA301_5dde04:你好.txt\n",
+        "hash#name.txt": "QA301_5dde04:hash#name.txt\n",
+        "question?name.txt": "QA301_5dde04:question?name.txt\n",
+        "percent%name.txt": "QA301_5dde04:percent%name.txt\n",
+        "literal%20name.txt": "QA301_5dde04:literal%20name.txt\n",
+        "spaced dir/asset.txt": "QA301_5dde04:spaced dir/asset.txt\n",
+        "café.txt": "QA301_5dde04:café.txt\n",
+        "café.txt": "QA301_5dde04:café.txt\n"
+      },
+      "create_command": [
+        "installed",
+        "services",
+        "create",
+        "--name",
+        "qa-20261015-5dde04-filenames",
+        "--type",
+        "static_site",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--branch",
+        "main",
+        "--root-directory",
+        "examples/static-site",
+        "--build-command",
+        "mkdir -p public/'spaced dir' && printf '%s' 'QA301_5dde04:index.html\n' > public/index.html && printf '%s' 'QA301_5dde04:plain.txt\n' > public/plain.txt && printf '%s' 'QA301_5dde04:space name.txt\n' > 'public/space name.txt' && printf '%s' 'QA301_5dde04:plus+name.txt\n' > public/plus+name.txt && printf '%s' 'QA301_5dde04:snowman-☃.txt\n' > 'public/snowman-☃.txt' && printf '%s' 'QA301_5dde04:你好.txt\n' > 'public/你好.txt' && printf '%s' 'QA301_5dde04:hash#name.txt\n' > 'public/hash#name.txt' && printf '%s' 'QA301_5dde04:question?name.txt\n' > 'public/question?name.txt' && printf '%s' 'QA301_5dde04:percent%name.txt\n' > public/percent%name.txt && printf '%s' 'QA301_5dde04:literal%20name.txt\n' > public/literal%20name.txt && printf '%s' 'QA301_5dde04:spaced dir/asset.txt\n' > 'public/spaced dir/asset.txt' && printf '%s' 'QA301_5dde04:café.txt\n' > 'public/café.txt' && printf '%s' 'QA301_5dde04:café.txt\n' > 'public/café.txt'",
+        "--publish-directory",
+        "public",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "dependency_ids": [],
+      "recorded_child_ids": [
+        "dep-db8gqdteelgc73d2i7ig"
+      ],
+      "state": "deleted: native0/detail404/listabsent/runtime404/baseline6/quota terminating0",
+      "create_result": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "services",
+          "create",
+          "--name",
+          "qa-20261015-5dde04-filenames",
+          "--type",
+          "static_site",
+          "--repo",
+          "https://github.com/bex-co/bex",
+          "--branch",
+          "main",
+          "--root-directory",
+          "examples/static-site",
+          "--build-command",
+          "mkdir -p public/'spaced dir' && printf '%s' 'QA301_5dde04:index.html\n' > public/index.html && printf '%s' 'QA301_5dde04:plain.txt\n' > public/plain.txt && printf '%s' 'QA301_5dde04:space name.txt\n' > 'public/space name.txt' && printf '%s' 'QA301_5dde04:plus+name.txt\n' > public/plus+name.txt && printf '%s' 'QA301_5dde04:snowman-☃.txt\n' > 'public/snowman-☃.txt' && printf '%s' 'QA301_5dde04:你好.txt\n' > 'public/你好.txt' && printf '%s' 'QA301_5dde04:hash#name.txt\n' > 'public/hash#name.txt' && printf '%s' 'QA301_5dde04:question?name.txt\n' > 'public/question?name.txt' && printf '%s' 'QA301_5dde04:percent%name.txt\n' > public/percent%name.txt && printf '%s' 'QA301_5dde04:literal%20name.txt\n' > public/literal%20name.txt && printf '%s' 'QA301_5dde04:spaced dir/asset.txt\n' > 'public/spaced dir/asset.txt' && printf '%s' 'QA301_5dde04:café.txt\n' > 'public/café.txt' && printf '%s' 'QA301_5dde04:café.txt\n' > 'public/café.txt'",
+          "--publish-directory",
+          "public",
+          "--auto-deploy=false",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.991,
+        "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T17:28:23Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8gqdteelgc73d2i7i0\",\n  \"id\": \"srv-db8gqdteelgc73d2i7i0\",\n  \"name\": \"qa-20261015-5dde04-filenames\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/static-site\",\n  \"serviceDetails\": {\n    \"buildCommand\": \"mkdir -p public/'spaced dir' \\u0026\\u0026 printf '%s' 'QA301_5dde04:index.html\\n' \\u003e public/index.html \\u0026\\u0026 printf '%s' 'QA301_5dde04:plain.txt\\n' \\u003e public/plain.txt \\u0026\\u0026 printf '%s' 'QA301_5dde04:space name.txt\\n' \\u003e 'public/space name.txt' \\u0026\\u0026 printf '%s' 'QA301_5dde04:plus+name.txt\\n' \\u003e public/plus+name.txt \\u0026\\u0026 printf '%s' 'QA301_5dde04:snowman-☃.txt\\n' \\u003e 'public/snowman-☃.txt' \\u0026\\u0026 printf '%s' 'QA301_5dde04:你好.txt\\n' \\u003e 'public/你好.txt' \\u0026\\u0026 printf '%s' 'QA301_5dde04:hash#name.txt\\n' \\u003e 'public/hash#name.txt' \\u0026\\u0026 printf '%s' 'QA301_5dde04:question?name.txt\\n' \\u003e 'public/question?name.txt' \\u0026\\u0026 printf '%s' 'QA301_5dde04:percent%name.txt\\n' \\u003e public/percent%name.txt \\u0026\\u0026 printf '%s' 'QA301_5dde04:literal%20name.txt\\n' \\u003e public/literal%20name.txt \\u0026\\u0026 printf '%s' 'QA301_5dde04:spaced dir/asset.txt\\n' \\u003e 'public/spaced dir/asset.txt' \\u0026\\u0026 printf '%s' 'QA301_5dde04:café.txt\\n' \\u003e 'public/café.txt' \\u0026\\u0026 printf '%s' 'QA301_5dde04:café.txt\\n' \\u003e 'public/café.txt'\",\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"publishPath\": \"public\",\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"url\": \"https://qa-20261015-5dde04-filenames.onbex.co\"\n  },\n  \"slug\": \"qa-20261015-5dde04-filenames\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"static_site\",\n  \"updatedAt\": \"2026-10-15T17:28:23.969397413Z\"\n}",
+        "stderr": "",
+        "native_exit": 0
+      },
+      "id": "srv-db8gqdteelgc73d2i7i0",
+      "create_response": {
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "branch": "main",
+        "createdAt": "2026-10-15T17:28:23Z",
+        "dashboardUrl": "https://dashboard.bex.co/static/srv-db8gqdteelgc73d2i7i0",
+        "id": "srv-db8gqdteelgc73d2i7i0",
+        "name": "qa-20261015-5dde04-filenames",
+        "notifyOnFail": "default",
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "repo": "https://github.com/bex-co/bex",
+        "rootDir": "examples/static-site",
+        "serviceDetails": {
+          "buildCommand": "mkdir -p public/'spaced dir' && printf '%s' 'QA301_5dde04:index.html\n' > public/index.html && printf '%s' 'QA301_5dde04:plain.txt\n' > public/plain.txt && printf '%s' 'QA301_5dde04:space name.txt\n' > 'public/space name.txt' && printf '%s' 'QA301_5dde04:plus+name.txt\n' > public/plus+name.txt && printf '%s' 'QA301_5dde04:snowman-☃.txt\n' > 'public/snowman-☃.txt' && printf '%s' 'QA301_5dde04:你好.txt\n' > 'public/你好.txt' && printf '%s' 'QA301_5dde04:hash#name.txt\n' > 'public/hash#name.txt' && printf '%s' 'QA301_5dde04:question?name.txt\n' > 'public/question?name.txt' && printf '%s' 'QA301_5dde04:percent%name.txt\n' > public/percent%name.txt && printf '%s' 'QA301_5dde04:literal%20name.txt\n' > public/literal%20name.txt && printf '%s' 'QA301_5dde04:spaced dir/asset.txt\n' > 'public/spaced dir/asset.txt' && printf '%s' 'QA301_5dde04:café.txt\n' > 'public/café.txt' && printf '%s' 'QA301_5dde04:café.txt\n' > 'public/café.txt'",
+          "numInstances": 1,
+          "plan": "free",
+          "publishPath": "public",
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "url": "https://qa-20261015-5dde04-filenames.onbex.co"
+        },
+        "slug": "qa-20261015-5dde04-filenames",
+        "suspended": "not_suspended",
+        "suspenders": [],
+        "type": "static_site",
+        "updatedAt": "2026-10-15T17:28:23.969397413Z"
+      },
+      "history_receipts": [
+        {
+          "at": "2026-10-15T17:28:25.120417+00:00",
+          "result": {
+            "binary": "installed Bex",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db8gqdteelgc73d2i7i0",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.66,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"3990e38795f47aee3171defc2bb2f5f2454e7b84\",\n      \"message\": \"docs(qa): file Blueprint source and env-group routing bugs\"\n    },\n    \"createdAt\": \"2026-10-15T17:28:23.93472Z\",\n    \"id\": \"dep-db8gqdteelgc73d2i7ig\",\n    \"status\": \"created\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T17:28:23.93472Z\"\n  }\n]",
+            "stderr": "",
+            "native_exit": 0
+          }
+        },
+        {
+          "at": "2026-10-15T17:28:44.023896+00:00",
+          "result": {
+            "binary": "installed Bex",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db8gqdteelgc73d2i7i0",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.361,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"3990e38795f47aee3171defc2bb2f5f2454e7b84\",\n      \"message\": \"docs(qa): file Blueprint source and env-group routing bugs\"\n    },\n    \"createdAt\": \"2026-10-15T17:28:23.93472Z\",\n    \"id\": \"dep-db8gqdteelgc73d2i7ig\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T17:28:33.165102Z\"\n  }\n]",
+            "stderr": "",
+            "native_exit": 0
+          }
+        },
+        {
+          "at": "2026-10-15T17:29:06.063434+00:00",
+          "result": {
+            "binary": "installed Bex",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db8gqdteelgc73d2i7i0",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.404,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"3990e38795f47aee3171defc2bb2f5f2454e7b84\",\n      \"message\": \"docs(qa): file Blueprint source and env-group routing bugs\"\n    },\n    \"createdAt\": \"2026-10-15T17:28:23.93472Z\",\n    \"id\": \"dep-db8gqdteelgc73d2i7ig\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T17:28:33.165102Z\"\n  }\n]",
+            "stderr": "",
+            "native_exit": 0
+          }
+        },
+        {
+          "at": "2026-10-15T17:30:05.456744+00:00",
+          "result": {
+            "binary": "installed Bex",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db8gqdteelgc73d2i7i0",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.446,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"3990e38795f47aee3171defc2bb2f5f2454e7b84\",\n      \"message\": \"docs(qa): file Blueprint source and env-group routing bugs\"\n    },\n    \"createdAt\": \"2026-10-15T17:28:23.93472Z\",\n    \"id\": \"dep-db8gqdteelgc73d2i7ig\",\n    \"startedAt\": \"2026-10-15T17:29:35.324056Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T17:29:35.324058Z\"\n  }\n]",
+            "stderr": "",
+            "native_exit": 0
+          }
+        },
+        {
+          "at": "2026-10-15T17:30:34.696776+00:00",
+          "result": {
+            "binary": "installed Bex",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db8gqdteelgc73d2i7i0",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.634,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"3990e38795f47aee3171defc2bb2f5f2454e7b84\",\n      \"message\": \"docs(qa): file Blueprint source and env-group routing bugs\"\n    },\n    \"createdAt\": \"2026-10-15T17:28:23.93472Z\",\n    \"id\": \"dep-db8gqdteelgc73d2i7ig\",\n    \"startedAt\": \"2026-10-15T17:29:35.324056Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T17:29:35.324058Z\"\n  }\n]",
+            "stderr": "",
+            "native_exit": 0
+          }
+        },
+        {
+          "at": "2026-10-15T17:31:26.261700+00:00",
+          "result": {
+            "binary": "installed Bex",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db8gqdteelgc73d2i7i0",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.455,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"3990e38795f47aee3171defc2bb2f5f2454e7b84\",\n      \"message\": \"docs(qa): file Blueprint source and env-group routing bugs\"\n    },\n    \"createdAt\": \"2026-10-15T17:28:23.93472Z\",\n    \"finishedAt\": \"2026-10-15T17:30:50.544946Z\",\n    \"id\": \"dep-db8gqdteelgc73d2i7ig\",\n    \"startedAt\": \"2026-10-15T17:29:35.324056Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T17:30:50.544947Z\"\n  }\n]",
+            "stderr": "",
+            "native_exit": 0
+          }
+        },
+        {
+          "at": "2026-10-15T17:33:05.615935+00:00",
+          "result": {
+            "binary": "installed Bex",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db8gqdteelgc73d2i7i0",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.436,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"3990e38795f47aee3171defc2bb2f5f2454e7b84\",\n      \"message\": \"docs(qa): file Blueprint source and env-group routing bugs\"\n    },\n    \"createdAt\": \"2026-10-15T17:28:23.93472Z\",\n    \"finishedAt\": \"2026-10-15T17:30:50.544946Z\",\n    \"id\": \"dep-db8gqdteelgc73d2i7ig\",\n    \"startedAt\": \"2026-10-15T17:29:35.324056Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T17:30:50.544947Z\"\n  }\n]",
+            "stderr": "",
+            "native_exit": 0
+          }
+        }
+      ],
+      "deploy_children": [
+        {
+          "commit": {
+            "id": "3990e38795f47aee3171defc2bb2f5f2454e7b84",
+            "message": "docs(qa): file Blueprint source and env-group routing bugs"
+          },
+          "createdAt": "2026-10-15T17:28:23.93472Z",
+          "finishedAt": "2026-10-15T17:30:50.544946Z",
+          "id": "dep-db8gqdteelgc73d2i7ig",
+          "startedAt": "2026-10-15T17:29:35.324056Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-15T17:30:50.544947Z"
+        }
+      ],
+      "readiness": [
+        {
+          "at": "2026-10-15T17:28:44.749026+00:00",
+          "latest": {
+            "commit": {
+              "id": "3990e38795f47aee3171defc2bb2f5f2454e7b84",
+              "message": "docs(qa): file Blueprint source and env-group routing bugs"
+            },
+            "createdAt": "2026-10-15T17:28:23.93472Z",
+            "id": "dep-db8gqdteelgc73d2i7ig",
+            "status": "queued",
+            "trigger": "other",
+            "updatedAt": "2026-10-15T17:28:33.165102Z"
+          },
+          "receipt": {
+            "at": "2026-10-15T17:28:44.748714+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-5dde04-filenames.onbex.co/plain.txt",
+              "headers": {
+                "Accept-Encoding": "identity"
+              }
+            },
+            "HTTP": "404",
+            "curl_exit": 0,
+            "elapsed": 0.587,
+            "response_headers": {
+              "content-type": "text/plain; charset=utf-8",
+              "content-length": "19"
+            },
+            "body_utf8": "404 page not found\n",
+            "bytes": 19,
+            "stderr": ""
+          },
+          "ready": false
+        },
+        {
+          "at": "2026-10-15T17:29:06.724397+00:00",
+          "latest": {
+            "commit": {
+              "id": "3990e38795f47aee3171defc2bb2f5f2454e7b84",
+              "message": "docs(qa): file Blueprint source and env-group routing bugs"
+            },
+            "createdAt": "2026-10-15T17:28:23.93472Z",
+            "id": "dep-db8gqdteelgc73d2i7ig",
+            "status": "queued",
+            "trigger": "other",
+            "updatedAt": "2026-10-15T17:28:33.165102Z"
+          },
+          "receipt": {
+            "at": "2026-10-15T17:29:06.724118+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-5dde04-filenames.onbex.co/plain.txt",
+              "headers": {
+                "Accept-Encoding": "identity"
+              }
+            },
+            "HTTP": "404",
+            "curl_exit": 0,
+            "elapsed": 0.522,
+            "response_headers": {
+              "content-type": "text/plain; charset=utf-8",
+              "content-length": "19"
+            },
+            "body_utf8": "404 page not found\n",
+            "bytes": 19,
+            "stderr": ""
+          },
+          "ready": false
+        },
+        {
+          "at": "2026-10-15T17:30:06.114342+00:00",
+          "latest": {
+            "commit": {
+              "id": "3990e38795f47aee3171defc2bb2f5f2454e7b84",
+              "message": "docs(qa): file Blueprint source and env-group routing bugs"
+            },
+            "createdAt": "2026-10-15T17:28:23.93472Z",
+            "id": "dep-db8gqdteelgc73d2i7ig",
+            "startedAt": "2026-10-15T17:29:35.324056Z",
+            "status": "build_in_progress",
+            "trigger": "other",
+            "updatedAt": "2026-10-15T17:29:35.324058Z"
+          },
+          "receipt": {
+            "at": "2026-10-15T17:30:06.114030+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-5dde04-filenames.onbex.co/plain.txt",
+              "headers": {
+                "Accept-Encoding": "identity"
+              }
+            },
+            "HTTP": "404",
+            "curl_exit": 0,
+            "elapsed": 0.524,
+            "response_headers": {
+              "content-type": "text/plain; charset=utf-8",
+              "content-length": "19"
+            },
+            "body_utf8": "404 page not found\n",
+            "bytes": 19,
+            "stderr": ""
+          },
+          "ready": false
+        },
+        {
+          "at": "2026-10-15T17:30:35.356137+00:00",
+          "latest": {
+            "commit": {
+              "id": "3990e38795f47aee3171defc2bb2f5f2454e7b84",
+              "message": "docs(qa): file Blueprint source and env-group routing bugs"
+            },
+            "createdAt": "2026-10-15T17:28:23.93472Z",
+            "id": "dep-db8gqdteelgc73d2i7ig",
+            "startedAt": "2026-10-15T17:29:35.324056Z",
+            "status": "build_in_progress",
+            "trigger": "other",
+            "updatedAt": "2026-10-15T17:29:35.324058Z"
+          },
+          "receipt": {
+            "at": "2026-10-15T17:30:35.355940+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-5dde04-filenames.onbex.co/plain.txt",
+              "headers": {
+                "Accept-Encoding": "identity"
+              }
+            },
+            "HTTP": "404",
+            "curl_exit": 0,
+            "elapsed": 0.525,
+            "response_headers": {
+              "content-type": "text/plain; charset=utf-8",
+              "content-length": "19"
+            },
+            "body_utf8": "404 page not found\n",
+            "bytes": 19,
+            "stderr": ""
+          },
+          "ready": false
+        },
+        {
+          "at": "2026-10-15T17:31:27.466256+00:00",
+          "latest": {
+            "commit": {
+              "id": "3990e38795f47aee3171defc2bb2f5f2454e7b84",
+              "message": "docs(qa): file Blueprint source and env-group routing bugs"
+            },
+            "createdAt": "2026-10-15T17:28:23.93472Z",
+            "finishedAt": "2026-10-15T17:30:50.544946Z",
+            "id": "dep-db8gqdteelgc73d2i7ig",
+            "startedAt": "2026-10-15T17:29:35.324056Z",
+            "status": "live",
+            "trigger": "other",
+            "updatedAt": "2026-10-15T17:30:50.544947Z"
+          },
+          "receipt": {
+            "at": "2026-10-15T17:31:27.465933+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-5dde04-filenames.onbex.co/plain.txt",
+              "headers": {
+                "Accept-Encoding": "identity"
+              }
+            },
+            "HTTP": "200",
+            "curl_exit": 0,
+            "elapsed": 1.068,
+            "response_headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/plain",
+              "content-length": "23"
+            },
+            "body_utf8": "QA301_5dde04:plain.txt\n",
+            "bytes": 23,
+            "stderr": ""
+          },
+          "ready": true
+        }
+      ],
+      "probe_rounds": [
+        {
+          "at": "2026-10-15T17:32:15.262525+00:00",
+          "results": [
+            {
+              "filename": "index.html",
+              "method": "GET",
+              "expected": "QA301_5dde04:index.html\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:31:55.452790+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/index.html",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.554,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/html",
+                  "content-length": "24"
+                },
+                "body_utf8": "QA301_5dde04:index.html\n",
+                "bytes": 24,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "index.html",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:31:56.116511+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/index.html",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.533,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/html",
+                  "content-length": "24"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "plain.txt",
+              "method": "GET",
+              "expected": "QA301_5dde04:plain.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:31:56.785044+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/plain.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.533,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "23"
+                },
+                "body_utf8": "QA301_5dde04:plain.txt\n",
+                "bytes": 23,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "plain.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:31:57.755282+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/plain.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.84,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "23"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "space name.txt",
+              "method": "GET",
+              "expected": "QA301_5dde04:space name.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:31:58.538254+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/space%20name.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.65,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "28"
+                },
+                "body_utf8": "QA301_5dde04:space name.txt\n",
+                "bytes": 28,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "space name.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:31:59.211435+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/space%20name.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.53,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "28"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "plus+name.txt",
+              "method": "GET",
+              "expected": "QA301_5dde04:plus+name.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:31:59.895345+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/plus%2Bname.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.547,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "27"
+                },
+                "body_utf8": "QA301_5dde04:plus+name.txt\n",
+                "bytes": 27,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "plus+name.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:00.561274+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/plus%2Bname.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.524,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "27"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "snowman-☃.txt",
+              "method": "GET",
+              "expected": "QA301_5dde04:snowman-☃.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:01.236738+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/snowman-%E2%98%83.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.544,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "29"
+                },
+                "body_utf8": "QA301_5dde04:snowman-☃.txt\n",
+                "bytes": 29,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "snowman-☃.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:01.902166+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/snowman-%E2%98%83.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.527,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "29"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "你好.txt",
+              "method": "GET",
+              "expected": "QA301_5dde04:你好.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:02.595612+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/%E4%BD%A0%E5%A5%BD.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.553,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "24"
+                },
+                "body_utf8": "QA301_5dde04:你好.txt\n",
+                "bytes": 24,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "你好.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:03.264308+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/%E4%BD%A0%E5%A5%BD.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.532,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "24"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "hash#name.txt",
+              "method": "GET",
+              "expected": "QA301_5dde04:hash#name.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:03.941546+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/hash%23name.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.546,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "27"
+                },
+                "body_utf8": "QA301_5dde04:hash#name.txt\n",
+                "bytes": 27,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "hash#name.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:04.604376+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/hash%23name.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.53,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "27"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "question?name.txt",
+              "method": "GET",
+              "expected": "QA301_5dde04:question?name.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:05.517656+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/question%3Fname.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.782,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "31"
+                },
+                "body_utf8": "QA301_5dde04:question?name.txt\n",
+                "bytes": 31,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "question?name.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:06.183383+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/question%3Fname.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.529,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "31"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "percent%name.txt",
+              "method": "GET",
+              "expected": "QA301_5dde04:percent%name.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:06.875756+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/percent%25name.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.552,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "30"
+                },
+                "body_utf8": "QA301_5dde04:percent%name.txt\n",
+                "bytes": 30,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "percent%name.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:07.557955+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/percent%25name.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.542,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "30"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "literal%20name.txt",
+              "method": "GET",
+              "expected": "QA301_5dde04:literal%20name.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:08.240785+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/literal%2520name.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.55,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "32"
+                },
+                "body_utf8": "QA301_5dde04:literal%20name.txt\n",
+                "bytes": 32,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "literal%20name.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:08.902586+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/literal%2520name.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.524,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "32"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "spaced dir/asset.txt",
+              "method": "GET",
+              "expected": "QA301_5dde04:spaced dir/asset.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:09.596555+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/spaced%20dir/asset.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.554,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "34"
+                },
+                "body_utf8": "QA301_5dde04:spaced dir/asset.txt\n",
+                "bytes": 34,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "spaced dir/asset.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:10.265898+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/spaced%20dir/asset.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.527,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "34"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "café.txt",
+              "method": "GET",
+              "expected": "QA301_5dde04:café.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:10.973049+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/caf%C3%A9.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.563,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "23"
+                },
+                "body_utf8": "QA301_5dde04:café.txt\n",
+                "bytes": 23,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "café.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:11.683793+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/caf%C3%A9.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.576,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "23"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "café.txt",
+              "method": "GET",
+              "expected": "QA301_5dde04:café.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:12.366421+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/cafe%CC%81.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.548,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "24"
+                },
+                "body_utf8": "QA301_5dde04:café.txt\n",
+                "bytes": 24,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "café.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:13.050329+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/cafe%CC%81.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.535,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "24"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "label": "literal plus",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:13.737723+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/plus+name.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.536,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "27"
+                },
+                "body_utf8": "QA301_5dde04:plus+name.txt\n",
+                "bytes": 27,
+                "stderr": ""
+              }
+            },
+            {
+              "label": "query leaves file unchanged",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:14.426053+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/plain.txt?name=a+b%20c",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.536,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "23"
+                },
+                "body_utf8": "QA301_5dde04:plain.txt\n",
+                "bytes": 23,
+                "stderr": ""
+              }
+            },
+            {
+              "label": "missing asset",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:15.122297+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-5dde04-filenames.onbex.co/missing-5dde04.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "404",
+                "curl_exit": 0,
+                "elapsed": 0.561,
+                "response_headers": {
+                  "content-type": "text/plain; charset=utf-8",
+                  "content-length": "10"
+                },
+                "body_utf8": "not found\n",
+                "bytes": 10,
+                "stderr": ""
+              }
+            }
+          ],
+          "all_pass": true,
+          "HEAD_qualification": "header-only curl; content-length checked, raw empty wire body not independently read"
+        }
+      ],
+      "delete_intent": {
+        "at": "2026-10-15T17:33:05.750868+00:00",
+        "child_ids": [
+          "dep-db8gqdteelgc73d2i7ig"
+        ]
+      },
+      "delete_result": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "services",
+          "delete",
+          "srv-db8gqdteelgc73d2i7i0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.452,
+        "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-15T17:28:23Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8gqdteelgc73d2i7i0\",\n    \"id\": \"srv-db8gqdteelgc73d2i7i0\",\n    \"name\": \"qa-20261015-5dde04-filenames\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/static-site\",\n    \"serviceDetails\": {\n      \"buildCommand\": \"mkdir -p public/'spaced dir' \\u0026\\u0026 printf '%s' 'QA301_5dde04:index.html\\n' \\u003e public/index.html \\u0026\\u0026 printf '%s' 'QA301_5dde04:plain.txt\\n' \\u003e public/plain.txt \\u0026\\u0026 printf '%s' 'QA301_5dde04:space name.txt\\n' \\u003e 'public/space name.txt' \\u0026\\u0026 printf '%s' 'QA301_5dde04:plus+name.txt\\n' \\u003e public/plus+name.txt \\u0026\\u0026 printf '%s' 'QA301_5dde04:snowman-☃.txt\\n' \\u003e 'public/snowman-☃.txt' \\u0026\\u0026 printf '%s' 'QA301_5dde04:你好.txt\\n' \\u003e 'public/你好.txt' \\u0026\\u0026 printf '%s' 'QA301_5dde04:hash#name.txt\\n' \\u003e 'public/hash#name.txt' \\u0026\\u0026 printf '%s' 'QA301_5dde04:question?name.txt\\n' \\u003e 'public/question?name.txt' \\u0026\\u0026 printf '%s' 'QA301_5dde04:percent%name.txt\\n' \\u003e public/percent%name.txt \\u0026\\u0026 printf '%s' 'QA301_5dde04:literal%20name.txt\\n' \\u003e public/literal%20name.txt \\u0026\\u0026 printf '%s' 'QA301_5dde04:spaced dir/asset.txt\\n' \\u003e 'public/spaced dir/asset.txt' \\u0026\\u0026 printf '%s' 'QA301_5dde04:café.txt\\n' \\u003e 'public/café.txt' \\u0026\\u0026 printf '%s' 'QA301_5dde04:café.txt\\n' \\u003e 'public/café.txt'\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"publishPath\": \"public\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"url\": \"https://qa-20261015-5dde04-filenames.onbex.co\"\n    },\n    \"slug\": \"qa-20261015-5dde04-filenames\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"static_site\",\n    \"updatedAt\": \"2026-10-15T17:30:40Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+        "stderr": "",
+        "native_exit": 0
+      },
+      "cleanup_receipts": [
+        {
+          "at": "2026-10-15T17:33:21.506322+00:00",
+          "detail": {
+            "at": "2026-10-15T17:33:19.341204+00:00",
+            "request": {
+              "method": "GET",
+              "path": "/v1/services/srv-db8gqdteelgc73d2i7i0",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "authorization": "[REDACTED]"
+            },
+            "status": "404",
+            "elapsed": 0.34,
+            "curl_exit": 0,
+            "stderr": "",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4b09172687aacc8-PDX"
+            },
+            "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+          },
+          "inventory": {
+            "binary": "installed Bex",
+            "command": [
+              "bex",
+              "services",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.739,
+            "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T17:33:04Z\",\n        \"nextRunAt\": \"2026-10-15T17:34:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T17:33:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T17:33:04Z\",\n        \"nextRunAt\": \"2026-10-15T17:34:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T17:33:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T17:33:05Z\",\n        \"nextRunAt\": \"2026-10-15T17:34:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T17:33:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T10:17:00Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T12:22:37Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T06:54:00Z\"\n    }\n  }\n]",
+            "stderr": "",
+            "native_exit": 0
+          },
+          "runtime": {
+            "at": "2026-10-15T17:33:20.681034+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-5dde04-filenames.onbex.co/plain.txt",
+              "headers": {
+                "Accept-Encoding": "identity"
+              }
+            },
+            "HTTP": "404",
+            "curl_exit": 0,
+            "elapsed": 0.544,
+            "response_headers": {
+              "content-type": "text/plain; charset=utf-8",
+              "content-length": "19"
+            },
+            "body_utf8": "404 page not found\n",
+            "bytes": 19,
+            "stderr": ""
+          },
+          "quota": {
+            "at": "2026-10-15T17:33:21.500696+00:00",
+            "request": {
+              "method": "GET",
+              "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "authorization": "[REDACTED]"
+            },
+            "status": "200",
+            "elapsed": 0.764,
+            "curl_exit": 0,
+            "stderr": "",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4b0917d88f2477c-DFW"
+            },
+            "response": "{\"services\":{\"used\":7,\"terminating\":1,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+          },
+          "baseline_preserved": true
+        },
+        {
+          "at": "2026-10-15T17:33:43.025399+00:00",
+          "detail": {
+            "at": "2026-10-15T17:33:41.334474+00:00",
+            "request": {
+              "method": "GET",
+              "path": "/v1/services/srv-db8gqdteelgc73d2i7i0",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "authorization": "[REDACTED]"
+            },
+            "status": "404",
+            "elapsed": 0.425,
+            "curl_exit": 0,
+            "stderr": "",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4b091fb5c444b01-PDX"
+            },
+            "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+          },
+          "inventory": {
+            "binary": "installed Bex",
+            "command": [
+              "bex",
+              "services",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.674,
+            "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T17:33:04Z\",\n        \"nextRunAt\": \"2026-10-15T17:34:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T17:33:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T17:33:04Z\",\n        \"nextRunAt\": \"2026-10-15T17:34:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T17:33:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T17:33:05Z\",\n        \"nextRunAt\": \"2026-10-15T17:34:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T17:33:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T10:17:00Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T12:22:37Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T06:54:00Z\"\n    }\n  }\n]",
+            "stderr": "",
+            "native_exit": 0
+          },
+          "runtime": {
+            "at": "2026-10-15T17:33:42.594409+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-5dde04-filenames.onbex.co/plain.txt",
+              "headers": {
+                "Accept-Encoding": "identity"
+              }
+            },
+            "HTTP": "404",
+            "curl_exit": 0,
+            "elapsed": 0.529,
+            "response_headers": {
+              "content-type": "text/plain; charset=utf-8",
+              "content-length": "19"
+            },
+            "body_utf8": "404 page not found\n",
+            "bytes": 19,
+            "stderr": ""
+          },
+          "quota": {
+            "at": "2026-10-15T17:33:43.016874+00:00",
+            "request": {
+              "method": "GET",
+              "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "authorization": "[REDACTED]"
+            },
+            "status": "200",
+            "elapsed": 0.364,
+            "curl_exit": 0,
+            "stderr": "",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4b092068d7de7b3-DFW"
+            },
+            "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+          },
+          "baseline_preserved": true
+        }
+      ]
+    },
+    {
+      "sweep": 301,
+      "client": "render",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "nonce": "4ab08a",
+      "name": "qa-20261015-4ab08a-filenames",
+      "type": "static_site",
+      "time": "2026-10-15T17:28:32.129362+00:00",
+      "source_head": "3990e38795f47aee3171defc2bb2f5f2454e7b84",
+      "capacity": {
+        "at": "2026-10-15T17:28:31.219832+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "authorization": "[REDACTED]"
+        },
+        "status": "200",
+        "elapsed": 0.883,
+        "curl_exit": 0,
+        "stderr": "",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4b08a668bcc4870-DFW"
+        },
+        "response": "{\"services\":{\"used\":7,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+      },
+      "pre_inventory": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.864,
+        "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T17:28:04Z\",\n        \"nextRunAt\": \"2026-10-15T17:29:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T17:28:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T17:28:06Z\",\n        \"nextRunAt\": \"2026-10-15T17:29:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T17:28:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T17:28:03Z\",\n        \"nextRunAt\": \"2026-10-15T17:29:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T17:28:03Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-10-15T17:28:23Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8gqdteelgc73d2i7i0\",\n      \"id\": \"srv-db8gqdteelgc73d2i7i0\",\n      \"name\": \"qa-20261015-5dde04-filenames\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/static-site\",\n      \"serviceDetails\": {\n        \"buildCommand\": \"mkdir -p public/'spaced dir' \\u0026\\u0026 printf '%s' 'QA301_5dde04:index.html\\n' \\u003e public/index.html \\u0026\\u0026 printf '%s' 'QA301_5dde04:plain.txt\\n' \\u003e public/plain.txt \\u0026\\u0026 printf '%s' 'QA301_5dde04:space name.txt\\n' \\u003e 'public/space name.txt' \\u0026\\u0026 printf '%s' 'QA301_5dde04:plus+name.txt\\n' \\u003e public/plus+name.txt \\u0026\\u0026 printf '%s' 'QA301_5dde04:snowman-☃.txt\\n' \\u003e 'public/snowman-☃.txt' \\u0026\\u0026 printf '%s' 'QA301_5dde04:你好.txt\\n' \\u003e 'public/你好.txt' \\u0026\\u0026 printf '%s' 'QA301_5dde04:hash#name.txt\\n' \\u003e 'public/hash#name.txt' \\u0026\\u0026 printf '%s' 'QA301_5dde04:question?name.txt\\n' \\u003e 'public/question?name.txt' \\u0026\\u0026 printf '%s' 'QA301_5dde04:percent%name.txt\\n' \\u003e public/percent%name.txt \\u0026\\u0026 printf '%s' 'QA301_5dde04:literal%20name.txt\\n' \\u003e public/literal%20name.txt \\u0026\\u0026 printf '%s' 'QA301_5dde04:spaced dir/asset.txt\\n' \\u003e 'public/spaced dir/asset.txt' \\u0026\\u0026 printf '%s' 'QA301_5dde04:café.txt\\n' \\u003e 'public/café.txt' \\u0026\\u0026 printf '%s' 'QA301_5dde04:café.txt\\n' \\u003e 'public/café.txt'\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"publishPath\": \"public\",\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"url\": \"https://qa-20261015-5dde04-filenames.onbex.co\"\n      },\n      \"slug\": \"qa-20261015-5dde04-filenames\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"static_site\",\n      \"updatedAt\": \"2026-10-15T17:28:24Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T10:17:00Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T12:22:37Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T06:54:00Z\"\n    }\n  }\n]",
+        "stderr": ""
+      },
+      "pre_ids": [
+        "srv-dap3v694dm7c7390q930",
+        "srv-dap3umrbdpcs73f5eeug",
+        "srv-dap3r714dm7c7390q91g",
+        "srv-db8gqdteelgc73d2i7i0",
+        "srv-daif6dsmg29s73d1umvg",
+        "srv-db09vbgehcmc739j12i0",
+        "srv-db09u90ehcmc739j12cg"
+      ],
+      "expected": {
+        "index.html": "QA301_4ab08a:index.html\n",
+        "plain.txt": "QA301_4ab08a:plain.txt\n",
+        "space name.txt": "QA301_4ab08a:space name.txt\n",
+        "plus+name.txt": "QA301_4ab08a:plus+name.txt\n",
+        "snowman-☃.txt": "QA301_4ab08a:snowman-☃.txt\n",
+        "你好.txt": "QA301_4ab08a:你好.txt\n",
+        "hash#name.txt": "QA301_4ab08a:hash#name.txt\n",
+        "question?name.txt": "QA301_4ab08a:question?name.txt\n",
+        "percent%name.txt": "QA301_4ab08a:percent%name.txt\n",
+        "literal%20name.txt": "QA301_4ab08a:literal%20name.txt\n",
+        "spaced dir/asset.txt": "QA301_4ab08a:spaced dir/asset.txt\n",
+        "café.txt": "QA301_4ab08a:café.txt\n",
+        "café.txt": "QA301_4ab08a:café.txt\n"
+      },
+      "create_command": [
+        "render",
+        "services",
+        "create",
+        "--name",
+        "qa-20261015-4ab08a-filenames",
+        "--type",
+        "static_site",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--branch",
+        "main",
+        "--root-directory",
+        "examples/static-site",
+        "--build-command",
+        "mkdir -p public/'spaced dir' && printf '%s' 'QA301_4ab08a:index.html\n' > public/index.html && printf '%s' 'QA301_4ab08a:plain.txt\n' > public/plain.txt && printf '%s' 'QA301_4ab08a:space name.txt\n' > 'public/space name.txt' && printf '%s' 'QA301_4ab08a:plus+name.txt\n' > public/plus+name.txt && printf '%s' 'QA301_4ab08a:snowman-☃.txt\n' > 'public/snowman-☃.txt' && printf '%s' 'QA301_4ab08a:你好.txt\n' > 'public/你好.txt' && printf '%s' 'QA301_4ab08a:hash#name.txt\n' > 'public/hash#name.txt' && printf '%s' 'QA301_4ab08a:question?name.txt\n' > 'public/question?name.txt' && printf '%s' 'QA301_4ab08a:percent%name.txt\n' > public/percent%name.txt && printf '%s' 'QA301_4ab08a:literal%20name.txt\n' > public/literal%20name.txt && printf '%s' 'QA301_4ab08a:spaced dir/asset.txt\n' > 'public/spaced dir/asset.txt' && printf '%s' 'QA301_4ab08a:café.txt\n' > 'public/café.txt' && printf '%s' 'QA301_4ab08a:café.txt\n' > 'public/café.txt'",
+        "--publish-directory",
+        "public",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "dependency_ids": [],
+      "recorded_child_ids": [
+        "dep-db8gqg5eelgc73d2i7kg"
+      ],
+      "state": "deleted: native0/detail404/listabsent/runtime404/baseline6/quota terminating0",
+      "create_result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "services",
+          "create",
+          "--name",
+          "qa-20261015-4ab08a-filenames",
+          "--type",
+          "static_site",
+          "--repo",
+          "https://github.com/bex-co/bex",
+          "--branch",
+          "main",
+          "--root-directory",
+          "examples/static-site",
+          "--build-command",
+          "mkdir -p public/'spaced dir' && printf '%s' 'QA301_4ab08a:index.html\n' > public/index.html && printf '%s' 'QA301_4ab08a:plain.txt\n' > public/plain.txt && printf '%s' 'QA301_4ab08a:space name.txt\n' > 'public/space name.txt' && printf '%s' 'QA301_4ab08a:plus+name.txt\n' > public/plus+name.txt && printf '%s' 'QA301_4ab08a:snowman-☃.txt\n' > 'public/snowman-☃.txt' && printf '%s' 'QA301_4ab08a:你好.txt\n' > 'public/你好.txt' && printf '%s' 'QA301_4ab08a:hash#name.txt\n' > 'public/hash#name.txt' && printf '%s' 'QA301_4ab08a:question?name.txt\n' > 'public/question?name.txt' && printf '%s' 'QA301_4ab08a:percent%name.txt\n' > public/percent%name.txt && printf '%s' 'QA301_4ab08a:literal%20name.txt\n' > public/literal%20name.txt && printf '%s' 'QA301_4ab08a:spaced dir/asset.txt\n' > 'public/spaced dir/asset.txt' && printf '%s' 'QA301_4ab08a:café.txt\n' > 'public/café.txt' && printf '%s' 'QA301_4ab08a:café.txt\n' > 'public/café.txt'",
+          "--publish-directory",
+          "public",
+          "--auto-deploy=false",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.569,
+        "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T17:28:32Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8gqg5eelgc73d2i7k0\",\n  \"id\": \"srv-db8gqg5eelgc73d2i7k0\",\n  \"name\": \"qa-20261015-4ab08a-filenames\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/static-site\",\n  \"serviceDetails\": {\n    \"buildCommand\": \"mkdir -p public/'spaced dir' \\u0026\\u0026 printf '%s' 'QA301_4ab08a:index.html\\n' \\u003e public/index.html \\u0026\\u0026 printf '%s' 'QA301_4ab08a:plain.txt\\n' \\u003e public/plain.txt \\u0026\\u0026 printf '%s' 'QA301_4ab08a:space name.txt\\n' \\u003e 'public/space name.txt' \\u0026\\u0026 printf '%s' 'QA301_4ab08a:plus+name.txt\\n' \\u003e public/plus+name.txt \\u0026\\u0026 printf '%s' 'QA301_4ab08a:snowman-☃.txt\\n' \\u003e 'public/snowman-☃.txt' \\u0026\\u0026 printf '%s' 'QA301_4ab08a:你好.txt\\n' \\u003e 'public/你好.txt' \\u0026\\u0026 printf '%s' 'QA301_4ab08a:hash#name.txt\\n' \\u003e 'public/hash#name.txt' \\u0026\\u0026 printf '%s' 'QA301_4ab08a:question?name.txt\\n' \\u003e 'public/question?name.txt' \\u0026\\u0026 printf '%s' 'QA301_4ab08a:percent%name.txt\\n' \\u003e public/percent%name.txt \\u0026\\u0026 printf '%s' 'QA301_4ab08a:literal%20name.txt\\n' \\u003e public/literal%20name.txt \\u0026\\u0026 printf '%s' 'QA301_4ab08a:spaced dir/asset.txt\\n' \\u003e 'public/spaced dir/asset.txt' \\u0026\\u0026 printf '%s' 'QA301_4ab08a:café.txt\\n' \\u003e 'public/café.txt' \\u0026\\u0026 printf '%s' 'QA301_4ab08a:café.txt\\n' \\u003e 'public/café.txt'\",\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"publishPath\": \"public\",\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"url\": \"https://qa-20261015-4ab08a-filenames.onbex.co\"\n  },\n  \"slug\": \"qa-20261015-4ab08a-filenames\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"static_site\",\n  \"updatedAt\": \"2026-10-15T17:28:32.66565526Z\"\n}",
+        "stderr": ""
+      },
+      "id": "srv-db8gqg5eelgc73d2i7k0",
+      "create_response": {
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "branch": "main",
+        "createdAt": "2026-10-15T17:28:32Z",
+        "dashboardUrl": "https://dashboard.bex.co/static/srv-db8gqg5eelgc73d2i7k0",
+        "id": "srv-db8gqg5eelgc73d2i7k0",
+        "name": "qa-20261015-4ab08a-filenames",
+        "notifyOnFail": "default",
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "repo": "https://github.com/bex-co/bex",
+        "rootDir": "examples/static-site",
+        "serviceDetails": {
+          "buildCommand": "mkdir -p public/'spaced dir' && printf '%s' 'QA301_4ab08a:index.html\n' > public/index.html && printf '%s' 'QA301_4ab08a:plain.txt\n' > public/plain.txt && printf '%s' 'QA301_4ab08a:space name.txt\n' > 'public/space name.txt' && printf '%s' 'QA301_4ab08a:plus+name.txt\n' > public/plus+name.txt && printf '%s' 'QA301_4ab08a:snowman-☃.txt\n' > 'public/snowman-☃.txt' && printf '%s' 'QA301_4ab08a:你好.txt\n' > 'public/你好.txt' && printf '%s' 'QA301_4ab08a:hash#name.txt\n' > 'public/hash#name.txt' && printf '%s' 'QA301_4ab08a:question?name.txt\n' > 'public/question?name.txt' && printf '%s' 'QA301_4ab08a:percent%name.txt\n' > public/percent%name.txt && printf '%s' 'QA301_4ab08a:literal%20name.txt\n' > public/literal%20name.txt && printf '%s' 'QA301_4ab08a:spaced dir/asset.txt\n' > 'public/spaced dir/asset.txt' && printf '%s' 'QA301_4ab08a:café.txt\n' > 'public/café.txt' && printf '%s' 'QA301_4ab08a:café.txt\n' > 'public/café.txt'",
+          "numInstances": 1,
+          "plan": "free",
+          "publishPath": "public",
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "url": "https://qa-20261015-4ab08a-filenames.onbex.co"
+        },
+        "slug": "qa-20261015-4ab08a-filenames",
+        "suspended": "not_suspended",
+        "suspenders": [],
+        "type": "static_site",
+        "updatedAt": "2026-10-15T17:28:32.66565526Z"
+      },
+      "history_receipts": [
+        {
+          "at": "2026-10-15T17:28:33.540481+00:00",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "deploys",
+              "list",
+              "srv-db8gqg5eelgc73d2i7k0",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "native_exit": 0,
+            "harness_timeout": false,
+            "elapsed": 0.378,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"3990e38795f47aee3171defc2bb2f5f2454e7b84\",\n      \"message\": \"docs(qa): file Blueprint source and env-group routing bugs\"\n    },\n    \"createdAt\": \"2026-10-15T17:28:32.63221Z\",\n    \"id\": \"dep-db8gqg5eelgc73d2i7kg\",\n    \"status\": \"created\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T17:28:32.63221Z\"\n  }\n]",
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-15T17:28:45.472831+00:00",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "deploys",
+              "list",
+              "srv-db8gqg5eelgc73d2i7k0",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "native_exit": 0,
+            "harness_timeout": false,
+            "elapsed": 0.366,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"3990e38795f47aee3171defc2bb2f5f2454e7b84\",\n      \"message\": \"docs(qa): file Blueprint source and env-group routing bugs\"\n    },\n    \"createdAt\": \"2026-10-15T17:28:32.63221Z\",\n    \"id\": \"dep-db8gqg5eelgc73d2i7kg\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T17:28:35.321782Z\"\n  }\n]",
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-15T17:29:07.494708+00:00",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "deploys",
+              "list",
+              "srv-db8gqg5eelgc73d2i7k0",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "native_exit": 0,
+            "harness_timeout": false,
+            "elapsed": 0.413,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"3990e38795f47aee3171defc2bb2f5f2454e7b84\",\n      \"message\": \"docs(qa): file Blueprint source and env-group routing bugs\"\n    },\n    \"createdAt\": \"2026-10-15T17:28:32.63221Z\",\n    \"id\": \"dep-db8gqg5eelgc73d2i7kg\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T17:28:35.321782Z\"\n  }\n]",
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-15T17:30:07.236499+00:00",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "deploys",
+              "list",
+              "srv-db8gqg5eelgc73d2i7k0",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "native_exit": 0,
+            "harness_timeout": false,
+            "elapsed": 0.75,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"3990e38795f47aee3171defc2bb2f5f2454e7b84\",\n      \"message\": \"docs(qa): file Blueprint source and env-group routing bugs\"\n    },\n    \"createdAt\": \"2026-10-15T17:28:32.63221Z\",\n    \"id\": \"dep-db8gqg5eelgc73d2i7kg\",\n    \"startedAt\": \"2026-10-15T17:29:20.383426Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T17:29:20.383427Z\"\n  }\n]",
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-15T17:30:36.433623+00:00",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "deploys",
+              "list",
+              "srv-db8gqg5eelgc73d2i7k0",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "native_exit": 0,
+            "harness_timeout": false,
+            "elapsed": 0.712,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"3990e38795f47aee3171defc2bb2f5f2454e7b84\",\n      \"message\": \"docs(qa): file Blueprint source and env-group routing bugs\"\n    },\n    \"createdAt\": \"2026-10-15T17:28:32.63221Z\",\n    \"id\": \"dep-db8gqg5eelgc73d2i7kg\",\n    \"startedAt\": \"2026-10-15T17:29:20.383426Z\",\n    \"status\": \"update_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T17:30:35.552954Z\"\n  }\n]",
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-15T17:31:28.630700+00:00",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "deploys",
+              "list",
+              "srv-db8gqg5eelgc73d2i7k0",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "native_exit": 0,
+            "harness_timeout": false,
+            "elapsed": 0.806,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"3990e38795f47aee3171defc2bb2f5f2454e7b84\",\n      \"message\": \"docs(qa): file Blueprint source and env-group routing bugs\"\n    },\n    \"createdAt\": \"2026-10-15T17:28:32.63221Z\",\n    \"finishedAt\": \"2026-10-15T17:30:50.607341Z\",\n    \"id\": \"dep-db8gqg5eelgc73d2i7kg\",\n    \"startedAt\": \"2026-10-15T17:29:20.383426Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T17:30:50.607342Z\"\n  }\n]",
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-15T17:33:08.162303+00:00",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "deploys",
+              "list",
+              "srv-db8gqg5eelgc73d2i7k0",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "native_exit": 0,
+            "harness_timeout": false,
+            "elapsed": 0.366,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"3990e38795f47aee3171defc2bb2f5f2454e7b84\",\n      \"message\": \"docs(qa): file Blueprint source and env-group routing bugs\"\n    },\n    \"createdAt\": \"2026-10-15T17:28:32.63221Z\",\n    \"finishedAt\": \"2026-10-15T17:30:50.607341Z\",\n    \"id\": \"dep-db8gqg5eelgc73d2i7kg\",\n    \"startedAt\": \"2026-10-15T17:29:20.383426Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T17:30:50.607342Z\"\n  }\n]",
+            "stderr": ""
+          }
+        }
+      ],
+      "deploy_children": [
+        {
+          "commit": {
+            "id": "3990e38795f47aee3171defc2bb2f5f2454e7b84",
+            "message": "docs(qa): file Blueprint source and env-group routing bugs"
+          },
+          "createdAt": "2026-10-15T17:28:32.63221Z",
+          "finishedAt": "2026-10-15T17:30:50.607341Z",
+          "id": "dep-db8gqg5eelgc73d2i7kg",
+          "startedAt": "2026-10-15T17:29:20.383426Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-15T17:30:50.607342Z"
+        }
+      ],
+      "readiness": [
+        {
+          "at": "2026-10-15T17:28:46.162087+00:00",
+          "latest": {
+            "commit": {
+              "id": "3990e38795f47aee3171defc2bb2f5f2454e7b84",
+              "message": "docs(qa): file Blueprint source and env-group routing bugs"
+            },
+            "createdAt": "2026-10-15T17:28:32.63221Z",
+            "id": "dep-db8gqg5eelgc73d2i7kg",
+            "status": "queued",
+            "trigger": "other",
+            "updatedAt": "2026-10-15T17:28:35.321782Z"
+          },
+          "receipt": {
+            "at": "2026-10-15T17:28:46.161833+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-4ab08a-filenames.onbex.co/plain.txt",
+              "headers": {
+                "Accept-Encoding": "identity"
+              }
+            },
+            "HTTP": "404",
+            "curl_exit": 0,
+            "elapsed": 0.551,
+            "response_headers": {
+              "content-type": "text/plain; charset=utf-8",
+              "content-length": "19"
+            },
+            "body_utf8": "404 page not found\n",
+            "bytes": 19,
+            "stderr": ""
+          },
+          "ready": false
+        },
+        {
+          "at": "2026-10-15T17:29:08.166678+00:00",
+          "latest": {
+            "commit": {
+              "id": "3990e38795f47aee3171defc2bb2f5f2454e7b84",
+              "message": "docs(qa): file Blueprint source and env-group routing bugs"
+            },
+            "createdAt": "2026-10-15T17:28:32.63221Z",
+            "id": "dep-db8gqg5eelgc73d2i7kg",
+            "status": "queued",
+            "trigger": "other",
+            "updatedAt": "2026-10-15T17:28:35.321782Z"
+          },
+          "receipt": {
+            "at": "2026-10-15T17:29:08.166401+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-4ab08a-filenames.onbex.co/plain.txt",
+              "headers": {
+                "Accept-Encoding": "identity"
+              }
+            },
+            "HTTP": "404",
+            "curl_exit": 0,
+            "elapsed": 0.534,
+            "response_headers": {
+              "content-type": "text/plain; charset=utf-8",
+              "content-length": "19"
+            },
+            "body_utf8": "404 page not found\n",
+            "bytes": 19,
+            "stderr": ""
+          },
+          "ready": false
+        },
+        {
+          "at": "2026-10-15T17:30:07.922794+00:00",
+          "latest": {
+            "commit": {
+              "id": "3990e38795f47aee3171defc2bb2f5f2454e7b84",
+              "message": "docs(qa): file Blueprint source and env-group routing bugs"
+            },
+            "createdAt": "2026-10-15T17:28:32.63221Z",
+            "id": "dep-db8gqg5eelgc73d2i7kg",
+            "startedAt": "2026-10-15T17:29:20.383426Z",
+            "status": "build_in_progress",
+            "trigger": "other",
+            "updatedAt": "2026-10-15T17:29:20.383427Z"
+          },
+          "receipt": {
+            "at": "2026-10-15T17:30:07.922569+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-4ab08a-filenames.onbex.co/plain.txt",
+              "headers": {
+                "Accept-Encoding": "identity"
+              }
+            },
+            "HTTP": "404",
+            "curl_exit": 0,
+            "elapsed": 0.55,
+            "response_headers": {
+              "content-type": "text/plain; charset=utf-8",
+              "content-length": "19"
+            },
+            "body_utf8": "404 page not found\n",
+            "bytes": 19,
+            "stderr": ""
+          },
+          "ready": false
+        },
+        {
+          "at": "2026-10-15T17:30:37.098052+00:00",
+          "latest": {
+            "commit": {
+              "id": "3990e38795f47aee3171defc2bb2f5f2454e7b84",
+              "message": "docs(qa): file Blueprint source and env-group routing bugs"
+            },
+            "createdAt": "2026-10-15T17:28:32.63221Z",
+            "id": "dep-db8gqg5eelgc73d2i7kg",
+            "startedAt": "2026-10-15T17:29:20.383426Z",
+            "status": "update_in_progress",
+            "trigger": "other",
+            "updatedAt": "2026-10-15T17:30:35.552954Z"
+          },
+          "receipt": {
+            "at": "2026-10-15T17:30:37.097803+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-4ab08a-filenames.onbex.co/plain.txt",
+              "headers": {
+                "Accept-Encoding": "identity"
+              }
+            },
+            "HTTP": "404",
+            "curl_exit": 0,
+            "elapsed": 0.527,
+            "response_headers": {
+              "content-type": "text/plain; charset=utf-8",
+              "content-length": "19"
+            },
+            "body_utf8": "404 page not found\n",
+            "bytes": 19,
+            "stderr": ""
+          },
+          "ready": false
+        },
+        {
+          "at": "2026-10-15T17:31:29.345561+00:00",
+          "latest": {
+            "commit": {
+              "id": "3990e38795f47aee3171defc2bb2f5f2454e7b84",
+              "message": "docs(qa): file Blueprint source and env-group routing bugs"
+            },
+            "createdAt": "2026-10-15T17:28:32.63221Z",
+            "finishedAt": "2026-10-15T17:30:50.607341Z",
+            "id": "dep-db8gqg5eelgc73d2i7kg",
+            "startedAt": "2026-10-15T17:29:20.383426Z",
+            "status": "live",
+            "trigger": "other",
+            "updatedAt": "2026-10-15T17:30:50.607342Z"
+          },
+          "receipt": {
+            "at": "2026-10-15T17:31:29.345344+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-4ab08a-filenames.onbex.co/plain.txt",
+              "headers": {
+                "Accept-Encoding": "identity"
+              }
+            },
+            "HTTP": "200",
+            "curl_exit": 0,
+            "elapsed": 0.576,
+            "response_headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/plain",
+              "content-length": "23"
+            },
+            "body_utf8": "QA301_4ab08a:plain.txt\n",
+            "bytes": 23,
+            "stderr": ""
+          },
+          "ready": true
+        }
+      ],
+      "probe_rounds": [
+        {
+          "at": "2026-10-15T17:32:35.535029+00:00",
+          "results": [
+            {
+              "filename": "index.html",
+              "method": "GET",
+              "expected": "QA301_4ab08a:index.html\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:16.138953+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/index.html",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.539,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/html",
+                  "content-length": "24"
+                },
+                "body_utf8": "QA301_4ab08a:index.html\n",
+                "bytes": 24,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "index.html",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:16.820356+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/index.html",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.531,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/html",
+                  "content-length": "24"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "plain.txt",
+              "method": "GET",
+              "expected": "QA301_4ab08a:plain.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:17.495757+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/plain.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.533,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "23"
+                },
+                "body_utf8": "QA301_4ab08a:plain.txt\n",
+                "bytes": 23,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "plain.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:18.160154+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/plain.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.528,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "23"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "space name.txt",
+              "method": "GET",
+              "expected": "QA301_4ab08a:space name.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:18.846420+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/space%20name.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.547,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "28"
+                },
+                "body_utf8": "QA301_4ab08a:space name.txt\n",
+                "bytes": 28,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "space name.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:19.520537+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/space%20name.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.535,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "28"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "plus+name.txt",
+              "method": "GET",
+              "expected": "QA301_4ab08a:plus+name.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:20.207299+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/plus%2Bname.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.551,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "27"
+                },
+                "body_utf8": "QA301_4ab08a:plus+name.txt\n",
+                "bytes": 27,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "plus+name.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:20.908165+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/plus%2Bname.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.529,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "27"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "snowman-☃.txt",
+              "method": "GET",
+              "expected": "QA301_4ab08a:snowman-☃.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:21.600227+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/snowman-%E2%98%83.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.555,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "29"
+                },
+                "body_utf8": "QA301_4ab08a:snowman-☃.txt\n",
+                "bytes": 29,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "snowman-☃.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:22.268241+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/snowman-%E2%98%83.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.53,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "29"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "你好.txt",
+              "method": "GET",
+              "expected": "QA301_4ab08a:你好.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:22.961051+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/%E4%BD%A0%E5%A5%BD.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.556,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "24"
+                },
+                "body_utf8": "QA301_4ab08a:你好.txt\n",
+                "bytes": 24,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "你好.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:23.627845+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/%E4%BD%A0%E5%A5%BD.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.528,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "24"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "hash#name.txt",
+              "method": "GET",
+              "expected": "QA301_4ab08a:hash#name.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:24.316671+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/hash%23name.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.549,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "27"
+                },
+                "body_utf8": "QA301_4ab08a:hash#name.txt\n",
+                "bytes": 27,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "hash#name.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:24.992504+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/hash%23name.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.53,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "27"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "question?name.txt",
+              "method": "GET",
+              "expected": "QA301_4ab08a:question?name.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:25.683103+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/question%3Fname.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.548,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "31"
+                },
+                "body_utf8": "QA301_4ab08a:question?name.txt\n",
+                "bytes": 31,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "question?name.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:26.357888+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/question%3Fname.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.53,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "31"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "percent%name.txt",
+              "method": "GET",
+              "expected": "QA301_4ab08a:percent%name.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:27.059666+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/percent%25name.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.554,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "30"
+                },
+                "body_utf8": "QA301_4ab08a:percent%name.txt\n",
+                "bytes": 30,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "percent%name.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:27.727876+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/percent%25name.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.525,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "30"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "literal%20name.txt",
+              "method": "GET",
+              "expected": "QA301_4ab08a:literal%20name.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:28.428028+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/literal%2520name.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.559,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "32"
+                },
+                "body_utf8": "QA301_4ab08a:literal%20name.txt\n",
+                "bytes": 32,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "literal%20name.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:29.106254+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/literal%2520name.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.524,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "32"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "spaced dir/asset.txt",
+              "method": "GET",
+              "expected": "QA301_4ab08a:spaced dir/asset.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:29.846849+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/spaced%20dir/asset.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.584,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "34"
+                },
+                "body_utf8": "QA301_4ab08a:spaced dir/asset.txt\n",
+                "bytes": 34,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "spaced dir/asset.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:30.531304+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/spaced%20dir/asset.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.531,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "34"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "café.txt",
+              "method": "GET",
+              "expected": "QA301_4ab08a:café.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:31.256800+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/caf%C3%A9.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.563,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "23"
+                },
+                "body_utf8": "QA301_4ab08a:café.txt\n",
+                "bytes": 23,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "café.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:31.939601+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/caf%C3%A9.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.532,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "23"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "café.txt",
+              "method": "GET",
+              "expected": "QA301_4ab08a:café.txt\n",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:32.642079+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/cafe%CC%81.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.549,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "24"
+                },
+                "body_utf8": "QA301_4ab08a:café.txt\n",
+                "bytes": 24,
+                "stderr": ""
+              }
+            },
+            {
+              "filename": "café.txt",
+              "method": "HEAD",
+              "expected": null,
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:33.311911+00:00",
+                "request": {
+                  "method": "HEAD",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/cafe%CC%81.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.526,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "24"
+                },
+                "body_utf8": "",
+                "bytes": 0,
+                "stderr": ""
+              }
+            },
+            {
+              "label": "literal plus",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:33.991905+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/plus+name.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.523,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "27"
+                },
+                "body_utf8": "QA301_4ab08a:plus+name.txt\n",
+                "bytes": 27,
+                "stderr": ""
+              }
+            },
+            {
+              "label": "query leaves file unchanged",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:34.683808+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/plain.txt?name=a+b%20c",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "200",
+                "curl_exit": 0,
+                "elapsed": 0.53,
+                "response_headers": {
+                  "cache-control": "public, max-age=0, must-revalidate",
+                  "content-type": "text/plain",
+                  "content-length": "23"
+                },
+                "body_utf8": "QA301_4ab08a:plain.txt\n",
+                "bytes": 23,
+                "stderr": ""
+              }
+            },
+            {
+              "label": "missing asset",
+              "pass": true,
+              "receipt": {
+                "at": "2026-10-15T17:32:35.384368+00:00",
+                "request": {
+                  "method": "GET",
+                  "url": "https://qa-20261015-4ab08a-filenames.onbex.co/missing-4ab08a.txt",
+                  "headers": {
+                    "Accept-Encoding": "identity"
+                  }
+                },
+                "HTTP": "404",
+                "curl_exit": 0,
+                "elapsed": 0.546,
+                "response_headers": {
+                  "content-type": "text/plain; charset=utf-8",
+                  "content-length": "10"
+                },
+                "body_utf8": "not found\n",
+                "bytes": 10,
+                "stderr": ""
+              }
+            }
+          ],
+          "all_pass": true,
+          "HEAD_qualification": "header-only curl; content-length checked, raw empty wire body not independently read"
+        }
+      ],
+      "delete_intent": {
+        "at": "2026-10-15T17:33:08.293559+00:00",
+        "child_ids": [
+          "dep-db8gqg5eelgc73d2i7kg"
+        ]
+      },
+      "delete_result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "services",
+          "delete",
+          "srv-db8gqg5eelgc73d2i7k0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 1.682,
+        "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-15T17:28:32Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8gqg5eelgc73d2i7k0\",\n    \"id\": \"srv-db8gqg5eelgc73d2i7k0\",\n    \"name\": \"qa-20261015-4ab08a-filenames\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/static-site\",\n    \"serviceDetails\": {\n      \"buildCommand\": \"mkdir -p public/'spaced dir' \\u0026\\u0026 printf '%s' 'QA301_4ab08a:index.html\\n' \\u003e public/index.html \\u0026\\u0026 printf '%s' 'QA301_4ab08a:plain.txt\\n' \\u003e public/plain.txt \\u0026\\u0026 printf '%s' 'QA301_4ab08a:space name.txt\\n' \\u003e 'public/space name.txt' \\u0026\\u0026 printf '%s' 'QA301_4ab08a:plus+name.txt\\n' \\u003e public/plus+name.txt \\u0026\\u0026 printf '%s' 'QA301_4ab08a:snowman-☃.txt\\n' \\u003e 'public/snowman-☃.txt' \\u0026\\u0026 printf '%s' 'QA301_4ab08a:你好.txt\\n' \\u003e 'public/你好.txt' \\u0026\\u0026 printf '%s' 'QA301_4ab08a:hash#name.txt\\n' \\u003e 'public/hash#name.txt' \\u0026\\u0026 printf '%s' 'QA301_4ab08a:question?name.txt\\n' \\u003e 'public/question?name.txt' \\u0026\\u0026 printf '%s' 'QA301_4ab08a:percent%name.txt\\n' \\u003e public/percent%name.txt \\u0026\\u0026 printf '%s' 'QA301_4ab08a:literal%20name.txt\\n' \\u003e public/literal%20name.txt \\u0026\\u0026 printf '%s' 'QA301_4ab08a:spaced dir/asset.txt\\n' \\u003e 'public/spaced dir/asset.txt' \\u0026\\u0026 printf '%s' 'QA301_4ab08a:café.txt\\n' \\u003e 'public/café.txt' \\u0026\\u0026 printf '%s' 'QA301_4ab08a:café.txt\\n' \\u003e 'public/café.txt'\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"publishPath\": \"public\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"url\": \"https://qa-20261015-4ab08a-filenames.onbex.co\"\n    },\n    \"slug\": \"qa-20261015-4ab08a-filenames\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"static_site\",\n    \"updatedAt\": \"2026-10-15T17:30:39Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+        "stderr": ""
+      },
+      "cleanup_receipts": [
+        {
+          "at": "2026-10-15T17:33:24.456215+00:00",
+          "detail": {
+            "at": "2026-10-15T17:33:22.683125+00:00",
+            "request": {
+              "method": "GET",
+              "path": "/v1/services/srv-db8gqg5eelgc73d2i7k0",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "authorization": "[REDACTED]"
+            },
+            "status": "404",
+            "elapsed": 0.783,
+            "curl_exit": 0,
+            "stderr": "",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4b09184cecdf096-DFW"
+            },
+            "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+          },
+          "inventory": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "services",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "native_exit": 0,
+            "harness_timeout": false,
+            "elapsed": 0.678,
+            "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T17:33:04Z\",\n        \"nextRunAt\": \"2026-10-15T17:34:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T17:33:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T17:33:04Z\",\n        \"nextRunAt\": \"2026-10-15T17:34:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T17:33:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T17:33:05Z\",\n        \"nextRunAt\": \"2026-10-15T17:34:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T17:33:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T10:17:00Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T12:22:37Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T06:54:00Z\"\n    }\n  }\n]",
+            "stderr": ""
+          },
+          "runtime": {
+            "at": "2026-10-15T17:33:23.934173+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-4ab08a-filenames.onbex.co/plain.txt",
+              "headers": {
+                "Accept-Encoding": "identity"
+              }
+            },
+            "HTTP": "404",
+            "curl_exit": 0,
+            "elapsed": 0.528,
+            "response_headers": {
+              "content-type": "text/plain; charset=utf-8",
+              "content-length": "19"
+            },
+            "body_utf8": "404 page not found\n",
+            "bytes": 19,
+            "stderr": ""
+          },
+          "quota": {
+            "at": "2026-10-15T17:33:24.449437+00:00",
+            "request": {
+              "method": "GET",
+              "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "authorization": "[REDACTED]"
+            },
+            "status": "200",
+            "elapsed": 0.46,
+            "curl_exit": 0,
+            "stderr": "",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4b091919f19fef7-PDX"
+            },
+            "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+          },
+          "baseline_preserved": true
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "actual_native_creates": 2,
+    "clients": [
+      "installed Bex0.2.1",
+      "unmodified Render2.27 pin a764810a7682"
+    ],
+    "fixture_files_each": 13,
+    "HTTP_checks_each": 29,
+    "HTTP_passes": 58,
+    "deploy_children_deleted": 2,
+    "parents_deleted": 2,
+    "new_findings": 0,
+    "mutation_wire": "not intercepted",
+    "deployed_platform_revision": "unobserved",
+    "HEAD_qualification": "curl header-only and content-length, not independent raw wire-body inspection"
+  }
+}

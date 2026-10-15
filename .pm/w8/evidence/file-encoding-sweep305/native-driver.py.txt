@@ -1,0 +1,46 @@
+from pathlib import Path
+import datetime,hashlib,json,os,secrets,shutil,subprocess,time
+os.umask(0o077)
+P=Path(__file__).resolve().parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(cp.read_text());assert c.get('sync305_result')==0 and not c.get('active_sync_stash') and 'sweep305_file_encoding' not in c
+nonce=secrets.token_hex(3)
+text='''services:
+  - name: qa305-NONCE-encoding
+    type: web
+    runtime: image
+    image:
+      url: nginx:1
+    plan: PLAN
+    envVars:
+      - key: QA_LABEL
+        value: "snowman ☃ and fox 🦊"
+'''.replace('NONCE',nonce)
+cases=[]
+for valid,plan in [(True,'free'),(False,'qa-invalid-for-encoding')]:
+ doc=text.replace('PLAN',plan)
+ for encoding in ['UTF8-LF','UTF8-CRLF','UTF8-BOM','UTF16LE-BOM','UTF16BE-BOM']:
+  if encoding=='UTF8-LF':raw=doc.encode()
+  elif encoding=='UTF8-CRLF':raw=doc.replace('\n','\r\n').encode()
+  elif encoding=='UTF8-BOM':raw=b'\xef\xbb\xbf'+doc.encode()
+  elif encoding=='UTF16LE-BOM':raw=b'\xff\xfe'+doc.encode('utf-16-le')
+  else:raw=b'\xfe\xff'+doc.encode('utf-16-be')
+  cases.append({'valid_expected':valid,'encoding':encoding,'text':doc,'input_bytes_hex':raw.hex(),'byte_count':len(raw),'sha256':hashlib.sha256(raw).hexdigest()})
+x={'sweep':305,'head':c['head'],'nonce':nonce,'scope':'actual native file validation only; no apply or hosted mutations','results':[]};c['sweep305_file_encoding']=x
+def save():
+ c['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(c,indent=2));cp.chmod(0o600);(P/'sweep305-results.json').write_text(json.dumps(x,indent=2)+'\n')
+save()
+try:
+ for client,runner,flags in [('installed Bex0.2.1','run.py',[]),('published Bex0.3.2','run.py',['--release']),('unmodified Render2.27','run-render.py',[])]:
+  for case in cases:
+   f=P/'sweep305-render.yaml';cfg=P/'render-config/cli.yaml';assert not f.exists();f.write_bytes(bytes.fromhex(case['input_bytes_hex']));args=['blueprints','validate',str(f),'--confirm','-o','json'];r={'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'client':client,**case,'command':[client,*args],'state':'native file validation intent persisted'};x['results'].append(r);save()
+   try:
+    if runner=='run-render.py':assert not cfg.exists();shutil.copyfile(P/'config/cli.yaml',cfg);cfg.chmod(0o600)
+    result=json.loads(subprocess.check_output(['python3',str(P/runner),*flags,*args],text=True,timeout=60));r['result']=result
+   finally:
+    if runner=='run-render.py':cfg.unlink(missing_ok=True)
+    f.unlink(missing_ok=True)
+   try:decoded=json.loads(result['stdout'])
+   except ValueError:decoded=None
+   expected=case['valid_expected'];passed=isinstance(decoded,dict) and decoded.get('valid') is expected and result['exit']==(0 if expected else 1) and (expected or bool(decoded.get('errors')));r.update(decoded=decoded,acceptance_pass=bool(passed),state='native file validation complete; authored file removed');save();print(json.dumps({'client':client,'encoding':case['encoding'],'expected_valid':expected,'valid':decoded.get('valid') if isinstance(decoded,dict) else None,'native_exit':result['exit'],'pass':bool(passed)}),flush=True);time.sleep(.5)
+finally:
+ x['input_removed']=not (P/'sweep305-render.yaml').exists();x['copied_render_config_removed']=not (P/'render-config/cli.yaml').exists();save()
+print(json.dumps({'native_runs':len(x['results']),'passes':sum(r['acceptance_pass'] for r in x['results']),'hosted_mutations':0}),flush=True)

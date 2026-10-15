@@ -1,0 +1,174 @@
+from pathlib import Path
+import datetime, json, os, secrets, shlex, shutil, subprocess, sys, time, urllib.parse
+
+os.umask(0o077)
+P = Path(__file__).resolve().parent
+ROOT = Path('/Volumes/nvme4tbfish/projects/bex8')
+CP = ROOT / '.playwright-mcp/cli-qa-w8-checkpoint.json'
+c = json.loads(CP.read_text())
+assert c.get('sync301_result') == 0 and not c.get('active_sync_stash')
+mode, client = sys.argv[1:3]
+assert client in ('installed', 'render')
+WS = 'tea-daif693dqjvc73e7as3g'
+BASE = {v if isinstance(v, str) else v.get('service', v)['id'] for v in c['baseline']['services']}
+
+def now():
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+def save():
+    c['last_updated'] = now()
+    CP.write_text(json.dumps(c, indent=2, ensure_ascii=False))
+    CP.chmod(0o600)
+
+def cli(args, bound=45):
+    cfg = P / 'render-config/cli.yaml'
+    try:
+        if client == 'render':
+            assert not cfg.exists()
+            shutil.copyfile(P / 'config/cli.yaml', cfg)
+            cfg.chmod(0o600)
+        runner = P / ('run-render.py' if client == 'render' else 'run.py')
+        r = json.loads(subprocess.check_output(['python3', str(runner), '--bound=' + str(bound), *args], text=True, timeout=bound + 15))
+        r['native_exit'] = None if r['exit'] == 124 else r['exit']
+        return r
+    finally:
+        if client == 'render':
+            cfg.unlink(missing_ok=True)
+
+def wire(path):
+    return json.loads(subprocess.check_output(['python3', str(P / 'wire.py'), 'GET', path], text=True, timeout=45))
+
+def inventory():
+    r = cli(['services', '--confirm', '-o', 'json'])
+    assert r['native_exit'] == 0
+    rows = [v.get('service', v) for v in json.loads(r['stdout']) or []]
+    assert BASE <= {v['id'] for v in rows}
+    return r, rows
+
+def history(x):
+    r = cli(['deploys', 'list', x['id'], '--confirm', '-o', 'json'])
+    assert r['native_exit'] == 0
+    rows = json.loads(r['stdout'])
+    x.setdefault('history_receipts', []).append({'at': now(), 'result': r})
+    x['deploy_children'] = rows
+    for row in rows:
+        if row['id'] not in x['recorded_child_ids']:
+            x['recorded_child_ids'].append(row['id'])
+    save()
+    return rows
+
+def http(x, path, method='GET'):
+    body = P / 'sweep301-body'
+    headers = P / 'sweep301-headers'
+    assert not body.exists() and not headers.exists()
+    url = x['create_response']['serviceDetails']['url'] + path
+    start = time.monotonic()
+    try:
+        args = ['curl', '--disable', '-sS', '--max-time', '12', '--path-as-is', '-H', 'Accept-Encoding: identity', '-D', str(headers), '-o', str(body), '-w', '%{http_code}']
+        args += ['--head'] if method == 'HEAD' else []
+        r = subprocess.run([*args, url], text=True, capture_output=True, timeout=17)
+        data = body.read_bytes() if body.exists() and method != 'HEAD' else b''
+        hs = {}
+        if headers.exists():
+            for line in headers.read_text().splitlines():
+                k, sep, v = line.partition(':')
+                if sep and k.lower() in ('content-type', 'content-length', 'etag', 'last-modified', 'location', 'cache-control'):
+                    hs[k.lower()] = v.strip()
+        return {'at': now(), 'request': {'method': method, 'url': url, 'headers': {'Accept-Encoding': 'identity'}}, 'HTTP': r.stdout, 'curl_exit': r.returncode, 'elapsed': round(time.monotonic()-start, 3), 'response_headers': hs, 'body_utf8': data.decode('utf8', errors='replace'), 'bytes': len(data), 'stderr': r.stderr}
+    finally:
+        body.unlink(missing_ok=True)
+        headers.unlink(missing_ok=True)
+
+if mode == 'create':
+    assert not any(v.get('sweep') == 301 and v.get('client') == client for v in c['resources'])
+    q = wire('/v1/owners/' + WS + '/limits')
+    assert q['status'] == '200'
+    lim = json.loads(q['response'])['services']
+    assert lim['used'] + lim['terminating'] < lim['limit']
+    inv, rows = inventory()
+    nonce = secrets.token_hex(3)
+    name = 'qa-' + datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d') + '-' + nonce + '-filenames'
+    assert name not in {v['name'] for v in rows}
+    files = ['index.html', 'plain.txt', 'space name.txt', 'plus+name.txt', 'snowman-☃.txt', '你好.txt', 'hash#name.txt', 'question?name.txt', 'percent%name.txt', 'literal%20name.txt', 'spaced dir/asset.txt', 'café.txt', 'cafe\u0301.txt']
+    expected = {f: 'QA301_' + nonce + ':' + f + '\n' for f in files}
+    commands = ['mkdir -p public/' + shlex.quote('spaced dir')]
+    for f, content in expected.items():
+        commands.append("printf '%s' " + shlex.quote(content) + ' > ' + shlex.quote('public/' + f))
+    build = ' && '.join(commands)
+    args = ['services', 'create', '--name', name, '--type', 'static_site', '--repo', 'https://github.com/bex-co/bex', '--branch', 'main', '--root-directory', 'examples/static-site', '--build-command', build, '--publish-directory', 'public', '--auto-deploy=false', '--confirm', '-o', 'json']
+    x = {'sweep': 301, 'client': client, 'workspace': WS, 'nonce': nonce, 'name': name, 'type': 'static_site', 'time': now(), 'source_head': c['head'], 'capacity': q, 'pre_inventory': inv, 'pre_ids': [v['id'] for v in rows], 'expected': expected, 'create_command': [client, *args], 'dependency_ids': [], 'recorded_child_ids': [], 'state': 'finite native Free static create intent persisted'}
+    c['resources'].append(x)
+    save()
+    r = cli(args)
+    x.update(create_result=r, state='create response received; reconcile before retry')
+    save()
+    assert r['native_exit'] == 0
+    v = json.loads(r['stdout'])
+    v = v.get('data', v)
+    v = v.get('service', v)
+    assert v['id'] not in x['pre_ids'] and v['ownerId'] == WS and v['name'] == name and v['type'] == 'static_site' and v['serviceDetails']['plan'] == 'free'
+    x.update(id=v['id'], create_response=v, state='created: response/id/workspace/Free ownership proved')
+    save()
+    history(x)
+    print(json.dumps({'client': client, 'id': x['id'], 'native_create_exit': r['native_exit'], 'files_authored': len(files)}), flush=True)
+    raise SystemExit(0)
+
+x = next(v for v in c['resources'] if v.get('sweep') == 301 and v.get('client') == client)
+assert x['workspace'] == WS and x['id'] not in BASE and x['create_result']['native_exit'] == 0 and x['create_response']['id'] == x['id'] and x['create_response']['ownerId'] == WS and x['create_response']['serviceDetails']['plan'] == 'free'
+assert not x['state'].startswith('deleted:')
+
+if mode == 'observe':
+    rows = history(x)
+    r = http(x, '/plain.txt')
+    passed = bool(rows) and rows[0]['status'] == 'live' and r['HTTP'] == '200' and r['body_utf8'] == x['expected']['plain.txt']
+    x.setdefault('readiness', []).append({'at': now(), 'latest': rows[0] if rows else None, 'receipt': r, 'ready': passed})
+    save()
+    print(json.dumps({'client': client, 'status': rows[0]['status'] if rows else None, 'HTTP': r['HTTP'], 'ready': passed}), flush=True)
+elif mode == 'probe':
+    assert x['readiness'][-1]['ready']
+    results = []
+    for filename, expected in x['expected'].items():
+        path = '/' + urllib.parse.quote(filename, safe='/')
+        for method in ('GET', 'HEAD'):
+            r = http(x, path, method)
+            ok = r['curl_exit'] == 0 and r['HTTP'] == '200' and (r['body_utf8'] == expected if method == 'GET' else r['response_headers'].get('content-length') == str(len(expected.encode())))
+            results.append({'filename': filename, 'method': method, 'expected': expected if method == 'GET' else None, 'pass': ok, 'receipt': r})
+            x['current_probes'] = results
+            save()
+    for label, path, expected in [('literal plus', '/plus+name.txt', x['expected']['plus+name.txt']), ('query leaves file unchanged', '/plain.txt?name=a+b%20c', x['expected']['plain.txt']), ('missing asset', '/missing-' + x['nonce'] + '.txt', None)]:
+        r = http(x, path)
+        ok = r['curl_exit'] == 0 and (r['HTTP'] == '404' if expected is None else r['HTTP'] == '200' and r['body_utf8'] == expected)
+        results.append({'label': label, 'pass': ok, 'receipt': r})
+        x['current_probes'] = results
+        save()
+    x.setdefault('probe_rounds', []).append({'at': now(), 'results': results, 'all_pass': all(v['pass'] for v in results), 'HEAD_qualification': 'header-only curl; content-length checked, raw empty wire body not independently read'})
+    x.pop('current_probes', None)
+    save()
+    print(json.dumps({'client': client, 'requests': len(results), 'passed': sum(v['pass'] for v in results), 'failures': [{'filename': v.get('filename'), 'label': v.get('label'), 'method': v.get('method'), 'HTTP': v['receipt']['HTTP'], 'body': v['receipt']['body_utf8']} for v in results if not v['pass']]}, ensure_ascii=False), flush=True)
+elif mode == 'delete':
+    assert 'delete_result' not in x
+    assert not any(x['id'] in v.get('dependency_ids', []) and not v['state'].startswith('deleted:') for v in c['resources'])
+    rows = history(x)
+    assert all(v['id'] in x['recorded_child_ids'] for v in rows)
+    assert all(v['status'] in ('live', 'deactivated', 'canceled', 'build_failed', 'update_failed', 'pre_deploy_failed') for v in rows), 'Reconcile and cancel owned active deploy first'
+    x['delete_intent'] = {'at': now(), 'child_ids': [v['id'] for v in rows]}
+    save()
+    x['delete_result'] = cli(['services', 'delete', x['id'], '--confirm', '-o', 'json'])
+    save()
+    assert x['delete_result']['native_exit'] == 0
+    print(json.dumps({'client': client, 'native_delete_exit': 0, 'children': len(rows)}), flush=True)
+elif mode == 'reconcile':
+    assert 'delete_result' in x
+    d = wire('/v1/services/' + x['id'])
+    inv, rows = inventory()
+    r = http(x, '/plain.txt')
+    q = wire('/v1/owners/' + WS + '/limits')
+    assert q['status'] == '200'
+    term = json.loads(q['response'])['services']['terminating']
+    done = d['status'] == '404' and x['id'] not in {v['id'] for v in rows} and r['curl_exit'] == 0 and r['HTTP'] == '404' and term == 0
+    x.setdefault('cleanup_receipts', []).append({'at': now(), 'detail': d, 'inventory': inv, 'runtime': r, 'quota': q, 'baseline_preserved': True})
+    x['state'] = 'deleted: native0/detail404/listabsent/runtime404/baseline6/quota terminating0' if done else 'delete acknowledged: bounded convergence pending'
+    save()
+    print(json.dumps({'client': client, 'cleanup_complete': done, 'terminating': term}), flush=True)
+else:
+    raise ValueError(mode)

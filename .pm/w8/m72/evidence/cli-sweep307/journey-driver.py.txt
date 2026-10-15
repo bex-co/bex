@@ -1,0 +1,113 @@
+from pathlib import Path
+import datetime,json,os,secrets,shlex,shutil,subprocess,sys,time,yaml
+os.umask(0o077);P=Path(__file__).resolve().parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(cp.read_text());assert c.get('sync307_result')==0 and not c.get('active_sync_stash');mode,client=sys.argv[1:3];CLIENT=client;ws='tea-daif693dqjvc73e7as3g';baseline={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']}
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,indent=2));cp.chmod(0o600)
+def cli(args,client=None,bound=45):
+ if client is None:client=CLIENT
+ cfg=P/'render-config/cli.yaml'
+ try:
+  if client=='render':assert not cfg.exists();shutil.copyfile(P/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  runner=['python3',str(P/'run-render.py')] if client=='render' else ['python3',str(P/'run.py'),'--release'];r=json.loads(subprocess.check_output([*runner,'--bound='+str(bound),*args],text=True,timeout=bound+15));r['native_exit']=None if r['exit']==124 else r['exit'];return r
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+def api(method,path,body=None):
+ cfg=yaml.safe_load((P/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token;ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n';f=P/'sweep307-request.json';assert not f.exists();args=['curl','--disable','-sS','--max-time','30','--config','-','-X',method,'-H','Accept: application/json, text/event-stream','-H','MCP-Protocol-Version: 2025-03-26']
+ if body is not None:f.write_text(json.dumps(body));args+=['-H','Content-Type: application/json','--data-binary','@'+str(f)]
+ start=time.monotonic()
+ try:r=subprocess.run([*args,'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=36)
+ finally:f.unlink(missing_ok=True)
+ raw,_,status=r.stdout.rpartition('\n');out={'at':now(),'API_only':True,'request':{'method':method,'path':path,'body':body,'workspace':ws,'user_agent':ua,'authorization':'REDACTED'},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'response':raw,'stderr':r.stderr};assert token not in json.dumps(out);return out
+def decode(r):
+ text=r['response']
+ if not text.lstrip().startswith(('{','[')):
+  texts=[s[5:].strip() for s in text.splitlines() if s.startswith('data:')];assert len(texts)==1;text=texts[0]
+ return json.loads(text)
+
+def inventory():
+ r=cli(['services','--confirm','-o','json']);assert r['native_exit']==0;vs=[v.get('service',v) for v in json.loads(r['stdout']) or []];assert baseline<={v['id'] for v in vs};return r,vs
+def own(x):
+ assert x['sweep']==307 and x['workspace']==ws and x['id'] not in baseline and x['create_result']['captures'][0]['status']==201 and x['create_view']['id']==x['id'] and x['create_view']['ownerId']==ws and x['create_view']['serviceDetails']['plan']=='free' and (mode=='reconcile' or not x['state'].startswith('deleted:'))
+def history(x):
+ r=cli(['deploys','list',x['id'],'--confirm','-o','json']);assert r['native_exit']==0;rows=json.loads(r['stdout']);x.setdefault('history_receipts',[]).append({'at':now(),'result':r});x['deploy_children']=rows
+ for v in rows:
+  if v['id'] not in x['recorded_child_ids']:x['recorded_child_ids'].append(v['id'])
+ save();return rows
+import re,http.server,http.client,threading,gzip
+p=P
+def captured_create(args):
+ captures=[];expected_name=args[args.index('--name')+1]
+ class Handler(http.server.BaseHTTPRequestHandler):
+  def log_message(self,*values):pass
+  def do_GET(self):self.send_error(405)
+  def do_POST(self):
+   if self.path!='/v1/services' or captures:self.send_error(400);return
+   body=self.rfile.read(int(self.headers.get('Content-Length','0')));request=json.loads(body)
+   if request.get('name')!=expected_name or request.get('ownerId')!=ws or request.get('type')!='web_service' or request.get('serviceDetails',{}).get('plan')!='free':self.send_error(400);return
+   headers={k:v for k,v in self.headers.items() if k.lower() not in ['host','connection','content-length']};headers['Host']='api.bex.co';con=http.client.HTTPSConnection('api.bex.co',timeout=35)
+   try:
+    con.request('POST',self.path,body=body,headers=headers);reply=con.getresponse();raw=reply.read();decoded=gzip.decompress(raw) if reply.getheader('Content-Encoding')=='gzip' else raw;hs=reply.getheaders()
+    captures.append({'request':{'method':'POST','path':self.path,'body':request,'raw_body':body.decode(),'headers':{k:v for k,v in headers.items() if k.lower() in ['user-agent','content-type','x-bex-workspace','x-bex-cli-version']},'authorization':'[REDACTED]'},'status':reply.status,'response':decoded.decode(),'response_headers':{k:v for k,v in hs if k.lower() in ['content-type','x-request-id','cf-ray']}})
+    self.send_response(reply.status)
+    for k,v in hs:
+     if k.lower() not in ['transfer-encoding','connection','content-length','keep-alive']:self.send_header(k,v)
+    self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw)
+   finally:con.close()
+ server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler);server.daemon_threads=True;thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start();origin='http://127.0.0.1:'+str(server.server_port)+'/v1/';cfgdir=p/('sweep307-create-capture-'+client+'-'+str(server.server_port));cfgdir.mkdir(mode=0o700);cfg=cfgdir/'cli.yaml'
+ text,count=re.subn(r'(?m)^(\s+)host:.*$',lambda match:match[1]+'host: '+origin,(p/'config/cli.yaml').read_text());assert count==1;cfg.write_text(text);cfg.chmod(0o600);prefix='BEX' if client=='bex' else 'RENDER';env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_'))};env.update(DO_NOT_TRACK='1');env.update({prefix+'_HOST':origin,prefix+'_CLI_CONFIG_PATH':str(cfg),prefix+'_CLI_CONFIG_DIR':str(cfgdir),prefix+'_WORKSPACE':ws,prefix+'_CLI_DISABLE_ANALYTICS':'1','BEX_NO_UPDATE_NOTIFIER':'1','BROWSER':'/usr/bin/true'});binary=p/'release/bex' if client=='bex' else p/'render-pin';start=time.monotonic()
+ try:
+  try:r=subprocess.run([str(binary),*args],env=env,text=True,capture_output=True,timeout=42);result={'binary':'published Bex 0.3.2' if client=='bex' else 'unmodified Render 2.27.0/a764810a7682','command':[client,*args],'exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'stdout':r.stdout,'stderr':r.stderr}
+  except subprocess.TimeoutExpired:result={'command':[client,*args],'exit':124,'elapsed':round(time.monotonic()-start,3),'stdout':'','stderr':'Bounded native capture timed out; reconcile returned/requested identity before retry'}
+  result['captures']=captures;result['qualification']='actual native POST forwarded unchanged to production; owned local relay and copied config cleaned';return result
+ finally:server.shutdown();server.server_close();thread.join(timeout=2);shutil.rmtree(cfgdir)
+def commands(marker, runtime):
+ prelude="""import json,os,platform,subprocess
+def probe_tool():
+ try:
+  r=subprocess.run(['poetry','--version'],text=True,capture_output=True,timeout=10)
+  return {'error':None,'status':r.returncode,'stdout':r.stdout,'stderr':r.stderr}
+ except FileNotFoundError:
+  return {'error':'ENOENT','status':None,'stdout':'','stderr':''}
+"""
+ role='poetry' if runtime=='poetry' else 'python-control'
+ common="{'marker':"+repr(marker)+",'runtime':"+repr(role)+",'version':platform.python_version(),'requested':os.environ.get('POETRY_VERSION'),'python_requested':os.environ.get('PYTHON_VERSION'),'probe':probe_tool()}"
+ build=prelude+"with open('qa307-built.json','w') as f: json.dump("+common+",f)\n"
+ server=prelude+"""from http.server import BaseHTTPRequestHandler,HTTPServer
+with open('/opt/render/project/src/qa307-built.json') as f: built=json.load(f)
+snapshot="""+common+"""
+snapshot['built']=built
+class Handler(BaseHTTPRequestHandler):
+ def do_GET(self):
+  body=json.dumps(snapshot).encode()
+  self.send_response(200)
+  self.send_header('Content-Type','application/json')
+  self.send_header('Content-Length',str(len(body)))
+  self.end_headers()
+  self.wfile.write(body)
+HTTPServer(('0.0.0.0',int(os.environ.get('PORT','3000'))),Handler).serve_forever()
+"""
+ build_command="printf '%s\\n' "+shlex.quote(marker)+' && '+('poetry --version && ' if runtime=='poetry' else '')+'python -c '+shlex.quote(build)
+ return {'build':build_command,'start':'python -c '+shlex.quote(server)}
+if mode=='create':
+ assert not any(v.get('sweep')==307 and v.get('client')==client for v in c['resources'])
+ q=api('GET','/v1/owners/'+ws+'/limits');assert q['status']=='200';lim=decode(q)['services'];assert lim['used']+lim['terminating']<lim['limit'];inv,vs=inventory();nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-poetry';assert name not in {v['name'] for v in vs};marker='QA307_'+nonce+'_POETRY';cmd=commands(marker,'poetry')
+ args=['services','create','--name',name,'--type','web_service','--runtime','python','--repo','https://github.com/pallets/flask','--branch','main','--build-command',cmd['build'],'--start-command',cmd['start'],'--env-var','PYTHON_VERSION=3.12','--env-var','POETRY_VERSION=2.1.3','--plan','free','--region','frankfurt','--auto-deploy=false','--confirm','-o','json']
+ x={'sweep':307,'client':client,'workspace':ws,'name':name,'nonce':nonce,'marker':marker,'time':now(),'source_head':c['head'],'type':'web_service','requested_poetry_version':'2.1.3','commands':{'poetry':cmd},'capacity':q,'pre_inventory':inv,'pre_ids':[v['id'] for v in vs],'dependency_ids':[],'recorded_child_ids':[],'create_command':[client,*args],'state':'finite native Free Python/Poetry create intent persisted'};c['resources'].append(x);save();r=captured_create(args);r['native_exit']=None if r['exit']==124 else r['exit'];x.update(create_result=r,state='native response received; reconcile before retry');save();assert len(r['captures'])==1 and r['captures'][0]['status']==201 and r['native_exit']==0;v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v);assert v['id'] not in x['pre_ids'] and v['ownerId']==ws and v['name']==name and v['serviceDetails']['plan']=='free';x.update(id=v['id'],create_view=v,state='created: native/captured201/id/workspace/Free ownership proved');save();history(x);print(json.dumps({'client':client,'id':x['id'],'native_create_exit':r['native_exit'],'captured_HTTP':201,'runtime':v['serviceDetails']['runtime']}),flush=True);raise SystemExit(0)
+x=next(v for v in c['resources'] if v.get('sweep')==307 and v.get('client')==client);own(x);sid=x['id']
+if mode=='observe':
+ rows=history(x);d=api('GET','/v1/services/'+sid);assert d['status']=='200';v=decode(d);x.setdefault('observations',[]).append({'at':now(),'history':rows,'detail':d});save();print(json.dumps({'client':client,'latest':rows[0]['status'],'children':len(rows),'runtime':v['serviceDetails'].get('runtime')}),flush=True)
+elif mode=='logs':
+ args=['logs','--resources',sid,'--type','build','--start',x['time'],'--direction','backward','--limit','100','--confirm','-o','json'];args+=['--end',x['python_control_intent']['at']] if 'python_control_intent' in x else [];r=cli(args);x.setdefault('native_build_logs',[]).append({'at':now(),'window':'initial Poetry deployment; before Python control if present','result':r});save();print(json.dumps({'client':client,'native_exit':r['native_exit'],'poetry_missing_text':('poetry: not found' in r['stdout'] or 'poetry: command not found' in r['stdout']),'exit127_text':'exit code: 127' in r['stdout']}),flush=True)
+elif mode=='python-control':
+ assert 'python_control_intent' not in x and x['observations'][-1]['history'][0]['status']=='build_failed'
+ marker='QA307_'+x['nonce']+'_PYTHON_CONTROL';cmd=commands(marker,'python');x['commands']['python-control']=cmd;x['python_control_marker']=marker;args=['services','update',sid,'--build-command',cmd['build'],'--start-command',cmd['start'],'--confirm','-o','json'];x['python_control_intent']={'at':now(),'command':[client,*args],'before_child_ids':x['recorded_child_ids'][:]};save();x['python_control_result']=cli(args);save();assert x['python_control_result']['native_exit']==0;rows=history(x);print(json.dumps({'client':client,'native_update_exit':0,'latest':rows[0]['status'],'children':len(rows)}),flush=True)
+elif mode=='http':
+ assert 'python_control_result' in x;rows=history(x);url=x['create_view']['serviceDetails']['url'];r=subprocess.run(['curl','--disable','-sS','--max-time','10','-w','\n%{http_code}',url],text=True,capture_output=True,timeout=15);raw,_,status=r.stdout.rpartition('\n')
+ try:v=json.loads(raw)
+ except ValueError:v=None
+ ok=rows[0]['status']=='live' and status=='200' and isinstance(v,dict) and v.get('marker')==v.get('built',{}).get('marker')==x['python_control_marker'] and v.get('requested')==v.get('built',{}).get('requested')=='2.1.3' and v.get('probe',{}).get('error')==v.get('built',{}).get('probe',{}).get('error')=='ENOENT';x.setdefault('runtime_receipts',[]).append({'at':now(),'latest':rows[0],'url':url,'HTTP':status,'curl_exit':r.returncode,'raw':raw,'decoded':v,'pass':ok});save();print(json.dumps({'client':client,'latest':rows[0]['status'],'HTTP':status,'python_and_env_control_pass':ok,'build_runtime_poetry_error':v.get('probe',{}).get('error') if isinstance(v,dict) else None}),flush=True)
+elif mode=='delete':
+ assert 'delete_result' not in x and 'delete_intent' not in x;assert not any(sid in v.get('dependency_ids',[]) and not v['state'].startswith('deleted:') for v in c['resources']);rows=history(x);assert all(v['id'] in x['recorded_child_ids'] and v['status'] in ('live','deactivated','canceled','build_failed','update_failed','pre_deploy_failed') for v in rows);x['delete_intent']={'at':now(),'children':rows};save();x['delete_result']=cli(['services','delete',sid,'--confirm','-o','json']);save();assert x['delete_result']['native_exit']==0;print(json.dumps({'client':client,'native_delete_exit':0,'children':len(rows)}),flush=True)
+elif mode=='reconcile':
+ assert 'delete_result' in x;d=api('GET','/v1/services/'+sid);inv,vs=inventory();url=x['create_view']['serviceDetails']['url'];r=subprocess.run(['curl','--disable','-sS','--max-time','10','-o','/dev/null','-w','%{http_code}',url],text=True,capture_output=True,timeout=15);q=api('GET','/v1/owners/'+ws+'/limits');assert q['status']=='200';term=decode(q)['services']['terminating'];done=d['status']=='404' and sid not in {v['id'] for v in vs} and r.returncode==0 and r.stdout=='404' and term==0;x.setdefault('cleanup_receipts',[]).append({'at':now(),'detail':d,'inventory':inv,'runtime_HTTP':r.stdout,'runtime_exit':r.returncode,'quota':q,'baseline_preserved':True});x['state']='deleted: native0/detail404/listabsent/runtime404/baseline6/quota terminating0' if done else 'delete acknowledged: bounded convergence pending';save();print(json.dumps({'client':client,'cleanup_complete':done,'terminating':term}),flush=True)
+else:raise ValueError(mode)

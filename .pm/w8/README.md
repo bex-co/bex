@@ -15,9 +15,13 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m72** — [Provide Poetry in native Python builds and runtime](m72/README.md) (7 tasks,3h10m) — major Python toolchain gap: both native creates fail with missing Poetry/exit127; Python3.12 and env controls pass, Poetry remains ENOENT at build/runtime. Two parents/four deploys cleaned.
+
+- [ ] **m71** — [Make explicit Bun opt-in usable in native builds and runtime](m71/README.md) (7 tasks,3h20m) — major runtime gap: both native creates preserve BUN_VERSION yet fail with missing Bun/exit127; Node controls pass and confirm build/runtime ENOENT. Two parents/four deploys cleaned.
+
 - [ ] **m70** — [Make Blueprint source switches deploy their declared artifact](m70/README.md) (6 tasks,2h55m) — sweep294: inline and persistent image→Git applies report Live/new commit but serve the old image; both native recovery controls pass; two services/seven children/one Blueprint cleaned.
 
-- [ ] **m69** — [Preserve native cron startup semantics](blocked/m69/README.md) (6 tasks, 2h50m) — **BLOCKED (2026-10-15: t001, t002, t004, t005 done — a native cron's CLI `startCommand` now stays its baked Bash start command on create, update (REST/GraphQL/MCP), Blueprint edits incl. a docker→native switch, readback/clone and the dashboard Command row; explicit Bex `command` stays a /bin/sh override; legacy duplicates repair on their next command write. Needs the backend + dashboard deployed, then the hosted two-client Free native cron create + finite manual run with the exact marker, update/readback/clone checks and owned cleanup (t003/t006))**
+- [ ] **m69** — [Preserve native cron startup semantics](blocked/m69/README.md) (6 tasks, 2h50m) — **BLOCKED (2026-10-15: t001, t002, t004, t005 done — a native cron's CLI `startCommand` now stays its baked Bash start command on create, update (REST/GraphQL/MCP), Blueprint edits incl. a docker→native switch, readback/clone and the dashboard Command row; explicit Bex `command` stays a /bin/sh override; legacy duplicates repair on their next command write. Needs the backend + dashboard deployed, then the hosted two-client Free native cron create + finite manual run with the exact marker, update/readback/clone checks and owned cleanup (t003/t006))** Sweep302:24 focused source passes; both fresh live runs still fail in /bin/sh, native logs confirm; all own fixtures cleaned.
 
 - [ ] **m68** — [Preserve executable command text](blocked/m68/README.md) (7 tasks, 3h15m) — **BLOCKED (2026-10-15: t001–t003, t005, t006 done — backend and dashboard keep nonblank build/start/pre-deploy/cron/hook command text byte for byte (whitespace-only still clears) with failing-first REST/GraphQL/MCP/Blueprint/dashboard regressions; upstream CLI patch + request-construction regressions prepared in `blocked/m68/evidence/t001-upstream/upstream-command-text.patch`. Needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release and the deployed fix for the hosted two-client `7461696c20` replay with cleanup (t004/t007))** Sweep299:41 focused source passes; live API pre-deploy still executes the shortened argument, both native readers confirm; own fixture cleaned.
 
@@ -142,6 +146,20 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [w4/m199 native CLI timestamp replay](evidence/m199-native-cli/README.md) — sweeps128/132: both clients preserve quiet web and scheduled-cron records, timestamps and IDs in history/Live; cron tails remain open through idle metadata and changing instances. Both fixtures cleaned; existing milestones retain full verification scope.
 
 - [w4/m200 native CLI corroboration](evidence/m200-native-cli/README.md) — sweep111: both clients corrupt the mixed stdout/stderr pair in Live while all five historical messages remain exact; complete native evidence and cleanup retained. Implementation stays with w4/m200.
+
+- [Static filename publication acceptance](evidence/static-filenames-sweep301/README.md) — sweep301: installed Bex and pinned Render each publish13 marker files;58 exact GET/HEAD/control passes cover spaces, Unicode, percent and URL punctuation. Both own Free sites/two deploys cleaned; no new finding.
+
+- [Generated-copy native validation](evidence/generated-copy-validation-sweep303/README.md) — sweep303:16 native calls expose existing w1/m175 source/live difference;8 qualified controls,4 masked negative outcomes,4 generated-copy refusals. Current exact source cases pass9 named events. No new issue or hosted mutation.
+
+- [Cron preemption and existing startup-log loss](evidence/cron-preemption-sweep304/README.md) — sweep304: one complete graceful handoff with5,838ms gap; second interval remains unverified because existing w4/m174 loses the replacement start record (native/REST agree). Two parents/two deploys/seven runs cleaned; no duplicate issue.
+
+- [Native Blueprint file encodings](evidence/file-encoding-sweep305/README.md) — sweep305: installed/published Bex and pinned Render pass30 LF/CRLF/BOM/UTF-16 validations, including15 identical located plan refusals; no hosted mutation or new issue.
+
+- [Static hostname case and resume recheck](evidence/static-resume-hostcase-sweep308/README.md) — sweep308:24 case-preserving HTTP reads retain w4/309; four API-only resume cycles/56 samples retain w4/307 with2 absent-host404 samples. Four focused source checks pass. Both own Free sites/two deploys cleaned; no duplicate issue.
+
+- [PostgreSQL target-floor dry-run recheck](evidence/postgres-upgrade-floor-sweep309/README.md) — sweep309: REST/MCP still accept14/15 previews (existing w4/308); ten other preview controls and both native omitted-version renames pass.24 focused source checks pass. Own Free database cleaned; no duplicate issue.
+
+- [Key Value deadline and data retention acceptance](evidence/keyvalue-deadlines-sweep310/README.md) — sweep310: both native clients complete preview/suspend/resume; independent TLS checks pass30 times across two new processes, preserving exact expiry deadlines and structured data. Own Free instance/credentials cleaned; no new issue.
 
 ## Inbox
 

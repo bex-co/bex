@@ -1,0 +1,12 @@
+{
+  "runtime": "rust",
+  "requested_bun": "1.3.4",
+  "primary_choice": {
+    "Label": "Rust",
+    "Line": "1",
+    "Image": "rust:1-bookworm@sha256:114c7a4425406451c2866b6aafe69fe29b1b298832db1277d411ac73c82d04d6",
+    "Source": ""
+  },
+  "dockerfile_unchanged": true,
+  "has_bun_setup_text": false
+}

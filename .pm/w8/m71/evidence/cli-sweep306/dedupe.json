@@ -1,0 +1,12 @@
+{
+  "actual_open_blocked_milestone_READMEs": 73,
+  "Bun_matching_milestones": [],
+  "whole_board_exact_term_matches": [],
+  "targeted_BUN_VERSION_history": [],
+  "related_existing": [
+    "w8/done/m51",
+    "w8/done/m61",
+    "w8/done/052"
+  ],
+  "distinctness": "Bun opt-in/toolchain availability; primary-version selection, PATH preservation and failure reporting remain separate"
+}

@@ -1,0 +1,1457 @@
+{
+  "sweep": 303,
+  "head": "499590c8b99c83d3da7936f392da3684e642e1a9",
+  "phase": "native validation only; no resource writes or apply",
+  "results": [
+    {
+      "at": "2026-10-15T17:42:47.579468+00:00",
+      "client": "published Bex0.3.2",
+      "label": "generated consumer first",
+      "document": {
+        "services": [
+          {
+            "name": "qa303-663e1d-consumer",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_COPY",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa303-663e1d-source",
+                  "envVarKey": "QA_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa303-663e1d-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_VALUE",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep303-input.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; input removed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep303-input.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.563,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa303-663e1d-consumer\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on service \\\"qa303-663e1d-source\\\", which has no such plainly-defined variable\",\n      \"line\": 12,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa303-663e1d-consumer\": envVars[\"QA_COPY\"]: fromService.envVarKey references env \"QA_VALUE\" on service \"qa303-663e1d-source\", which has no such plainly-defined variable",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": false,
+      "qualified_pass": false,
+      "qualification": "Literal/negative control outcome or explicit generated-copy acceptance failure."
+    },
+    {
+      "at": "2026-10-15T17:42:48.871889+00:00",
+      "client": "published Bex0.3.2",
+      "label": "generated source first",
+      "document": {
+        "services": [
+          {
+            "name": "qa303-663e1d-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_VALUE",
+                "generateValue": true
+              }
+            ]
+          },
+          {
+            "name": "qa303-663e1d-consumer",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_COPY",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa303-663e1d-source",
+                  "envVarKey": "QA_VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep303-input.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; input removed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep303-input.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.696,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa303-663e1d-consumer\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on service \\\"qa303-663e1d-source\\\", which has no such plainly-defined variable\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa303-663e1d-consumer\": envVars[\"QA_COPY\"]: fromService.envVarKey references env \"QA_VALUE\" on service \"qa303-663e1d-source\", which has no such plainly-defined variable",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": false,
+      "qualified_pass": false,
+      "qualification": "Literal/negative control outcome or explicit generated-copy acceptance failure."
+    },
+    {
+      "at": "2026-10-15T17:42:50.306185+00:00",
+      "client": "published Bex0.3.2",
+      "label": "literal copy control",
+      "document": {
+        "services": [
+          {
+            "name": "qa303-663e1d-consumer",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_COPY",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa303-663e1d-source",
+                  "envVarKey": "QA_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa303-663e1d-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_VALUE",
+                "value": "QA_LITERAL_663e1d"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep303-input.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; input removed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep303-input.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.413,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa303-663e1d-consumer\",\n      \"qa303-663e1d-source\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa303-663e1d-consumer",
+            "qa303-663e1d-source"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "acceptance_pass": true,
+      "qualified_pass": true,
+      "qualification": "Literal/negative control outcome or explicit generated-copy acceptance failure."
+    },
+    {
+      "at": "2026-10-15T17:42:51.455146+00:00",
+      "client": "published Bex0.3.2",
+      "label": "literal masks generated key",
+      "document": {
+        "services": [
+          {
+            "name": "qa303-663e1d-consumer",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_COPY",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa303-663e1d-source",
+                  "envVarKey": "QA_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa303-663e1d-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_VALUE",
+                "generateValue": true
+              },
+              {
+                "key": "QA_VALUE",
+                "value": "QA_LITERAL_663e1d"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep303-input.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; input removed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep303-input.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.489,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa303-663e1d-consumer\",\n      \"qa303-663e1d-source\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa303-663e1d-consumer",
+            "qa303-663e1d-source"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "acceptance_pass": true,
+      "qualified_pass": true,
+      "qualification": "Literal/negative control outcome or explicit generated-copy acceptance failure."
+    },
+    {
+      "at": "2026-10-15T17:42:52.670650+00:00",
+      "client": "published Bex0.3.2",
+      "label": "unanswered prompt refusal",
+      "document": {
+        "services": [
+          {
+            "name": "qa303-663e1d-consumer",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_COPY",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa303-663e1d-source",
+                  "envVarKey": "QA_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa303-663e1d-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_VALUE",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep303-input.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; input removed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep303-input.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.373,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa303-663e1d-consumer\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on service \\\"qa303-663e1d-source\\\", which has no such plainly-defined variable\",\n      \"line\": 12,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa303-663e1d-consumer\": envVars[\"QA_COPY\"]: fromService.envVarKey references env \"QA_VALUE\" on service \"qa303-663e1d-source\", which has no such plainly-defined variable",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true,
+      "qualified_pass": true,
+      "qualification": "Literal/negative control outcome or explicit generated-copy acceptance failure."
+    },
+    {
+      "at": "2026-10-15T17:42:53.789730+00:00",
+      "client": "published Bex0.3.2",
+      "label": "copy of copy refusal",
+      "document": {
+        "services": [
+          {
+            "name": "qa303-663e1d-consumer",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_COPY",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa303-663e1d-source",
+                  "envVarKey": "QA_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa303-663e1d-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_VALUE",
+                "generateValue": true
+              }
+            ]
+          },
+          {
+            "name": "qa303-663e1d-third",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_AGAIN",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa303-663e1d-consumer",
+                  "envVarKey": "QA_COPY"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep303-input.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; input removed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep303-input.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.401,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa303-663e1d-consumer\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on service \\\"qa303-663e1d-source\\\", which has no such plainly-defined variable\",\n      \"line\": 12,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa303-663e1d-consumer\": envVars[\"QA_COPY\"]: fromService.envVarKey references env \"QA_VALUE\" on service \"qa303-663e1d-source\", which has no such plainly-defined variable",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true,
+      "qualified_pass": null,
+      "qualification": "Earlier generated-source refusal masks the requested later refusal; boolean match is not that mechanism acceptance."
+    },
+    {
+      "at": "2026-10-15T17:42:54.927589+00:00",
+      "client": "published Bex0.3.2",
+      "label": "consumer duplicate refusal",
+      "document": {
+        "services": [
+          {
+            "name": "qa303-663e1d-consumer",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_COPY",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa303-663e1d-source",
+                  "envVarKey": "QA_VALUE"
+                }
+              },
+              {
+                "key": "QA_COPY",
+                "value": "QA_SHADOW_663e1d"
+              }
+            ]
+          },
+          {
+            "name": "qa303-663e1d-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_VALUE",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep303-input.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; input removed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep303-input.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.68,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa303-663e1d-consumer\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on service \\\"qa303-663e1d-source\\\", which has no such plainly-defined variable\",\n      \"line\": 12,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa303-663e1d-consumer\": envVars[\"QA_COPY\"]: fromService.envVarKey references env \"QA_VALUE\" on service \"qa303-663e1d-source\", which has no such plainly-defined variable",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true,
+      "qualified_pass": null,
+      "qualification": "Earlier generated-source refusal masks the requested later refusal; boolean match is not that mechanism acceptance."
+    },
+    {
+      "at": "2026-10-15T17:42:56.335058+00:00",
+      "client": "published Bex0.3.2",
+      "label": "unknown source key refusal",
+      "document": {
+        "services": [
+          {
+            "name": "qa303-663e1d-consumer",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_COPY",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa303-663e1d-source",
+                  "envVarKey": "QA_MISSING"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa303-663e1d-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_VALUE",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep303-input.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; input removed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep303-input.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.431,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa303-663e1d-consumer\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_MISSING\\\" on service \\\"qa303-663e1d-source\\\", which has no such plainly-defined variable\",\n      \"line\": 12,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa303-663e1d-consumer\": envVars[\"QA_COPY\"]: fromService.envVarKey references env \"QA_MISSING\" on service \"qa303-663e1d-source\", which has no such plainly-defined variable",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true,
+      "qualified_pass": true,
+      "qualification": "Literal/negative control outcome or explicit generated-copy acceptance failure."
+    },
+    {
+      "at": "2026-10-15T17:42:57.495073+00:00",
+      "client": "unmodified Render2.27",
+      "label": "generated consumer first",
+      "document": {
+        "services": [
+          {
+            "name": "qa303-663e1d-consumer",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_COPY",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa303-663e1d-source",
+                  "envVarKey": "QA_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa303-663e1d-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_VALUE",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "command": [
+        "unmodified Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep303-input.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; input removed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep303-input.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.356,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa303-663e1d-consumer\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on service \\\"qa303-663e1d-source\\\", which has no such plainly-defined variable\",\n      \"line\": 12,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa303-663e1d-consumer\": envVars[\"QA_COPY\"]: fromService.envVarKey references env \"QA_VALUE\" on service \"qa303-663e1d-source\", which has no such plainly-defined variable",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": false,
+      "qualified_pass": false,
+      "qualification": "Literal/negative control outcome or explicit generated-copy acceptance failure."
+    },
+    {
+      "at": "2026-10-15T17:42:58.591945+00:00",
+      "client": "unmodified Render2.27",
+      "label": "generated source first",
+      "document": {
+        "services": [
+          {
+            "name": "qa303-663e1d-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_VALUE",
+                "generateValue": true
+              }
+            ]
+          },
+          {
+            "name": "qa303-663e1d-consumer",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_COPY",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa303-663e1d-source",
+                  "envVarKey": "QA_VALUE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "command": [
+        "unmodified Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep303-input.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; input removed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep303-input.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.679,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa303-663e1d-consumer\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on service \\\"qa303-663e1d-source\\\", which has no such plainly-defined variable\",\n      \"line\": 27,\n      \"path\": \"services[1].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa303-663e1d-consumer\": envVars[\"QA_COPY\"]: fromService.envVarKey references env \"QA_VALUE\" on service \"qa303-663e1d-source\", which has no such plainly-defined variable",
+            "line": 27,
+            "path": "services[1].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": false,
+      "qualified_pass": false,
+      "qualification": "Literal/negative control outcome or explicit generated-copy acceptance failure."
+    },
+    {
+      "at": "2026-10-15T17:43:00.003889+00:00",
+      "client": "unmodified Render2.27",
+      "label": "literal copy control",
+      "document": {
+        "services": [
+          {
+            "name": "qa303-663e1d-consumer",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_COPY",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa303-663e1d-source",
+                  "envVarKey": "QA_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa303-663e1d-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_VALUE",
+                "value": "QA_LITERAL_663e1d"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "command": [
+        "unmodified Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep303-input.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; input removed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep303-input.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.487,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa303-663e1d-consumer\",\n      \"qa303-663e1d-source\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa303-663e1d-consumer",
+            "qa303-663e1d-source"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "acceptance_pass": true,
+      "qualified_pass": true,
+      "qualification": "Literal/negative control outcome or explicit generated-copy acceptance failure."
+    },
+    {
+      "at": "2026-10-15T17:43:01.223289+00:00",
+      "client": "unmodified Render2.27",
+      "label": "literal masks generated key",
+      "document": {
+        "services": [
+          {
+            "name": "qa303-663e1d-consumer",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_COPY",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa303-663e1d-source",
+                  "envVarKey": "QA_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa303-663e1d-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_VALUE",
+                "generateValue": true
+              },
+              {
+                "key": "QA_VALUE",
+                "value": "QA_LITERAL_663e1d"
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": true,
+      "command": [
+        "unmodified Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep303-input.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; input removed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep303-input.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.452,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa303-663e1d-consumer\",\n      \"qa303-663e1d-source\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa303-663e1d-consumer",
+            "qa303-663e1d-source"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "acceptance_pass": true,
+      "qualified_pass": true,
+      "qualification": "Literal/negative control outcome or explicit generated-copy acceptance failure."
+    },
+    {
+      "at": "2026-10-15T17:43:02.410692+00:00",
+      "client": "unmodified Render2.27",
+      "label": "unanswered prompt refusal",
+      "document": {
+        "services": [
+          {
+            "name": "qa303-663e1d-consumer",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_COPY",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa303-663e1d-source",
+                  "envVarKey": "QA_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa303-663e1d-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_VALUE",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "command": [
+        "unmodified Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep303-input.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; input removed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep303-input.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.392,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa303-663e1d-consumer\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on service \\\"qa303-663e1d-source\\\", which has no such plainly-defined variable\",\n      \"line\": 12,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa303-663e1d-consumer\": envVars[\"QA_COPY\"]: fromService.envVarKey references env \"QA_VALUE\" on service \"qa303-663e1d-source\", which has no such plainly-defined variable",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true,
+      "qualified_pass": true,
+      "qualification": "Literal/negative control outcome or explicit generated-copy acceptance failure."
+    },
+    {
+      "at": "2026-10-15T17:43:03.531901+00:00",
+      "client": "unmodified Render2.27",
+      "label": "copy of copy refusal",
+      "document": {
+        "services": [
+          {
+            "name": "qa303-663e1d-consumer",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_COPY",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa303-663e1d-source",
+                  "envVarKey": "QA_VALUE"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa303-663e1d-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_VALUE",
+                "generateValue": true
+              }
+            ]
+          },
+          {
+            "name": "qa303-663e1d-third",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_AGAIN",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa303-663e1d-consumer",
+                  "envVarKey": "QA_COPY"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "command": [
+        "unmodified Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep303-input.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; input removed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep303-input.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.348,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa303-663e1d-consumer\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on service \\\"qa303-663e1d-source\\\", which has no such plainly-defined variable\",\n      \"line\": 12,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa303-663e1d-consumer\": envVars[\"QA_COPY\"]: fromService.envVarKey references env \"QA_VALUE\" on service \"qa303-663e1d-source\", which has no such plainly-defined variable",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true,
+      "qualified_pass": null,
+      "qualification": "Earlier generated-source refusal masks the requested later refusal; boolean match is not that mechanism acceptance."
+    },
+    {
+      "at": "2026-10-15T17:43:04.606739+00:00",
+      "client": "unmodified Render2.27",
+      "label": "consumer duplicate refusal",
+      "document": {
+        "services": [
+          {
+            "name": "qa303-663e1d-consumer",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_COPY",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa303-663e1d-source",
+                  "envVarKey": "QA_VALUE"
+                }
+              },
+              {
+                "key": "QA_COPY",
+                "value": "QA_SHADOW_663e1d"
+              }
+            ]
+          },
+          {
+            "name": "qa303-663e1d-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_VALUE",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "command": [
+        "unmodified Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep303-input.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; input removed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep303-input.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.352,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa303-663e1d-consumer\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_VALUE\\\" on service \\\"qa303-663e1d-source\\\", which has no such plainly-defined variable\",\n      \"line\": 12,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa303-663e1d-consumer\": envVars[\"QA_COPY\"]: fromService.envVarKey references env \"QA_VALUE\" on service \"qa303-663e1d-source\", which has no such plainly-defined variable",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true,
+      "qualified_pass": null,
+      "qualification": "Earlier generated-source refusal masks the requested later refusal; boolean match is not that mechanism acceptance."
+    },
+    {
+      "at": "2026-10-15T17:43:05.685886+00:00",
+      "client": "unmodified Render2.27",
+      "label": "unknown source key refusal",
+      "document": {
+        "services": [
+          {
+            "name": "qa303-663e1d-consumer",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_COPY",
+                "fromService": {
+                  "type": "web",
+                  "name": "qa303-663e1d-source",
+                  "envVarKey": "QA_MISSING"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa303-663e1d-source",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_VALUE",
+                "generateValue": true
+              }
+            ]
+          }
+        ]
+      },
+      "expected_valid": false,
+      "command": [
+        "unmodified Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep303-input.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; input removed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep303-input.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.37,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa303-663e1d-consumer\\\": envVars[\\\"QA_COPY\\\"]: fromService.envVarKey references env \\\"QA_MISSING\\\" on service \\\"qa303-663e1d-source\\\", which has no such plainly-defined variable\",\n      \"line\": 12,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa303-663e1d-consumer\": envVars[\"QA_COPY\"]: fromService.envVarKey references env \"QA_MISSING\" on service \"qa303-663e1d-source\", which has no such plainly-defined variable",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true,
+      "qualified_pass": true,
+      "qualification": "Literal/negative control outcome or explicit generated-copy acceptance failure."
+    }
+  ],
+  "copied_render_config_removed": true,
+  "input_removed": true,
+  "postcheck": {
+    "at": "2026-10-15T17:43:39.290449+00:00",
+    "inventory": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.708,
+      "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T17:43:04Z\",\n        \"nextRunAt\": \"2026-10-15T17:44:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T17:43:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T17:43:06Z\",\n        \"nextRunAt\": \"2026-10-15T17:44:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T17:43:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T17:43:04Z\",\n        \"nextRunAt\": \"2026-10-15T17:44:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T17:43:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T10:17:00Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T12:22:37Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T06:54:00Z\"\n    }\n  }\n]",
+      "stderr": ""
+    },
+    "authored_service_names_absent": true,
+    "baseline_preserved": true,
+    "quota": {
+      "at": "2026-10-15T17:43:39.282866+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.333,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4b0a0951dcfc654-PDX"
+      },
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    }
+  }
+}

@@ -1,0 +1,57 @@
+package main
+
+import (
+ "crypto/tls"
+ "encoding/json"
+ "io"
+ "net/http"
+ "net/http/httptrace"
+ "net/url"
+ "os"
+ "strings"
+ "time"
+)
+
+type record struct {
+ Case string `json:"case"`
+ Method string `json:"method"`
+ Path string `json:"path"`
+ URL string `json:"url"`
+ RequestedHost string `json:"requestedHost"`
+ SentHost string `json:"sentHost"`
+ Protocol string `json:"protocol"`
+ HTTP int `json:"HTTP"`
+ Headers map[string]string `json:"headers"`
+ Body string `json:"body"`
+ ContentLength int64 `json:"contentLength"`
+ Error string `json:"error"`
+}
+
+func main(){
+ if len(os.Args)!=2{panic("one exact-owned public URL required")}
+ base,err:=url.Parse(os.Args[1]);if err!=nil{panic(err)}
+ if base.Scheme!="https"||!strings.HasSuffix(strings.ToLower(base.Hostname()),".onbex.co")||base.User!=nil||base.Port()!=""{panic("unexpected public fixture URL")}
+ transport:=&http.Transport{ForceAttemptHTTP2:false,TLSNextProto:map[string]func(string,*tls.Conn)http.RoundTripper{}}
+ defer transport.CloseIdleConnections()
+ client:=&http.Client{Transport:transport,Timeout:12*time.Second,CheckRedirect:func(_ *http.Request,_ []*http.Request)error{return http.ErrUseLastResponse}}
+ host:=base.Hostname();mixed:=[]byte(host)
+ for i,b:=range mixed{if i%2==0&&b>='a'&&b<='z'{mixed[i]=b-'a'+'A'}}
+ results:=[]record{}
+ for _,v:=range []struct{name,host string}{{"lower",strings.ToLower(host)},{"upper",strings.ToUpper(host)},{"mixed",string(mixed)}}{
+  for _,path:=range []string{"/","/friendly"}{for _,method:=range []string{"GET","HEAD"}{
+   u:=*base;u.Host=v.host;u.Path=path;u.RawQuery="";u.Fragment=""
+   row:=record{Case:v.name,Method:method,Path:path,URL:u.String(),RequestedHost:v.host,Headers:map[string]string{}}
+   req,err:=http.NewRequest(method,u.String(),nil);if err!=nil{panic(err)}
+   trace:=&httptrace.ClientTrace{WroteHeaderField:func(key string,values []string){if strings.EqualFold(key,"Host"){row.SentHost=strings.Join(values,",")}}}
+   req=req.WithContext(httptrace.WithClientTrace(req.Context(),trace))
+   response,err:=client.Do(req)
+   if err!=nil{row.Error=err.Error()}else{
+    row.HTTP=response.StatusCode;row.Protocol=response.Proto;row.ContentLength=response.ContentLength
+    for _,key:=range []string{"Content-Type","Content-Length","Cache-Control","Retry-After","X-QA308"}{if value:=response.Header.Get(key);value!=""{row.Headers[key]=value}}
+    body,readErr:=io.ReadAll(io.LimitReader(response.Body,16384));response.Body.Close();row.Body=string(body);if readErr!=nil{row.Error=readErr.Error()}
+   }
+   results=append(results,row)
+  }}
+ }
+ if err:=json.NewEncoder(os.Stdout).Encode(results);err!=nil{panic(err)}
+}

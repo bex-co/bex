@@ -1,0 +1,13 @@
+{
+  "actual_open_blocked_milestone_READMEs": 74,
+  "Poetry_matching_milestones": [],
+  "whole_board_matches": [],
+  "targeted_POETRY_VERSION_history": [],
+  "related": [
+    "w8/m71 optional Bun companion",
+    "w8/done/m51 primary Python version selection",
+    "w8/done/m61 PATH and command semantics",
+    "w8/done/052 accurate command failure reporting"
+  ],
+  "distinction": "Poetry is an automatically supplied Python package manager with a separate version override; coordinate native assembly/inventory with m71."
+}

@@ -1,0 +1,21 @@
+# Static hostname case and resume handoff — sweep308
+
+[Complete native commands, API-only lifecycle mutations, public HTTP and cleanup receipts](journey-results.json) · [finite guarded journey driver](journey-driver.py.txt) · [case-preserving HTTP client](hostcase-client.go.txt) · [focused source test events](source-tests.json).
+
+Published Bex0.3.2/a6350da0 and unchanged Render2.27/a764810a7682 each create one fresh Free static site through the actual native command, using public expressjs/serve-static/master, publish directory public and Auto Deploy off. The build writes unique root and version.txt markers. Initial deployment, exact public marker and native history controls pass. Creation mutation wire is not intercepted: full argv and native results are retained. API-only GraphQL configuration adds a /friendly rewrite to /version.txt and an X-QA308 header; positive controls verify both. The pinned CLI exposes no native suspend/resume command, so those subsequent lifecycle writes are explicitly API-only, not native CLI coverage.
+
+## Hostname case: existing w4/309 still reproduces
+
+Across both owned fixtures, 24 ordinary certificate-verified public HTTPS requests cover lowercase, uppercase and mixed-case URL hostnames, root and rewrite paths, and GET/HEAD. The independent Go client records only the actual Host field through httptrace.WroteHeaderField: every requested spelling is preserved on the wire and every response uses HTTP/1.1. No Host override, TLS bypass, authentication or cookie is sent. All eight lowercase controls pass exact body/header or HEAD content length. All sixteen upper/mixed-case requests return404; every failed GET has complete body `no static site for host\n`. HEAD uses the Go HTTP parser's empty Body and ContentLength; no independent raw-wire body claim is made.
+
+This is additional live evidence for [w4/309](../../../w4/blocked/309.md), not a new issue or a claim that its implementation regressed. Source main fc4ff2b66 includes906d439b3. TestHostLookupIgnoresLetterCase passes locally. The serving platform revision is unobserved, so no deployment-cause assertion is made. This pass does not recertify the original browser, custom-alias, explicit-port, unknown-host or case-distinct asset-path acceptance.
+
+## Resume: existing w4/307 remains unaccepted live
+
+Each site completes two API-only suspend/resume cycles. Before every resume, the API reports suspended and the public root returns the settled suspended503. The driver waits at least12seconds from that observation to allow the resolver to observe suspension. Resume returns202, followed by14 bounded alternating root/rewrite samples with accompanying own-service API reads, then three exact content/header recovery reads and native deployment history. Across four cycles, the56 timeline samples classify as {"ready_exact": 54, "unknown_host_404": 2}. There are 2 observed unknown-host404 responses; these are sample counts, not an exact outage duration. Temporary503 samples: 0. No unsampled handoff behavior is inferred from cycles whose first sample already returns200.
+
+All four cycles recover the original marker bytes, rewrite and custom header without another deployment. Both original single-deploy histories remain unchanged. The observed404 retains [w4/307](../../../w4/blocked/307.md)'s existing live gate; no duplicate issue or full acceptance is recorded. Main contains538058566, and the focused TestResumeBeforeRefreshAnswersRetryable503, TestUnavailableHEADOverHTTP and TestAbsentHostsStayNotFound source checks pass. The four named source checks across the two focused invocations have no failures or skips; these are not a full operator suite, deployed-artifact identification, browser lifecycle replay or failed-resolver drill. No product implementation was changed by this sweep.
+
+## Cleanup
+
+Own parents srv-db8i2odeelgc73d2i9eg and srv-db8i3c3h673c73bis1qg, each with its one enumerated deploy child, are fully cleaned by native delete0, API404, native list absence and former public URL404. Immutable baseline six remain; final service quota is used6/terminating0/limit25. No environment group, Blueprint or project is created. Copied Render configs and per-request capture files are removed. Only this continuing run's private isolated login and ownership ledger remain for the next sweep.

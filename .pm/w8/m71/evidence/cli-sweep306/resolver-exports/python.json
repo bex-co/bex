@@ -1,0 +1,12 @@
+{
+  "runtime": "python",
+  "requested_bun": "1.3.4",
+  "primary_choice": {
+    "Label": "Python",
+    "Line": "3.13",
+    "Image": "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4",
+    "Source": ""
+  },
+  "dockerfile_unchanged": true,
+  "has_bun_setup_text": false
+}

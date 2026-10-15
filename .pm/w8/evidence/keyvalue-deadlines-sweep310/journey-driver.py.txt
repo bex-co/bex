@@ -1,0 +1,162 @@
+from pathlib import Path
+import datetime, json, os, secrets, shlex, shutil, subprocess, sys, time, urllib.parse
+
+os.umask(0o077)
+P = Path(__file__).resolve().parent
+ROOT = Path('/Volumes/nvme4tbfish/projects/bex8')
+CP = ROOT / '.playwright-mcp/cli-qa-w8-checkpoint.json'
+c = json.loads(CP.read_text())
+assert c.get('sync310_result') == 0 and not c.get('active_sync_stash')
+mode, client = sys.argv[1:3]
+assert client in ('bex', 'render')
+WS = 'tea-daif693dqjvc73e7as3g'
+BASE = {v if isinstance(v, str) else v.get('service', v)['id'] for v in c['baseline']['services']}
+
+import yaml
+ws=WS
+
+def now():
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+def save():
+    c['last_updated'] = now()
+    temporary = CP.with_name('.'+CP.name+'.qa310.tmp')
+    temporary.write_text(json.dumps(c, indent=2, ensure_ascii=False))
+    temporary.chmod(0o600)
+    temporary.replace(CP)
+
+def cli(args, bound=45):
+    cfg = P / 'render-config/cli.yaml'
+    try:
+        if client == 'render':
+            assert not cfg.exists()
+            shutil.copyfile(P / 'config/cli.yaml', cfg)
+            cfg.chmod(0o600)
+        runner = P / ('run-render.py' if client == 'render' else 'run.py')
+        r = json.loads(subprocess.check_output(['python3', str(runner), *([] if client=='render' else ['--release']), '--bound=' + str(bound), *args], text=True, timeout=bound + 15))
+        r['native_exit'] = None if r['exit'] == 124 else r['exit']
+        return r
+    finally:
+        if client == 'render':
+            cfg.unlink(missing_ok=True)
+
+def inventory():
+    r = cli(['services', '--confirm', '-o', 'json'])
+    assert r['native_exit'] == 0
+    rows = [v.get('service', v) for v in json.loads(r['stdout']) or []]
+    assert BASE <= {v['id'] for v in rows}
+    return r, rows
+
+def api(method,path,body=None):
+ cfg=yaml.safe_load((P/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token;ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n';f=P/'sweep310-request.json';assert not f.exists();args=['curl','--disable','-sS','--max-time','30','--config','-','-X',method,'-H','Accept: application/json, text/event-stream','-H','MCP-Protocol-Version: 2025-03-26']
+ if body is not None:f.write_text(json.dumps(body));args+=['-H','Content-Type: application/json','--data-binary','@'+str(f)]
+ start=time.monotonic()
+ try:r=subprocess.run([*args,'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=36)
+ finally:f.unlink(missing_ok=True)
+ raw,_,status=r.stdout.rpartition('\n');out={'at':now(),'API_only':True,'request':{'method':method,'path':path,'body':body,'workspace':ws,'user_agent':ua,'authorization':'REDACTED'},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'response':raw,'stderr':r.stderr};assert token not in json.dumps(out);return out
+
+def decode(r):
+ text=r['response']
+ if not text.lstrip().startswith(('{','[')):
+  texts=[s[5:].strip() for s in text.splitlines() if s.startswith('data:')];assert len(texts)==1;text=texts[0]
+ return json.loads(text)
+
+import socket, ssl
+CREDS=P/'sweep310-connection.json'
+def value(r):
+ v=json.loads(r['stdout']);v=v.get('data',v);return v.get('keyValue',v)
+def kvinventory():
+ r=cli(['keyvalues','list','--confirm','-o','json']);assert r['native_exit']==0;v=json.loads(r['stdout']);v=v.get('data',v) if isinstance(v,dict) else v;return r,[z.get('keyValue',z) for z in (v or [])]
+def detail():
+ r=api('GET','/v1/key-value/'+x['id']);assert r['status']=='200';v=decode(r);assert v['id']==x['id'] and (v.get('ownerId') or v.get('owner',{}).get('id'))==WS and v['plan']=='free';return r,v
+def credential_refresh():
+ d,v=detail();assert v['status']=='available' and v['public'];r=api('GET','/v1/key-value/'+x['id']+'/connection-info');assert r['status']=='200';data=decode(r);u=urllib.parse.urlsplit(data['externalConnectionString']);assert u.scheme=='rediss' and u.hostname==x['id']+'.kv.bex.co' and u.password and not u.query and not u.fragment
+ info={'id':x['id'],'workspace':WS,'host':u.hostname,'port':u.port or 6379,'username':urllib.parse.unquote(u.username or 'default'),'password':urllib.parse.unquote(u.password)};assert info['password'] not in CP.read_text();CREDS.write_text(json.dumps(info));CREDS.chmod(0o600);receipt={'at':now(),'API_only':True,'method':'GET','path':'/v1/key-value/'+x['id']+'/connection-info','status':r['status'],'credentials':'all three returned connection-string/cliCommand fields REDACTED before ledger','owned_endpoint_matched':True,'TLS_verified':True};x.setdefault('credential_receipts',[]).append(receipt);save();del data,u,info,r
+class RESPError(Exception):pass
+class Redis:
+ def __init__(self):
+  assert CREDS.exists() and CREDS.stat().st_mode&0o077==0;info=json.loads(CREDS.read_text());assert info['id']==x['id'] and info['workspace']==WS
+  raw=socket.create_connection((info['host'],info['port']),timeout=7)
+  try:self.s=ssl.create_default_context().wrap_socket(raw,server_hostname=info['host']);self.s.settimeout(7);self.f=self.s.makefile('rb');answer=self.command('AUTH',info['username'],info['password']);assert answer=='OK','Owned data-client authentication did not succeed'
+  except BaseException:raw.close();raise
+  del info
+ def close(self):self.f.close();self.s.close()
+ def read(self):
+  head=self.f.readline(65537);assert head.endswith(b'\r\n') and len(head)<65537,'Incomplete RESP reply';kind=head[:1];body=head[1:-2]
+  if kind==b'+':return body.decode('utf8')
+  if kind==b'-':raise RESPError('Data endpoint returned a command error')
+  if kind==b':':return int(body)
+  if kind==b'$':
+   size=int(body)
+   if size==-1:return None
+   assert 0<=size<=1048576;data=self.f.read(size);assert len(data)==size and self.f.read(2)==b'\r\n';return data.decode('utf8')
+  if kind==b'*':
+   size=int(body);assert -1<=size<=100;return None if size==-1 else [self.read() for _ in range(size)]
+  raise AssertionError('Unexpected RESP reply type')
+ def command(self,*args):
+  encoded=[str(v).encode('utf8') for v in args];body=b'*'+str(len(encoded)).encode()+b'\r\n'+b''.join(b'$'+str(len(v)).encode()+b'\r\n'+v+b'\r\n' for v in encoded);self.s.sendall(body);return self.read()
+def info_fields(conn,section,keys):
+ text=conn.command('INFO',section);values={}
+ for line in text.splitlines():
+  key,sep,value=line.partition(':')
+  if sep and key in keys:values[key]=value
+ return values
+def identity(conn):
+ return {'server':info_fields(conn,'server',{'run_id','redis_version','valkey_version'}),'persistence':info_fields(conn,'persistence',{'aof_enabled','loading'})}
+def selector():
+ if client=='bex':return x['id']
+ r,rows=kvinventory();matches=[v for v in rows if v['name']==x['name']];assert len(matches)==1 and matches[0]['id']==x['id'];x.setdefault('name_selector_proofs',[]).append({'at':now(),'result':r,'resolved_id':x['id']});save();return x['name']
+if mode=='create':
+ assert client=='bex' and not CREDS.exists() and not any(v.get('sweep')==310 for v in c['resources']);q=api('GET','/v1/owners/'+WS+'/limits');assert q['status']=='200';lim=decode(q)['keyValues'];assert lim['used']+lim['terminating']<lim['limit'];inv,rows=kvinventory();assert not rows;svc,services=inventory();nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-kvttl';args=['keyvalues','create','--name',name,'--plan','free','--region','frankfurt','--memory-policy','queue','--persistence-mode','journal_snapshot','--confirm','-o','json'];x={'sweep':310,'client':client,'workspace':WS,'type':'keyvalue','name':name,'nonce':nonce,'time':now(),'source_head':c['head'],'capacity':q,'pre_inventory':inv,'pre_service_inventory':svc,'pre_ids':[],'dependency_ids':[],'recorded_child_ids':[],'cycles':[],'create_command':[client,*args],'state':'native Free journal_snapshot Key Value create intent persisted','credential_cleanup_obligation':'remove exact own sweep310-connection.json after parent deletion'};c['resources'].append(x);save();r=cli(args);x['create_result']=r;x['state']='create returned; reconcile before retry';save();assert r['native_exit']==0;v=value(r);assert v['id'] not in x['pre_ids'] and (v.get('ownerId') or v.get('owner',{}).get('id'))==WS and v['name']==name and v['plan']=='free';x.update(id=v['id'],create_response=v,state='created: native/ID/workspace/Free ownership proved');save();print(json.dumps({'native_create_exit':0,'id':x['id'],'plan':v['plan']}),flush=True);raise SystemExit(0)
+x=next(v for v in c['resources'] if v.get('sweep')==310);sid=x['id'];v=x['create_response'];assert x['workspace']==WS and x['create_result']['native_exit']==0 and v['id']==sid and sid not in x['pre_ids'] and v['plan']=='free' and (v.get('ownerId') or v.get('owner',{}).get('id'))==WS and (mode=='reconcile' or not x['state'].startswith('deleted:'))
+if mode=='ready':
+ r=cli(['keyvalues','get',sid,'--confirm','-o','json']);assert r['native_exit']==0;v=value(r);d,raw=detail();ok=v['status']=='available' and raw['status']=='available';x.setdefault('readiness',[]).append({'at':now(),'client':client,'native':r,'detail':d,'pass':ok});x['ready']=ok;save();print(json.dumps({'client':client,'ready':ok,'status':v['status'],'public':raw['public'],'persistenceMode':raw.get('options',{}).get('persistenceMode')}),flush=True)
+elif mode=='publish':
+ assert x.get('ready') and 'publish_intent' not in x;x['publish_intent']={'at':now(),'API_only':True,'body':{'public':True}};save();x['publish_result']=api('PATCH','/v1/key-value/'+sid,{'public':True});save();assert x['publish_result']['status']=='200';print(json.dumps({'API_only_public_setting_HTTP':'200'}),flush=True)
+elif mode=='credentials':
+ assert 'publish_result' in x;credential_refresh();conn=Redis()
+ try:pong=conn.command('PING');metadata=identity(conn);assert pong=='PONG' and metadata['persistence']['aof_enabled']=='1';x.setdefault('initial_data_controls',[]).append({'at':now(),'client':'independent standard-library RESP2/TLS','PING':pong,'metadata':metadata});save();print(json.dumps({'independent_TLS_PING':pong,'AOF_enabled':True}),flush=True)
+ finally:conn.close()
+elif mode=='seed':
+ ordinal=int(sys.argv[3]);assert ordinal in (1,2) and len(x['cycles'])==ordinal-1 and (not x['cycles'] or x['cycles'][-1].get('verified')) and x.get('initial_data_controls');d,v=detail();assert v['status']=='available' and v.get('options',{}).get('persistenceMode')=='journal_snapshot';prefix='qa310:'+x['nonce']+':'+str(ordinal)+':';keys={k:prefix+k for k in ('permanent','expired','long','hash','list','counter')};marker='QA310_'+x['nonce']+'_'+str(ordinal)+'_雪☃\n';cycle={'ordinal':ordinal,'client':client,'keys':keys,'marker':marker,'seed_intent':{'at':now(),'client':'independent RESP2/TLS','short_TTL_s':45,'long_TTL_s':600},'seed_commands':[]};x['cycles'].append(cycle);save();conn=Redis()
+ try:
+  cycle['before_identity']=identity(conn)
+  commands=[('SET',keys['permanent'],marker),('SET',keys['expired'],marker,'EX',45),('SET',keys['long'],marker,'EX',600),('HSET',keys['hash'],'field 雪',marker),('RPUSH',keys['list'],'first value',marker),('INCR',keys['counter']),('INCRBY',keys['counter'],2)]
+  for args in commands:
+   response=conn.command(*args);cycle['seed_commands'].append({'args':list(args),'response':response});save()
+  assert [v['response'] for v in cycle['seed_commands']]==['OK','OK','OK',1,2,1,3];cycle['short_deadline_ms']=conn.command('PEXPIRETIME',keys['expired']);cycle['long_deadline_ms']=conn.command('PEXPIRETIME',keys['long']);cycle['initial_short_PTTL']=conn.command('PTTL',keys['expired']);assert cycle['initial_short_PTTL']>35000;cycle['seeded_at']=now();save();print(json.dumps({'client':client,'cycle':ordinal,'seed_commands':7,'initial_short_PTTL':cycle['initial_short_PTTL']}),flush=True)
+ finally:conn.close()
+elif mode=='preview':
+ cycle=x['cycles'][-1];assert cycle['client']==client and 'seeded_at' in cycle and 'preview' not in cycle;r=cli(['keyvalues','suspend',selector(),'-o','json']);cycle['preview']=r;save();assert r['native_exit']==0;d,v=detail();conn=Redis()
+ try:metadata=identity(conn);ok=v['status']=='available' and metadata['server']['run_id']==cycle['before_identity']['server']['run_id'];cycle['preview_control']={'at':now(),'detail':d,'identity':metadata,'pass':ok};save();print(json.dumps({'client':client,'cycle':cycle['ordinal'],'native_preview_exit':0,'same_running_process':ok}),flush=True)
+ finally:conn.close()
+elif mode=='suspend':
+ cycle=x['cycles'][-1];assert cycle['client']==client and cycle['preview_control']['pass'] and 'suspend_intent' not in cycle;target=selector();cycle['suspend_intent']={'at':now(),'native_selector':target};save();cycle['suspend_result']=cli(['keyvalues','suspend',target,'--confirm','-o','json']);save();assert cycle['suspend_result']['native_exit']==0;print(json.dumps({'client':client,'cycle':cycle['ordinal'],'native_suspend_exit':0}),flush=True)
+elif mode=='down':
+ cycle=x['cycles'][-1];assert 'suspend_result' in cycle and 'resume_result' not in cycle;d,v=detail();unreachable=False;err=None;conn=None
+ try:conn=Redis();pong=conn.command('PING');assert pong=='PONG'
+ except (OSError,RESPError,AssertionError) as e:unreachable=True;err=type(e).__name__
+ finally:
+  if conn is not None:conn.close()
+ ok=v['status']=='suspended' and unreachable;receipt={'at':now(),'detail':d,'data_endpoint_unreachable':unreachable,'exception_class_only':err,'pass':ok};cycle.setdefault('down_reads',[]).append(receipt)
+ if ok and not cycle.get('down_confirmed_at'):
+  cycle['down_confirmed_at']=now();age=(datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(cycle['seeded_at'])).total_seconds();cycle['seed_to_down_s']=round(age,3);cycle['expiry_during_suspension_qualified']=age<40
+ save();print(json.dumps({'cycle':cycle['ordinal'],'suspended_and_data_unreachable':ok,'status':v['status'],'seed_to_down_s':cycle.get('seed_to_down_s'),'short_expiry_during_suspend_qualified':cycle.get('expiry_during_suspension_qualified')}),flush=True)
+elif mode=='resume':
+ cycle=x['cycles'][-1];assert cycle['client']==client and cycle.get('down_confirmed_at') and 'resume_intent' not in cycle;held=(datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(cycle['down_confirmed_at'])).total_seconds();assert held>=50;target=selector();cycle['resume_intent']={'at':now(),'native_selector':target,'confirmed_down_hold_s':round(held,3)};save();cycle['resume_result']=cli(['keyvalues','resume',target,'--confirm','-o','json']);save();assert cycle['resume_result']['native_exit']==0;print(json.dumps({'client':client,'cycle':cycle['ordinal'],'native_resume_exit':0,'down_hold_s':round(held,3)}),flush=True)
+elif mode=='verify':
+ cycle=x['cycles'][-1];assert cycle['client']==client and 'resume_result' in cycle;d,v=detail();assert v['status']=='available';credential_refresh();conn=Redis()
+ try:
+  metadata=identity(conn);checks=[];receipts=[]
+  for old in x['cycles']:
+   k=old['keys'];m=old['marker'];commands=[(('GET',k['permanent']),m,'permanent'),(('PEXPIRETIME',k['permanent']),-1,'permanent-no-expiry'),(('GET',k['expired']),None,'expired-absent'),(('PEXPIRETIME',k['expired']),-2,'expired-deadline-absent'),(('GET',k['long']),m,'long-value'),(('PEXPIRETIME',k['long']),old['long_deadline_ms'],'long-absolute-deadline-preserved'),(('HGET',k['hash'],'field 雪'),m,'hash'),(('LRANGE',k['list'],0,-1),['first value',m],'list'),(('GET',k['counter']),'3','counter')]
+   for args,expected,label in commands:
+    actual=conn.command(*args);receipt={'seed_cycle':old['ordinal'],'check':label,'args':list(args),'expected':expected,'actual':actual,'pass':actual==expected};receipts.append(receipt);checks.append(receipt['pass'])
+   ttl=conn.command('PTTL',k['long']);receipt={'seed_cycle':old['ordinal'],'check':'long-TTL-positive','args':['PTTL',k['long']],'actual':ttl,'pass':isinstance(ttl,int) and ttl>0};receipts.append(receipt);checks.append(receipt['pass'])
+  process_changed=metadata['server']['run_id']!=cycle['before_identity']['server']['run_id'];ok=all(checks) and process_changed and metadata['persistence']['aof_enabled']=='1';cycle.setdefault('verification_reads',[]).append({'at':now(),'detail':d,'metadata':metadata,'data':receipts,'new_process':process_changed,'pass':ok});cycle['verified']=ok;save();print(json.dumps({'client':client,'cycle':cycle['ordinal'],'data_checks':len(checks),'data_passes':sum(checks),'new_process':process_changed,'all_pass':ok}),flush=True)
+ finally:conn.close()
+elif mode=='delete':
+ assert 'delete_intent' not in x;d,v=detail();assert not any(sid in z.get('dependency_ids',[]) and not z['state'].startswith('deleted:') for z in c['resources']);x['dependency_inventory']={'at':now(),'detail':d,'ledger_dependents':[],'read_replicas':'Key Value does not expose child replica creation in this contract'};x['delete_intent']={'at':now(),'native_id':sid};save();x['delete_result']=cli(['keyvalues','delete',sid,'--confirm','-o','json']);save();assert x['delete_result']['native_exit']==0;CREDS.unlink(missing_ok=True);x['credential_file_removed']=True;save();print(json.dumps({'native_delete_exit':0,'own_private_data_credentials_removed':True}),flush=True)
+elif mode=='reconcile':
+ assert 'delete_result' in x;d=api('GET','/v1/key-value/'+sid);inv,rows=kvinventory();svc,services=inventory();q=api('GET','/v1/owners/'+WS+'/limits');assert q['status']=='200';lim=decode(q)['keyValues'];done=d['status']=='404' and not rows and lim['used']==0 and lim['terminating']==0 and not CREDS.exists();x.setdefault('cleanup_receipts',[]).append({'at':now(),'detail':d,'inventory':inv,'services':svc,'quota':q,'baseline_preserved':True,'private_data_credentials_removed':not CREDS.exists(),'endpoint_teardown':'not directly tested after removal of exact credentials'});x['state']='deleted: native0/detail404/listempty/baseline6/KeyValue quota0 terminating0/credentials removed' if done else 'delete acknowledged: read-only convergence pending';save();print(json.dumps({'cleanup_complete':done,'detail':d['status'],'used':lim['used'],'terminating':lim['terminating']}),flush=True)
+else:raise ValueError(mode)

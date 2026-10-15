@@ -1,0 +1,9 @@
+{
+  "command": "GOWORK=off GOTOOLCHAIN=go1.26.8 QA307_OUTPUT=<owned-temp>/sweep307-resolver-exports go test -json -count=1 -overlay=<owned-temp>/sweep307-overlay.json ./internal/build -run ^(TestResolveNativeBuildRewritesTheBase|TestQA307PythonToolResolutionObservation)$",
+  "exit": 0,
+  "named_parent_subtest_passes": 4,
+  "top_level_tests": 2,
+  "source_HEAD": "e7ae49c171fc1a05776bb6779ec42f582ada3c70",
+  "diagnostic_not_fix_regression": true,
+  "full_operator_suite": false
+}

@@ -1,0 +1,1479 @@
+{
+  "sweep": 305,
+  "head": "562cbfd25a6a75c559d705efc3736432425e9c7d",
+  "nonce": "b6b1a2",
+  "scope": "actual native file validation only; no apply or hosted mutations",
+  "results": [
+    {
+      "at": "2026-10-15T18:03:06.374428+00:00",
+      "client": "installed Bex0.2.1",
+      "valid_expected": true,
+      "encoding": "UTF8-LF",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: free\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "73657276696365733a0a20202d206e616d653a2071613330352d6236623161322d656e636f64696e670a20202020747970653a207765620a2020202072756e74696d653a20696d6167650a20202020696d6167653a0a20202020202075726c3a206e67696e783a310a20202020706c616e3a20667265650a20202020656e76566172733a0a2020202020202d206b65793a2051415f4c4142454c0a202020202020202076616c75653a2022736e6f776d616e20e2988320616e6420666f7820f09fa68a220a",
+      "byte_count": 197,
+      "sha256": "5d4e11b64a34bc7232a85b8ee88b5a5d9d0cbf2779d576b51b0208249311ea41",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.983,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa305-b6b1a2-encoding\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa305-b6b1a2-encoding"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:08.072754+00:00",
+      "client": "installed Bex0.2.1",
+      "valid_expected": true,
+      "encoding": "UTF8-CRLF",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: free\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "73657276696365733a0d0a20202d206e616d653a2071613330352d6236623161322d656e636f64696e670d0a20202020747970653a207765620d0a2020202072756e74696d653a20696d6167650d0a20202020696d6167653a0d0a20202020202075726c3a206e67696e783a310d0a20202020706c616e3a20667265650d0a20202020656e76566172733a0d0a2020202020202d206b65793a2051415f4c4142454c0d0a202020202020202076616c75653a2022736e6f776d616e20e2988320616e6420666f7820f09fa68a220d0a",
+      "byte_count": 207,
+      "sha256": "73ea2ef1f6179206c983b5e7338b56705a6038c3c4248cf2c3476cb269c054b2",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.739,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa305-b6b1a2-encoding\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa305-b6b1a2-encoding"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:09.546842+00:00",
+      "client": "installed Bex0.2.1",
+      "valid_expected": true,
+      "encoding": "UTF8-BOM",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: free\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "efbbbf73657276696365733a0a20202d206e616d653a2071613330352d6236623161322d656e636f64696e670a20202020747970653a207765620a2020202072756e74696d653a20696d6167650a20202020696d6167653a0a20202020202075726c3a206e67696e783a310a20202020706c616e3a20667265650a20202020656e76566172733a0a2020202020202d206b65793a2051415f4c4142454c0a202020202020202076616c75653a2022736e6f776d616e20e2988320616e6420666f7820f09fa68a220a",
+      "byte_count": 200,
+      "sha256": "a084a3a30fb2ba4af791a0ece365b60cb455fcbe694351ff3e05a4fa43d29f8e",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.649,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa305-b6b1a2-encoding\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa305-b6b1a2-encoding"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:10.922559+00:00",
+      "client": "installed Bex0.2.1",
+      "valid_expected": true,
+      "encoding": "UTF16LE-BOM",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: free\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "fffe730065007200760069006300650073003a000a00200020002d0020006e0061006d0065003a002000710061003300300035002d006200360062003100610032002d0065006e0063006f00640069006e0067000a00200020002000200074007900700065003a0020007700650062000a002000200020002000720075006e00740069006d0065003a00200069006d006100670065000a00200020002000200069006d006100670065003a000a00200020002000200020002000750072006c003a0020006e00670069006e0078003a0031000a00200020002000200070006c0061006e003a00200066007200650065000a00200020002000200065006e00760056006100720073003a000a002000200020002000200020002d0020006b00650079003a002000510041005f004c004100420045004c000a0020002000200020002000200020002000760061006c00750065003a002000220073006e006f0077006d0061006e0020000326200061006e006400200066006f00780020003ed88add22000a00",
+      "byte_count": 388,
+      "sha256": "43a20b4e4024e75cb8f650c14d90a640814ef6e9bfc9efb48ec38cd173d8149e",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.716,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa305-b6b1a2-encoding\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa305-b6b1a2-encoding"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:12.359329+00:00",
+      "client": "installed Bex0.2.1",
+      "valid_expected": true,
+      "encoding": "UTF16BE-BOM",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: free\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "feff00730065007200760069006300650073003a000a00200020002d0020006e0061006d0065003a002000710061003300300035002d006200360062003100610032002d0065006e0063006f00640069006e0067000a00200020002000200074007900700065003a0020007700650062000a002000200020002000720075006e00740069006d0065003a00200069006d006100670065000a00200020002000200069006d006100670065003a000a00200020002000200020002000750072006c003a0020006e00670069006e0078003a0031000a00200020002000200070006c0061006e003a00200066007200650065000a00200020002000200065006e00760056006100720073003a000a002000200020002000200020002d0020006b00650079003a002000510041005f004c004100420045004c000a0020002000200020002000200020002000760061006c00750065003a002000220073006e006f0077006d0061006e0020260300200061006e006400200066006f00780020d83edd8a0022000a",
+      "byte_count": 388,
+      "sha256": "fe575573010005960d96365c92c82da0343c9e851cd0ea87f3fb278be3d56b38",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.688,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa305-b6b1a2-encoding\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa305-b6b1a2-encoding"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:13.776193+00:00",
+      "client": "installed Bex0.2.1",
+      "valid_expected": false,
+      "encoding": "UTF8-LF",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: qa-invalid-for-encoding\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "73657276696365733a0a20202d206e616d653a2071613330352d6236623161322d656e636f64696e670a20202020747970653a207765620a2020202072756e74696d653a20696d6167650a20202020696d6167653a0a20202020202075726c3a206e67696e783a310a20202020706c616e3a2071612d696e76616c69642d666f722d656e636f64696e670a20202020656e76566172733a0a2020202020202d206b65793a2051415f4c4142454c0a202020202020202076616c75653a2022736e6f776d616e20e2988320616e6420666f7820f09fa68a220a",
+      "byte_count": 216,
+      "sha256": "adf6533173b17aa156dde084425c60ab0cfcee6e33930f9cc51af26db2a50b36",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.663,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'\",\n      \"line\": 7,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'",
+            "line": 7,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:15.173952+00:00",
+      "client": "installed Bex0.2.1",
+      "valid_expected": false,
+      "encoding": "UTF8-CRLF",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: qa-invalid-for-encoding\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "73657276696365733a0d0a20202d206e616d653a2071613330352d6236623161322d656e636f64696e670d0a20202020747970653a207765620d0a2020202072756e74696d653a20696d6167650d0a20202020696d6167653a0d0a20202020202075726c3a206e67696e783a310d0a20202020706c616e3a2071612d696e76616c69642d666f722d656e636f64696e670d0a20202020656e76566172733a0d0a2020202020202d206b65793a2051415f4c4142454c0d0a202020202020202076616c75653a2022736e6f776d616e20e2988320616e6420666f7820f09fa68a220d0a",
+      "byte_count": 226,
+      "sha256": "813d02af5a019828f5bf1be184d18ef5d791604cb8c36b1f6b2ad79192c23438",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.246,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'\",\n      \"line\": 7,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'",
+            "line": 7,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:17.153267+00:00",
+      "client": "installed Bex0.2.1",
+      "valid_expected": false,
+      "encoding": "UTF8-BOM",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: qa-invalid-for-encoding\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "efbbbf73657276696365733a0a20202d206e616d653a2071613330352d6236623161322d656e636f64696e670a20202020747970653a207765620a2020202072756e74696d653a20696d6167650a20202020696d6167653a0a20202020202075726c3a206e67696e783a310a20202020706c616e3a2071612d696e76616c69642d666f722d656e636f64696e670a20202020656e76566172733a0a2020202020202d206b65793a2051415f4c4142454c0a202020202020202076616c75653a2022736e6f776d616e20e2988320616e6420666f7820f09fa68a220a",
+      "byte_count": 219,
+      "sha256": "d2cd934f6c7d1780154564e87e88d008165790e7da2401e74fd31ad51206a37f",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.582,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'\",\n      \"line\": 7,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'",
+            "line": 7,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:18.467773+00:00",
+      "client": "installed Bex0.2.1",
+      "valid_expected": false,
+      "encoding": "UTF16LE-BOM",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: qa-invalid-for-encoding\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "fffe730065007200760069006300650073003a000a00200020002d0020006e0061006d0065003a002000710061003300300035002d006200360062003100610032002d0065006e0063006f00640069006e0067000a00200020002000200074007900700065003a0020007700650062000a002000200020002000720075006e00740069006d0065003a00200069006d006100670065000a00200020002000200069006d006100670065003a000a00200020002000200020002000750072006c003a0020006e00670069006e0078003a0031000a00200020002000200070006c0061006e003a002000710061002d0069006e00760061006c00690064002d0066006f0072002d0065006e0063006f00640069006e0067000a00200020002000200065006e00760056006100720073003a000a002000200020002000200020002d0020006b00650079003a002000510041005f004c004100420045004c000a0020002000200020002000200020002000760061006c00750065003a002000220073006e006f0077006d0061006e0020000326200061006e006400200066006f00780020003ed88add22000a00",
+      "byte_count": 426,
+      "sha256": "31f2eb17cf8302fe1b8b08a59bbfde6f3a248cbb3eb4bfacc460b1684d760de8",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.577,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'\",\n      \"line\": 7,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'",
+            "line": 7,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:19.781888+00:00",
+      "client": "installed Bex0.2.1",
+      "valid_expected": false,
+      "encoding": "UTF16BE-BOM",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: qa-invalid-for-encoding\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "feff00730065007200760069006300650073003a000a00200020002d0020006e0061006d0065003a002000710061003300300035002d006200360062003100610032002d0065006e0063006f00640069006e0067000a00200020002000200074007900700065003a0020007700650062000a002000200020002000720075006e00740069006d0065003a00200069006d006100670065000a00200020002000200069006d006100670065003a000a00200020002000200020002000750072006c003a0020006e00670069006e0078003a0031000a00200020002000200070006c0061006e003a002000710061002d0069006e00760061006c00690064002d0066006f0072002d0065006e0063006f00640069006e0067000a00200020002000200065006e00760056006100720073003a000a002000200020002000200020002d0020006b00650079003a002000510041005f004c004100420045004c000a0020002000200020002000200020002000760061006c00750065003a002000220073006e006f0077006d0061006e0020260300200061006e006400200066006f00780020d83edd8a0022000a",
+      "byte_count": 426,
+      "sha256": "f9fdc2c7d25cb56218ead41802fe47b7d6786fe08e3b956b4f254869cb389551",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.668,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'\",\n      \"line\": 7,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'",
+            "line": 7,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:21.181156+00:00",
+      "client": "published Bex0.3.2",
+      "valid_expected": true,
+      "encoding": "UTF8-LF",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: free\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "73657276696365733a0a20202d206e616d653a2071613330352d6236623161322d656e636f64696e670a20202020747970653a207765620a2020202072756e74696d653a20696d6167650a20202020696d6167653a0a20202020202075726c3a206e67696e783a310a20202020706c616e3a20667265650a20202020656e76566172733a0a2020202020202d206b65793a2051415f4c4142454c0a202020202020202076616c75653a2022736e6f776d616e20e2988320616e6420666f7820f09fa68a220a",
+      "byte_count": 197,
+      "sha256": "5d4e11b64a34bc7232a85b8ee88b5a5d9d0cbf2779d576b51b0208249311ea41",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.777,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa305-b6b1a2-encoding\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa305-b6b1a2-encoding"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:22.698895+00:00",
+      "client": "published Bex0.3.2",
+      "valid_expected": true,
+      "encoding": "UTF8-CRLF",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: free\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "73657276696365733a0d0a20202d206e616d653a2071613330352d6236623161322d656e636f64696e670d0a20202020747970653a207765620d0a2020202072756e74696d653a20696d6167650d0a20202020696d6167653a0d0a20202020202075726c3a206e67696e783a310d0a20202020706c616e3a20667265650d0a20202020656e76566172733a0d0a2020202020202d206b65793a2051415f4c4142454c0d0a202020202020202076616c75653a2022736e6f776d616e20e2988320616e6420666f7820f09fa68a220d0a",
+      "byte_count": 207,
+      "sha256": "73ea2ef1f6179206c983b5e7338b56705a6038c3c4248cf2c3476cb269c054b2",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.274,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa305-b6b1a2-encoding\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa305-b6b1a2-encoding"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:24.706157+00:00",
+      "client": "published Bex0.3.2",
+      "valid_expected": true,
+      "encoding": "UTF8-BOM",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: free\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "efbbbf73657276696365733a0a20202d206e616d653a2071613330352d6236623161322d656e636f64696e670a20202020747970653a207765620a2020202072756e74696d653a20696d6167650a20202020696d6167653a0a20202020202075726c3a206e67696e783a310a20202020706c616e3a20667265650a20202020656e76566172733a0a2020202020202d206b65793a2051415f4c4142454c0a202020202020202076616c75653a2022736e6f776d616e20e2988320616e6420666f7820f09fa68a220a",
+      "byte_count": 200,
+      "sha256": "a084a3a30fb2ba4af791a0ece365b60cb455fcbe694351ff3e05a4fa43d29f8e",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.724,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa305-b6b1a2-encoding\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa305-b6b1a2-encoding"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:26.161122+00:00",
+      "client": "published Bex0.3.2",
+      "valid_expected": true,
+      "encoding": "UTF16LE-BOM",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: free\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "fffe730065007200760069006300650073003a000a00200020002d0020006e0061006d0065003a002000710061003300300035002d006200360062003100610032002d0065006e0063006f00640069006e0067000a00200020002000200074007900700065003a0020007700650062000a002000200020002000720075006e00740069006d0065003a00200069006d006100670065000a00200020002000200069006d006100670065003a000a00200020002000200020002000750072006c003a0020006e00670069006e0078003a0031000a00200020002000200070006c0061006e003a00200066007200650065000a00200020002000200065006e00760056006100720073003a000a002000200020002000200020002d0020006b00650079003a002000510041005f004c004100420045004c000a0020002000200020002000200020002000760061006c00750065003a002000220073006e006f0077006d0061006e0020000326200061006e006400200066006f00780020003ed88add22000a00",
+      "byte_count": 388,
+      "sha256": "43a20b4e4024e75cb8f650c14d90a640814ef6e9bfc9efb48ec38cd173d8149e",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.629,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa305-b6b1a2-encoding\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa305-b6b1a2-encoding"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:27.524256+00:00",
+      "client": "published Bex0.3.2",
+      "valid_expected": true,
+      "encoding": "UTF16BE-BOM",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: free\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "feff00730065007200760069006300650073003a000a00200020002d0020006e0061006d0065003a002000710061003300300035002d006200360062003100610032002d0065006e0063006f00640069006e0067000a00200020002000200074007900700065003a0020007700650062000a002000200020002000720075006e00740069006d0065003a00200069006d006100670065000a00200020002000200069006d006100670065003a000a00200020002000200020002000750072006c003a0020006e00670069006e0078003a0031000a00200020002000200070006c0061006e003a00200066007200650065000a00200020002000200065006e00760056006100720073003a000a002000200020002000200020002d0020006b00650079003a002000510041005f004c004100420045004c000a0020002000200020002000200020002000760061006c00750065003a002000220073006e006f0077006d0061006e0020260300200061006e006400200066006f00780020d83edd8a0022000a",
+      "byte_count": 388,
+      "sha256": "fe575573010005960d96365c92c82da0343c9e851cd0ea87f3fb278be3d56b38",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.972,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa305-b6b1a2-encoding\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa305-b6b1a2-encoding"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:29.227485+00:00",
+      "client": "published Bex0.3.2",
+      "valid_expected": false,
+      "encoding": "UTF8-LF",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: qa-invalid-for-encoding\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "73657276696365733a0a20202d206e616d653a2071613330352d6236623161322d656e636f64696e670a20202020747970653a207765620a2020202072756e74696d653a20696d6167650a20202020696d6167653a0a20202020202075726c3a206e67696e783a310a20202020706c616e3a2071612d696e76616c69642d666f722d656e636f64696e670a20202020656e76566172733a0a2020202020202d206b65793a2051415f4c4142454c0a202020202020202076616c75653a2022736e6f776d616e20e2988320616e6420666f7820f09fa68a220a",
+      "byte_count": 216,
+      "sha256": "adf6533173b17aa156dde084425c60ab0cfcee6e33930f9cc51af26db2a50b36",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.753,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'\",\n      \"line\": 7,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'",
+            "line": 7,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:30.717994+00:00",
+      "client": "published Bex0.3.2",
+      "valid_expected": false,
+      "encoding": "UTF8-CRLF",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: qa-invalid-for-encoding\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "73657276696365733a0d0a20202d206e616d653a2071613330352d6236623161322d656e636f64696e670d0a20202020747970653a207765620d0a2020202072756e74696d653a20696d6167650d0a20202020696d6167653a0d0a20202020202075726c3a206e67696e783a310d0a20202020706c616e3a2071612d696e76616c69642d666f722d656e636f64696e670d0a20202020656e76566172733a0d0a2020202020202d206b65793a2051415f4c4142454c0d0a202020202020202076616c75653a2022736e6f776d616e20e2988320616e6420666f7820f09fa68a220d0a",
+      "byte_count": 226,
+      "sha256": "813d02af5a019828f5bf1be184d18ef5d791604cb8c36b1f6b2ad79192c23438",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.777,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'\",\n      \"line\": 7,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'",
+            "line": 7,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:32.221073+00:00",
+      "client": "published Bex0.3.2",
+      "valid_expected": false,
+      "encoding": "UTF8-BOM",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: qa-invalid-for-encoding\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "efbbbf73657276696365733a0a20202d206e616d653a2071613330352d6236623161322d656e636f64696e670a20202020747970653a207765620a2020202072756e74696d653a20696d6167650a20202020696d6167653a0a20202020202075726c3a206e67696e783a310a20202020706c616e3a2071612d696e76616c69642d666f722d656e636f64696e670a20202020656e76566172733a0a2020202020202d206b65793a2051415f4c4142454c0a202020202020202076616c75653a2022736e6f776d616e20e2988320616e6420666f7820f09fa68a220a",
+      "byte_count": 219,
+      "sha256": "d2cd934f6c7d1780154564e87e88d008165790e7da2401e74fd31ad51206a37f",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.652,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'\",\n      \"line\": 7,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'",
+            "line": 7,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:33.606123+00:00",
+      "client": "published Bex0.3.2",
+      "valid_expected": false,
+      "encoding": "UTF16LE-BOM",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: qa-invalid-for-encoding\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "fffe730065007200760069006300650073003a000a00200020002d0020006e0061006d0065003a002000710061003300300035002d006200360062003100610032002d0065006e0063006f00640069006e0067000a00200020002000200074007900700065003a0020007700650062000a002000200020002000720075006e00740069006d0065003a00200069006d006100670065000a00200020002000200069006d006100670065003a000a00200020002000200020002000750072006c003a0020006e00670069006e0078003a0031000a00200020002000200070006c0061006e003a002000710061002d0069006e00760061006c00690064002d0066006f0072002d0065006e0063006f00640069006e0067000a00200020002000200065006e00760056006100720073003a000a002000200020002000200020002d0020006b00650079003a002000510041005f004c004100420045004c000a0020002000200020002000200020002000760061006c00750065003a002000220073006e006f0077006d0061006e0020000326200061006e006400200066006f00780020003ed88add22000a00",
+      "byte_count": 426,
+      "sha256": "31f2eb17cf8302fe1b8b08a59bbfde6f3a248cbb3eb4bfacc460b1684d760de8",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.62,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'\",\n      \"line\": 7,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'",
+            "line": 7,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:34.962689+00:00",
+      "client": "published Bex0.3.2",
+      "valid_expected": false,
+      "encoding": "UTF16BE-BOM",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: qa-invalid-for-encoding\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "feff00730065007200760069006300650073003a000a00200020002d0020006e0061006d0065003a002000710061003300300035002d006200360062003100610032002d0065006e0063006f00640069006e0067000a00200020002000200074007900700065003a0020007700650062000a002000200020002000720075006e00740069006d0065003a00200069006d006100670065000a00200020002000200069006d006100670065003a000a00200020002000200020002000750072006c003a0020006e00670069006e0078003a0031000a00200020002000200070006c0061006e003a002000710061002d0069006e00760061006c00690064002d0066006f0072002d0065006e0063006f00640069006e0067000a00200020002000200065006e00760056006100720073003a000a002000200020002000200020002d0020006b00650079003a002000510041005f004c004100420045004c000a0020002000200020002000200020002000760061006c00750065003a002000220073006e006f0077006d0061006e0020260300200061006e006400200066006f00780020d83edd8a0022000a",
+      "byte_count": 426,
+      "sha256": "f9fdc2c7d25cb56218ead41802fe47b7d6786fe08e3b956b4f254869cb389551",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.566,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'\",\n      \"line\": 7,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'",
+            "line": 7,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:36.251714+00:00",
+      "client": "unmodified Render2.27",
+      "valid_expected": true,
+      "encoding": "UTF8-LF",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: free\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "73657276696365733a0a20202d206e616d653a2071613330352d6236623161322d656e636f64696e670a20202020747970653a207765620a2020202072756e74696d653a20696d6167650a20202020696d6167653a0a20202020202075726c3a206e67696e783a310a20202020706c616e3a20667265650a20202020656e76566172733a0a2020202020202d206b65793a2051415f4c4142454c0a202020202020202076616c75653a2022736e6f776d616e20e2988320616e6420666f7820f09fa68a220a",
+      "byte_count": 197,
+      "sha256": "5d4e11b64a34bc7232a85b8ee88b5a5d9d0cbf2779d576b51b0208249311ea41",
+      "command": [
+        "unmodified Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.694,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa305-b6b1a2-encoding\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa305-b6b1a2-encoding"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:37.669197+00:00",
+      "client": "unmodified Render2.27",
+      "valid_expected": true,
+      "encoding": "UTF8-CRLF",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: free\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "73657276696365733a0d0a20202d206e616d653a2071613330352d6236623161322d656e636f64696e670d0a20202020747970653a207765620d0a2020202072756e74696d653a20696d6167650d0a20202020696d6167653a0d0a20202020202075726c3a206e67696e783a310d0a20202020706c616e3a20667265650d0a20202020656e76566172733a0d0a2020202020202d206b65793a2051415f4c4142454c0d0a202020202020202076616c75653a2022736e6f776d616e20e2988320616e6420666f7820f09fa68a220d0a",
+      "byte_count": 207,
+      "sha256": "73ea2ef1f6179206c983b5e7338b56705a6038c3c4248cf2c3476cb269c054b2",
+      "command": [
+        "unmodified Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.684,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa305-b6b1a2-encoding\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa305-b6b1a2-encoding"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:39.083744+00:00",
+      "client": "unmodified Render2.27",
+      "valid_expected": true,
+      "encoding": "UTF8-BOM",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: free\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "efbbbf73657276696365733a0a20202d206e616d653a2071613330352d6236623161322d656e636f64696e670a20202020747970653a207765620a2020202072756e74696d653a20696d6167650a20202020696d6167653a0a20202020202075726c3a206e67696e783a310a20202020706c616e3a20667265650a20202020656e76566172733a0a2020202020202d206b65793a2051415f4c4142454c0a202020202020202076616c75653a2022736e6f776d616e20e2988320616e6420666f7820f09fa68a220a",
+      "byte_count": 200,
+      "sha256": "a084a3a30fb2ba4af791a0ece365b60cb455fcbe694351ff3e05a4fa43d29f8e",
+      "command": [
+        "unmodified Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.675,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa305-b6b1a2-encoding\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa305-b6b1a2-encoding"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:40.482218+00:00",
+      "client": "unmodified Render2.27",
+      "valid_expected": true,
+      "encoding": "UTF16LE-BOM",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: free\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "fffe730065007200760069006300650073003a000a00200020002d0020006e0061006d0065003a002000710061003300300035002d006200360062003100610032002d0065006e0063006f00640069006e0067000a00200020002000200074007900700065003a0020007700650062000a002000200020002000720075006e00740069006d0065003a00200069006d006100670065000a00200020002000200069006d006100670065003a000a00200020002000200020002000750072006c003a0020006e00670069006e0078003a0031000a00200020002000200070006c0061006e003a00200066007200650065000a00200020002000200065006e00760056006100720073003a000a002000200020002000200020002d0020006b00650079003a002000510041005f004c004100420045004c000a0020002000200020002000200020002000760061006c00750065003a002000220073006e006f0077006d0061006e0020000326200061006e006400200066006f00780020003ed88add22000a00",
+      "byte_count": 388,
+      "sha256": "43a20b4e4024e75cb8f650c14d90a640814ef6e9bfc9efb48ec38cd173d8149e",
+      "command": [
+        "unmodified Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.868,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa305-b6b1a2-encoding\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa305-b6b1a2-encoding"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:42.076309+00:00",
+      "client": "unmodified Render2.27",
+      "valid_expected": true,
+      "encoding": "UTF16BE-BOM",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: free\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "feff00730065007200760069006300650073003a000a00200020002d0020006e0061006d0065003a002000710061003300300035002d006200360062003100610032002d0065006e0063006f00640069006e0067000a00200020002000200074007900700065003a0020007700650062000a002000200020002000720075006e00740069006d0065003a00200069006d006100670065000a00200020002000200069006d006100670065003a000a00200020002000200020002000750072006c003a0020006e00670069006e0078003a0031000a00200020002000200070006c0061006e003a00200066007200650065000a00200020002000200065006e00760056006100720073003a000a002000200020002000200020002d0020006b00650079003a002000510041005f004c004100420045004c000a0020002000200020002000200020002000760061006c00750065003a002000220073006e006f0077006d0061006e0020260300200061006e006400200066006f00780020d83edd8a0022000a",
+      "byte_count": 388,
+      "sha256": "fe575573010005960d96365c92c82da0343c9e851cd0ea87f3fb278be3d56b38",
+      "command": [
+        "unmodified Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.608,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa305-b6b1a2-encoding\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa305-b6b1a2-encoding"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:43.407639+00:00",
+      "client": "unmodified Render2.27",
+      "valid_expected": false,
+      "encoding": "UTF8-LF",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: qa-invalid-for-encoding\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "73657276696365733a0a20202d206e616d653a2071613330352d6236623161322d656e636f64696e670a20202020747970653a207765620a2020202072756e74696d653a20696d6167650a20202020696d6167653a0a20202020202075726c3a206e67696e783a310a20202020706c616e3a2071612d696e76616c69642d666f722d656e636f64696e670a20202020656e76566172733a0a2020202020202d206b65793a2051415f4c4142454c0a202020202020202076616c75653a2022736e6f776d616e20e2988320616e6420666f7820f09fa68a220a",
+      "byte_count": 216,
+      "sha256": "adf6533173b17aa156dde084425c60ab0cfcee6e33930f9cc51af26db2a50b36",
+      "command": [
+        "unmodified Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.781,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'\",\n      \"line\": 7,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'",
+            "line": 7,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:44.918166+00:00",
+      "client": "unmodified Render2.27",
+      "valid_expected": false,
+      "encoding": "UTF8-CRLF",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: qa-invalid-for-encoding\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "73657276696365733a0d0a20202d206e616d653a2071613330352d6236623161322d656e636f64696e670d0a20202020747970653a207765620d0a2020202072756e74696d653a20696d6167650d0a20202020696d6167653a0d0a20202020202075726c3a206e67696e783a310d0a20202020706c616e3a2071612d696e76616c69642d666f722d656e636f64696e670d0a20202020656e76566172733a0d0a2020202020202d206b65793a2051415f4c4142454c0d0a202020202020202076616c75653a2022736e6f776d616e20e2988320616e6420666f7820f09fa68a220d0a",
+      "byte_count": 226,
+      "sha256": "813d02af5a019828f5bf1be184d18ef5d791604cb8c36b1f6b2ad79192c23438",
+      "command": [
+        "unmodified Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.556,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'\",\n      \"line\": 7,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'",
+            "line": 7,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:46.190653+00:00",
+      "client": "unmodified Render2.27",
+      "valid_expected": false,
+      "encoding": "UTF8-BOM",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: qa-invalid-for-encoding\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "efbbbf73657276696365733a0a20202d206e616d653a2071613330352d6236623161322d656e636f64696e670a20202020747970653a207765620a2020202072756e74696d653a20696d6167650a20202020696d6167653a0a20202020202075726c3a206e67696e783a310a20202020706c616e3a2071612d696e76616c69642d666f722d656e636f64696e670a20202020656e76566172733a0a2020202020202d206b65793a2051415f4c4142454c0a202020202020202076616c75653a2022736e6f776d616e20e2988320616e6420666f7820f09fa68a220a",
+      "byte_count": 219,
+      "sha256": "d2cd934f6c7d1780154564e87e88d008165790e7da2401e74fd31ad51206a37f",
+      "command": [
+        "unmodified Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.611,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'\",\n      \"line\": 7,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'",
+            "line": 7,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:47.546000+00:00",
+      "client": "unmodified Render2.27",
+      "valid_expected": false,
+      "encoding": "UTF16LE-BOM",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: qa-invalid-for-encoding\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "fffe730065007200760069006300650073003a000a00200020002d0020006e0061006d0065003a002000710061003300300035002d006200360062003100610032002d0065006e0063006f00640069006e0067000a00200020002000200074007900700065003a0020007700650062000a002000200020002000720075006e00740069006d0065003a00200069006d006100670065000a00200020002000200069006d006100670065003a000a00200020002000200020002000750072006c003a0020006e00670069006e0078003a0031000a00200020002000200070006c0061006e003a002000710061002d0069006e00760061006c00690064002d0066006f0072002d0065006e0063006f00640069006e0067000a00200020002000200065006e00760056006100720073003a000a002000200020002000200020002d0020006b00650079003a002000510041005f004c004100420045004c000a0020002000200020002000200020002000760061006c00750065003a002000220073006e006f0077006d0061006e0020000326200061006e006400200066006f00780020003ed88add22000a00",
+      "byte_count": 426,
+      "sha256": "31f2eb17cf8302fe1b8b08a59bbfde6f3a248cbb3eb4bfacc460b1684d760de8",
+      "command": [
+        "unmodified Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.575,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'\",\n      \"line\": 7,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'",
+            "line": 7,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true
+    },
+    {
+      "at": "2026-10-15T18:03:48.843270+00:00",
+      "client": "unmodified Render2.27",
+      "valid_expected": false,
+      "encoding": "UTF16BE-BOM",
+      "text": "services:\n  - name: qa305-b6b1a2-encoding\n    type: web\n    runtime: image\n    image:\n      url: nginx:1\n    plan: qa-invalid-for-encoding\n    envVars:\n      - key: QA_LABEL\n        value: \"snowman \u2603 and fox \ud83e\udd8a\"\n",
+      "input_bytes_hex": "feff00730065007200760069006300650073003a000a00200020002d0020006e0061006d0065003a002000710061003300300035002d006200360062003100610032002d0065006e0063006f00640069006e0067000a00200020002000200074007900700065003a0020007700650062000a002000200020002000720075006e00740069006d0065003a00200069006d006100670065000a00200020002000200069006d006100670065003a000a00200020002000200020002000750072006c003a0020006e00670069006e0078003a0031000a00200020002000200070006c0061006e003a002000710061002d0069006e00760061006c00690064002d0066006f0072002d0065006e0063006f00640069006e0067000a00200020002000200065006e00760056006100720073003a000a002000200020002000200020002d0020006b00650079003a002000510041005f004c004100420045004c000a0020002000200020002000200020002000760061006c00750065003a002000220073006e006f0077006d0061006e0020260300200061006e006400200066006f00780020d83edd8a0022000a",
+      "byte_count": 426,
+      "sha256": "f9fdc2c7d25cb56218ead41802fe47b7d6786fe08e3b956b4f254869cb389551",
+      "command": [
+        "unmodified Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep305-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native file validation complete; authored file removed",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep305-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.682,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'\",\n      \"line\": 7,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "at '/services/0/plan': value must be one of 'free', 'starter', 'standard', 'pro', 'pro plus', 'pro max', 'pro ultra', '0.5c-512mb', '1c-2g', '2c-4g', '2c-8g', '2c-16g', '4c-8g', '4c-16g', '4c-32g', '8c-16g', '8c-32g', '8c-64g', '12c-24g', '12c-48g', '12c-96g'",
+            "line": 7,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "acceptance_pass": true
+    }
+  ],
+  "input_removed": true,
+  "copied_render_config_removed": true,
+  "postcheck": {
+    "at": "2026-10-15T18:04:53.008125+00:00",
+    "inventory": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.752,
+      "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T18:04:06Z\",\n        \"nextRunAt\": \"2026-10-15T18:05:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T18:04:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T18:04:04Z\",\n        \"nextRunAt\": \"2026-10-15T18:05:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T18:04:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T18:04:04Z\",\n        \"nextRunAt\": \"2026-10-15T18:05:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T18:04:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T10:17:00Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T12:22:37Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T06:54:00Z\"\n    }\n  }\n]",
+      "stderr": ""
+    },
+    "baseline_preserved": true,
+    "authored_name_absent": true,
+    "quota": {
+      "at": "2026-10-15T18:04:53.000969+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.554,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4b0bfae7f023c81-CDG"
+      },
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    }
+  },
+  "all_error_locations_equal": true
+}

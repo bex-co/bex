@@ -1,0 +1,87 @@
+from pathlib import Path
+import datetime,json,os,secrets,shlex,shutil,subprocess,sys,time,yaml
+os.umask(0o077)
+P=Path(__file__).resolve().parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');CP=root/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(CP.read_text());assert c.get('sync304_result')==0 and not c.get('active_sync_stash')
+mode,client=sys.argv[1:3];assert client in ('bex','render');WS='tea-daif693dqjvc73e7as3g';BASE={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']}
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();CP.write_text(json.dumps(c,indent=2));CP.chmod(0o600)
+def cli(args,bound=45):
+ cfg=P/'render-config/cli.yaml'
+ try:
+  if client=='render':assert not cfg.exists();shutil.copyfile(P/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  runner=['python3',str(P/'run-render.py')] if client=='render' else ['python3',str(P/'run.py'),'--release'];r=json.loads(subprocess.check_output([*runner,'--bound='+str(bound),*args],text=True,timeout=bound+15));r['native_exit']=None if r['exit']==124 else r['exit'];return r
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+def api(method,path):
+ cfg=yaml.safe_load((P/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token
+ ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+WS+'"\n';start=time.monotonic()
+ r=subprocess.run(['curl','--disable','-sS','--max-time','30','--config','-','-X',method,'-H','Accept: application/json','-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=36);raw,_,status=r.stdout.rpartition('\n');out={'at':now(),'API_only':True,'request':{'method':method,'path':path,'workspace':WS,'authorization':'REDACTED','user_agent':ua},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'response':raw,'stderr':r.stderr};assert token not in json.dumps(out);return out
+def inventory():
+ r=cli(['services','--confirm','-o','json']);assert r['native_exit']==0;rows=[v.get('service',v) for v in json.loads(r['stdout']) or []];assert BASE<={v['id'] for v in rows};return r,rows
+def own(x):assert x['workspace']==WS and x['id'] not in BASE and x['create_result']['native_exit']==0 and x['create_response']['id']==x['id'] and x['create_response']['ownerId']==WS and x['create_response']['serviceDetails']['plan']=='free' and (mode=='reconcile' or not x['state'].startswith('deleted:'))
+def history(x):
+ r=cli(['deploys','list',x['id'],'--confirm','-o','json']);assert r['native_exit']==0;rows=json.loads(r['stdout']);x.setdefault('history_receipts',[]).append({'at':now(),'result':r});x['deploy_children']=rows
+ for v in rows:
+  if v['id'] not in x['recorded_deploy_ids']:x['recorded_deploy_ids'].append(v['id'])
+ save();return rows
+def runs(x):
+ r=api('GET','/v1/cron-jobs/'+x['id']+'/runs?limit=100');assert r['status']=='200';rows=[v.get('cronJobRun',v) for v in json.loads(r['response'])];assert all(v['id'] in x['recorded_run_ids'] for v in rows),'Unowned run blocks mutation';x.setdefault('run_reads',[]).append({'at':now(),'receipt':r});save();return rows
+def logs(x):
+ r=cli(['logs','--resources',x['id'],'--type','app','--start',x['time'],'--direction','forward','--text',x['marker'],'--limit','100','--confirm','-o','json']);assert r['native_exit']==0;raw=r['stdout'];decoder=json.JSONDecoder();rows=[]
+ while raw.strip():
+  raw=raw.lstrip();v,end=decoder.raw_decode(raw);rows.extend(v if isinstance(v,list) else [v]);raw=raw[end:]
+ events=[]
+ for row in rows:
+  message=row.get('message','');start=message.find('{')
+  if start<0:continue
+  try:v,_=decoder.raw_decode(message[start:])
+  except ValueError:continue
+  if isinstance(v,dict) and v.get('marker')==x['marker']:events.append({'log_id':row['id'],'log_timestamp':row['timestamp'],'program':v,'labels':row.get('labels',[])})
+ x.setdefault('native_logs',[]).append({'at':now(),'native':r,'events':events});save();return events
+if mode=='create':
+ assert not any(v.get('sweep')==304 and v.get('client')==client for v in c['resources']);q=api('GET','/v1/owners/'+WS+'/limits');assert q['status']=='200';lim=json.loads(q['response'])['services'];assert lim['used']+lim['terminating']<lim['limit'];inv,rows=inventory();nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-preempt';marker='QA304_'+nonce;assert name not in {v['name'] for v in rows}
+ program="const id=require('node:os').hostname();const marker="+json.dumps(marker)+";function emit(event){console.log(JSON.stringify({marker,id,event,at:Date.now()}));}emit('start');const tick=setInterval(()=>emit('tick'),3000);let stopping=false;process.on('SIGTERM',()=>{if(stopping)return;stopping=true;emit('term');setTimeout(()=>{clearInterval(tick);emit('stopped');process.exit(0)},10000)});setTimeout(()=>{clearInterval(tick);emit('end');process.exit(0)},45000);"
+ command='exec /usr/local/bin/node -e '+shlex.quote(program)
+ args=['services','create','--name',name,'--type','cron_job','--image','docker.io/library/node:22-alpine','--cron-command',command,'--cron-schedule','0 0 1 1 *','--plan','free','--region','frankfurt','--auto-deploy=false','--confirm','-o','json']
+ x={'sweep':304,'client':client,'workspace':WS,'name':name,'nonce':nonce,'marker':marker,'type':'cron_job','time':now(),'source_head':c['head'],'program':program,'authored_command':command,'capacity':q,'pre_inventory':inv,'pre_ids':[v['id'] for v in rows],'dependency_ids':[],'recorded_deploy_ids':[],'recorded_run_ids':[],'run_intents':[],'create_command':[client,*args],'state':'finite native Free image cron create intent persisted'};c['resources'].append(x);save();r=cli(args);x.update(create_result=r,state='create response received; reconcile before retry');save();assert r['native_exit']==0;v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v);assert v['id'] not in x['pre_ids'] and v['ownerId']==WS and v['name']==name and v['type']=='cron_job' and v['serviceDetails']['plan']=='free';x.update(id=v['id'],create_response=v,state='created: exact native Free ownership proved');save();history(x);print(json.dumps({'client':client,'id':x['id'],'native_create_exit':0}),flush=True);raise SystemExit(0)
+x=next(v for v in c['resources'] if v.get('sweep')==304 and v.get('client')==client);own(x);sid=x['id']
+if mode=='observe':
+ hs=history(x);rs=runs(x);print(json.dumps({'client':client,'deployment':hs[0]['status'],'runs':rs}),flush=True)
+elif mode in ('trigger','replace'):
+ rs=runs(x);hs=history(x);assert hs[0]['status']=='live'
+ if mode=='trigger':assert not x['run_intents'] and not rs
+ else:
+  assert len(x['run_intents'])==1 and len(x['recorded_run_ids'])==1 and len(rs)==1 and rs[0]['id']==x['recorded_run_ids'][0] and rs[0]['status']=='pending'
+  events=logs(x);starts=[v for v in events if v['program']['event']=='start'];assert len(starts)==1 and not any(v['program']['event'] in ('end','stopped') for v in events);x['first_process_id']=starts[0]['program']['id'];x['first_start_ms']=starts[0]['program']['at'];save()
+ intent={'at':now(),'kind':mode,'before_runs':rs,'state':'exact-owned manual POST intent persisted'};x['run_intents'].append(intent);save();r=api('POST','/v1/cron-jobs/'+sid+'/runs');intent['result']=r;save();assert r['status']=='200';v=json.loads(r['response']);assert v['id'].startswith('crr-') and v['id'] not in x['recorded_run_ids'];intent['run_id']=v['id'];x['recorded_run_ids'].append(v['id']);save();print(json.dumps({'client':client,'kind':mode,'API_HTTP':'200','run_id':v['id']}),flush=True)
+elif mode=='logs':
+ events=logs(x);ids=sorted({v['program']['id'] for v in events});print(json.dumps({'client':client,'events':len(events),'processes':ids,'lifecycle':[v['program'] for v in events if v['program']['event']!='tick']}),flush=True)
+elif mode=='exercise':
+ assert 'qualified_round' not in x, 'Reconcile existing qualified-round intent; never blindly retry'
+ rs=runs(x);hs=history(x);assert hs[0]['status']=='live' and all(v['status'] in ('successful','unsuccessful','canceled') and v.get('finishedAt') for v in rs)
+ prior=logs(x);excluded=sorted({v['program']['id'] for v in prior});x['excluded_control_process_ids']=excluded;x['qualified_round']={'at':now(),'prior_run_ids':list(x['recorded_run_ids']),'excluded_natural_controls':excluded,'state':'fresh early-preemption round intent persisted'};save()
+ def trigger_qualified(kind):
+  intent={'at':now(),'kind':kind,'state':'finite exact-owned manual POST intent persisted'};x['run_intents'].append(intent);save();r=api('POST','/v1/cron-jobs/'+sid+'/runs');intent['result']=r;save();assert r['status']=='200';v=json.loads(r['response']);assert v['id'].startswith('crr-') and v['id'] not in x['recorded_run_ids'];intent['run_id']=v['id'];x['recorded_run_ids'].append(v['id']);x['qualified_round'][kind+'_run_id']=v['id'];save();return v['id']
+ first_run=trigger_qualified('active');started=False
+ for attempt in range(8):
+  events=logs(x);fresh=[v['program'] for v in events if v['program']['id'] not in excluded];starts=[v for v in fresh if v['event']=='start']
+  if starts:
+   assert len(starts)==1 and not any(v['event'] in ('end','stopped') for v in fresh),'Unqualified timing window; retain control without replacing'
+   age=datetime.datetime.now(datetime.timezone.utc).timestamp()*1000-starts[0]['at'];assert 0<=age<25000,'Do not request a late replacement'
+   active=runs(x);assert any(v['id']==first_run and v['status']=='pending' for v in active)
+   x['first_process_id']=starts[0]['id'];x['first_start_ms']=starts[0]['at'];save();replacement=trigger_qualified('replacement');x['qualified_round'].update(state='early replacement accepted; observe actual process termination',first_process=x['first_process_id']);save();started=True;print(json.dumps({'client':client,'early_replacement_HTTP':'200','first_process_age_ms':round(age),'active_run':first_run,'replacement_run':replacement}),flush=True);break
+  time.sleep(2)
+ assert started,'Bounded start observation exhausted; reconcile finite run without another POST'
+elif mode=='assess':
+ assert len(x['recorded_run_ids'])>=2 and x.get('qualified_round',{}).get('replacement_run_id');rs=runs(x);events=logs(x);by={}
+ for v in events:by.setdefault(v['program']['id'],[]).append(v['program'])
+ first=x['first_process_id'];starts=[v for name,vs in by.items() if name!=first and name not in x.get('excluded_control_process_ids',[]) for v in vs if v['event']=='start'];assert len(starts)==1
+ stop=[v for v in by[first] if v['event'] in ('end','stopped')];assert len(stop)==1
+ gap=starts[0]['at']-stop[0]['at'];old_ticks_after=[v for v in by[first] if v['event']=='tick' and v['at']>=starts[0]['at']]
+ assessment={'at':now(),'first_process':first,'replacement_process':starts[0]['id'],'first_stop':stop[0],'replacement_start':starts[0],'gap_ms':gap,'graceful_signal_observed':any(v['event']=='term' for v in by[first]),'old_ticks_after_replacement':old_ticks_after,'no_overlap_observed':gap>=0 and not old_ticks_after,'run_statuses':{v['id']:v['status'] for v in rs},'qualification':'program wall clocks and native historical log timestamps, no direct Kubernetes process inventory'};x.setdefault('assessments',[]).append(assessment);save();print(json.dumps({'client':client,'gap_ms':gap,'no_overlap_observed':assessment['no_overlap_observed'],'statuses':assessment['run_statuses']}),flush=True)
+elif mode=='delete':
+ assert 'delete_result' not in x and 'delete_intent' not in x;assert not any(sid in v.get('dependency_ids',[]) and not v['state'].startswith('deleted:') for v in c['resources']);hs=history(x);rs=runs(x);assert all(v['id'] in x['recorded_deploy_ids'] and v['status'] in ('live','deactivated','canceled','build_failed','update_failed','pre_deploy_failed') for v in hs);assert all(v['id'] in x['recorded_run_ids'] and v['status'] in ('successful','unsuccessful','canceled') and v.get('finishedAt') for v in rs)
+ x['delete_intent']={'at':now(),'deploys':hs,'runs':rs};save();x['delete_result']=cli(['services','delete',sid,'--confirm','-o','json']);save();assert x['delete_result']['native_exit']==0;print(json.dumps({'client':client,'native_delete_exit':0,'deploys':len(hs),'runs':len(rs)}),flush=True)
+elif mode=='reconcile':
+ assert 'delete_result' in x;d=api('GET','/v1/services/'+sid);r=api('GET','/v1/cron-jobs/'+sid+'/runs');inv,rows=inventory();q=api('GET','/v1/owners/'+WS+'/limits');assert q['status']=='200';term=json.loads(q['response'])['services']['terminating'];done=d['status']=='404' and r['status']=='404' and sid not in {v['id'] for v in rows} and term==0;x.setdefault('cleanup_receipts',[]).append({'at':now(),'detail':d,'runs':r,'inventory':inv,'quota':q,'baseline_preserved':True});x['state']='deleted: native0/detail404/runs404/listabsent/baseline6/quota terminating0' if done else 'delete acknowledged: bounded convergence pending';save();print(json.dumps({'client':client,'cleanup_complete':done,'terminating':term}),flush=True)
+else:raise ValueError(mode)
