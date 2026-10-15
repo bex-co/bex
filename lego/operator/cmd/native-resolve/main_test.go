@@ -50,7 +50,8 @@ func TestRunNarratesOrRefusesAsTenantError(t *testing.T) {
 	if code := run("python", dir, bundle, dockerfile, &out, &errOut); code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
-	if got := strings.TrimSpace(out.String()); got != "==> Using Python 3.11 (from PYTHON_VERSION=3.11.9)" {
+	const wantPython = "==> Using Python 3.11 (from PYTHON_VERSION=3.11.9)\n==> Using Poetry 2.1.3 (default)"
+	if got := strings.TrimSpace(out.String()); got != wantPython {
 		t.Errorf("narration = %q", got)
 	}
 

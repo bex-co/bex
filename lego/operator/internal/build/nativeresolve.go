@@ -44,8 +44,8 @@ const (
 
 // ResolveNativeBuild is the resolve phase: env bundle and Dockerfile paths,
 // the service's root directory in the checkout, and the runtime. It returns
-// the choices it applied, the primary toolchain first and then any opted-in
-// companion (Bun); an *UnsupportedVersionError is tenant input.
+// the choices it applied, the primary toolchain first, then Python's Poetry
+// (w8/m72) and any opted-in companion (Bun); an *UnsupportedVersionError is tenant input.
 func ResolveNativeBuild(runtime, bundlePath, dockerfilePath, sourceDir string) ([]NativeChoice, error) {
 	env, err := readEnvBundle(bundlePath)
 	if err != nil {
@@ -69,6 +69,16 @@ func ResolveNativeBuild(runtime, bundlePath, dockerfilePath, sourceDir string) (
 		return nil, err
 	}
 	choices := []NativeChoice{choice}
+	if runtime == "python" {
+		poetry, err := ResolveNativePoetry(env)
+		if err != nil {
+			return nil, err
+		}
+		if rewritten, err = addNativePoetry(rewritten, choice.Image, poetry.Line); err != nil {
+			return nil, err
+		}
+		choices = append(choices, poetry)
+	}
 	if withBun {
 		if rewritten, err = addNativeBun(rewritten, choice.Image, bun.Image); err != nil {
 			return nil, err
@@ -86,13 +96,34 @@ func ResolveNativeBuild(runtime, bundlePath, dockerfilePath, sourceDir string) (
 // pre-deploy step and the started service all find bun and bunx on the image
 // PATH. --link keeps the Bun layer cached when the primary line changes.
 func addNativeBun(dockerfile, baseImage, bunImage string) (string, error) {
+	return afterNativeBase(dockerfile, baseImage, "COPY --link --from="+bunImage+" /usr/local/bin/bun /usr/local/bin/bun\n"+
+		"RUN ln -sf bun /usr/local/bin/bunx\n")
+}
+
+// nativePoetryHome is the Poetry tool's own virtualenv: the application's
+// packages, virtualenvs and PATH never share it, and Poetry's dependencies
+// never land in the image's site-packages.
+const nativePoetryHome = "/opt/bex/poetry"
+
+// addNativePoetry installs the chosen Poetry right after the FROM, before the
+// source and the authored build, into its own virtualenv on the selected
+// Python, and links it onto the image PATH so the build, the pre-deploy step
+// and the started service all find poetry (w8/m72). The step runs under the
+// image's own environment, not the service's, and sits before COPY so a
+// source change reuses it; a changed version is a changed instruction.
+func addNativePoetry(dockerfile, baseImage, version string) (string, error) {
+	return afterNativeBase(dockerfile, baseImage, fmt.Sprintf(
+		"RUN /usr/local/bin/python -m venv %[1]s && %[1]s/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==%[2]s && ln -s %[1]s/bin/poetry /usr/local/bin/poetry\n",
+		nativePoetryHome, version))
+}
+
+// afterNativeBase inserts lines right after the generated Dockerfile's FROM.
+func afterNativeBase(dockerfile, baseImage, lines string) (string, error) {
 	from := "\nFROM " + baseImage + "\n"
 	if !strings.Contains(dockerfile, from) {
 		return "", fmt.Errorf("generated Dockerfile does not carry the base %s", baseImage)
 	}
-	bun := "COPY --link --from=" + bunImage + " /usr/local/bin/bun /usr/local/bin/bun\n" +
-		"RUN ln -sf bun /usr/local/bin/bunx\n"
-	return strings.Replace(dockerfile, from, from+bun, 1), nil
+	return strings.Replace(dockerfile, from, from+lines, 1), nil
 }
 
 // readEnvBundle decodes the preparer's KEY=base64 bundle. A later line wins,
