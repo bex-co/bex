@@ -1,0 +1,1334 @@
+{
+  "schema": "qa-functional-finding/v1",
+  "finding": "PostgreSQL major-upgrade targets below16 are offered and accepted before CNPG rejects them",
+  "sourceHead": "42c862ed1",
+  "workspaceId": "tea-d98210cbbpdc73dcrkvg",
+  "date": "2026-10-15 UTC",
+  "a580": {
+    "fixture": {
+      "id": "dpg-db8cirleelgc73d2i46g",
+      "name": "qa-20261015-a580-version",
+      "plan": "free",
+      "public": false
+    },
+    "Create": {
+      "at": "2026-10-15T12:39:11.187Z",
+      "request": {
+        "operationName": "CreateDatabase",
+        "variables": {
+          "name": "qa-20261015-a580-version",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "plan": "free",
+          "version": "13",
+          "public": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateDatabase($name: String!, $databaseName: String, $databaseUser: String, $ownerId: String, $environmentId: String, $plan: String, $version: String, $diskSizeGB: Int, $public: Boolean) {\n  createDatabase(\n    name: $name\n    databaseName: $databaseName\n    databaseUser: $databaseUser\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    diskSizeGB: $diskSizeGB\n    public: $public\n  ) {\n    id\n    name\n    databaseName\n    databaseUser\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createDatabase": {
+            "__typename": "Database",
+            "databaseName": "dpg_db8cirleelgc73d2i46g",
+            "databaseUser": "dpg_db8cirleelgc73d2i46g_user",
+            "environmentId": null,
+            "id": "dpg-db8cirleelgc73d2i46g",
+            "name": "qa-20261015-a580-version",
+            "plan": "free",
+            "projectId": null,
+            "status": "creating"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db8cirleelgc73d2i46g"
+    },
+    "Runtime13": {
+      "at": "2026-10-15T12:40:40.179Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8cirleelgc73d2i46g",
+          "sql": "SELECT current_setting('server_version') AS version, current_setting('server_version_num')::integer / 10000 AS major",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["version", "major"],
+            "rowCount": 1,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["13.22 (Debian 13.22-1.pgdg11+1)", "13"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "console": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": SELECT current_setting('server_version') AS version, current_setting('server_version_num')::integer / 10000 AS major\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 1 row returned\n- table:\n  - rowgroup:\n    - row \"version major\":\n      - columnheader \"version\"\n      - columnheader \"major\"\n  - rowgroup:\n    - row \"13.22 (Debian 13.22-1.pgdg11+1) 13\":\n      - cell \"13.22 (Debian 13.22-1.pgdg11+1)\"\n      - cell \"13\"\n- paragraph: Query history\n- button \"Clear\"\n- button \"SELECT current_setting('server_version') AS version, current_setting('server_version_num')::integer / 10000 AS major\""
+    },
+    "TableCreated": {
+      "at": "2026-10-15T12:40:42.497Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8cirleelgc73d2i46g",
+          "sql": "CREATE TABLE qa_a580_upgrade (ord integer PRIMARY KEY, value text)",
+          "allowWrites": true
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": [],
+            "rowCount": 0,
+            "rows": [],
+            "truncated": false
+          }
+        }
+      },
+      "console": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": CREATE TABLE qa_a580_upgrade (ord integer PRIMARY KEY, value text)\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 0 rows affected\n- paragraph: Query history\n- button \"Clear\"\n- button \"CREATE TABLE qa_a580_upgrade (ord integer PRIMARY KEY, value text)\"\n- button \"SELECT current_setting('server_version') AS version, current_setting('server_version_num')::integer / 10000 AS major\""
+    },
+    "Seeded": {
+      "at": "2026-10-15T12:40:44.811Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8cirleelgc73d2i46g",
+          "sql": "INSERT INTO qa_a580_upgrade (ord,value) VALUES (1,'QA_A580_雪'),(2,NULL),(3,'') RETURNING ord,value",
+          "allowWrites": true
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["ord", "value"],
+            "rowCount": 3,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["1", "QA_A580_雪"]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["2", null]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["3", ""]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "console": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": INSERT INTO qa_a580_upgrade (ord,value) VALUES (1,'QA_A580_雪'),(2,NULL),(3,'') RETURNING ord,value\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 3 rows returned\n- table:\n  - rowgroup:\n    - row \"ord value\":\n      - columnheader \"ord\"\n      - columnheader \"value\"\n  - rowgroup:\n    - row \"1 QA_A580_雪\":\n      - cell \"1\"\n      - cell \"QA_A580_雪\"\n    - row \"2 SQL NULL (no value)\":\n      - cell \"2\"\n      - cell \"SQL NULL (no value)\"\n    - row \"3\":\n      - cell \"3\"\n      - cell\n- paragraph: Query history\n- button \"Clear\"\n- button \"INSERT INTO qa_a580_upgrade (ord,value) VALUES (1,'QA_A580_雪'),(2,NULL),(3,'') RETURNING ord,value\"\n- button \"CREATE TABLE qa_a580_upgrade (ord integer PRIMARY KEY, value text)\"\n- button \"SELECT current_setting('server_version') AS version, current_setting('server_version_num')::integer / 10000 AS major\""
+    },
+    "Upgrade14Prepared": {
+      "at": "2026-10-15T12:41:12.499Z",
+      "target": "PostgreSQL 14",
+      "confirm": 1
+    },
+    "Upgrade14": {
+      "at": "2026-10-15T12:41:14.115Z",
+      "request": {
+        "operationName": "UpdateDatabaseVersion",
+        "variables": {
+          "id": "dpg-db8cirleelgc73d2i46g",
+          "version": "14"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation UpdateDatabaseVersion($id: String!, $version: String!) {\n  updateDatabaseVersion(id: $id, version: $version) {\n    id\n    version\n    status\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "updateDatabaseVersion": {
+            "__typename": "Database",
+            "id": "dpg-db8cirleelgc73d2i46g",
+            "status": "config_restart",
+            "version": "13"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db8cirleelgc73d2i46g#sql-console"
+    },
+    "UpgradeState1": {
+      "request": {
+        "operationName": "Qaa580State",
+        "query": "query Qaa580State($id:String!){database(id:$id){id name status version statusReason statusReasonCode}}",
+        "variables": {
+          "id": "dpg-db8cirleelgc73d2i46g"
+        }
+      },
+      "observations": [
+        {
+          "at": "2026-10-15T12:41:15.411Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "unavailable",
+                "statusReason": "The database cluster rejected its configuration, so the latest change could not be applied.",
+                "statusReasonCode": "ClusterFailed",
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:41:18.135Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "unavailable",
+                "statusReason": "The database cluster rejected its configuration, so the latest change could not be applied.",
+                "statusReasonCode": "ClusterFailed",
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:41:20.865Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "unavailable",
+                "statusReason": "The database cluster rejected its configuration, so the latest change could not be applied.",
+                "statusReasonCode": "ClusterFailed",
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:41:23.588Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "unavailable",
+                "statusReason": "The database cluster rejected its configuration, so the latest change could not be applied.",
+                "statusReasonCode": "ClusterFailed",
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:41:26.420Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "unavailable",
+                "statusReason": "The database cluster rejected its configuration, so the latest change could not be applied.",
+                "statusReasonCode": "ClusterFailed",
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:41:29.164Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "unavailable",
+                "statusReason": "The database cluster rejected its configuration, so the latest change could not be applied.",
+                "statusReasonCode": "ClusterFailed",
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:41:31.897Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "unavailable",
+                "statusReason": "The database cluster rejected its configuration, so the latest change could not be applied.",
+                "statusReasonCode": "ClusterFailed",
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:41:34.625Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "unavailable",
+                "statusReason": "The database cluster rejected its configuration, so the latest change could not be applied.",
+                "statusReasonCode": "ClusterFailed",
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:41:37.363Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "unavailable",
+                "statusReason": "The database cluster rejected its configuration, so the latest change could not be applied.",
+                "statusReasonCode": "ClusterFailed",
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:41:40.081Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "unavailable",
+                "statusReason": "The database cluster rejected its configuration, so the latest change could not be applied.",
+                "statusReasonCode": "ClusterFailed",
+                "version": "13"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "FreshUpgradeFailure": {
+      "at": "2026-10-15T12:42:20.817Z",
+      "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\": qa-20261015-a580-version\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - heading \"qa-20261015-a580-version\" [level=1]\n  - text: Unavailable\n  - button \"Open actions menu\"\n  - navigation \"Database details\":\n    - button \"Overview\"\n    - button \"Logs\"\n  - navigation \"Database sections\":\n    - link \"Details\":\n      - /url: \"#metadata\"\n    - link \"Connections\":\n      - /url: \"#connection\"\n    - link \"SQL console\":\n      - /url: \"#sql-console\"\n    - link \"High Availability\":\n      - /url: \"#high-availability\"\n    - link \"Metrics\":\n      - /url: \"#metrics\"\n    - link \"Instance type\":\n      - /url: \"#plan\"\n    - link \"Insights\":\n      - /url: \"#insights\"\n    - link \"Recovery\":\n      - /url: \"#recovery\"\n    - link \"Access control\":\n      - /url: \"#access-control\"\n    - link \"Danger Zone\":\n      - /url: \"#danger-zone\"\n  - text: Details Name Change the display name. The database ID and all connection details stay the same.\n  - textbox \"Name\" [disabled]: qa-20261015-a580-version\n  - button \"Edit database name\"\n  - term: Status\n  - definition: Unavailable The database cluster rejected its configuration, so the latest change could not be applied.\n  - term: Instance type\n  - definition: Free\n  - term: Version\n  - definition:\n    - text: PostgreSQL 13\n    - button \"Upgrade\"\n  - term: Database\n  - definition: dpg_db8cirleelgc73d2i46g\n  - term: User\n  - definition: dpg_db8cirleelgc73d2i46g_user\n  - term: Storage\n  - definition: 1 GB\n  - term: High availability\n  - definition: \"No\"\n  - term: Public access\n  - definition: \"No\"\n  - term: Region\n  - definition: fsn1\n  - term: Created\n  - definition:\n    - time: 3m\n  - text: Connections Connection strings and the database password. Revealed only when you ask — never shown automatically.\n  - button \"Reveal connection info\"\n  - text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n  - textbox \"SQL query\": SELECT version();\n  - paragraph: Press Ctrl+Enter or ⌘+Enter to run\n  - button \"Run query\"\n  - paragraph: Query history\n  - button \"Clear\"\n  - button \"INSERT INTO qa_a580_upgrade (ord,value) VALUES (1,'QA_A580_雪'),(2,NULL),(3,'') RETURNING ord,value\"\n  - button \"CREATE TABLE qa_a580_upgrade (ord integer PRIMARY KEY, value text)\"\n  - button \"SELECT current_setting('server_version') AS version, current_setting('server_version_num')::integer / 10000 AS major\"\n  - text: High Availability Replicated cluster with automatic failover. When enabled, a standby is always ready to take over. Status Disabled\n  - paragraph: High availability requires a plan with at least 1 CPU. This database's plan does not offer it.\n  - text: Metrics Live resource usage for this instance Disk Capacity 1 GiB Disk autoscaling 1 GB current · 1 GB max This plan does not support disk autoscaling. An existing setting can be turned off.\n  - switch \"Disk autoscaling\" [disabled]\n  - img \"Line chart with 2 data points\": 0 B 24.3 MiB 48.5 MiB\n  - text: Active Connections\n  - img \"Line chart with 2 data points\": 0 0.5 1\n  - text: Replication Lag N/A — no replica (enable High Availability to see replication lag) Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n  - radiogroup \"Instance type\":\n    - radio \"Free $0.00/month 256 MB RAM · 0.1 CPU\" [checked]\n    - radio \"Basic 256MB $4.90/month 256 MB RAM · 0.1 CPU\"\n    - radio \"Basic 1GB $14.00/month 1 GB RAM · 0.5 CPU\"\n  - button \"Cancel\" [disabled]\n  - button \"Save\" [disabled]\n  - button \"Delete Database\"\n  - button \"Restart Database\"\n  - button \"Suspend Database\""
+    },
+    "AfterFailedUpgradeRead": {
+      "at": "2026-10-15T12:42:22.200Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8cirleelgc73d2i46g",
+          "sql": "SELECT current_setting('server_version') AS version, ord, value FROM qa_a580_upgrade ORDER BY ord",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["version", "ord", "value"],
+            "rowCount": 3,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["13.22 (Debian 13.22-1.pgdg11+1)", "1", "QA_A580_雪"]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["13.22 (Debian 13.22-1.pgdg11+1)", "2", null]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["13.22 (Debian 13.22-1.pgdg11+1)", "3", ""]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "console": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": SELECT current_setting('server_version') AS version, ord, value FROM qa_a580_upgrade ORDER BY ord\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 3 rows returned\n- table:\n  - rowgroup:\n    - row \"version ord value\":\n      - columnheader \"version\"\n      - columnheader \"ord\"\n      - columnheader \"value\"\n  - rowgroup:\n    - row \"13.22 (Debian 13.22-1.pgdg11+1) 1 QA_A580_雪\":\n      - cell \"13.22 (Debian 13.22-1.pgdg11+1)\"\n      - cell \"1\"\n      - cell \"QA_A580_雪\"\n    - row \"13.22 (Debian 13.22-1.pgdg11+1) 2 SQL NULL (no value)\":\n      - cell \"13.22 (Debian 13.22-1.pgdg11+1)\"\n      - cell \"2\"\n      - cell \"SQL NULL (no value)\"\n    - row \"13.22 (Debian 13.22-1.pgdg11+1) 3\":\n      - cell \"13.22 (Debian 13.22-1.pgdg11+1)\"\n      - cell \"3\"\n      - cell\n- paragraph: Query history\n- button \"Clear\"\n- button \"SELECT current_setting('server_version') AS version, ord, value FROM qa_a580_upgrade ORDER BY ord\"\n- button \"INSERT INTO qa_a580_upgrade (ord,value) VALUES (1,'QA_A580_雪'),(2,NULL),(3,'') RETURNING ord,value\"\n- button \"CREATE TABLE qa_a580_upgrade (ord integer PRIMARY KEY, value text)\"\n- button \"SELECT current_setting('server_version') AS version, current_setting('server_version_num')::integer / 10000 AS major\""
+    },
+    "AdmissionReason": {
+      "chunk_id": "7c8e5e",
+      "wall_time_seconds": 0.769973416,
+      "exit_code": 0,
+      "original_token_count": 72,
+      "output": "tea-d98210cbbpdc73dcrkvg\tdpg-db8cirleelgc73d2i46g\t14\t13\nClusterFailed: admission webhook \"vcluster.cnpg.io\" denied the request: Cluster.cluster.cnpg.io \"dpg-db8cirleelgc73d2i46g\" is invalid: spec.imageName: Invalid value: \"14\": major upgrades are only supported to version 16 or higher\n"
+    },
+    "Upgrade16Prepared": {
+      "at": "2026-10-15T12:46:26.075Z",
+      "options": "- listbox:\n  - option \"PostgreSQL 18\" [selected]\n  - option \"PostgreSQL 17\"\n  - option \"PostgreSQL 16\"\n  - option \"PostgreSQL 15\"\n  - option \"PostgreSQL 14\"",
+      "target": "PostgreSQL 16"
+    },
+    "Upgrade16": {
+      "at": "2026-10-15T12:46:38.723Z",
+      "request": {
+        "operationName": "UpdateDatabaseVersion",
+        "variables": {
+          "id": "dpg-db8cirleelgc73d2i46g",
+          "version": "16"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation UpdateDatabaseVersion($id: String!, $version: String!) {\n  updateDatabaseVersion(id: $id, version: $version) {\n    id\n    version\n    status\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "updateDatabaseVersion": {
+            "__typename": "Database",
+            "id": "dpg-db8cirleelgc73d2i46g",
+            "status": "unavailable",
+            "version": "13"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db8cirleelgc73d2i46g#sql-console"
+    },
+    "Upgrade16State1": {
+      "request": {
+        "operationName": "Qaa580State",
+        "query": "query Qaa580State($id:String!){database(id:$id){id name status version statusReason statusReasonCode}}",
+        "variables": {
+          "id": "dpg-db8cirleelgc73d2i46g"
+        }
+      },
+      "observations": [
+        {
+          "at": "2026-10-15T12:46:40.080Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "upgrading",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:46:42.835Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "upgrading",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:46:45.590Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "upgrading",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:46:48.511Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "upgrading",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:46:51.244Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "upgrading",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:46:53.980Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "upgrading",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:46:56.704Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "upgrading",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:46:59.453Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "upgrading",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:47:02.193Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "upgrading",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:47:04.937Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "upgrading",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "13"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Upgrade16State2": {
+      "request": {
+        "operationName": "Qaa580State",
+        "query": "query Qaa580State($id:String!){database(id:$id){id name status version statusReason statusReasonCode}}",
+        "variables": {
+          "id": "dpg-db8cirleelgc73d2i46g"
+        }
+      },
+      "observations": [
+        {
+          "at": "2026-10-15T12:48:15.883Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "config_restart",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "16"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:48:18.612Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "config_restart",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "16"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:48:21.335Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "config_restart",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "16"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:48:24.059Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "config_restart",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "16"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:48:26.807Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "config_restart",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "16"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:48:29.536Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cirleelgc73d2i46g",
+                "name": "qa-20261015-a580-version",
+                "status": "available",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "16"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "AfterUpgrade16Read": {
+      "at": "2026-10-15T12:49:02.476Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8cirleelgc73d2i46g",
+          "sql": "SELECT current_setting('server_version') AS version, ord, value FROM qa_a580_upgrade ORDER BY ord",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["version", "ord", "value"],
+            "rowCount": 3,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["16.15 (Debian 16.15-1.pgdg11+2)", "1", "QA_A580_雪"]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["16.15 (Debian 16.15-1.pgdg11+2)", "2", null]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["16.15 (Debian 16.15-1.pgdg11+2)", "3", ""]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "console": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": SELECT current_setting('server_version') AS version, ord, value FROM qa_a580_upgrade ORDER BY ord\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 3 rows returned\n- table:\n  - rowgroup:\n    - row \"version ord value\":\n      - columnheader \"version\"\n      - columnheader \"ord\"\n      - columnheader \"value\"\n  - rowgroup:\n    - row \"16.15 (Debian 16.15-1.pgdg11+2) 1 QA_A580_雪\":\n      - cell \"16.15 (Debian 16.15-1.pgdg11+2)\"\n      - cell \"1\"\n      - cell \"QA_A580_雪\"\n    - row \"16.15 (Debian 16.15-1.pgdg11+2) 2 SQL NULL (no value)\":\n      - cell \"16.15 (Debian 16.15-1.pgdg11+2)\"\n      - cell \"2\"\n      - cell \"SQL NULL (no value)\"\n    - row \"16.15 (Debian 16.15-1.pgdg11+2) 3\":\n      - cell \"16.15 (Debian 16.15-1.pgdg11+2)\"\n      - cell \"3\"\n      - cell\n- paragraph: Query history\n- button \"Clear\"\n- button \"SELECT current_setting('server_version') AS version, ord, value FROM qa_a580_upgrade ORDER BY ord\"\n- button \"INSERT INTO qa_a580_upgrade (ord,value) VALUES (1,'QA_A580_雪'),(2,NULL),(3,'') RETURNING ord,value\"\n- button \"CREATE TABLE qa_a580_upgrade (ord integer PRIMARY KEY, value text)\"\n- button \"SELECT current_setting('server_version') AS version, current_setting('server_version_num')::integer / 10000 AS major\""
+    },
+    "TableDropped": {
+      "at": "2026-10-15T12:49:24.919Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8cirleelgc73d2i46g",
+          "sql": "DROP TABLE qa_a580_upgrade",
+          "allowWrites": true
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": [],
+            "rowCount": 0,
+            "rows": [],
+            "truncated": false
+          }
+        }
+      },
+      "console": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": DROP TABLE qa_a580_upgrade\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 0 rows affected\n- paragraph: Query history\n- button \"Clear\"\n- button \"DROP TABLE qa_a580_upgrade\"\n- button \"SELECT current_setting('server_version') AS version, ord, value FROM qa_a580_upgrade ORDER BY ord\"\n- button \"INSERT INTO qa_a580_upgrade (ord,value) VALUES (1,'QA_A580_雪'),(2,NULL),(3,'') RETURNING ord,value\"\n- button \"CREATE TABLE qa_a580_upgrade (ord integer PRIMARY KEY, value text)\"\n- button \"SELECT current_setting('server_version') AS version, current_setting('server_version_num')::integer / 10000 AS major\""
+    },
+    "Delete": {
+      "at": "2026-10-15T12:49:27.860Z",
+      "request": {
+        "operationName": "DeleteDatabase",
+        "variables": {
+          "id": "dpg-db8cirleelgc73d2i46g"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteDatabase($id: String!, $confirm: String) {\n  deleteDatabase(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteDatabase": true
+        }
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "cleanup": {
+      "receiptAt": "2026-10-15T12:49:58.586Z",
+      "request": {
+        "method": "GET",
+        "url": "https://api.bex.co/v1/postgres/dpg-db8cirleelgc73d2i46g"
+      },
+      "deletedStatus": 404,
+      "history": null,
+      "setsRestored": true,
+      "before": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "after": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "logout": {
+        "exitCode": 0,
+        "output": "ok logged-out\n"
+      },
+      "browser": {
+        "at": "2026-10-15T12:50:19.179Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      }
+    }
+  },
+  "a581": {
+    "fixture": {
+      "id": "dpg-db8cohdeelgc73d2i4b0",
+      "name": "qa-20261015-a581-floor",
+      "plan": "free",
+      "public": false
+    },
+    "Create": {
+      "at": "2026-10-15T12:51:18.338Z",
+      "request": {
+        "operationName": "CreateDatabase",
+        "variables": {
+          "name": "qa-20261015-a581-floor",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "plan": "free",
+          "version": "13",
+          "public": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateDatabase($name: String!, $databaseName: String, $databaseUser: String, $ownerId: String, $environmentId: String, $plan: String, $version: String, $diskSizeGB: Int, $public: Boolean) {\n  createDatabase(\n    name: $name\n    databaseName: $databaseName\n    databaseUser: $databaseUser\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    diskSizeGB: $diskSizeGB\n    public: $public\n  ) {\n    id\n    name\n    databaseName\n    databaseUser\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createDatabase": {
+            "__typename": "Database",
+            "databaseName": "dpg_db8cohdeelgc73d2i4b0",
+            "databaseUser": "dpg_db8cohdeelgc73d2i4b0_user",
+            "environmentId": null,
+            "id": "dpg-db8cohdeelgc73d2i4b0",
+            "name": "qa-20261015-a581-floor",
+            "plan": "free",
+            "projectId": null,
+            "status": "creating"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db8cohdeelgc73d2i4b0"
+    },
+    "ReadyPoll2": {
+      "request": {
+        "operationName": "Qaa581State",
+        "query": "query Qaa581State($id:String!){database(id:$id){id name status version statusReason statusReasonCode}}",
+        "variables": {
+          "id": "dpg-db8cohdeelgc73d2i4b0"
+        }
+      },
+      "observations": [
+        {
+          "at": "2026-10-15T12:53:50.060Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cohdeelgc73d2i4b0",
+                "name": "qa-20261015-a581-floor",
+                "status": "available",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "13"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Upgrade14Prepared": {
+      "at": "2026-10-15T12:53:51.127Z",
+      "target": "PostgreSQL 14"
+    },
+    "Upgrade14": {
+      "at": "2026-10-15T12:53:52.666Z",
+      "request": {
+        "operationName": "UpdateDatabaseVersion",
+        "variables": {
+          "id": "dpg-db8cohdeelgc73d2i4b0",
+          "version": "14"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation UpdateDatabaseVersion($id: String!, $version: String!) {\n  updateDatabaseVersion(id: $id, version: $version) {\n    id\n    version\n    status\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "updateDatabaseVersion": {
+            "__typename": "Database",
+            "id": "dpg-db8cohdeelgc73d2i4b0",
+            "status": "config_restart",
+            "version": "13"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db8cohdeelgc73d2i4b0"
+    },
+    "Upgrade14State": {
+      "request": {
+        "operationName": "Qaa581State",
+        "query": "query Qaa581State($id:String!){database(id:$id){id name status version statusReason statusReasonCode}}",
+        "variables": {
+          "id": "dpg-db8cohdeelgc73d2i4b0"
+        }
+      },
+      "observations": [
+        {
+          "at": "2026-10-15T12:53:53.958Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cohdeelgc73d2i4b0",
+                "name": "qa-20261015-a581-floor",
+                "status": "unavailable",
+                "statusReason": "The database cluster rejected its configuration, so the latest change could not be applied.",
+                "statusReasonCode": "ClusterFailed",
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:53:56.677Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cohdeelgc73d2i4b0",
+                "name": "qa-20261015-a581-floor",
+                "status": "unavailable",
+                "statusReason": "The database cluster rejected its configuration, so the latest change could not be applied.",
+                "statusReasonCode": "ClusterFailed",
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:53:59.424Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cohdeelgc73d2i4b0",
+                "name": "qa-20261015-a581-floor",
+                "status": "unavailable",
+                "statusReason": "The database cluster rejected its configuration, so the latest change could not be applied.",
+                "statusReasonCode": "ClusterFailed",
+                "version": "13"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Upgrade15Prepared": {
+      "at": "2026-10-15T12:54:33.277Z",
+      "target": "PostgreSQL 15"
+    },
+    "Upgrade15": {
+      "at": "2026-10-15T12:54:35.294Z",
+      "request": {
+        "operationName": "UpdateDatabaseVersion",
+        "variables": {
+          "id": "dpg-db8cohdeelgc73d2i4b0",
+          "version": "15"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation UpdateDatabaseVersion($id: String!, $version: String!) {\n  updateDatabaseVersion(id: $id, version: $version) {\n    id\n    version\n    status\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "updateDatabaseVersion": {
+            "__typename": "Database",
+            "id": "dpg-db8cohdeelgc73d2i4b0",
+            "status": "unavailable",
+            "version": "13"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db8cohdeelgc73d2i4b0"
+    },
+    "Admission15": {
+      "chunk_id": "40cf9f",
+      "wall_time_seconds": 0.822615541,
+      "exit_code": 0,
+      "original_token_count": 67,
+      "output": "dpg-db8cohdeelgc73d2i4b0\t3\t15\t13\n3\tClusterFailed: admission webhook \"vcluster.cnpg.io\" denied the request: Cluster.cluster.cnpg.io \"dpg-db8cohdeelgc73d2i4b0\" is invalid: spec.imageName: Invalid value: \"15\": major upgrades are only supported to version 16 or higher\n"
+    },
+    "Upgrade15State": {
+      "request": {
+        "operationName": "Qaa581State",
+        "query": "query Qaa581State($id:String!){database(id:$id){id name status version statusReason statusReasonCode}}",
+        "variables": {
+          "id": "dpg-db8cohdeelgc73d2i4b0"
+        }
+      },
+      "observations": [
+        {
+          "at": "2026-10-15T12:54:37.571Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cohdeelgc73d2i4b0",
+                "name": "qa-20261015-a581-floor",
+                "status": "unavailable",
+                "statusReason": "The database cluster rejected its configuration, so the latest change could not be applied.",
+                "statusReasonCode": "ClusterFailed",
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:54:40.302Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cohdeelgc73d2i4b0",
+                "name": "qa-20261015-a581-floor",
+                "status": "unavailable",
+                "statusReason": "The database cluster rejected its configuration, so the latest change could not be applied.",
+                "statusReasonCode": "ClusterFailed",
+                "version": "13"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-15T12:54:43.022Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db8cohdeelgc73d2i4b0",
+                "name": "qa-20261015-a581-floor",
+                "status": "unavailable",
+                "statusReason": "The database cluster rejected its configuration, so the latest change could not be applied.",
+                "statusReasonCode": "ClusterFailed",
+                "version": "13"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "AfterRejected15Read": {
+      "at": "2026-10-15T12:55:16.086Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8cohdeelgc73d2i4b0",
+          "sql": "SELECT current_setting('server_version') AS version, 'QA_A581_STILL_SERVING' AS marker",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["version", "marker"],
+            "rowCount": 1,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "13.22 (Debian 13.22-1.pgdg11+1)",
+                  "QA_A581_STILL_SERVING"
+                ]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "console": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": SELECT current_setting('server_version') AS version, 'QA_A581_STILL_SERVING' AS marker\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 1 row returned\n- table:\n  - rowgroup:\n    - row \"version marker\":\n      - columnheader \"version\"\n      - columnheader \"marker\"\n  - rowgroup:\n    - row \"13.22 (Debian 13.22-1.pgdg11+1) QA_A581_STILL_SERVING\":\n      - cell \"13.22 (Debian 13.22-1.pgdg11+1)\"\n      - cell \"QA_A581_STILL_SERVING\"\n- paragraph: Query history\n- button \"Clear\"\n- button \"SELECT current_setting('server_version') AS version, 'QA_A581_STILL_SERVING' AS marker\""
+    },
+    "Delete": {
+      "at": "2026-10-15T12:55:19.034Z",
+      "request": {
+        "operationName": "DeleteDatabase",
+        "variables": {
+          "id": "dpg-db8cohdeelgc73d2i4b0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteDatabase($id: String!, $confirm: String) {\n  deleteDatabase(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteDatabase": true
+        }
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "cleanup": {
+      "receiptAt": "2026-10-15T12:55:40.691Z",
+      "request": {
+        "method": "GET",
+        "url": "https://api.bex.co/v1/postgres/dpg-db8cohdeelgc73d2i4b0"
+      },
+      "deletedStatus": 404,
+      "history": null,
+      "setsRestored": true,
+      "before": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "after": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "logout": {
+        "exitCode": 0,
+        "output": "ok logged-out\n"
+      },
+      "browser": {
+        "at": "2026-10-15T12:56:04.553Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      }
+    }
+  },
+  "dependency": {
+    "lock": "deploy/helm-artifacts.lock:20",
+    "chart": "cloudnative-pg0.29.0",
+    "deploymentReadCommand": "kubectl --context hetzner-prod --request-timeout=15s -n cnpg-system get deployments -o jsonpath (container image projection only)",
+    "observedDeploymentImage": "ghcr.io/cloudnative-pg/cloudnative-pg:1.30.0",
+    "releaseSourceCommit": "4b5e244a7d031f67e025c83c1555e7726ecbbfa1",
+    "releaseSource": "https://github.com/cloudnative-pg/cloudnative-pg/blob/v1.30.0/internal/webhook/v1/cluster_webhook.go#L1397",
+    "mechanism": "validateImageChange rejects oldMajor < newMajor <16; initial provisioning is not this update-only branch."
+  },
+  "replay": {
+    "instructions": "Create fresh owned Free PostgreSQL13 resources with generated names and replace deleted IDs in the complete captured requests. Use native Upgrade dialog to pick14 or15; observe accepted mutation, ClusterFailed and successful old13 SQL. For the control choose16 and compare seed rows after Available. Delete exact fixtures and revoke exact QA sessions.",
+    "sqlCreate": "CREATE TABLE qa_a580_upgrade (ord integer PRIMARY KEY, value text)",
+    "sqlSeed": "INSERT INTO qa_a580_upgrade (ord,value) VALUES (1,'QA_A580_雪'),(2,NULL),(3,'') RETURNING ord,value",
+    "sqlCheck": "SELECT current_setting('server_version') AS version, ord, value FROM qa_a580_upgrade ORDER BY ord"
+  },
+  "supplementaryScreenshot": {
+    "path": ".playwright-mcp/qa-pg-upgrade-under16-a580.png",
+    "viewed": true,
+    "claim": "Fresh390px page shows Unavailable while its just-completed SQL results retain PostgreSQL13 and all three seed rows.",
+    "durableProof": "The exact requests and full observable JSON bodies above, not the ignored screenshot, establish the finding."
+  },
+  "limits": [
+    "No actual outage or lost data claimed for rejected14/15 targets; old13 SQL succeeded.",
+    "Successful13→16 upgrade and seeded rows verified; no precise downtime interval measured.",
+    "Live mutations used dashboard GraphQL only. REST/MCP real/dry-run paths, source14→15, durable-plan guards and other clients are source-traced or future verification.",
+    "No platform operator or foreign resource was changed; both owned databases deleted, seven ID sets restored, sessions actually revoked.",
+    "HTTP diagnostics contain cumulative earlier MCP requests and ordinary cancellations; they are not attributed without scope."
+  ],
+  "dedupe": {
+    "markdownFiles": 9169,
+    "actualOpenOrBlockedMilestoneTitles": 72,
+    "preciseMatchesDisposition": [
+      "w1/done/m56/t003: kpack minimum version, unrelated.",
+      "w4/done/m81/t006: billing checklist13→14 item count, unrelated."
+    ],
+    "priorFeature": "w8/done/m12; closeout tested16→17 and17→18. Lower upgrade targets were not verified there.",
+    "mainGuardFilesUnchangedSinceLivePass": true
+  }
+}
