@@ -143,7 +143,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **106** — [A served deploy stays In Progress after auto-hibernation](blocked/106.md) — **BLOCKED (2026-10-14: reconciler fix + regressions done — a release parked by auto-hibernation after serving settles Live on strict generation-matched proof; needs the API deployed to production plus a two-client short-idle native restart replay with cleanup)**
 
-- [ ] **103** — [CLI trims a local file path and silently uploads its neighbor](103.md) — **TODO, upstream parser/resolver repair 45m; six wrong native request bodies, two false missing-file errors, four controls; external acceptance/pin/release prerequisites**
+- [ ] **103** — [CLI trims a local file path and silently uploads its neighbor](blocked/103.md) — **BLOCKED (2026-10-14: upstream parser patch + regressions prepared in `evidence/103/upstream-secret-file-path.patch`; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release and the twelve native receipts; no fork/backend workaround per DO_NOT_DO)**
 
 - [x] **102** — [Blueprint environment copies use a literal shadowed by a reference](done/102.md) — **DONE 2026-10-13** (fix `13a2fd5eb`; sweep212 16-case native matrix passes; DeployStack zero-write and GraphQL/MCP agreement in code; hosted apply recorded as a boundary)
 
