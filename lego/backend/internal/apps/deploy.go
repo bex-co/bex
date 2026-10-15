@@ -1461,7 +1461,7 @@ func (s *Service) existingGroupLinks(ctx context.Context, source parsedService, 
 
 func copyRefusal(consumer *parsedService, c stateCopy, why string) blueprintResourceError {
 	return blueprintResourceError{kind: BlueprintResourceService, name: consumer.req.Name,
-		err: envRefError(consumer.req.Name, c.key, fmt.Errorf("fromService.envVarKey references env %q on existing service %q, %s", c.sourceKey, c.source, why))}
+		err: atEnvEntry(c.index, envRefError(consumer.req.Name, c.key, fmt.Errorf("fromService.envVarKey references env %q on existing service %q, %s", c.sourceKey, c.source, why)))}
 }
 
 func (s *Service) validateBlueprintService(ctx context.Context, svc parsedService, appsByName map[string]*appv1alpha1.App) error {
@@ -2014,7 +2014,7 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	// reference a service declared later).
 	type pending struct {
 		svc     parsedService
-		refVars []bexEnvVar // fromDatabase / fromService — resolved in pass 2
+		refVars []envRef // fromDatabase / fromService — resolved in pass 2
 	}
 	pendings := make([]pending, 0, len(services))
 	for _, a := range services {
@@ -2186,66 +2186,75 @@ func newStackIndex(serviceCount, databaseCount int) *stackIndex {
 // every name, port, and known-env is available. Database references are
 // validated here but retained until apply: only then do we know the immutable
 // dpg-... id that names the CNPG Secret.
-func (idx *stackIndex) classifyRefs(svc parsedService, refVars []bexEnvVar) (parsedService, error) {
+func (idx *stackIndex) classifyRefs(svc parsedService, refVars []envRef) (parsedService, error) {
 	for _, r := range refVars {
-		if r.FromDatabase != nil {
-			if idx.databaseNames[r.FromDatabase.Name] && r.FromDatabase.Property == dbPropertyConnectionPoolString && !idx.databasePoolers[r.FromDatabase.Name] {
-				return parsedService{}, envRefError(svc.req.Name, r.Key, poolerRequirement(r.FromDatabase.Name))
-			}
-			svc.databaseRefs = append(svc.databaseRefs, r)
-			continue
+		if err := idx.classifyRef(&svc, r); err != nil {
+			// The authored entry, not the first one sharing its key (w8/100).
+			return parsedService{}, atEnvEntry(r.index, err)
 		}
-		if r.FromService != nil && isKeyValueType(r.FromService.Type) {
-			svc.kvRefs = append(svc.kvRefs, r)
-			continue
-		}
-		// One target-existence check for every remaining fromService form
-		// (host/hostport/port/envVarKey), so the message lives in one place.
-		allowExistingServiceHost := r.FromService != nil && r.FromService.EnvVarKey == "" && r.FromService.Property == serviceRefPropertyHost
-		if r.FromService != nil && !idx.names[r.FromService.Name] && !allowExistingServiceHost {
-			return parsedService{}, envRefError(svc.req.Name, r.Key, fmt.Errorf("fromService references unknown service %q (declare it under services: in the same file)", r.FromService.Name))
-		}
-		// A supplied type must describe the declared target, or a reference
-		// meant for a worker silently resolves against a web service (w8/096).
-		if r.FromService != nil {
-			if target, declared := idx.serviceTypes[r.FromService.Name]; declared && !slices.Contains(serviceRefTypes[target], r.FromService.Type) {
-				return parsedService{}, fmt.Errorf("%w: service %q: envVars[%q] fromService.type %q does not match %q (want type %s)",
-					core.ErrBadRequest, svc.req.Name, r.Key, r.FromService.Type, r.FromService.Name, strings.Join(serviceRefTypes[target], " or "))
-			}
-		}
-		// host, hostport and port all name a declared sibling's network address,
-		// which only web/private services have; a worker, cron job or static
-		// site has no port to resolve (it would become "0"/"<slug>:0", w8/081).
-		// An undeclared host target is resolved out-of-file at apply instead.
-		if r.FromService != nil && r.FromService.EnvVarKey == "" && idx.names[r.FromService.Name] && serviceRefProperty[r.FromService.Property] {
-			if _, addressable := idx.servicePorts[r.FromService.Name]; !addressable {
-				return parsedService{}, fmt.Errorf("%w: service %q: envVars[%q] fromService %s references %q which has no network address (only web/private services are addressable)", core.ErrBadRequest, svc.req.Name, r.Key, r.FromService.Property, r.FromService.Name)
-			}
-		}
-		// host/hostport inject the sibling's slug — minted at create (w4/m19),
-		// so resolution is deferred to apply like databaseRefs above. The port
-		// half is already known and resolved into the ref now.
-		if r.FromService != nil && r.FromService.EnvVarKey == "" &&
-			(r.FromService.Property == serviceRefPropertyHost || r.FromService.Property == serviceRefPropertyHostPort) {
-			port := idx.servicePorts[r.FromService.Name]
-			svc.hostRefs = append(svc.hostRefs, hostRef{
-				key: r.Key, target: r.FromService.Name, port: port,
-				hostport: r.FromService.Property == serviceRefPropertyHostPort,
-			})
-			continue
-		}
-		ev, err := resolveRef(r, idx.servicePorts, idx.serviceKnownEnv)
-		if err != nil {
-			return parsedService{}, envRefError(svc.req.Name, r.Key, err)
-		}
-		if ref := r.FromService; ref != nil && ref.EnvVarKey != "" {
-			if v := idx.serviceKnownEnv[ref.Name][ref.EnvVarKey]; v.seed || v.group != "" {
-				svc.stateCopies = append(svc.stateCopies, stateCopy{key: r.Key, source: ref.Name, sourceKey: ref.EnvVarKey})
-			}
-		}
-		svc.req.Env = append(svc.req.Env, ev)
 	}
 	return svc, nil
+}
+
+// classifyRef files one deferred reference onto svc, or refuses it.
+func (idx *stackIndex) classifyRef(svc *parsedService, r envRef) error {
+	if r.FromDatabase != nil {
+		if idx.databaseNames[r.FromDatabase.Name] && r.FromDatabase.Property == dbPropertyConnectionPoolString && !idx.databasePoolers[r.FromDatabase.Name] {
+			return envRefError(svc.req.Name, r.Key, poolerRequirement(r.FromDatabase.Name))
+		}
+		svc.databaseRefs = append(svc.databaseRefs, r.bexEnvVar)
+		return nil
+	}
+	if r.FromService != nil && isKeyValueType(r.FromService.Type) {
+		svc.kvRefs = append(svc.kvRefs, r.bexEnvVar)
+		return nil
+	}
+	// One target-existence check for every remaining fromService form
+	// (host/hostport/port/envVarKey), so the message lives in one place.
+	allowExistingServiceHost := r.FromService != nil && r.FromService.EnvVarKey == "" && r.FromService.Property == serviceRefPropertyHost
+	if r.FromService != nil && !idx.names[r.FromService.Name] && !allowExistingServiceHost {
+		return envRefError(svc.req.Name, r.Key, fmt.Errorf("fromService references unknown service %q (declare it under services: in the same file)", r.FromService.Name))
+	}
+	// A supplied type must describe the declared target, or a reference
+	// meant for a worker silently resolves against a web service (w8/096).
+	if r.FromService != nil {
+		if target, declared := idx.serviceTypes[r.FromService.Name]; declared && !slices.Contains(serviceRefTypes[target], r.FromService.Type) {
+			return fmt.Errorf("%w: service %q: envVars[%q] fromService.type %q does not match %q (want type %s)",
+				core.ErrBadRequest, svc.req.Name, r.Key, r.FromService.Type, r.FromService.Name, strings.Join(serviceRefTypes[target], " or "))
+		}
+	}
+	// host, hostport and port all name a declared sibling's network address,
+	// which only web/private services have; a worker, cron job or static
+	// site has no port to resolve (it would become "0"/"<slug>:0", w8/081).
+	// An undeclared host target is resolved out-of-file at apply instead.
+	if r.FromService != nil && r.FromService.EnvVarKey == "" && idx.names[r.FromService.Name] && serviceRefProperty[r.FromService.Property] {
+		if _, addressable := idx.servicePorts[r.FromService.Name]; !addressable {
+			return fmt.Errorf("%w: service %q: envVars[%q] fromService %s references %q which has no network address (only web/private services are addressable)", core.ErrBadRequest, svc.req.Name, r.Key, r.FromService.Property, r.FromService.Name)
+		}
+	}
+	// host/hostport inject the sibling's slug — minted at create (w4/m19),
+	// so resolution is deferred to apply like databaseRefs above. The port
+	// half is already known and resolved into the ref now.
+	if r.FromService != nil && r.FromService.EnvVarKey == "" &&
+		(r.FromService.Property == serviceRefPropertyHost || r.FromService.Property == serviceRefPropertyHostPort) {
+		port := idx.servicePorts[r.FromService.Name]
+		svc.hostRefs = append(svc.hostRefs, hostRef{
+			key: r.Key, target: r.FromService.Name, port: port,
+			hostport: r.FromService.Property == serviceRefPropertyHostPort,
+		})
+		return nil
+	}
+	ev, err := resolveRef(r.bexEnvVar, idx.servicePorts, idx.serviceKnownEnv)
+	if err != nil {
+		return envRefError(svc.req.Name, r.Key, err)
+	}
+	if ref := r.FromService; ref != nil && ref.EnvVarKey != "" {
+		if v := idx.serviceKnownEnv[ref.Name][ref.EnvVarKey]; v.seed || v.group != "" {
+			svc.stateCopies = append(svc.stateCopies, stateCopy{key: r.Key, index: r.index, source: ref.Name, sourceKey: ref.EnvVarKey})
+		}
+	}
+	svc.req.Env = append(svc.req.Env, ev)
+	return nil
 }
 
 // decodeCompiledBlueprintManifest is a temporary typed-adapter boundary for
@@ -2426,12 +2435,21 @@ type knownValue struct {
 // (currentStateCopyProblems, w8/m64).
 type stateCopy struct {
 	key, source, sourceKey string
+	index                  int // the authored envVars entry, for locating a refusal
+}
+
+// envRef is a deferred fromDatabase/fromService entry with its authored
+// envVars index, which locates a pass-2 refusal even when an earlier entry
+// shares its key (w8/100).
+type envRef struct {
+	bexEnvVar
+	index int
 }
 
 // serviceEnv is the classified env of one service entry: plain literals ride
 // req.Env directly; the rest is deferred to apply time or resolved in pass 2.
 type serviceEnv struct {
-	refVars       []bexEnvVar       // fromDatabase / fromService — resolved once every name is known
+	refVars       []envRef          // fromDatabase / fromService — resolved once every name is known
 	groupLinks    []string          // fromGroup names, linked as a create writes the service or after an update
 	seedLiterals  map[string]string // sync:false literals, seeded once into the mutable env store
 	seedGenerates []string          // generateValue keys, minted + seeded once
@@ -2671,7 +2689,7 @@ func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv
 		}
 		switch {
 		case e.FromDatabase != nil, e.FromService != nil:
-			se.refVars = append(se.refVars, e)
+			se.refVars = append(se.refVars, envRef{bexEnvVar: e, index: i})
 		case e.GenerateValue:
 			se.seedGenerates = append(se.seedGenerates, e.Key)
 		case e.Sync != nil && !*e.Sync:
