@@ -191,14 +191,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # --- 1. build + push the operator image ---
-      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - uses: docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003 # v4.4.0
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - id: build_operator
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: lego
           platforms: linux/amd64
@@ -212,7 +212,7 @@ jobs:
       # ones use in-cluster Service DNS (the dashboard's own pod reaches
       # Kratos/bex-api directly, not back out through the public ingress).
       - id: build_dashboard
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: dashboard
           platforms: linux/amd64
@@ -231,7 +231,7 @@ jobs:
 
       # --- 1c. build the pinned OpenSandbox lifecycle server image (w3/m35) ---
       - id: build_opensandbox
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: deploy/opensandbox
           file: deploy/opensandbox/server.Dockerfile
@@ -247,7 +247,7 @@ jobs:
       # (w3/m42) and terminal-child-Pod (w5/m72) patches. The reusable envtest
       # workflow above applies both to this exact pin before any image is built.
       - id: build_opensandbox_controller
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: deploy/opensandbox
           file: deploy/opensandbox/controller.Dockerfile
@@ -259,7 +259,7 @@ jobs:
 
       # --- 1d. build the ADR047 agent sandbox template image (w3/m37) ---
       - id: build_agent_sandbox
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: lego
           file: lego/agent-image/Dockerfile
