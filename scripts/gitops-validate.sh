@@ -362,25 +362,26 @@ if ! grep -q 'kind: Application' <(kubectl kustomize deploy/gitops/base) \
 fi
 
 # w1/127: the local overlay replaces the approver's values to carry its CAPD
-# deviations (no DNS forward lookup, control-plane placement). Everything else
-# must match prod, including any key base gains later, and prod must keep the
-# strict default. Collected with ea outside select (see scalar()).
+# deviations (no DNS forward lookup, control-plane placement, its own deny
+# step). Everything else must match prod, including any key base gains later.
+# Prod keeps the DNS check and leaves denial to CAPH (w1/129); local, with no
+# CAPH, must deny itself. Collected with ea outside select (see scalar()).
 approver_values() {
   kubectl kustomize "deploy/gitops/overlays/$1" \
     | yq -N ea '[select(.kind == "Application" and .metadata.name == "kubelet-csr-approver") | .spec.source.helm.values] | .[0]' - \
     | yq -N -o=json -I=0 "$2"
 }
 echo "==> local kubelet-csr-approver differs from prod only by its CAPD deviations"
-deviations='del(.nodeSelector, .tolerations, .bypassDnsResolution) | sort_keys(.)'
+deviations='del(.nodeSelector, .tolerations, .bypassDnsResolution, .skipDenyStep) | sort_keys(.)'
 local_rest="$(approver_values local "$deviations")"
 prod_rest="$(approver_values prod "$deviations")"
-local_bypass="$(approver_values local .bypassDnsResolution)"
-prod_bypass="$(approver_values prod .bypassDnsResolution)"
-for captured in local_rest prod_rest local_bypass prod_bypass; do
+local_switches="$(approver_values local '[.bypassDnsResolution, .skipDenyStep]')"
+prod_switches="$(approver_values prod '[.bypassDnsResolution, .skipDenyStep]')"
+for captured in local_rest prod_rest local_switches prod_switches; do
   scalar "$captured" "${!captured}" || fail=1
 done
-if [ "$local_rest" != "$prod_rest" ] || [ "$local_rest" = null ] || [ "$local_bypass" != true ] || [ "$prod_bypass" != false ]; then
-  echo "FAIL: kubelet-csr-approver: local $local_rest (bypassDnsResolution $local_bypass) vs prod $prod_rest ($prod_bypass); want equal checks, bypass true locally and false in prod" >&2
+if [ "$local_rest" != "$prod_rest" ] || [ "$local_rest" = null ] || [ "$local_switches" != '[true,false]' ] || [ "$prod_switches" != '[false,true]' ]; then
+  echo "FAIL: kubelet-csr-approver: local $local_rest ([bypassDnsResolution, skipDenyStep] $local_switches) vs prod $prod_rest ($prod_switches); want equal checks, [true,false] locally and [false,true] in prod" >&2
   fail=1
 fi
 

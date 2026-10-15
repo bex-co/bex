@@ -344,15 +344,17 @@ patches:
                 patch: |-
                   - { op: remove, path: /spec/acme }
                   - { op: add, path: /spec/selfSigned, value: {} }
-  # w1/127: the kubelet-serving CSR approver's two CAPD deviations, owned here
-  # so Argo carries them instead of fighting scripts/mock-cluster.sh's own Helm
+  # w1/127: the kubelet-serving CSR approver's CAPD deviations, owned here so
+  # Argo carries them instead of fighting scripts/mock-cluster.sh's own Helm
   # install over the same Deployment. A CAPD node's hostname resolves only
   # through the host Docker daemon's DNS, never from a pod, so the forward
   # lookup check would deny every legitimate CSR; and like coredns the approver
-  # watches the apiserver, so it stays on the control-plane node. The values
-  # are replaced whole (Helm merges two values files, so a selector key cannot
-  # be dropped); every other check matches base, which scripts/gitops-validate.sh
-  # asserts, and prod keeps the strict default.
+  # watches the apiserver, so it stays on the control-plane node. CAPD has no
+  # CAPH to deny a non-conforming CSR, so here the approver keeps its deny step
+  # (base skips it for prod, w1/129). The values are replaced whole (Helm
+  # merges two values files, so a selector key cannot be dropped); every other
+  # check matches base, which scripts/gitops-validate.sh asserts, and prod
+  # keeps the DNS check.
   - target:
       group: argoproj.io
       version: v1alpha1
