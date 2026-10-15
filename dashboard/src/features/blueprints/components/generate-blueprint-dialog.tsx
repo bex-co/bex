@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/common/components/ui/dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCopyToClipboard } from "@/common/hooks/use-copy-to-clipboard";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { downloadTextFile } from "@/common/lib/download-file";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
@@ -72,6 +73,10 @@ export function GenerateBlueprintDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const { t } = useTranslations();
+  const { copy } = useCopyToClipboard({
+    successText: t("blueprints.generateCopied"),
+    errorText: t("blueprints.generateCopyFailed"),
+  });
   const { currentWorkspaceId } = useWorkspace();
   const { services } = useServices();
   const { databases } = useDatabases();
@@ -232,13 +237,7 @@ export function GenerateBlueprintDialog({
               <Button variant="outline" onClick={() => setManifest(null)}>
                 {t("blueprints.generateBack")}
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  void navigator.clipboard.writeText(manifest);
-                  toast.success(t("blueprints.generateCopied"));
-                }}
-              >
+              <Button variant="outline" onClick={() => void copy(manifest)}>
                 {t("blueprints.generateCopy")}
               </Button>
               <Button onClick={handleDownload}>
