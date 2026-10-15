@@ -363,7 +363,11 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 	}
 	if a.Spec.Repo != "" {
 		entry["repo"] = a.Spec.Repo
-		if a.Spec.Branch != "" && a.Spec.Branch != appv1alpha1.DefaultBranch {
+		// Every selected branch is exported, main included: to Render (and to
+		// a direct create, w8/m76) an omitted branch means the repository's
+		// default, so dropping an explicit main would re-create a
+		// master-default repo's service on master.
+		if a.Spec.Branch != "" {
 			entry["branch"] = a.Spec.Branch
 		}
 	}

@@ -46,8 +46,12 @@ type CloneTokenSource interface {
 	// why the read path memoizes it.
 	RepoGranted(ctx context.Context, workspaceID, repoURL string) (granted bool, err error)
 	// ValidateRepo checks source-save access without writing clone credentials.
-	// Public Git remains available without a workspace installation grant.
-	ValidateRepo(ctx context.Context, workspaceID, repoURL string) error
+	// Public Git remains available without a workspace installation grant. It
+	// returns the default branch GitHub reported in that same read — the
+	// branch an omitted-branch create builds, per Render's Create service
+	// contract (w8/m76) — or "" when it has no opinion about the repository
+	// (GitHub off, or not a github.com repo). The value is unvalidated.
+	ValidateRepo(ctx context.Context, workspaceID, repoURL string) (defaultBranch string, err error)
 }
 
 // deployWorkspace resolves the workspace whose GitHub connection owns this App's

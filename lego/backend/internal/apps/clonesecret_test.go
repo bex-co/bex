@@ -46,6 +46,9 @@ type fakeCloneTokens struct {
 	lastRepo      string
 	validateErr   error
 	validateCalls int
+	// defaultBranch is the repository default ValidateRepo reports ("" = no
+	// opinion, like a non-github.com host).
+	defaultBranch string
 }
 
 func (f *fakeCloneTokens) CloneToken(_ context.Context, workspaceID, repo string) (string, bool, error) {
@@ -60,11 +63,14 @@ func (f *fakeCloneTokens) RepoGranted(_ context.Context, _, _ string) (bool, err
 	return f.ok, f.err
 }
 
-func (f *fakeCloneTokens) ValidateRepo(_ context.Context, workspaceID, repo string) error {
+func (f *fakeCloneTokens) ValidateRepo(_ context.Context, workspaceID, repo string) (string, error) {
 	f.validateCalls++
 	f.lastWorkspace = workspaceID
 	f.lastRepo = repo
-	return f.validateErr
+	if f.validateErr != nil {
+		return "", f.validateErr
+	}
+	return f.defaultBranch, nil
 }
 
 func ghService(gh CloneTokenSource, apps ...*appv1alpha1.App) (*Service, client.Client) {
