@@ -1,39 +1,40 @@
-# w1 · m173 — Free web services go to sleep again (auto-hibernate regression since 2026-10-07)
+# w1 · m173 — Free web services go to sleep again: the production canary was held awake by a local cluster's ACME self-check
 
-**Worker:** worker1 **Goal:** an idle free web service auto-hibernates after its idle window again, and the production tenant-view canary catches a regression instead of staying red. **Status:** todo
+**Worker:** worker1 **Goal:** the production tenant-view canary sleeps after its idle window again, nothing local can generate certificate-validation traffic against production hosts, and the canary's failure text points at this class of cause. **Status:** in progress (t001–t004, t006, t007 done; t005 production verification pending)
 
 ## Tasks (in order)
 
-| id   | title                                                                                                  | est | depends_on |
-| ---- | ------------------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Reproduce on dev-1: an idle free web App never hibernates; capture the operator line that keeps it awake | 45m | —          |
-| t002 | Failing-before test through the real `patchAppMeta` path; bisect the 2026-10-06/07 operator commits     | 45m | t001       |
-| t003 | Fix the root cause while keeping w5/096's guarantees                                                    | 1h  | t002       |
-| t004 | Canary stage 3 prints the pod's age at query time (FUTURE-MAYBE w3/040)                                 | 20m | t003       |
-| t005 | Production: three green scheduled canary runs with a real cold wake; count services that stayed awake   | 30m | t004       |
-| t006 | Simplify                                                                                               | 15m | t005       |
-| t007 | Test coverage                                                                                          | 30m | t005       |
-| t008 | Closeout                                                                                               | 10m | t007       |
+| id   | title                                                                                                    | est | depends_on |
+| ---- | -------------------------------------------------------------------------------------------------------- | --- | ---------- |
+| t001 | Diagnose why the canary never slept (2026-10-07 → 10-15) — **DONE**                                       | 45m | —          |
+| t002 | Local clusters sign their own certificates: no ACME, so no self-check traffic against production — **DONE** | 30m | t001       |
+| t003 | Guard: `gitops-validate.sh` fails if the local render carries an ACME ClusterIssuer — **DONE**             | 20m | t002       |
+| t004 | Canary stage 4 names the never-slept cause; FUTURE-MAYBE w3/040 records the finding — **DONE**             | 20m | t003       |
+| t005 | Production: the canary sleeps between requests; three green canary runs; issue #87 closed                 | 30m | t004       |
+| t006 | Simplify — **DONE**                                                                                                 | 15m | t005       |
+| t007 | Test coverage — **DONE**                                                                                            | 30m | t005       |
+| t008 | Closeout                                                                                                 | 10m | t007       |
 
 ## Definition of done
 
-- **The test proves it.** An operator test drives a free web App with no traffic past its idle window through the real metadata-patch path, including a status write earlier in the same pass, and asserts `Hibernated`. It fails with the fix reverted.
-- **dev-1.** A free web App with `idleTTLSeconds: 60` and no traffic reaches `Hibernated` and emits `service_hibernated`; a request wakes it and emits `service_woken`.
-- **Production.** After the fix is pinned, three consecutive scheduled `ssh-edge-liveness.yml` runs pass all four stages with a stage-1 wake that takes measurable time (not `200 in 0s`) and a fresh `service_woken` event. GitHub issue #87 is closed with the run ids.
-- **Impact recorded.** The README records how many free web services stayed Running with no traffic between 2026-10-07 and the fix, read through the API, or states why the count could not be taken.
+- **No local ACME.** The local overlay's ClusterIssuers render self-signed with no ACME solver (`scripts/gitops-validate.sh` asserts it, and fails with the patch removed); prod's issuers are untouched.
+- **No traffic from the Mac.** While the local cluster runs, production request logs for `hello-go.onbex.co` show no `/.well-known/acme-challenge/` requests, and the canary records `service_hibernated` within ~16 minutes of its last real request.
+- **The alarm works.** Three consecutive `ssh-edge-liveness.yml` runs pass `tenant-view-liveness` with a measurable stage-1 wake and a fresh `service_woken`; GitHub issue #87 is closed with the run ids.
+- **Impact recorded.** Only the canary was affected: the two other free web services in `bex-canary` slept normally all week (evidence below).
 
-## Evidence
+## Evidence (t001, 2026-10-15)
 
-- `ssh-edge-liveness.yml` (tenant-view canary, service `srv-daif6dsmg29s73d1umvg`, `https://hello-go.onbex.co`) failed **25 scheduled runs in a row**, from `37581343426` (2026-10-07 06:24Z) through `38685083503` (2026-10-15 05:07Z). Every failing run reads `1/4 wake … ok: 200 in 0s` and `FAIL(4/4 events): the canary's events feed is empty for the probe window`. The last green runs (`37542778375` 10-06 22:47Z, `37512467892`, `37425932857`) woke the canary in 9–12s and found a fresh wake event. The service stopped sleeping.
-- Platform pins in the window after the last green run: `9c42dbf9d` (pinned 23:14Z), `fd5d2693e` (w5/096, pinned 23:51Z), `1009b751e` (w5/108), `5fe6d5968` (w5/109), `b389580be` (w5/110), `71c6274da` (w5/112, API).
-- Lead suspect, unproven: `fd5d2693e` moved `stampLastActive` onto `patchAppMeta`, which patches with `client.MergeFromWithOptimisticLock{}` under the resourceVersion the pass read (`lego/operator/internal/controller/metadata_patch.go:36-44`). `recentlyActive` treats any stamp error as "advancing last-active failed; keeping the service awake" and returns true (`activity.go:185-188`). If the pass's App is always one resourceVersion behind by then, every check conflicts and the service never sleeps.
-- GitHub issue #87 ("A workflow is persistently red on main", 2026-10-08) has no comments. Issue #84 auto-closed on 10-15 after a pass that also read `200 in 0s` during a rollout.
+- **The canary never slept.** Its events (`GET /v1/services/srv-daif6dsmg29s73d1umvg/events`) jump from `service_woken` 2026-10-07T06:00:07Z straight to `service_hibernated` 2026-10-15T03:00:42Z; before and after, it slept ~15 minutes after each wake. The two other free web services in the same workspace (`srv-db09vbgehcmc739j12i0`, `srv-db09u90ehcmc739j12cg`) slept and woke normally throughout, so this was not an operator regression (an operator test of the failed-build shape also passed).
+- **What kept it awake.** Its request logs show `162.224.81.143` (an AT&T residential line, `sbcglobal.net`, the Mac that runs the local kind/CAPD cluster) requesting `hello-go.onbex.co/.well-known/acme-challenge/ehTFV1KUF-0XGTgseqCHNtRPVpsY7popUYNyDHW_QoI` every ~10s from 2026-10-07T05:59:49Z to 2026-10-15T02:44:43Z. The first request reached the activator (503) and woke the service; hello-go answers every path 200, so each check failed and repeated. The service slept 16 minutes after the last one.
+- **Where it came from.** The local kind cluster `bex` held Challenge `tea-daul85i9086o6jitc8qg-hello-go-tls-1-2369103061-382143810` (created 2026-10-01T01:15:21Z, token `ehTFV1KUF-…`, "Waiting for HTTP-01 challenge propagation: did not get expected response") for a local App named `hello-go`: the local operator runs `lego/operator/config/default`, whose `BEX_BASE_DOMAIN=onbex.co` and `BEX_CLUSTER_ISSUER=letsencrypt-prod` gave it the production hostname and a real Let's Encrypt issuer. The self-check only runs while the Mac's cluster is up; it resumed at 09:58:12Z today when the cluster was restarted for this milestone, and stopped at 10:01:14Z when the local Certificate was deleted.
+- **Same leak, other hosts.** The same local cluster held 13 more pending challenges for production names (`api.bex.co`, `ssh.bex.co`, `dashboard.bex.co`, and `auth.bex.co` + `oauth.bex.co` in each `dev-N-auth`), each polling production since 2026-09-30/10-02 whenever the cluster ran.
+- **Local cleanup done (2026-10-15 10:01Z):** removed `cert-manager.io/cluster-issuer` from the local `tea-daul85i9086o6jitc8qg-hello-go` Ingress and deleted its Certificate (Order, Challenge and solver Ingress went with it). The other challenges stop once the local Argo applies t002's issuer change.
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm for w1` 2026-10-15, item 1 (approved by the user the same day); found by the CI/incident sweep and re-verified from the run logs above.
-- **Goal linkage:** V0 roadmap 1 (deploy, suspend, sleep on `*.onbex.co`) and 5 (multi-tenant economics): free-tier sleep is what makes dense bin-packing of free services affordable.
-- **Expected outcome:** free web services sleep after their idle window again, and the canary's four stages are a working regression alarm.
-- **Why now:** a live production regression since 2026-10-07 that may be keeping every idle free web service running, and an alarm that has been red for 8 days hides anything else that breaks.
-- **Render parity omitted:** operator-internal mechanism; no REST/GraphQL/MCP/UI shape changes. The behavior restored is Render's own free-tier sleep.
-- **Related, not taken over:** `w4/blocked/m164` t003 (live idle journeys) cannot pass until this lands; `w1/blocked/124` is a different state (stuck Deploying). `DO_NOT_DO.md`'s "wakes itself" entry is the opposite symptom.
+- **Source:** `/pm-brainstorm for w1` 2026-10-15, item 1 (approved by the user the same day); the CI/incident sweep found the red canary. t001 disproved the filed premise (an operator auto-hibernate regression) and found the cause above; the milestone was rescoped on 2026-10-15 accordingly.
+- **Goal linkage:** V0 roadmap 1 and 5 (free-tier sleep economics) and 2 (basic obs: the canary must alarm on real faults).
+- **Expected outcome:** the canary sleeps and alarms correctly; no developer machine can keep a production service awake or poll production hosts through cert-manager.
+- **Why now:** the leak recurs every time the local cluster runs (it did again today), and a canary red for the wrong reason hides real failures.
+- **Render parity omitted:** no REST/GraphQL/MCP/UI change; this is local GitOps configuration and a probe script.
+- **Related:** `.pm/FUTURE-MAYBE.md` w3/040 (unexplained canary wakes) gains this as a confirmed traffic source. `w4/blocked/m164` and `w1/blocked/124` are unrelated to the cause.
