@@ -1,0 +1,1315 @@
+{
+  "finding": "Service Logs uses stale relative history cutoff after a committed filter change",
+  "pass": "a497",
+  "researchHead": "6255ed8b2",
+  "severity": "minor",
+  "fixture": {
+    "id": "srv-db8297gumfhs73fe7gsg",
+    "name": "qa-20261015-a497-search",
+    "initialCommand": "sh -c 'printf \"QA_A497_START\\n\"; sleep 3; printf \"QA_A497_LITERAL a.b[1]+(雪)\\n\"; sleep 3; printf \"%s\\n\" \"{\\\"message\\\":\\\"QA_A497_JSON 雪\\\",\\\"level\\\":\\\"info\\\"}\"; sleep 3; printf \"QA_A497_OTHER axb1雪\\n\"; sleep 3; printf \"QA_A497_END\\n\"'",
+    "desktopCommand": "sh -c 'printf \"QA_A497_THIRD_START\\n\"; sleep 3; printf \"QA_A497_THIRD_LITERAL a.b[1]+(雪)\\n\"; sleep 3; printf \"%s\\n\" \"{\\\"message\\\":\\\"QA_A497_THIRD_JSON 雪\\\",\\\"level\\\":\\\"info\\\"}\"; sleep 3; printf \"QA_A497_THIRD_OTHER axb1雪\\n\"; sleep 3; printf \"QA_A497_THIRD_END\\n\"'",
+    "mobileCommand": "sh -c 'printf \"QA_A497_FOURTH_START\\n\"; sleep 3; printf \"QA_A497_FOURTH_LITERAL a.b[1]+(雪)\\n\"; sleep 3; printf \"%s\\n\" \"{\\\"message\\\":\\\"QA_A497_FOURTH_JSON 雪\\\",\\\"level\\\":\\\"info\\\"}\"; sleep 3; printf \"QA_A497_FOURTH_OTHER axb1雪\\n\"; sleep 3; printf \"QA_A497_FOURTH_END\\n\"'"
+  },
+  "limits": [
+    "Second run reloaded after it finished and passed, so it is an aged-history control, not a failing reproduction.",
+    "A separate 15s recovery watcher started too late or captured no response; later ready UI shows one returned row, but exact automatic tick receipt is not established.",
+    "Only service Logs on owned Free image cron tested; other resource families, absolute ranges, longer relative ranges, filter siblings and live-on search are source-only verification work."
+  ],
+  "desktop": {
+    "at": "2026-10-15T00:59:21.384Z",
+    "trigger": {
+      "request": [
+        {
+          "operationName": "RunCronJob",
+          "variables": {
+            "id": "srv-db8297gumfhs73fe7gsg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation RunCronJob($id: String!) {\n  runCronJob(id: $id) {\n    id\n    status\n    startedAt\n    finishedAt\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "runCronJob": {
+              "__typename": "CronRun",
+              "finishedAt": "",
+              "id": "crr-cbkcn1pkulanbpj5efvn",
+              "startedAt": "",
+              "status": "pending"
+            }
+          }
+        }
+      ]
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T00:59:03.467Z",
+        "request": {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "srv-db8297gumfhs73fe7gsg",
+            "startTime": "2026-10-14T23:59:02.859Z",
+            "endTime": "2026-10-15T00:59:02.859Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254",
+                  "level": "unknown",
+                  "message": "QA_A497_START",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:56:21.981126902Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254",
+                  "level": "unknown",
+                  "message": "QA_A497_LITERAL a.b[1]+(雪)",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:56:24.982418288Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254",
+                  "level": "info",
+                  "message": "{\"message\":\"QA_A497_JSON 雪\",\"level\":\"info\"}",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:56:27.983860116Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254",
+                  "level": "unknown",
+                  "message": "QA_A497_OTHER axb1雪",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:56:30.985376975Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254",
+                  "level": "unknown",
+                  "message": "QA_A497_END",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:56:33.986783956Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2",
+                  "level": "unknown",
+                  "message": "QA_A497_SECOND_START",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:57:56.052555602Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2",
+                  "level": "unknown",
+                  "message": "QA_A497_SECOND_LITERAL a.b[1]+(雪)",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:57:59.053851204Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2",
+                  "level": "info",
+                  "message": "{\"message\":\"QA_A497_SECOND_JSON 雪\",\"level\":\"info\"}",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:58:02.055333037Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2",
+                  "level": "unknown",
+                  "message": "QA_A497_SECOND_OTHER axb1雪",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:58:05.056790061Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2",
+                  "level": "unknown",
+                  "message": "QA_A497_SECOND_END",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:58:08.05826117Z",
+                  "type": "app"
+                }
+              ],
+              "nextEndTime": "2026-10-15T00:56:21.981126901Z",
+              "nextStartTime": "2026-10-14T23:59:02.859Z"
+            }
+          }
+        },
+        "batchOperations": [
+          "LogLabelValues",
+          "LogLabelValues",
+          "LogLabelValues",
+          "LogLabelValues",
+          "Logs"
+        ]
+      },
+      {
+        "at": "2026-10-15T00:59:20.827Z",
+        "request": {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "srv-db8297gumfhs73fe7gsg",
+            "text": "QA_A497_THIRD_LITERAL",
+            "textMode": "display",
+            "startTime": "2026-10-14T23:59:02.859Z",
+            "endTime": "2026-10-15T00:59:02.859Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [],
+              "nextEndTime": "2026-10-15T00:59:02Z",
+              "nextStartTime": "2026-10-14T23:59:02Z"
+            }
+          }
+        },
+        "batchOperations": ["Logs"]
+      }
+    ],
+    "before": {
+      "at": "2026-10-15T00:59:20.139Z",
+      "ui": "ter logs by instance srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254\": \"[00h8p]\"\n  - text: QA_A497_START 05:56:24 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254\": \"[00h8p]\"\n  - text: QA_A497_LITERAL a.b[1]+(雪) 05:56:27 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254\": \"[00h8p]\"\n  - text: \"{\\\"message\\\":\\\"QA_A497_JSON 雪\\\",\\\"level\\\":\\\"info\\\"} 05:56:30 PM\"\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254\": \"[00h8p]\"\n  - text: QA_A497_OTHER axb1雪 05:56:33 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254\": \"[00h8p]\"\n  - text: QA_A497_END 05:57:56 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_START 05:57:59 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_LITERAL a.b[1]+(雪) 05:58:02 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: \"{\\\"message\\\":\\\"QA_A497_SECOND_JSON 雪\\\",\\\"level\\\":\\\"info\\\"} 05:58:05 PM\"\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_OTHER axb1雪 05:58:08 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_END 05:59:07 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd\": \"[bcang]\"\n  - text: QA_A497_THIRD_START 05:59:10 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd\": \"[bcang]\"\n  - text: QA_A497_THIRD_LITERAL a.b[1]+(雪) 05:59:13 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd\": \"[bcang]\"\n  - text: \"{\\\"message\\\":\\\"QA_A497_THIRD_JSON 雪\\\",\\\"level\\\":\\\"info\\\"} 05:59:16 PM\"\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd\": \"[bcang]\"\n  - text: QA_A497_THIRD_OTHER axb1雪 05:59:19 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd\": \"[bcang]\"\n  - text: QA_A497_THIRD_END\n  - paragraph: Live — streaming new lines"
+    },
+    "paused": {
+      "at": "2026-10-15T00:59:20.194Z",
+      "ui": "utton \"Filter logs by instance srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254\": \"[00h8p]\"\n  - text: QA_A497_START 05:56:24 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254\": \"[00h8p]\"\n  - text: QA_A497_LITERAL a.b[1]+(雪) 05:56:27 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254\": \"[00h8p]\"\n  - text: \"{\\\"message\\\":\\\"QA_A497_JSON 雪\\\",\\\"level\\\":\\\"info\\\"} 05:56:30 PM\"\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254\": \"[00h8p]\"\n  - text: QA_A497_OTHER axb1雪 05:56:33 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254\": \"[00h8p]\"\n  - text: QA_A497_END 05:57:56 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_START 05:57:59 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_LITERAL a.b[1]+(雪) 05:58:02 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: \"{\\\"message\\\":\\\"QA_A497_SECOND_JSON 雪\\\",\\\"level\\\":\\\"info\\\"} 05:58:05 PM\"\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_OTHER axb1雪 05:58:08 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_END 05:59:07 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd\": \"[bcang]\"\n  - text: QA_A497_THIRD_START 05:59:10 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd\": \"[bcang]\"\n  - text: QA_A497_THIRD_LITERAL a.b[1]+(雪) 05:59:13 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd\": \"[bcang]\"\n  - text: \"{\\\"message\\\":\\\"QA_A497_THIRD_JSON 雪\\\",\\\"level\\\":\\\"info\\\"} 05:59:16 PM\"\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd\": \"[bcang]\"\n  - text: QA_A497_THIRD_OTHER axb1雪 05:59:19 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd\": \"[bcang]\"\n  - text: QA_A497_THIRD_END\n  - paragraph: Live tail paused"
+    },
+    "searched": {
+      "request": [
+        {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "srv-db8297gumfhs73fe7gsg",
+            "text": "QA_A497_THIRD_LITERAL",
+            "textMode": "display",
+            "startTime": "2026-10-14T23:59:02.859Z",
+            "endTime": "2026-10-15T00:59:02.859Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [],
+              "nextEndTime": "2026-10-15T00:59:02Z",
+              "nextStartTime": "2026-10-14T23:59:02Z"
+            }
+          }
+        }
+      ]
+    },
+    "after": {
+      "at": "2026-10-15T00:59:21.384Z",
+      "url": "https://dashboard.bex.co/services/srv-db8297gumfhs73fe7gsg/logs?text=QA_A497_THIRD_LITERAL&live=0",
+      "ui": "ing\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db8297gumfhs73fe7gsg/deploys/dep-db82afhaomdc7381k7s0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db8297gumfhs73fe7gsg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db8297gumfhs73fe7gsg\"\n  - button \"Copy service ID\"\n  - text: \"Schedule: 0 0 1 1 * Last successful run:\"\n  - time: now\n  - text: \"Next run:\"\n  - time: in 77d\n  - term: Slug\n  - definition: qa-20261015-a497-search\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-5\n  - term: Created\n  - definition:\n    - time: 3m\n  - combobox \"Log type\": All logs\n  - textbox \"Search logs\": QA_A497_THIRD_LITERAL\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - paragraph: No matching logs\n  - paragraph: No logs match these filters."
+    }
+  },
+  "desktopCurrentCutoff": {
+    "at": "2026-10-15T00:59:38.816Z",
+    "request": {
+      "operationName": "Logs",
+      "variables": {
+        "resource": "srv-db8297gumfhs73fe7gsg",
+        "text": "QA_A497_THIRD_LITERAL",
+        "textMode": "display",
+        "startTime": "2026-10-14T23:59:02.859Z",
+        "endTime": "2026-10-15T00:59:38.550Z",
+        "limit": 100
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "logs": {
+          "__typename": "LogList",
+          "hasMore": false,
+          "logs": [
+            {
+              "__typename": "LogEntry",
+              "instance": "srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd",
+              "level": "unknown",
+              "message": "QA_A497_THIRD_LITERAL a.b[1]+(雪)",
+              "method": "",
+              "statusCode": "",
+              "timestamp": "2026-10-15T00:59:10.494409274Z",
+              "type": "app"
+            }
+          ],
+          "nextEndTime": "2026-10-15T00:59:10.494409273Z",
+          "nextStartTime": "2026-10-14T23:59:02.859Z"
+        }
+      }
+    }
+  },
+  "mobile": {
+    "at": "2026-10-15T01:00:18.091Z",
+    "trigger": {
+      "request": [
+        {
+          "operationName": "RunCronJob",
+          "variables": {
+            "id": "srv-db8297gumfhs73fe7gsg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "mutation RunCronJob($id: String!) {\n  runCronJob(id: $id) {\n    id\n    status\n    startedAt\n    finishedAt\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "runCronJob": {
+              "__typename": "CronRun",
+              "finishedAt": "",
+              "id": "crr-2l6gnj7c7n92s2gpdeg3",
+              "startedAt": "",
+              "status": "pending"
+            }
+          }
+        }
+      ]
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T00:59:59.279Z",
+        "request": {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "srv-db8297gumfhs73fe7gsg",
+            "startTime": "2026-10-14T23:59:58.296Z",
+            "endTime": "2026-10-15T00:59:58.296Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254",
+                  "level": "unknown",
+                  "message": "QA_A497_START",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:56:21.981126902Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254",
+                  "level": "unknown",
+                  "message": "QA_A497_LITERAL a.b[1]+(雪)",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:56:24.982418288Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254",
+                  "level": "info",
+                  "message": "{\"message\":\"QA_A497_JSON 雪\",\"level\":\"info\"}",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:56:27.983860116Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254",
+                  "level": "unknown",
+                  "message": "QA_A497_OTHER axb1雪",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:56:30.985376975Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254",
+                  "level": "unknown",
+                  "message": "QA_A497_END",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:56:33.986783956Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2",
+                  "level": "unknown",
+                  "message": "QA_A497_SECOND_START",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:57:56.052555602Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2",
+                  "level": "unknown",
+                  "message": "QA_A497_SECOND_LITERAL a.b[1]+(雪)",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:57:59.053851204Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2",
+                  "level": "info",
+                  "message": "{\"message\":\"QA_A497_SECOND_JSON 雪\",\"level\":\"info\"}",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:58:02.055333037Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2",
+                  "level": "unknown",
+                  "message": "QA_A497_SECOND_OTHER axb1雪",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:58:05.056790061Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2",
+                  "level": "unknown",
+                  "message": "QA_A497_SECOND_END",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:58:08.05826117Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd",
+                  "level": "unknown",
+                  "message": "QA_A497_THIRD_START",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:59:07.413380442Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd",
+                  "level": "unknown",
+                  "message": "QA_A497_THIRD_LITERAL a.b[1]+(雪)",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:59:10.494409274Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd",
+                  "level": "info",
+                  "message": "{\"message\":\"QA_A497_THIRD_JSON 雪\",\"level\":\"info\"}",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:59:13.495800215Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd",
+                  "level": "unknown",
+                  "message": "QA_A497_THIRD_OTHER axb1雪",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:59:16.497399587Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd",
+                  "level": "unknown",
+                  "message": "QA_A497_THIRD_END",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:59:19.498706407Z",
+                  "type": "app"
+                }
+              ],
+              "nextEndTime": "2026-10-15T00:56:21.981126901Z",
+              "nextStartTime": "2026-10-14T23:59:58.296Z"
+            }
+          }
+        },
+        "batchOperations": [
+          "BillingReadiness",
+          "Workspaces",
+          "InstanceTypes",
+          "Deploys",
+          "LogLabelValues",
+          "LogLabelValues",
+          "LogLabelValues",
+          "LogLabelValues",
+          "Logs"
+        ]
+      },
+      {
+        "at": "2026-10-15T01:00:17.550Z",
+        "request": {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "srv-db8297gumfhs73fe7gsg",
+            "text": "QA_A497_FOURTH_LITERAL",
+            "textMode": "display",
+            "startTime": "2026-10-14T23:59:58.296Z",
+            "endTime": "2026-10-15T00:59:58.296Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [],
+              "nextEndTime": "2026-10-15T00:59:58Z",
+              "nextStartTime": "2026-10-14T23:59:58Z"
+            }
+          }
+        },
+        "batchOperations": ["Logs"]
+      }
+    ],
+    "before": {
+      "at": "2026-10-15T01:00:16.852Z",
+      "ui": "hs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_START 05:57:59 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_LITERAL a.b[1]+(雪) 05:58:02 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: \"{\\\"message\\\":\\\"QA_A497_SECOND_JSON 雪\\\",\\\"level\\\":\\\"info\\\"} 05:58:05 PM\"\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_OTHER axb1雪 05:58:08 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_END 05:59:07 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd\": \"[bcang]\"\n  - text: QA_A497_THIRD_START 05:59:10 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd\": \"[bcang]\"\n  - text: QA_A497_THIRD_LITERAL a.b[1]+(雪) 05:59:13 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd\": \"[bcang]\"\n  - text: \"{\\\"message\\\":\\\"QA_A497_THIRD_JSON 雪\\\",\\\"level\\\":\\\"info\\\"} 05:59:16 PM\"\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd\": \"[bcang]\"\n  - text: QA_A497_THIRD_OTHER axb1雪 05:59:19 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd\": \"[bcang]\"\n  - text: QA_A497_THIRD_END 06:00:04 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-l2m885qqomtdkdl08ke3\": \"[l2m88]\"\n  - text: QA_A497_FOURTH_START 06:00:07 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-l2m885qqomtdkdl08ke3\": \"[l2m88]\"\n  - text: QA_A497_FOURTH_LITERAL a.b[1]+(雪) 06:00:10 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-l2m885qqomtdkdl08ke3\": \"[l2m88]\"\n  - text: \"{\\\"message\\\":\\\"QA_A497_FOURTH_JSON 雪\\\",\\\"level\\\":\\\"info\\\"} 06:00:13 PM\"\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-l2m885qqomtdkdl08ke3\": \"[l2m88]\"\n  - text: QA_A497_FOURTH_OTHER axb1雪 06:00:16 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-l2m885qqomtdkdl08ke3\": \"[l2m88]\"\n  - text: QA_A497_FOURTH_END\n  - paragraph: Live — streaming new lines"
+    },
+    "paused": {
+      "at": "2026-10-15T01:00:16.892Z",
+      "ui": "db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_START 05:57:59 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_LITERAL a.b[1]+(雪) 05:58:02 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: \"{\\\"message\\\":\\\"QA_A497_SECOND_JSON 雪\\\",\\\"level\\\":\\\"info\\\"} 05:58:05 PM\"\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_OTHER axb1雪 05:58:08 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_END 05:59:07 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd\": \"[bcang]\"\n  - text: QA_A497_THIRD_START 05:59:10 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd\": \"[bcang]\"\n  - text: QA_A497_THIRD_LITERAL a.b[1]+(雪) 05:59:13 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd\": \"[bcang]\"\n  - text: \"{\\\"message\\\":\\\"QA_A497_THIRD_JSON 雪\\\",\\\"level\\\":\\\"info\\\"} 05:59:16 PM\"\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd\": \"[bcang]\"\n  - text: QA_A497_THIRD_OTHER axb1雪 05:59:19 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-bcang78csjtqbdc39pbd\": \"[bcang]\"\n  - text: QA_A497_THIRD_END 06:00:04 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-l2m885qqomtdkdl08ke3\": \"[l2m88]\"\n  - text: QA_A497_FOURTH_START 06:00:07 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-l2m885qqomtdkdl08ke3\": \"[l2m88]\"\n  - text: QA_A497_FOURTH_LITERAL a.b[1]+(雪) 06:00:10 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-l2m885qqomtdkdl08ke3\": \"[l2m88]\"\n  - text: \"{\\\"message\\\":\\\"QA_A497_FOURTH_JSON 雪\\\",\\\"level\\\":\\\"info\\\"} 06:00:13 PM\"\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-l2m885qqomtdkdl08ke3\": \"[l2m88]\"\n  - text: QA_A497_FOURTH_OTHER axb1雪 06:00:16 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-l2m885qqomtdkdl08ke3\": \"[l2m88]\"\n  - text: QA_A497_FOURTH_END\n  - paragraph: Live tail paused"
+    },
+    "searched": {
+      "request": [
+        {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "srv-db8297gumfhs73fe7gsg",
+            "text": "QA_A497_FOURTH_LITERAL",
+            "textMode": "display",
+            "startTime": "2026-10-14T23:59:58.296Z",
+            "endTime": "2026-10-15T00:59:58.296Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [],
+              "nextEndTime": "2026-10-15T00:59:58Z",
+              "nextStartTime": "2026-10-14T23:59:58Z"
+            }
+          }
+        }
+      ]
+    },
+    "after": {
+      "at": "2026-10-15T01:00:18.091Z",
+      "url": "https://dashboard.bex.co/services/srv-db8297gumfhs73fe7gsg/logs?text=QA_A497_FOURTH_LITERAL&live=0",
+      "ui": "ng\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db8297gumfhs73fe7gsg/deploys/dep-db82av9aomdc7381k7ug\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db8297gumfhs73fe7gsg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db8297gumfhs73fe7gsg\"\n  - button \"Copy service ID\"\n  - text: \"Schedule: 0 0 1 1 * Last successful run:\"\n  - time: now\n  - text: \"Next run:\"\n  - time: in 77d\n  - term: Slug\n  - definition: qa-20261015-a497-search\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-7\n  - term: Created\n  - definition:\n    - time: 3m\n  - combobox \"Log type\": All logs\n  - textbox \"Search logs\": QA_A497_FOURTH_LITERAL\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - paragraph: No matching logs\n  - paragraph: No logs match these filters."
+    }
+  },
+  "mobileCurrentCutoff": {
+    "at": "2026-10-15T01:00:47.222Z",
+    "request": {
+      "operationName": "Logs",
+      "variables": {
+        "resource": "srv-db8297gumfhs73fe7gsg",
+        "text": "QA_A497_FOURTH_LITERAL",
+        "textMode": "display",
+        "startTime": "2026-10-14T23:59:58.296Z",
+        "endTime": "2026-10-15T01:00:46.944Z",
+        "limit": 100
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "logs": {
+          "__typename": "LogList",
+          "hasMore": false,
+          "logs": [
+            {
+              "__typename": "LogEntry",
+              "instance": "srv-db8297gumfhs73fe7gsg-l2m885qqomtdkdl08ke3",
+              "level": "unknown",
+              "message": "QA_A497_FOURTH_LITERAL a.b[1]+(雪)",
+              "method": "",
+              "statusCode": "",
+              "timestamp": "2026-10-15T01:00:07.229416438Z",
+              "type": "app"
+            }
+          ],
+          "nextEndTime": "2026-10-15T01:00:07.229416437Z",
+          "nextStartTime": "2026-10-14T23:59:58.296Z"
+        }
+      }
+    }
+  },
+  "agedHistoryControl": {
+    "at": "2026-10-15T00:58:17.743Z",
+    "initial": {
+      "request": [
+        {
+          "operationName": "LogLabelValues",
+          "variables": {
+            "resource": "srv-db8297gumfhs73fe7gsg",
+            "label": "level"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+        },
+        {
+          "operationName": "LogLabelValues",
+          "variables": {
+            "resource": "srv-db8297gumfhs73fe7gsg",
+            "label": "method"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+        },
+        {
+          "operationName": "LogLabelValues",
+          "variables": {
+            "resource": "srv-db8297gumfhs73fe7gsg",
+            "label": "statusCode"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+        },
+        {
+          "operationName": "LogLabelValues",
+          "variables": {
+            "resource": "srv-db8297gumfhs73fe7gsg",
+            "label": "instance"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query LogLabelValues($label: String!, $resource: String!) {\n  logLabelValues(label: $label, resource: $resource)\n}"
+        },
+        {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "srv-db8297gumfhs73fe7gsg",
+            "startTime": "2026-10-14T23:58:15.672Z",
+            "endTime": "2026-10-15T00:58:15.672Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "logLabelValues": ["info", "unknown"]
+          }
+        },
+        {
+          "data": {
+            "logLabelValues": []
+          }
+        },
+        {
+          "data": {
+            "logLabelValues": []
+          }
+        },
+        {
+          "data": {
+            "logLabelValues": [
+              "srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254",
+              "srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2"
+            ]
+          }
+        },
+        {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254",
+                  "level": "unknown",
+                  "message": "QA_A497_START",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:56:21.981126902Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254",
+                  "level": "unknown",
+                  "message": "QA_A497_LITERAL a.b[1]+(雪)",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:56:24.982418288Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254",
+                  "level": "info",
+                  "message": "{\"message\":\"QA_A497_JSON 雪\",\"level\":\"info\"}",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:56:27.983860116Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254",
+                  "level": "unknown",
+                  "message": "QA_A497_OTHER axb1雪",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:56:30.985376975Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254",
+                  "level": "unknown",
+                  "message": "QA_A497_END",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:56:33.986783956Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2",
+                  "level": "unknown",
+                  "message": "QA_A497_SECOND_START",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:57:56.052555602Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2",
+                  "level": "unknown",
+                  "message": "QA_A497_SECOND_LITERAL a.b[1]+(雪)",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:57:59.053851204Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2",
+                  "level": "info",
+                  "message": "{\"message\":\"QA_A497_SECOND_JSON 雪\",\"level\":\"info\"}",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:58:02.055333037Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2",
+                  "level": "unknown",
+                  "message": "QA_A497_SECOND_OTHER axb1雪",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:58:05.056790061Z",
+                  "type": "app"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2",
+                  "level": "unknown",
+                  "message": "QA_A497_SECOND_END",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:58:08.05826117Z",
+                  "type": "app"
+                }
+              ],
+              "nextEndTime": "2026-10-15T00:56:21.981126901Z",
+              "nextStartTime": "2026-10-14T23:58:15.672Z"
+            }
+          }
+        }
+      ]
+    },
+    "before": {
+      "at": "2026-10-15T00:58:16.546Z",
+      "live": true,
+      "ui": " - text: Cron Job\n  - heading \"qa-20261015-a497-search\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db8297gumfhs73fe7gsg/deploys/dep-db82a39aomdc7381k7ng\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db8297gumfhs73fe7gsg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db8297gumfhs73fe7gsg\"\n  - button \"Copy service ID\"\n  - text: \"Schedule: 0 0 1 1 * Last successful run:\"\n  - time: now\n  - text: \"Next run:\"\n  - time: in 77d\n  - term: Slug\n  - definition: qa-20261015-a497-search\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-3\n  - term: Created\n  - definition:\n    - time: 2m\n  - combobox \"Log type\": All logs\n  - textbox \"Search logs\"\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\" [checked]\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 05:56:21 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254\": \"[00h8p]\"\n  - text: QA_A497_START 05:56:24 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254\": \"[00h8p]\"\n  - text: QA_A497_LITERAL a.b[1]+(雪) 05:56:27 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254\": \"[00h8p]\"\n  - text: \"{\\\"message\\\":\\\"QA_A497_JSON 雪\\\",\\\"level\\\":\\\"info\\\"} 05:56:30 PM\"\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254\": \"[00h8p]\"\n  - text: QA_A497_OTHER axb1雪 05:56:33 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254\": \"[00h8p]\"\n  - text: QA_A497_END 05:57:56 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_START 05:57:59 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_LITERAL a.b[1]+(雪) 05:58:02 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: \"{\\\"message\\\":\\\"QA_A497_SECOND_JSON 雪\\\",\\\"level\\\":\\\"info\\\"} 05:58:05 PM\"\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_OTHER axb1雪 05:58:08 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_END\n  - paragraph: Live — streaming new lines"
+    },
+    "paused": {
+      "at": "2026-10-15T00:58:16.597Z",
+      "ui": "es\"\n  - button \"P\"\n  - text: Cron Job\n  - heading \"qa-20261015-a497-search\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db8297gumfhs73fe7gsg/deploys/dep-db82a39aomdc7381k7ng\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db8297gumfhs73fe7gsg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db8297gumfhs73fe7gsg\"\n  - button \"Copy service ID\"\n  - text: \"Schedule: 0 0 1 1 * Last successful run:\"\n  - time: now\n  - text: \"Next run:\"\n  - time: in 77d\n  - term: Slug\n  - definition: qa-20261015-a497-search\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-3\n  - term: Created\n  - definition:\n    - time: 2m\n  - combobox \"Log type\": All logs\n  - textbox \"Search logs\"\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 05:56:21 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254\": \"[00h8p]\"\n  - text: QA_A497_START 05:56:24 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254\": \"[00h8p]\"\n  - text: QA_A497_LITERAL a.b[1]+(雪) 05:56:27 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254\": \"[00h8p]\"\n  - text: \"{\\\"message\\\":\\\"QA_A497_JSON 雪\\\",\\\"level\\\":\\\"info\\\"} 05:56:30 PM\"\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254\": \"[00h8p]\"\n  - text: QA_A497_OTHER axb1雪 05:56:33 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254\": \"[00h8p]\"\n  - text: QA_A497_END 05:57:56 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_START 05:57:59 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_LITERAL a.b[1]+(雪) 05:58:02 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: \"{\\\"message\\\":\\\"QA_A497_SECOND_JSON 雪\\\",\\\"level\\\":\\\"info\\\"} 05:58:05 PM\"\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_OTHER axb1雪 05:58:08 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_END\n  - paragraph: Live tail paused"
+    },
+    "searched": {
+      "request": [
+        {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "srv-db8297gumfhs73fe7gsg",
+            "text": "QA_A497_SECOND_LITERAL",
+            "textMode": "display",
+            "startTime": "2026-10-14T23:58:15.672Z",
+            "endTime": "2026-10-15T00:58:15.672Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.1.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [
+                {
+                  "__typename": "LogEntry",
+                  "instance": "srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2",
+                  "level": "unknown",
+                  "message": "QA_A497_SECOND_LITERAL a.b[1]+(雪)",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-15T00:57:59.053851204Z",
+                  "type": "app"
+                }
+              ],
+              "nextEndTime": "2026-10-15T00:57:59.053851203Z",
+              "nextStartTime": "2026-10-14T23:58:15.672Z"
+            }
+          }
+        }
+      ]
+    },
+    "after": {
+      "at": "2026-10-15T00:58:17.743Z",
+      "url": "https://dashboard.bex.co/services/srv-db8297gumfhs73fe7gsg/logs?text=QA_A497_SECOND_LITERAL&live=0",
+      "ui": "xt: Cron Job\n  - heading \"qa-20261015-a497-search\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db8297gumfhs73fe7gsg/deploys/dep-db82a39aomdc7381k7ng\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db8297gumfhs73fe7gsg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db8297gumfhs73fe7gsg\"\n  - button \"Copy service ID\"\n  - text: \"Schedule: 0 0 1 1 * Last successful run:\"\n  - time: now\n  - text: \"Next run:\"\n  - time: in 77d\n  - term: Slug\n  - definition: qa-20261015-a497-search\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-3\n  - term: Created\n  - definition:\n    - time: 2m\n  - combobox \"Log type\": All logs\n  - textbox \"Search logs\": QA_A497_SECOND_LITERAL\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 05:57:59 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-ai0k5j7c15s81j5u3gs2\": \"[ai0k5]\"\n  - text: QA_A497_SECOND_LITERAL a.b[1]+(雪)\n  - paragraph: Live tail paused"
+    }
+  },
+  "literalControl": {
+    "at": "2026-10-15T00:57:10.271Z",
+    "request": {
+      "operationName": "Logs",
+      "variables": {
+        "resource": "srv-db8297gumfhs73fe7gsg",
+        "text": "a.b[1]+(雪)",
+        "textMode": "display",
+        "startTime": "2026-10-14T23:56:53.368Z",
+        "endTime": "2026-10-15T00:56:53.368Z",
+        "limit": 100
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "logs": {
+          "__typename": "LogList",
+          "hasMore": false,
+          "logs": [
+            {
+              "__typename": "LogEntry",
+              "instance": "srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254",
+              "level": "unknown",
+              "message": "QA_A497_LITERAL a.b[1]+(雪)",
+              "method": "",
+              "statusCode": "",
+              "timestamp": "2026-10-15T00:56:24.982418288Z",
+              "type": "app"
+            }
+          ],
+          "nextEndTime": "2026-10-15T00:56:24.982418287Z",
+          "nextStartTime": "2026-10-14T23:56:53.368Z"
+        }
+      }
+    },
+    "url": "https://dashboard.bex.co/services/srv-db8297gumfhs73fe7gsg/logs?text=a.b%5B1%5D%2B%28%E9%9B%AA%29&live=0"
+  },
+  "unicodeJsonControl": {
+    "at": "2026-10-15T00:56:55.720Z",
+    "request": {
+      "operationName": "Logs",
+      "variables": {
+        "resource": "srv-db8297gumfhs73fe7gsg",
+        "text": "QA_A497_JSON 雪",
+        "textMode": "display",
+        "startTime": "2026-10-14T23:56:53.368Z",
+        "endTime": "2026-10-15T00:56:53.368Z",
+        "limit": 100
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "logs": {
+          "__typename": "LogList",
+          "hasMore": false,
+          "logs": [
+            {
+              "__typename": "LogEntry",
+              "instance": "srv-db8297gumfhs73fe7gsg-00h8p9ie7gghi4pq6254",
+              "level": "info",
+              "message": "{\"message\":\"QA_A497_JSON 雪\",\"level\":\"info\"}",
+              "method": "",
+              "statusCode": "",
+              "timestamp": "2026-10-15T00:56:27.983860116Z",
+              "type": "app"
+            }
+          ],
+          "nextEndTime": "2026-10-15T00:56:27.983860115Z",
+          "nextStartTime": "2026-10-14T23:56:53.368Z"
+        }
+      }
+    },
+    "url": "https://dashboard.bex.co/services/srv-db8297gumfhs73fe7gsg/logs?text=QA_A497_JSON+%E9%9B%AA&live=0"
+  },
+  "initialCreate": {
+    "at": "2026-10-15T00:55:59.721Z",
+    "request": {
+      "operationName": "CreateService",
+      "variables": {
+        "image": "busybox:1.37",
+        "name": "qa-20261015-a497-search",
+        "type": "cron_job",
+        "registryCredentialId": "",
+        "runtime": "image",
+        "plan": "free",
+        "schedule": "0 0 1 1 *",
+        "command": "sh -c 'printf \"QA_A497_START\\n\"; sleep 3; printf \"QA_A497_LITERAL a.b[1]+(雪)\\n\"; sleep 3; printf \"%s\\n\" \"{\\\"message\\\":\\\"QA_A497_JSON 雪\\\",\\\"level\\\":\\\"info\\\"}\"; sleep 3; printf \"QA_A497_OTHER axb1雪\\n\"; sleep 3; printf \"QA_A497_END\\n\"'",
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "createService": {
+          "__typename": "Service",
+          "environmentId": null,
+          "id": "srv-db8297gumfhs73fe7gsg",
+          "latestDeployId": "dep-db8297gumfhs73fe7gt0",
+          "name": "qa-20261015-a497-search",
+          "phase": "",
+          "projectId": null,
+          "registryCredentialId": "",
+          "type": "cron_job"
+        }
+      }
+    },
+    "url": "https://dashboard.bex.co/services/srv-db8297gumfhs73fe7gsg/deploys/dep-db8297gumfhs73fe7gt0"
+  },
+  "lastState": {
+    "at": "2026-10-15T01:01:01.091Z",
+    "request": {
+      "operationName": "Qaa497Read",
+      "query": "query Qaa497Read($id:String!){server(id:$id){id name phase revision schedule command lastSuccessfulRunAt} deploys(serviceId:$id){id status trigger} cronJobRuns(serviceId:$id){id status startedAt finishedAt}}",
+      "variables": {
+        "id": "srv-db8297gumfhs73fe7gsg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "cronJobRuns": [
+          {
+            "finishedAt": "2026-10-15T01:00:18Z",
+            "id": "crr-2l6gnj7c7n92s2gpdeg3",
+            "startedAt": "2026-10-15T01:00:00Z",
+            "status": "successful"
+          },
+          {
+            "finishedAt": "2026-10-15T00:59:22Z",
+            "id": "crr-cbkcn1pkulanbpj5efvn",
+            "startedAt": "2026-10-15T00:59:05Z",
+            "status": "successful"
+          },
+          {
+            "finishedAt": "2026-10-15T00:58:11Z",
+            "id": "crr-84nndi64pip2goi5vd6h",
+            "startedAt": "2026-10-15T00:57:54Z",
+            "status": "successful"
+          },
+          {
+            "finishedAt": "2026-10-15T00:56:36Z",
+            "id": "crr-kau331la95nr39hsei2m",
+            "startedAt": "2026-10-15T00:56:20Z",
+            "status": "successful"
+          }
+        ],
+        "deploys": [
+          {
+            "id": "dep-db82av9aomdc7381k7ug",
+            "status": "live",
+            "trigger": "config_change"
+          },
+          {
+            "id": "dep-db82afhaomdc7381k7s0",
+            "status": "deactivated",
+            "trigger": "config_change"
+          },
+          {
+            "id": "dep-db82a39aomdc7381k7ng",
+            "status": "deactivated",
+            "trigger": "config_change"
+          },
+          {
+            "id": "dep-db8297gumfhs73fe7gt0",
+            "status": "deactivated",
+            "trigger": "create"
+          }
+        ],
+        "server": {
+          "command": "sh -c 'printf \"QA_A497_FOURTH_START\\n\"; sleep 3; printf \"QA_A497_FOURTH_LITERAL a.b[1]+(雪)\\n\"; sleep 3; printf \"%s\\n\" \"{\\\"message\\\":\\\"QA_A497_FOURTH_JSON 雪\\\",\\\"level\\\":\\\"info\\\"}\"; sleep 3; printf \"QA_A497_FOURTH_OTHER axb1雪\\n\"; sleep 3; printf \"QA_A497_FOURTH_END\\n\"'",
+          "id": "srv-db8297gumfhs73fe7gsg",
+          "lastSuccessfulRunAt": "2026-10-15T01:00:18Z",
+          "name": "qa-20261015-a497-search",
+          "phase": "Running",
+          "revision": "rev-7",
+          "schedule": "0 0 1 1 *"
+        }
+      }
+    },
+    "ui": "\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db8297gumfhs73fe7gsg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db8297gumfhs73fe7gsg\"\n  - button \"Copy service ID\"\n  - text: \"Schedule: 0 0 1 1 * Last successful run:\"\n  - time: now\n  - text: \"Next run:\"\n  - time: in 77d\n  - term: Slug\n  - definition: qa-20261015-a497-search\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-7\n  - term: Created\n  - definition:\n    - time: 5m\n  - combobox \"Log type\": All logs\n  - textbox \"Search logs\": QA_A497_FOURTH_LITERAL\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 06:00:07 PM\n  - button \"Filter logs by instance srv-db8297gumfhs73fe7gsg-l2m885qqomtdkdl08ke3\": \"[l2m88]\"\n  - text: QA_A497_FOURTH_LITERAL a.b[1]+(雪)\n  - paragraph: Live tail paused"
+  },
+  "delete": {
+    "at": "2026-10-15T01:01:04.477Z",
+    "request": {
+      "operationName": "DeleteService",
+      "variables": {
+        "id": "srv-db8297gumfhs73fe7gsg"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deleteService": true
+      }
+    },
+    "url": "https://dashboard.bex.co/"
+  },
+  "cleanup": {
+    "at": "2026-10-15T01:01:46.152Z",
+    "request": {
+      "operationName": "Qaa467Inventory",
+      "query": "query Qaa467Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      }
+    },
+    "inventory": {
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      }
+    },
+    "resource": {
+      "id": "srv-db8297gumfhs73fe7gsg",
+      "status": 404,
+      "body": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+    },
+    "runs": {
+      "status": 404,
+      "body": "{\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\"}\n"
+    },
+    "inventoryMatches": {
+      "blueprints": true,
+      "databases": true,
+      "envGroups": true,
+      "keyValues": true,
+      "projects": true,
+      "services": true,
+      "webhookEndpoints": true
+    }
+  },
+  "session": {
+    "logout": {
+      "exitCode": 0,
+      "output": "ok logged-out\n"
+    },
+    "clear": {
+      "at": "2026-10-15T01:02:10.832Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "screenshots": [
+    ".playwright-mcp/qa-a497-search-paused-desktop.png",
+    ".playwright-mcp/qa-a497-search-paused-mobile.png"
+  ]
+}
