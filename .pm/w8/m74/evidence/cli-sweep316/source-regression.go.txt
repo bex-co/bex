@@ -1,0 +1,34 @@
+package apps
+import("encoding/json";"os";"testing";metav1 "k8s.io/apimachinery/pkg/apis/meta/v1";"github.com/bex-co/bex/lego/backend/internal/core";appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1")
+func TestQA316ExistingHostReferenceContracts(t *testing.T){
+ const dir="<owned-temp>/"
+ raw,err:=os.ReadFile(dir+"sweep316-cases.json");if err!=nil{t.Fatal(err)}
+ var cases []struct{Case string `json:"case"`;Manifest string `json:"manifest"`;ExpectedValid bool `json:"expected_valid"`};if err=json.Unmarshal(raw,&cases);err!=nil{t.Fatal(err)}
+ raw,err=os.ReadFile(dir+"sweep316-fixtures.json");if err!=nil{t.Fatal(err)};var seeds []struct{Name string `json:"name"`;Type string `json:"type"`};if err=json.Unmarshal(raw,&seeds);err!=nil{t.Fatal(err)}
+ observations:=[]map[string]any{}
+ for _,tc:=range cases{t.Run(tc.Case,func(t *testing.T){
+  svc:=newBlueprintValidator(t);svc.Workspace=fakeWorkspace{"id-a":"tea-a"}
+  for _,seed:=range seeds{app:=&appv1alpha1.App{ObjectMeta:metav1.ObjectMeta{Name:seed.Name,Namespace:"default",Labels:map[string]string{core.LabelTenant:connOwner,core.LabelServiceName:seed.Name}},Spec:appv1alpha1.AppSpec{Type:seed.Type,Image:"nginx:1.27",Port:3000,Subdomain:seed.Name}};if err:=svc.Client.Create(ownershipCtx(),app);err!=nil{t.Fatal(err)}}
+  snapshot,err:=svc.newWorkspaceSnapshot(core.WithWorkspace(ownershipCtx(),connOwner)).services(core.WithWorkspace(ownershipCtx(),connOwner));if err!=nil{t.Fatal(err)}
+  if len(snapshot)!=2{t.Fatalf("expected two owned seed Apps, got %d",len(snapshot))}
+  v,err:=svc.ValidateBlueprint(ownershipCtx(),connOwner,tc.Manifest,"");if err!=nil{t.Fatal(err)}
+  observations=append(observations,map[string]any{"case":tc.Case,"valid":v.Valid,"expected_valid":tc.ExpectedValid,"errors":v.Errors,"seed_count":len(snapshot)})
+  if v.Valid!=tc.ExpectedValid{t.Errorf("valid=%v want %v errors=%+v",v.Valid,tc.ExpectedValid,v.Errors)}
+ })}
+ data,err:=json.MarshalIndent(observations,"","  ");if err!=nil{t.Fatal(err)};if err=os.WriteFile(dir+"sweep316-source-observations.json",data,0600);err!=nil{t.Fatal(err)}
+}
+
+func TestQA316ExistingHostApplyObservation(t *testing.T){
+ const dir="<owned-temp>/"
+ raw,err:=os.ReadFile(dir+"sweep316-cases.json");if err!=nil{t.Fatal(err)};var cases []struct{Case string `json:"case"`;Manifest string `json:"manifest"`};if err=json.Unmarshal(raw,&cases);err!=nil{t.Fatal(err)}
+ raw,err=os.ReadFile(dir+"sweep316-fixtures.json");if err!=nil{t.Fatal(err)};var seeds []struct{Name string `json:"name"`;Type string `json:"type"`};if err=json.Unmarshal(raw,&seeds);err!=nil{t.Fatal(err)}
+ obs:=[]map[string]any{}
+ for _,tc:=range cases{if tc.Case!="existing-static-host-root"&&tc.Case!="existing-web-wrong-type-root"&&tc.Case!="existing-web-correct"{continue};t.Run(tc.Case,func(t *testing.T){
+  svc:=newBlueprintValidator(t);svc.Workspace=fakeWorkspace{"id-a":"tea-a"}
+  for _,seed:=range seeds{app:=&appv1alpha1.App{ObjectMeta:metav1.ObjectMeta{Name:seed.Name,Namespace:"default",Labels:map[string]string{core.LabelTenant:connOwner,core.LabelServiceName:seed.Name}},Spec:appv1alpha1.AppSpec{Type:seed.Type,Image:"nginx:1.27",Port:3000,Subdomain:seed.Name}};if err:=svc.Client.Create(ownershipCtx(),app);err!=nil{t.Fatal(err)}}
+  result,applyErr:=svc.DeployStack(ownershipCtx(),DeployRequest{OwnerID:connOwner,Manifest:tc.Manifest});var apps appv1alpha1.AppList;if err:=svc.Client.List(ownershipCtx(),&apps);err!=nil{t.Fatal(err)}
+  consumers:=[]map[string]any{};for _,app:=range apps.Items{isSeed:=false;for _,seed:=range seeds{if core.AppPublicName(&app)==seed.Name{isSeed=true}};if !isSeed{env:=[]map[string]string{};for _,v:=range app.Spec.Env{if v.Name=="UPSTREAM"{env=append(env,map[string]string{"key":v.Name,"value":v.Value})}};consumers=append(consumers,map[string]any{"name":core.AppPublicName(&app),"type":app.Spec.Type,"env":env})}}
+  msg:="";if applyErr!=nil{msg=applyErr.Error()};obs=append(obs,map[string]any{"case":tc.Case,"apply_error":msg,"result":result,"app_count":len(apps.Items),"created_consumers":consumers,"scope":"actual DeployStack with fake K8s client, no hosted apply/operator/DNS"})
+ })}
+ data,err:=json.MarshalIndent(obs,"","  ");if err!=nil{t.Fatal(err)};if err=os.WriteFile(dir+"sweep316-apply-observations.json",data,0600);err!=nil{t.Fatal(err)}
+}

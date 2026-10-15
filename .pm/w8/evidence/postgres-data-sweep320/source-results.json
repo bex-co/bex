@@ -1,0 +1,16 @@
+{
+  "head": "c11f862351e18a6c525db9ea55d7673d18237091",
+  "checks": [
+    {
+      "Test": "TestActionCapabilities_SuspendResumeReadTheResourceState",
+      "Action": "pass",
+      "Elapsed": 0.04
+    },
+    {
+      "Test": "TestSetLifecycleAnnotations",
+      "Action": "pass",
+      "Elapsed": 0
+    }
+  ],
+  "scope": "two existing focused lifecycle tests; no new test or implementation, no full suites"
+}

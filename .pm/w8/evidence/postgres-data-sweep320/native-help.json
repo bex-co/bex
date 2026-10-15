@@ -1,0 +1,83 @@
+[
+  {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "postgres",
+      "create",
+      "--help"
+    ],
+    "exit": 0,
+    "elapsed": 0.04,
+    "stdout": "bex CLI v0.3.2\n\nCreate a new Bex Postgres database\n\nUSAGE\n  bex postgres create [flags]\n\nFLAGS\n      --connection-pool <CONNECTION_POOL>   Set connection pool to 'none' or 'pgbouncer' (default: \"none\")\n      --database-name <DATABASE_NAME>       Set the Postgres database name (server generates one if unset)\n      --database-user <DATABASE_USER>       Set the Postgres database user (server generates one if unset)\n      --datadog-api-key <DATADOG_API_KEY>   Set the Datadog API key for monitoring\n      --datadog-site <DATADOG_SITE>         Set the Datadog region/site (e.g. US1, US3, EU). Server default is US1\n      --disk-autoscaling                    Enable disk autoscaling\n      --disk-size-gb <DISK_SIZE_GB>         Set the disk size in GB. Must be 1 or a multiple of 5. Server picks a sensible default based on compute size if unset (default: 0)\n      --environment <ENVIRONMENT>           Set the environment to create the database in (ID or name, optional). Example: Production or evm-abc123def456\n  -h, --help                                Show help for this command\n      --high-availability                   Enable high availability (available for plans with at least 1 CPU)\n      --ip-allow-list <CIDR_DESCRIPTION>    Restrict inbound traffic to specific IP ranges (format: cidr=<range>,description=<label>). Repeat the flag for multiple entries\n      --name <NAME>                         Set the database name (generated if not provided)\n      --plan <PLAN>                         Set the plan to one of: free | 0.1c-256mb | 0.5c-1g | 1c-2g | 1c-4g | 2c-4g | 2c-8g | 2c-16g | 4c-16g | 4c-32g | 8c-32g | 8c-64g | 16c-64g | 16c-128g | 32c-128g | 32c-256g | 48c-192g | 48c-384g | 64c-256g | 64c-512g | 96c-384g | 96c-768g | 128c-512g | 128c-1024g. Custom enterprise plan names are also accepted\n      --project <PROJECT>                   Scope environment lookup to a project (ID or name, optional); if the project has exactly one environment it is used automatically\n      --read-replica <NAME>                 Create a read replica with the given name alongside the primary. Repeat the flag for multiple replicas\n      --region <REGION>                     Set the region: frankfurt | ohio | oregon | singapore | virginia (server picks if unset)\n      --version <VERSION>                   Set the Postgres major version. Defaults to 18 (default: 0)\n      --workspace <WORKSPACE>               Set the workspace to create the database in (ID or name). Defaults to the active workspace (set via 'bex workspace set')\n      --confirm                             Skip all confirmation prompts\n  -o, --output <FORMAT>                     Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # Launch the interactive wizard\n  bex pg create\n\n  # Create immediately with defaults and text output\n  bex pg create --confirm\n\n  # Create immediately with explicit values\n  bex pg create --confirm --name analytics --plan 2c-8g --version 17 --region ohio\n\n  # Include flag-only settings while using the wizard for prompted values\n  bex pg create \\\n    --ip-allow-list \"cidr=203.0.113.5/32,description=office\" \\\n    --ip-allow-list \"cidr=10.0.0.0/8,description=internal\"\n\n  # Machine-readable output\n  bex pg create --output json\n\nDETAILS\nCreate a new Bex Postgres database.\n\nIn interactive mode, a wizard guides you through the core choices for the\ndatabase. The wizard owns those prompted values. Flag-only settings, such as\n--disk-size-gb, --database-name, --database-user, --ip-allow-list, and\n--read-replica,\nare still included in the create request.\n\nUse --confirm to skip the wizard and create immediately from flags and defaults.\nWhen --confirm is used with the default interactive output mode, output is\nprinted as text. Use --output json, yaml, or text for non-interactive output.\n\n",
+    "stderr": ""
+  },
+  {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "postgres",
+      "resume",
+      "--help"
+    ],
+    "exit": 0,
+    "elapsed": 0.039,
+    "stdout": "bex CLI v0.3.2\n\nResume a suspended Bex Postgres database\n\nUSAGE\n  bex postgres resume <postgresID|postgresName> [flags]\n\nFLAGS\n      --environment <ENVIRONMENT>   Narrow lookup to an environment (ID or name, optional) when the same Postgres database name exists in multiple environments\n  -h, --help                        Show help for this command\n      --project <PROJECT>           Narrow lookup to a project (ID or name, optional) when the same Postgres database name exists in multiple projects\n      --confirm                     Skip all confirmation prompts\n  -o, --output <FORMAT>             Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # Resume by ID\n  bex pg resume dpg-abc123def456ghi789jkl0\n\n  # Resume by name\n  bex pg resume my-db\n\n  # Disambiguate a name that exists in multiple environments\n  bex pg resume my-db --environment production\n\n  # Disambiguate a name that exists in multiple projects\n  bex pg resume my-db --project analytics\n\n  # JSON output\n  bex pg resume dpg-abc123def456ghi789jkl0 --output json\n\nDETAILS\nResume a suspended Bex Postgres database.\n\nThe positional argument accepts either a Postgres ID (dpg-...) or a name.\nIf the name matches more than one database, narrow the search with\n--project <id|name>, --environment <id|name>, or pass the Postgres ID directly.\n\nName lookup is scoped to your active workspace. If a name isn't found, switch\nworkspaces with 'bex workspace set <name|ID>' and try again, or pass the\nPostgres ID instead (which works across workspaces).\n\n",
+    "stderr": ""
+  },
+  {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "postgres",
+      "suspend",
+      "--help"
+    ],
+    "exit": 0,
+    "elapsed": 0.039,
+    "stdout": "bex CLI v0.3.2\n\nSuspend a Bex Postgres database\n\nUSAGE\n  bex postgres suspend <postgresID|postgresName> [flags]\n\nFLAGS\n      --environment <ENVIRONMENT>   Narrow lookup to an environment (ID or name, optional) when the same Postgres database name exists in multiple environments\n  -h, --help                        Show help for this command\n      --project <PROJECT>           Narrow lookup to a project (ID or name, optional) when the same Postgres database name exists in multiple projects\n      --confirm                     Skip all confirmation prompts\n  -o, --output <FORMAT>             Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # Preview suspension (no changes made)\n  bex pg suspend dpg-abc123def456ghi789jkl0\n\n  # Suspend by ID\n  bex pg suspend dpg-abc123def456ghi789jkl0 --confirm\n\n  # Suspend by name\n  bex pg suspend my-db --confirm\n\n  # Disambiguate a name that exists in multiple environments\n  bex pg suspend my-db --environment production --confirm\n\n  # Disambiguate a name that exists in multiple projects\n  bex pg suspend my-db --project analytics --confirm\n\n  # JSON output\n  bex pg suspend dpg-abc123def456ghi789jkl0 --confirm --output json\n\nDETAILS\nSuspend a Bex Postgres database.\n\nWithout --confirm, this command previews what would be suspended and makes no\nchanges. Pass --confirm to actually suspend the database.\n\nThe positional argument accepts either a Postgres ID (dpg-...) or a name.\nIf the name matches more than one database, narrow the search with\n--project <id|name>, --environment <id|name>, or pass the Postgres ID directly.\n\nName lookup is scoped to your active workspace. If a name isn't found, switch\nworkspaces with 'bex workspace set <name|ID>' and try again, or pass the\nPostgres ID instead (which works across workspaces).\n\n",
+    "stderr": ""
+  },
+  {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "psql",
+      "--help"
+    ],
+    "exit": 0,
+    "elapsed": 0.097,
+    "stdout": "bex CLI v0.3.2\n\nOpen a psql session to a Bex Postgres database\n\nUSAGE\n  bex psql [postgresID|postgresName] [flags]\n\nFLAGS\n  -c, --command <SQL>     Execute a SQL command in non-interactive mode\n  -h, --help              Show help for this command\n      --confirm           Skip all confirmation prompts\n  -o, --output <FORMAT>   Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # Open an interactive psql session\n  bex psql pg-abc123\n\n  # Execute a SQL command in non-interactive mode\n  bex psql pg-abc123 --command \"SELECT * FROM users;\" --output text\n\n  # Pass through psql arguments\n  bex psql pg-abc123 -- --csv -q\n\nDETAILS\nOpen a psql session to a Bex Postgres database.\n\nOptionally pass the database ID or name as an argument. To pass arguments to\npsql, use:\n  bex psql [postgresID|postgresName] -- [psql args]\n\nFor non-interactive usage, use the --command flag:\n  bex psql [postgresID|postgresName] -c \"SELECT * FROM users;\" -o text\n\nAdditional psql flags can be passed after --:\n  bex psql [postgresID|postgresName] -c \"SELECT 1;\" -o json -- --csv -q\n\n",
+    "stderr": ""
+  },
+  {
+    "binary": "unmodified Render pin a764810a7682",
+    "command": [
+      "render",
+      "postgres",
+      "resume",
+      "--help"
+    ],
+    "exit": 0,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.034,
+    "stdout": "Render CLI v2.27.0\n\nResume a suspended Render Postgres database\n\nUSAGE\n  render postgres resume <postgresID|postgresName> [flags]\n\nFLAGS\n      --environment <ENVIRONMENT>   Narrow lookup to an environment (ID or name, optional) when the same Postgres database name exists in multiple environments\n  -h, --help                        Show help for this command\n      --project <PROJECT>           Narrow lookup to a project (ID or name, optional) when the same Postgres database name exists in multiple projects\n      --confirm                     Skip all confirmation prompts\n  -o, --output <FORMAT>             Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # Resume by ID\n  render pg resume dpg-abc123def456ghi789jkl0\n\n  # Resume by name\n  render pg resume my-db\n\n  # Disambiguate a name that exists in multiple environments\n  render pg resume my-db --environment production\n\n  # Disambiguate a name that exists in multiple projects\n  render pg resume my-db --project analytics\n\n  # JSON output\n  render pg resume dpg-abc123def456ghi789jkl0 --output json\n\nDETAILS\nResume a suspended Render Postgres database.\n\nThe positional argument accepts either a Postgres ID (dpg-...) or a name.\nIf the name matches more than one database, narrow the search with\n--project <id|name>, --environment <id|name>, or pass the Postgres ID directly.\n\nName lookup is scoped to your active workspace. If a name isn't found, switch\nworkspaces with 'render workspace set <name|ID>' and try again, or pass the\nPostgres ID instead (which works across workspaces).\n\n",
+    "stderr": ""
+  },
+  {
+    "binary": "unmodified Render pin a764810a7682",
+    "command": [
+      "render",
+      "postgres",
+      "suspend",
+      "--help"
+    ],
+    "exit": 0,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.081,
+    "stdout": "Render CLI v2.27.0\n\nSuspend a Render Postgres database\n\nUSAGE\n  render postgres suspend <postgresID|postgresName> [flags]\n\nFLAGS\n      --environment <ENVIRONMENT>   Narrow lookup to an environment (ID or name, optional) when the same Postgres database name exists in multiple environments\n  -h, --help                        Show help for this command\n      --project <PROJECT>           Narrow lookup to a project (ID or name, optional) when the same Postgres database name exists in multiple projects\n      --confirm                     Skip all confirmation prompts\n  -o, --output <FORMAT>             Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # Preview suspension (no changes made)\n  render pg suspend dpg-abc123def456ghi789jkl0\n\n  # Suspend by ID\n  render pg suspend dpg-abc123def456ghi789jkl0 --confirm\n\n  # Suspend by name\n  render pg suspend my-db --confirm\n\n  # Disambiguate a name that exists in multiple environments\n  render pg suspend my-db --environment production --confirm\n\n  # Disambiguate a name that exists in multiple projects\n  render pg suspend my-db --project analytics --confirm\n\n  # JSON output\n  render pg suspend dpg-abc123def456ghi789jkl0 --confirm --output json\n\nDETAILS\nSuspend a Render Postgres database.\n\nWithout --confirm, this command previews what would be suspended and makes no\nchanges. Pass --confirm to actually suspend the database.\n\nThe positional argument accepts either a Postgres ID (dpg-...) or a name.\nIf the name matches more than one database, narrow the search with\n--project <id|name>, --environment <id|name>, or pass the Postgres ID directly.\n\nName lookup is scoped to your active workspace. If a name isn't found, switch\nworkspaces with 'render workspace set <name|ID>' and try again, or pass the\nPostgres ID instead (which works across workspaces).\n\n",
+    "stderr": ""
+  }
+]

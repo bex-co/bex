@@ -1,0 +1,17 @@
+projects:
+  - name: qa316-830c50-project
+    environments:
+      - name: production
+        services:
+          - type: web
+            name: qa316-830c50-consumer
+            runtime: image
+            image:
+              url: nginx:1.27
+            plan: free
+            envVars:
+              - key: UPSTREAM
+                fromService:
+                  type: web
+                  name: qa316-9b5ec0-static
+                  property: host

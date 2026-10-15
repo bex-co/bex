@@ -1,0 +1,315 @@
+{
+  "sweep": 317,
+  "head": "e3b23bcea225292a3c25fe377e5b26dd421945de",
+  "nonce": "post-pin",
+  "scope": "six native validation-only checks after desired platform pin advanced to7f596cbb3; actual serving identity unobserved",
+  "cases": [
+    {
+      "case": "cron-free",
+      "kind": "cron",
+      "plan": "free",
+      "name": "qa312-1f25aa-cron-free",
+      "manifest": "services:\n  - name: qa312-1f25aa-cron-free\n    type: cron\n    runtime: image\n    image: {url: nginx:1.27}\n    schedule: '0 0 1 1 *'\n    plan: free\n",
+      "expected_valid": false,
+      "expected_resolved_plan": null,
+      "expected_error_paths": [
+        "services[0].plan"
+      ]
+    },
+    {
+      "case": "service-and-database",
+      "manifest": "databases:\n- name: qa313-c2ebae-shared\n  plan: free\nservices:\n- type: web\n  name: qa313-c2ebae-shared\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_DB\n    fromDatabase:\n      name: qa313-c2ebae-shared\n      property: connectionString\n",
+      "expected_valid": true,
+      "error_contains": null,
+      "error_path": null,
+      "expected_error_paths": []
+    }
+  ],
+  "results": [
+    {
+      "at": "2026-10-15T20:57:17.295531+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "cron-free",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep317-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep317-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.724,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"a cron_job requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra\",\n      \"line\": 7,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "a cron_job requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra",
+            "line": 7,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "services[0].plan"
+      ],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:57:18.663161+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "service-and-database",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep317-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep317-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.886,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"services\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": [
+            "qa313-c2ebae-shared"
+          ],
+          "services": [
+            "qa313-c2ebae-shared"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:57:20.183311+00:00",
+      "client": "published Bex0.3.2",
+      "case": "cron-free",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep317-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep317-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.555,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"a cron_job requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra\",\n      \"line\": 7,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "a cron_job requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra",
+            "line": 7,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "services[0].plan"
+      ],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:57:21.442190+00:00",
+      "client": "published Bex0.3.2",
+      "case": "service-and-database",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep317-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep317-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.669,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"services\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": [
+            "qa313-c2ebae-shared"
+          ],
+          "services": [
+            "qa313-c2ebae-shared"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:57:22.759080+00:00",
+      "client": "unchanged Render2.27",
+      "case": "cron-free",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep317-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep317-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.678,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"a cron_job requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra\",\n      \"line\": 7,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "a cron_job requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra",
+            "line": 7,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "services[0].plan"
+      ],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:57:24.096427+00:00",
+      "client": "unchanged Render2.27",
+      "case": "service-and-database",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep317-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep317-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.495,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"services\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": [
+            "qa313-c2ebae-shared"
+          ],
+          "services": [
+            "qa313-c2ebae-shared"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    }
+  ],
+  "input_removed": true,
+  "copied_render_config_removed": true
+}

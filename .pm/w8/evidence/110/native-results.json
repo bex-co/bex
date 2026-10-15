@@ -1,0 +1,1384 @@
+{
+  "head": "7f596cbb3bfcdfcf77b0ce33017a82aaf7b573bd",
+  "native_calls": 27,
+  "results": [
+    {
+      "at": "2026-10-15T20:21:07.886049+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "self-only",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.681,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa314-ebe6d7-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa314-ebe6d7-consumer"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:21:09.667034+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "missing-only",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.687,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "services[0].envVars[0]"
+      ],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:21:11.128087+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "self-before-missing",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.684,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "services[0].envVars[0]"
+      ],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:21:12.459088+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "missing-before-self",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.33,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "services[0].envVars[0]"
+      ],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:21:13.450295+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "two-missing-same-target",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.31,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    },\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          },
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "services[0].envVars[0]",
+        "services[0].envVars[0]"
+      ],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:21:14.404996+00:00",
+      "client": "published Bex0.3.2",
+      "case": "self-only",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.769,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa314-ebe6d7-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa314-ebe6d7-consumer"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:21:15.831412+00:00",
+      "client": "published Bex0.3.2",
+      "case": "missing-only",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.706,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "services[0].envVars[0]"
+      ],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:21:17.204094+00:00",
+      "client": "published Bex0.3.2",
+      "case": "self-before-missing",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.651,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "services[0].envVars[0]"
+      ],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:21:18.506053+00:00",
+      "client": "published Bex0.3.2",
+      "case": "missing-before-self",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.653,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "services[0].envVars[0]"
+      ],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:21:19.803175+00:00",
+      "client": "published Bex0.3.2",
+      "case": "two-missing-same-target",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.643,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    },\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          },
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "services[0].envVars[0]",
+        "services[0].envVars[0]"
+      ],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:21:21.088443+00:00",
+      "client": "unchanged Render2.27",
+      "case": "self-only",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.832,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa314-ebe6d7-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa314-ebe6d7-consumer"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:21:22.561394+00:00",
+      "client": "unchanged Render2.27",
+      "case": "missing-only",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.705,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "services[0].envVars[0]"
+      ],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:21:23.904269+00:00",
+      "client": "unchanged Render2.27",
+      "case": "self-before-missing",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.317,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "services[0].envVars[0]"
+      ],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:21:24.863729+00:00",
+      "client": "unchanged Render2.27",
+      "case": "missing-before-self",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.338,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "services[0].envVars[0]"
+      ],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:21:25.927435+00:00",
+      "client": "unchanged Render2.27",
+      "case": "two-missing-same-target",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.382,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    },\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          },
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "services[0].envVars[0]",
+        "services[0].envVars[0]"
+      ],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:25:04.012987+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "project-self-before-missing",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.843,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 13,
+            "path": "projects[0].environments[0].services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "projects[0].environments[0].services[0].envVars[0]"
+      ],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:25:05.510938+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "project-two-missing-same-target",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.354,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].services[0].envVars[0]\"\n    },\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 13,
+            "path": "projects[0].environments[0].services[0].envVars[0]"
+          },
+          {
+            "column": 9,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 13,
+            "path": "projects[0].environments[0].services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "projects[0].environments[0].services[0].envVars[0]",
+        "projects[0].environments[0].services[0].envVars[0]"
+      ],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:25:06.510079+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "cross-consumer-valid-reference-before-missing",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.313,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer-two\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer-two\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "services[0].envVars[0]"
+      ],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:25:07.465037+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "cross-consumer-two-missing-same-target",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.642,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    },\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer-two\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          },
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer-two\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "services[0].envVars[0]",
+        "services[0].envVars[0]"
+      ],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:25:08.732154+00:00",
+      "client": "published Bex0.3.2",
+      "case": "project-self-before-missing",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.454,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 13,
+            "path": "projects[0].environments[0].services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "projects[0].environments[0].services[0].envVars[0]"
+      ],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:25:09.833030+00:00",
+      "client": "published Bex0.3.2",
+      "case": "project-two-missing-same-target",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.344,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].services[0].envVars[0]\"\n    },\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 13,
+            "path": "projects[0].environments[0].services[0].envVars[0]"
+          },
+          {
+            "column": 9,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 13,
+            "path": "projects[0].environments[0].services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "projects[0].environments[0].services[0].envVars[0]",
+        "projects[0].environments[0].services[0].envVars[0]"
+      ],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:25:10.854963+00:00",
+      "client": "published Bex0.3.2",
+      "case": "cross-consumer-valid-reference-before-missing",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.657,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer-two\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer-two\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "services[0].envVars[0]"
+      ],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:25:12.152139+00:00",
+      "client": "published Bex0.3.2",
+      "case": "cross-consumer-two-missing-same-target",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.325,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    },\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer-two\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          },
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer-two\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "services[0].envVars[0]",
+        "services[0].envVars[0]"
+      ],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:25:13.123849+00:00",
+      "client": "unchanged Render2.27",
+      "case": "project-self-before-missing",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.394,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 13,
+            "path": "projects[0].environments[0].services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "projects[0].environments[0].services[0].envVars[0]"
+      ],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:25:14.153020+00:00",
+      "client": "unchanged Render2.27",
+      "case": "project-two-missing-same-target",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.343,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].services[0].envVars[0]\"\n    },\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 13,
+            "path": "projects[0].environments[0].services[0].envVars[0]"
+          },
+          {
+            "column": 9,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 13,
+            "path": "projects[0].environments[0].services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "projects[0].environments[0].services[0].envVars[0]",
+        "projects[0].environments[0].services[0].envVars[0]"
+      ],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:25:15.130087+00:00",
+      "client": "unchanged Render2.27",
+      "case": "cross-consumer-valid-reference-before-missing",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.338,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer-two\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer-two\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "services[0].envVars[0]"
+      ],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:25:16.105354+00:00",
+      "client": "unchanged Render2.27",
+      "case": "cross-consumer-two-missing-same-target",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep314-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep314-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.302,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    },\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer-two\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          },
+          {
+            "column": 5,
+            "error": "service \"qa314-ebe6d7-consumer-two\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [
+        "services[0].envVars[0]",
+        "services[0].envVars[0]"
+      ],
+      "location_match": false
+    }
+  ],
+  "input_removed": true,
+  "copied_render_config_removed": true,
+  "post_inventory": {
+    "at": "2026-10-15T20:26:50.189520+00:00",
+    "native": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.076,
+      "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T20:26:06Z\",\n        \"nextRunAt\": \"2026-10-15T20:27:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T20:26:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T20:26:04Z\",\n        \"nextRunAt\": \"2026-10-15T20:27:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T20:26:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T20:26:06Z\",\n        \"nextRunAt\": \"2026-10-15T20:27:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T20:26:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T19:47:36Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T12:22:37Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T06:54:00Z\"\n    }\n  }\n]",
+      "stderr": ""
+    },
+    "quota": {
+      "at": "2026-10-15T20:26:50.182820+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.795,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4b18f9c6abc468c-DFW"
+      },
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "baseline_preserved": true,
+    "authored_names_absent": true
+  }
+}

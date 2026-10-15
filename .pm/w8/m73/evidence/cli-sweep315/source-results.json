@@ -1,0 +1,140 @@
+{
+  "head": "d5220a952e0f0e172bbf9fc38fe59d023f8a531d",
+  "checks": [
+    {
+      "Test": "TestNativeDockerfileKeepsToolchainPATH",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestNativeRuntimeImagesAreDigestPinned",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestNativeDockerfileClearsTheToolchainEntrypoint",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestNativeToolchainLinesAreInventoried",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestResolveNativeBuildRewritesTheBase",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA315NodePackageManagerObservation/22_web",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA315NodePackageManagerObservation/22_static",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA315NodePackageManagerObservation/24_web",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA315NodePackageManagerObservation/24_static",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA315NodePackageManagerObservation/26_web",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA315NodePackageManagerObservation/26_static",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA315NodePackageManagerObservation",
+      "Action": "pass",
+      "Elapsed": 0.01
+    }
+  ],
+  "observations": [
+    {
+      "case": "22_web",
+      "choice": {
+        "Label": "Node",
+        "Line": "22",
+        "Image": "node:22-bookworm@sha256:0e5f906573693feaa1e21057ebdcfdb5bd5021f050b2dc7c9deceb629c7da2a8",
+        "Source": "NODE_VERSION=22"
+      },
+      "corepack_setup_text": false,
+      "pnpm_setup_text": false,
+      "scope": "generated artifact observation, no local image execution"
+    },
+    {
+      "case": "22_static",
+      "choice": {
+        "Label": "Node",
+        "Line": "22",
+        "Image": "node:22-bookworm@sha256:0e5f906573693feaa1e21057ebdcfdb5bd5021f050b2dc7c9deceb629c7da2a8",
+        "Source": "NODE_VERSION=22"
+      },
+      "corepack_setup_text": false,
+      "pnpm_setup_text": false,
+      "scope": "generated artifact observation, no local image execution"
+    },
+    {
+      "case": "24_web",
+      "choice": {
+        "Label": "Node",
+        "Line": "24",
+        "Image": "node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
+        "Source": "NODE_VERSION=24"
+      },
+      "corepack_setup_text": false,
+      "pnpm_setup_text": false,
+      "scope": "generated artifact observation, no local image execution"
+    },
+    {
+      "case": "24_static",
+      "choice": {
+        "Label": "Node",
+        "Line": "24",
+        "Image": "node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
+        "Source": "NODE_VERSION=24"
+      },
+      "corepack_setup_text": false,
+      "pnpm_setup_text": false,
+      "scope": "generated artifact observation, no local image execution"
+    },
+    {
+      "case": "26_web",
+      "choice": {
+        "Label": "Node",
+        "Line": "26",
+        "Image": "node:26-bookworm@sha256:f1233c415b41ffcf237c717b3dea92e9d4ea006e0e4c71edcb790605d74f5404",
+        "Source": "NODE_VERSION=26"
+      },
+      "corepack_setup_text": false,
+      "pnpm_setup_text": false,
+      "scope": "generated artifact observation, no local image execution"
+    },
+    {
+      "case": "26_static",
+      "choice": {
+        "Label": "Node",
+        "Line": "26",
+        "Image": "node:26-bookworm@sha256:f1233c415b41ffcf237c717b3dea92e9d4ea006e0e4c71edcb790605d74f5404",
+        "Source": "NODE_VERSION=26"
+      },
+      "corepack_setup_text": false,
+      "pnpm_setup_text": false,
+      "scope": "generated artifact observation, no local image execution"
+    }
+  ],
+  "qualification": "12 named passes/6 top-level tests; generated-artifact diagnostic, not fixed-tool execution or full suite"
+}

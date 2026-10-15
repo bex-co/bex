@@ -1,0 +1,28 @@
+from pathlib import Path
+import datetime,json,os,secrets,shutil,subprocess,sys,time
+os.umask(0o077)
+P=Path(__file__).resolve().parent;ROOT=Path('/Volumes/nvme4tbfish/projects/bex8');CP=ROOT/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(CP.read_text());assert c.get('sync313_result')==0 and not c.get('active_sync_stash')
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():
+ c['last_updated']=now();f=CP.with_name('.'+CP.name+'.qa313.tmp');f.write_text(json.dumps(c,indent=2));f.chmod(0o600);f.replace(CP)
+mode=sys.argv[1]
+x=c['sweep313_name_validation']
+if mode=='run':
+ assert not x['results'];f=P/'sweep313-render.yaml';cfg=P/'render-config/cli.yaml';assert not f.exists() and not cfg.exists()
+ try:
+  for client,runner,flags in [('installed Bex0.2.1','run.py',[]),('published Bex0.3.2','run.py',['--release']),('unchanged Render2.27','run-render.py',[])]:
+   before=len(x['results'])
+   for case in x['cases']:
+    f.write_text(case['manifest']);args=['blueprints','validate',str(f),'--confirm','-o','json'];entry={'at':now(),'client':client,'case':case['case'],'command':[client,*args],'state':'finite native validation intent persisted'};x['results'].append(entry);save()
+    try:
+     if runner=='run-render.py':assert not cfg.exists();shutil.copyfile(P/'config/cli.yaml',cfg);cfg.chmod(0o600)
+     r=json.loads(subprocess.check_output(['python3',str(P/runner),*flags,'--bound=35',*args],text=True,timeout=50));entry['native']=r
+    finally:f.unlink(missing_ok=True);cfg.unlink(missing_ok=True)
+    try:decoded=json.loads(r['stdout'])
+    except ValueError:decoded=None
+    match=isinstance(decoded,dict) and decoded.get('valid') is case['expected_valid'] and r['exit']==(0 if case['expected_valid'] else 1) and (case['expected_valid'] or bool(decoded.get('errors')));entry.update(decoded=decoded,validity_and_exit_match=bool(match),state='native validation complete; file/config copy removed');save();time.sleep(.35)
+   rows=x['results'][before:];print(json.dumps({'client':client,'native_calls':len(rows),'matched':sum(v['validity_and_exit_match'] for v in rows),'mismatches':[{'case':v['case'],'native_exit':v['native']['exit'],'decoded':v['decoded']} for v in rows if not v['validity_and_exit_match']]}),flush=True)
+ finally:x['input_removed']=not f.exists();x['copied_render_config_removed']=not cfg.exists();save()
+elif mode=='inventory':
+ assert len(x['results'])==36 and x['input_removed'] and x['copied_render_config_removed'];r=json.loads(subprocess.check_output(['python3',str(P/'run.py'),'--release','--bound=35','services','--confirm','-o','json'],text=True));assert r['exit']==0;rows=[v.get('service',v.get('postgres',v.get('keyValue',v))) for v in json.loads(r['stdout'])];ids={v['id'] for v in rows};baseline={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']};assert baseline<=ids;assert not any(v['name'].startswith('qa313-'+x['nonce']) for v in rows);q=json.loads(subprocess.check_output(['python3',str(P/'wire.py'),'GET','/v1/owners/tea-daif693dqjvc73e7as3g/limits'],text=True));assert q['status']=='200';lim=json.loads(q['response']);x['post_inventory']={'at':now(),'native':r,'quota':q,'baseline_preserved':True,'authored_names_absent':True};save();print(json.dumps({'baseline_preserved':True,'authored_names_absent':True,'service_quota':lim['services'],'postgres_quota':lim['postgres'],'keyvalue_quota':lim['keyValues']}),flush=True)
+else:raise ValueError(mode)

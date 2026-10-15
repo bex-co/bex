@@ -1,0 +1,21 @@
+{
+  "head": "e3b23bcea225292a3c25fe377e5b26dd421945de",
+  "checks": [
+    {
+      "Test": "TestSavedETagPreconditions",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestNoSavedETagOnlyWildcardMatches",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestConditionalFramingOverHTTP",
+      "Action": "pass",
+      "Elapsed": 0
+    }
+  ],
+  "scope": "three focused existing conditional/framing tests; no full operator suite or new implementation"
+}

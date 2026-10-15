@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: qa318-static-r
+    runtime: static
+    buildCommand: mkdir -p public
+    staticPublishPath: public
+    repo: https://github.com/expressjs/serve-static

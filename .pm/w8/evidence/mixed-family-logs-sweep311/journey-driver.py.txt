@@ -1,0 +1,161 @@
+from pathlib import Path
+import datetime, json, os, secrets, shlex, shutil, subprocess, sys, time, urllib.parse
+
+os.umask(0o077)
+P = Path(__file__).resolve().parent
+ROOT = Path('/Volumes/nvme4tbfish/projects/bex8')
+CP = ROOT / '.playwright-mcp/cli-qa-w8-checkpoint.json'
+c = json.loads(CP.read_text())
+assert c.get('sync311_result') == 0 and not c.get('active_sync_stash')
+mode, client = sys.argv[1:3]
+assert client in ('bex', 'render')
+WS = 'tea-daif693dqjvc73e7as3g'
+BASE = {v if isinstance(v, str) else v.get('service', v)['id'] for v in c['baseline']['services']}
+
+import yaml
+ws=WS
+
+def now():
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+def save():
+    c['last_updated'] = now()
+    temporary = CP.with_name('.'+CP.name+'.qa311.tmp')
+    temporary.write_text(json.dumps(c, indent=2, ensure_ascii=False))
+    temporary.chmod(0o600)
+    temporary.replace(CP)
+
+def cli(args, bound=45):
+    cfg = P / 'render-config/cli.yaml'
+    try:
+        if client == 'render':
+            assert not cfg.exists()
+            shutil.copyfile(P / 'config/cli.yaml', cfg)
+            cfg.chmod(0o600)
+        runner = P / ('run-render.py' if client == 'render' else 'run.py')
+        r = json.loads(subprocess.check_output(['python3', str(runner), *([] if client=='render' else ['--release']), '--bound=' + str(bound), *args], text=True, timeout=bound + 15))
+        r['native_exit'] = None if r['exit'] == 124 else r['exit']
+        return r
+    finally:
+        if client == 'render':
+            cfg.unlink(missing_ok=True)
+
+def inventory():
+    r = cli(['services', '--confirm', '-o', 'json'])
+    assert r['native_exit'] == 0
+    rows = [v.get('service', v.get('postgres', v.get('keyValue', v))) for v in json.loads(r['stdout']) or []]
+    assert BASE <= {v['id'] for v in rows}
+    return r, rows
+
+def api(method,path,body=None):
+ cfg=yaml.safe_load((P/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token;ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n';f=P/'sweep311-request.json';assert not f.exists();args=['curl','--disable','-sS','--max-time','30','--config','-','-X',method,'-H','Accept: application/json, text/event-stream','-H','MCP-Protocol-Version: 2025-03-26']
+ if body is not None:f.write_text(json.dumps(body));args+=['-H','Content-Type: application/json','--data-binary','@'+str(f)]
+ start=time.monotonic()
+ try:r=subprocess.run([*args,'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=36)
+ finally:f.unlink(missing_ok=True)
+ raw,_,status=r.stdout.rpartition('\n');out={'at':now(),'API_only':True,'request':{'method':method,'path':path,'body':body,'workspace':ws,'user_agent':ua,'authorization':'REDACTED'},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'response':raw,'stderr':r.stderr};assert token not in json.dumps(out);return out
+
+def decode(r):
+ text=r['response']
+ if not text.lstrip().startswith(('{','[')):
+  texts=[s[5:].strip() for s in text.splitlines() if s.startswith('data:')];assert len(texts)==1;text=texts[0]
+ return json.loads(text)
+
+import base64,collections,re
+family=sys.argv[3];assert family in ('app','postgres','keyvalue','all')
+def command_family(f):return {'app':'services','postgres':'postgres','keyvalue':'keyvalues'}[f]
+def detail_path(x):return '/v1/'+{'app':'services','postgres':'postgres','keyvalue':'key-value'}[x['family']]+'/'+x['id']
+def value(r):
+ v=json.loads(r['stdout']);v=v.get('data',v);return v.get('service',v.get('postgres',v.get('keyValue',v)))
+def family_inventory(f):
+ if f=='app':return inventory()
+ r=cli([command_family(f),'list','--confirm','-o','json']);assert r['native_exit']==0;v=json.loads(r['stdout']);v=v.get('data',v) if isinstance(v,dict) else v;return r,[z.get('postgres',z.get('keyValue',z)) for z in (v or [])]
+def owned(x):
+ v=x['create_response'];assert x['workspace']==WS and x['create_result']['native_exit']==0 and v['id']==x['id'] and x['id'] not in x['pre_ids'] and (v.get('ownerId') or v.get('owner',{}).get('id'))==WS and (v['serviceDetails']['plan'] if x['family']=='app' else v['plan'])=='free' and (mode=='reconcile' or not x['state'].startswith('deleted:'))
+def history(x):
+ r=cli(['deploys','list',x['id'],'--confirm','-o','json']);assert r['native_exit']==0;rows=json.loads(r['stdout']);x.setdefault('history_receipts',[]).append({'at':now(),'result':r});x['deploy_children']=rows
+ for v in rows:
+  if v['id'] not in x['recorded_child_ids']:x['recorded_child_ids'].append(v['id'])
+ save();return rows
+def public(x,path='/'):
+ start=time.monotonic();r=subprocess.run(['curl','--disable','-sS','--max-time','10','-w','\n%{http_code}',x['create_response']['serviceDetails']['url']+path],text=True,capture_output=True,timeout=15);body,_,status=r.stdout.rpartition('\n');return {'at':now(),'API_only_public_HTTP':True,'path':path,'HTTP':status,'body':body,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'stderr':r.stderr}
+def ns(text):
+ m=re.fullmatch(r'(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.(\d{1,9}))?(Z|[+-]\d\d:\d\d)',text);assert m,text;dt=datetime.datetime.fromisoformat(m[1]+m[3].replace('Z','+00:00'));return int(dt.timestamp())*10**9+int((m[2] or '').ljust(9,'0'))
+def rowkey(v):return (v['id'],ns(v['timestamp']),v['message'])
+def same(a,b):return collections.Counter(map(rowkey,a))==collections.Counter(map(rowkey,b))
+def resource(v):return next(z['value'] for z in v['labels'] if z['name']=='resource')
+def settled_window():
+ w=c['sweep311_window'];assert (datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(w['end'])).total_seconds()>=120;return w
+def log_api(ids,start,end,direction='backward',limit=100):
+ assert set(ids)<={v['id'] for v in xs};query=[('ownerId',WS),('startTime',start),('endTime',end),('direction',direction),('limit',str(limit))]+[('resource',v) for v in ids];r=api('GET','/v1/logs?'+urllib.parse.urlencode(query));c.setdefault('sweep311_all_log_API_receipts',[]).append(r);save();print(json.dumps({'log_API_HTTP':r['status'],'curl_exit':r['curl_exit']}),flush=True);assert r['status']=='200';return r,decode(r)
+def log_cli(ids,start,end,direction='backward',limit=100):
+ assert set(ids)<={v['id'] for v in xs};args=['logs','--resources',','.join(ids),'--start',start,'--end',end,'--direction',direction,'--limit',str(limit),'--confirm','-o','json'];r=cli(args,bound=60);assert r['native_exit']==0;text=r['stdout'];decoder=json.JSONDecoder();entries=[];offset=0
+ while offset<len(text):
+  while offset<len(text) and text[offset].isspace():offset+=1
+  if offset==len(text):break
+  value,offset=decoder.raw_decode(text,offset);assert isinstance(value,dict);entries.append(value)
+ return r,entries
+def expected_page(rows,direction,limit):
+ ordered=sorted(rows,key=lambda v:ns(v['timestamp']))
+ if len(ordered)<=limit:return ordered
+ cut=ns(ordered[limit-1 if direction=='forward' else -limit]['timestamp']);return [v for v in ordered if (ns(v['timestamp'])<=cut if direction=='forward' else ns(v['timestamp'])>=cut)]
+if mode=='create':
+ assert family!='all' and not any(v.get('sweep')==311 and v.get('family')==family for v in c['resources']);q=api('GET','/v1/owners/'+WS+'/limits');assert q['status']=='200';lim=decode(q)[{'app':'services','postgres':'postgres','keyvalue':'keyValues'}[family]];assert lim['used']+lim['terminating']<lim['limit'];inv,rows=family_inventory(family);ids={v['id'] for v in rows}
+ if family!='app':assert not ids
+ nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-mixlog';marker='QA311_'+nonce
+ if family=='app':
+  program="const http=require('node:http');const m=process.env.QA_MARKER;http.createServer((q,r)=>{if(q.url.startsWith('/emit/'))console.log(m+'_EMIT_'+q.url.slice(6));r.end(m+'\\n')}).listen(Number(process.env.PORT||3000),'0.0.0.0');";encoded=base64.b64encode(program.encode()).decode();build="node -e \"require('node:fs').writeFileSync('qa_mix.js',Buffer.from('"+encoded+"','base64'))\"";start='node /opt/render/project/src/qa_mix.js';args=['services','create','--name',name,'--type','web_service','--runtime','node','--repo','https://github.com/expressjs/serve-static','--branch','master','--build-command',build,'--start-command',start,'--env-var','QA_MARKER='+marker,'--health-check-path','/','--plan','free','--region','frankfurt','--auto-deploy=false','--confirm','-o','json']
+ elif family=='postgres':args=['postgres','create','--name',name,'--plan','free','--version','18','--region','frankfurt','--connection-pool','none','--confirm','-o','json']
+ else:args=['keyvalues','create','--name',name,'--plan','free','--region','frankfurt','--memory-policy','queue','--persistence-mode','journal_snapshot','--confirm','-o','json']
+ x={'sweep':311,'family':family,'client':client,'workspace':WS,'type':'web_service' if family=='app' else family,'name':name,'nonce':nonce,'marker':marker,'time':now(),'source_head':c['head'],'capacity':q,'pre_inventory':inv,'pre_ids':sorted(ids),'dependency_ids':[],'recorded_child_ids':[],'create_command':[client,*args],'state':'finite native Free create intent persisted'}
+ if family=='app':x.update(program=program,authored_start=start)
+ c['resources'].append(x);save();r=cli(args);x['create_result']=r;x['state']='create returned; reconcile before retry';save();assert r['native_exit']==0;v=value(r);assert v['id'] not in ids and v['name']==name and (v.get('ownerId') or v.get('owner',{}).get('id'))==WS and (v['serviceDetails']['plan'] if family=='app' else v['plan'])=='free';x.update(id=v['id'],create_response=v,state='created: exact native/ID/workspace/Free ownership proved');save()
+ if family=='app':history(x)
+ print(json.dumps({'family':family,'client':client,'native_create_exit':0,'id':x['id']}),flush=True);raise SystemExit(0)
+xs=[v for v in c['resources'] if v.get('sweep')==311]
+for x in xs:owned(x)
+if family!='all':x=next(v for v in xs if v['family']==family)
+if mode=='ready':
+ if family=='app':
+  hs=history(x);r=public(x);ok=hs[0]['status']=='live' and r['HTTP']=='200' and r['body']==x['marker']+'\n' and r['curl_exit']==0;receipt={'at':now(),'history':hs,'HTTP':r,'pass':ok};status=hs[0]['status']
+ else:
+  r=cli([command_family(family),'get',x['id'],'--confirm','-o','json']);assert r['native_exit']==0;v=value(r);status=v['status'];ok=status=='available';receipt={'at':now(),'native':r,'pass':ok}
+ x.setdefault('readiness',[]).append(receipt);x['ready']=ok;save();print(json.dumps({'family':family,'ready':ok,'status':status}),flush=True)
+elif mode=='freeze':
+ assert family=='all' and len(xs)==3 and all(v.get('ready') for v in xs) and 'sweep311_window' not in c;app=next(v for v in xs if v['family']=='app');app['emit_intent']={'at':now(),'paths':['/emit/1','/emit/2','/emit/3']};save()
+ for i in (1,2,3):
+  r=public(app,'/emit/'+str(i));app.setdefault('emit_receipts',[]).append(r);save();assert r['HTTP']=='200' and r['body']==app['marker']+'\n' and r['curl_exit']==0
+ c['sweep311_window']={'start':(min(datetime.datetime.fromisoformat(v['time']) for v in xs)-datetime.timedelta(seconds=2)).isoformat(),'end':now(),'resource_ids':[v['id'] for v in xs],'closed_window_wait_s':120};save();print(json.dumps({'frozen_window':True,'own_HTTP_emits':3,'minimum_ingestion_settle_s':120}),flush=True)
+elif mode=='reference':
+ assert family=='all' and 'sweep311_reference' not in c;w=settled_window();reference={};c['sweep311_reference_intent']={'at':now(),'resources':w['resource_ids']};save()
+ for v in xs:
+  r,page=log_api([v['id']],w['start'],w['end']);assert not page['hasMore'];assert all(resource(z)==v['id'] for z in page['logs']);reference[v['id']]={'family':v['family'],'receipt':r,'page':page};c['sweep311_reference']=reference;save();print(json.dumps({'family':v['family'],'reference_rows':len(page['logs']),'hasMore':page['hasMore']}),flush=True)
+ app=next(v for v in xs if v['family']=='app');app_rows=reference[app['id']]['page']['logs'];markers=[app['marker']+'_EMIT_'+str(i) for i in (1,2,3)];c['sweep311_emit_coverage']={m:sum(v['message']==m for v in app_rows) for m in markers};save();print(json.dumps({'HTTP_emit_log_matches':list(c['sweep311_emit_coverage'].values())}),flush=True)
+elif mode=='corpus':
+ assert family=='all' and len(c['sweep311_reference'])==3 and client not in c.get('sweep311_native_corpus',{});w=settled_window();rows=[]
+ for v in xs:
+  r,entries=log_cli([v['id']],w['start'],w['end']);target=c['sweep311_reference'][v['id']]['page']['logs'];passed=same(entries,target);rows.append({'at':now(),'family':v['family'],'native':r,'rows':entries,'same_as_API_reference':passed});c.setdefault('sweep311_native_corpus',{})[client]=rows;save();print(json.dumps({'client':client,'family':v['family'],'rows':len(entries),'same_as_reference':passed}),flush=True)
+elif mode=='matrix':
+ assert family=='all' and all(len(v)==3 for v in c['sweep311_native_corpus'].values()) and len(c['sweep311_native_corpus'])==2 and client not in c.get('sweep311_matrix',{});w=settled_window();ids=w['resource_ids'];reference=[z for v in c['sweep311_reference'].values() for z in v['page']['logs']];assert all(v['page']['logs'] for v in c['sweep311_reference'].values());rows=[]
+ cases=[(direction,limit,'normal',ids,False) for direction in ('forward','backward') for limit in (1,7,19)]+[(direction,7,label,selection,offset) for direction in ('forward','backward') for label,selection,offset in [('reversed',list(reversed(ids)),False),('duplicate',ids+[ids[0]],False),('offset-0530',ids,True)]]
+ for direction,limit,label,selection,offset in cases:
+  start,end=w['start'],w['end']
+  if offset:tz=datetime.timezone(datetime.timedelta(minutes=330));start=datetime.datetime.fromisoformat(start).astimezone(tz).isoformat();end=datetime.datetime.fromisoformat(end).astimezone(tz).isoformat()
+  r,entries=log_cli(selection,start,end,direction,limit);expected=expected_page(reference,direction,limit);ascending=all(ns(a['timestamp'])<=ns(b['timestamp']) for a,b in zip(entries,entries[1:]));ok=same(entries,expected) and ascending and all(resource(v) in ids for v in entries);rows.append({'at':now(),'direction':direction,'limit':limit,'variant':label,'native':r,'rows':entries,'expected_keys':[list(rowkey(v)) for v in expected],'chronological':ascending,'pass':ok});c.setdefault('sweep311_matrix',{})[client]=rows;save();print(json.dumps({'client':client,'direction':direction,'limit':limit,'variant':label,'rows':len(entries),'expected':len(expected),'pass':ok}),flush=True)
+elif mode=='pages':
+ assert family=='all' and 'sweep311_pages' not in c;w=settled_window();ids=w['resource_ids'];reference=[z for v in c['sweep311_reference'].values() for z in v['page']['logs']];c['sweep311_pages']={};save()
+ for direction in ('forward','backward'):
+  start,end=w['start'],w['end'];pages=[];entries=[];complete=False
+  for i in range(25):
+   r,page=log_api(ids,start,end,direction,7);pages.append({'at':now(),'receipt':r,'page':page});entries+=page['logs'];c['sweep311_pages'][direction]={'pages':pages,'complete':False};save()
+   if not page['hasMore']:complete=True;break
+   nextstart,nextend=page['nextStartTime'],page['nextEndTime'];assert (ns(nextstart)>ns(start) and ns(nextend)==ns(end)) if direction=='forward' else (ns(nextend)<ns(end) and ns(nextstart)==ns(start));start,end=nextstart,nextend
+  ok=complete and same(entries,reference);c['sweep311_pages'][direction]={'pages':pages,'complete':complete,'all_rows':len(entries),'same_multiset_as_reference':ok,'independent_API_only':True};save();print(json.dumps({'API_only_direction':direction,'pages':len(pages),'rows':len(entries),'complete':complete,'same_as_reference':ok}),flush=True)
+elif mode=='delete':
+ assert family!='all' and 'delete_intent' not in x and not any(x['id'] in v.get('dependency_ids',[]) and not v['state'].startswith('deleted:') for v in c['resources']);d=api('GET',detail_path(x));assert d['status']=='200';v=decode(d)
+ if family=='app':hs=history(x);assert all(v['id'] in x['recorded_child_ids'] and v['status'] in ('live','deactivated','canceled','build_failed','update_failed','pre_deploy_failed') for v in hs)
+ if family=='postgres':assert v['readReplicas']==[] and v['connectionPool']=='none'
+ x['dependent_inventory']=d;x['delete_intent']={'at':now(),'id':x['id'],'children':x['recorded_child_ids']};save();x['delete_result']=cli([command_family(family),'delete',x['id'],'--confirm','-o','json']);save();assert x['delete_result']['native_exit']==0;print(json.dumps({'family':family,'native_delete_exit':0,'enumerated_deploys':len(x['recorded_child_ids'])}),flush=True)
+elif mode=='reconcile':
+ assert family!='all' and 'delete_result' in x;d=api('GET',detail_path(x));inv,rows=family_inventory(family);svc,services=inventory();q=api('GET','/v1/owners/'+WS+'/limits');assert q['status']=='200';lim=decode(q)[{'app':'services','postgres':'postgres','keyvalue':'keyValues'}[family]];runtime=public(x) if family=='app' else None;done=d['status']=='404' and x['id'] not in {v['id'] for v in rows} and lim['used']==(6 if family=='app' else 0) and lim['terminating']==0 and (family!='app' or runtime['HTTP']=='404' and runtime['curl_exit']==0);x.setdefault('cleanup_receipts',[]).append({'at':now(),'detail':d,'inventory':inv,'services':svc,'quota':q,'runtime':runtime,'baseline_preserved':True,'data_credentials':'never fetched; direct data endpoint teardown not tested'});x['state']='deleted: native0/detail404/listabsent/baseline6/quota restored terminating0'+('/runtime404' if family=='app' else '') if done else 'delete acknowledged: read-only convergence pending';save();print(json.dumps({'family':family,'cleanup_complete':done,'used':lim['used'],'terminating':lim['terminating']}),flush=True)
+else:raise ValueError(mode)

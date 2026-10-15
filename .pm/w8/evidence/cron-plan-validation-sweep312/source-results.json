@@ -1,0 +1,1238 @@
+{
+  "head": "0cc059c22de27d68c5e1f58686ae30d33227913b",
+  "focused_checks": {
+    "sweep312-source": {
+      "named_passes": 16,
+      "top_level_passes": 6,
+      "events": [
+        {
+          "Time": "2026-10-15T12:56:44.349256-07:00",
+          "Action": "start",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps"
+        },
+        {
+          "Time": "2026-10-15T12:56:44.994781-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestStaticSitePlanIsTheNamedOffender"
+        },
+        {
+          "Time": "2026-10-15T12:56:44.994875-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestStaticSitePlanIsTheNamedOffender",
+          "Output": "=== RUN   TestStaticSitePlanIsTheNamedOffender\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.001636-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestStaticSitePlanIsTheNamedOffender",
+          "Output": "--- PASS: TestStaticSitePlanIsTheNamedOffender (0.01s)\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.001695-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestStaticSitePlanIsTheNamedOffender",
+          "Elapsed": 0.01
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002038-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintCronPlanFreeIsRefused"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002049-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintCronPlanFreeIsRefused",
+          "Output": "=== RUN   TestBlueprintCronPlanFreeIsRefused\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002601-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintCronPlanFreeIsRefused",
+          "Output": "--- PASS: TestBlueprintCronPlanFreeIsRefused (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002643-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintCronPlanFreeIsRefused",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002687-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002697-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault",
+          "Output": "=== RUN   TestAnOmittedPlanFollowsRendersPaidDefault\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002758-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/web_service/"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002766-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/web_service/",
+          "Output": "=== RUN   TestAnOmittedPlanFollowsRendersPaidDefault/web_service/\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002777-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/web_service/",
+          "Output": "--- PASS: TestAnOmittedPlanFollowsRendersPaidDefault/web_service/ (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002783-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/web_service/",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002809-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/cron_job/"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002813-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/cron_job/",
+          "Output": "=== RUN   TestAnOmittedPlanFollowsRendersPaidDefault/cron_job/\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002818-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/cron_job/",
+          "Output": "--- PASS: TestAnOmittedPlanFollowsRendersPaidDefault/cron_job/ (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002822-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/cron_job/",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002825-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/background_worker/"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002844-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/background_worker/",
+          "Output": "=== RUN   TestAnOmittedPlanFollowsRendersPaidDefault/background_worker/\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002847-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/background_worker/",
+          "Output": "--- PASS: TestAnOmittedPlanFollowsRendersPaidDefault/background_worker/ (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.00285-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/background_worker/",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T12:56:45.00286-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/private_service/"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002862-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/private_service/",
+          "Output": "=== RUN   TestAnOmittedPlanFollowsRendersPaidDefault/private_service/\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002864-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/private_service/",
+          "Output": "--- PASS: TestAnOmittedPlanFollowsRendersPaidDefault/private_service/ (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002867-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/private_service/",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002869-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/static_site/"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002871-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/static_site/",
+          "Output": "=== RUN   TestAnOmittedPlanFollowsRendersPaidDefault/static_site/\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002874-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/static_site/",
+          "Output": "--- PASS: TestAnOmittedPlanFollowsRendersPaidDefault/static_site/ (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002876-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/static_site/",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002879-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/web_service/free"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002881-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/web_service/free",
+          "Output": "=== RUN   TestAnOmittedPlanFollowsRendersPaidDefault/web_service/free\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002883-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/web_service/free",
+          "Output": "--- PASS: TestAnOmittedPlanFollowsRendersPaidDefault/web_service/free (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002885-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/web_service/free",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002887-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/cron_job/free"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002889-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/cron_job/free",
+          "Output": "=== RUN   TestAnOmittedPlanFollowsRendersPaidDefault/cron_job/free\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002902-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/cron_job/free",
+          "Output": "--- PASS: TestAnOmittedPlanFollowsRendersPaidDefault/cron_job/free (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002911-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/cron_job/free",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002913-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/web_service/0.5c-512mb"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002915-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/web_service/0.5c-512mb",
+          "Output": "=== RUN   TestAnOmittedPlanFollowsRendersPaidDefault/web_service/0.5c-512mb\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002918-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/web_service/0.5c-512mb",
+          "Output": "--- PASS: TestAnOmittedPlanFollowsRendersPaidDefault/web_service/0.5c-512mb (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002922-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/web_service/0.5c-512mb",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002924-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/background_worker/free"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002926-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/background_worker/free",
+          "Output": "=== RUN   TestAnOmittedPlanFollowsRendersPaidDefault/background_worker/free\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002929-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/background_worker/free",
+          "Output": "--- PASS: TestAnOmittedPlanFollowsRendersPaidDefault/background_worker/free (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002932-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/background_worker/free",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002935-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/private_service/free"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002942-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/private_service/free",
+          "Output": "=== RUN   TestAnOmittedPlanFollowsRendersPaidDefault/private_service/free\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002944-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/private_service/free",
+          "Output": "--- PASS: TestAnOmittedPlanFollowsRendersPaidDefault/private_service/free (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002946-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault/private_service/free",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002949-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault",
+          "Output": "--- PASS: TestAnOmittedPlanFollowsRendersPaidDefault (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002951-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAnOmittedPlanFollowsRendersPaidDefault",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002954-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAPlanLessBlueprintServiceIsPricedAndGatedAsStarter"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.002956-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAPlanLessBlueprintServiceIsPricedAndGatedAsStarter",
+          "Output": "=== RUN   TestAPlanLessBlueprintServiceIsPricedAndGatedAsStarter\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.038685-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAPlanLessBlueprintServiceIsPricedAndGatedAsStarter",
+          "Output": "--- PASS: TestAPlanLessBlueprintServiceIsPricedAndGatedAsStarter (0.04s)\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.03873-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestAPlanLessBlueprintServiceIsPricedAndGatedAsStarter",
+          "Elapsed": 0.04
+        },
+        {
+          "Time": "2026-10-15T12:56:45.038747-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestPaidOnlyServiceTypes"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.038756-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestPaidOnlyServiceTypes",
+          "Output": "=== RUN   TestPaidOnlyServiceTypes\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.03876-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestPaidOnlyServiceTypes",
+          "Output": "--- PASS: TestPaidOnlyServiceTypes (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.038766-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestPaidOnlyServiceTypes",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T12:56:45.03877-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestCronJobIsPaidOnly"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.038773-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestCronJobIsPaidOnly",
+          "Output": "=== RUN   TestCronJobIsPaidOnly\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.041407-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestCronJobIsPaidOnly",
+          "Output": "--- PASS: TestCronJobIsPaidOnly (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.04142-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestCronJobIsPaidOnly",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T12:56:45.041453-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Output": "PASS\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.043218-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Output": "ok  \tgithub.com/bex-co/bex/lego/backend/internal/apps\t0.693s\n"
+        },
+        {
+          "Time": "2026-10-15T12:56:45.04323-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Elapsed": 0.694
+        }
+      ],
+      "stderr": ""
+    },
+    "sweep312-exact-source": {
+      "named_passes": 16,
+      "top_level_passes": 1,
+      "events": [
+        {
+          "Time": "2026-10-15T13:01:46.066357-07:00",
+          "Action": "start",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.719272-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.719324-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs",
+          "Output": "=== RUN   TestQA312ExactPlanInputs\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.719667-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/web-free"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.719681-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/web-free",
+          "Output": "=== RUN   TestQA312ExactPlanInputs/web-free\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.763279-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/web-free",
+          "Output": "--- PASS: TestQA312ExactPlanInputs/web-free (0.04s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.763334-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/web-free",
+          "Elapsed": 0.04
+        },
+        {
+          "Time": "2026-10-15T13:01:46.763361-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/web-starter"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.763365-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/web-starter",
+          "Output": "=== RUN   TestQA312ExactPlanInputs/web-starter\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.76474-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/web-starter",
+          "Output": "--- PASS: TestQA312ExactPlanInputs/web-starter (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.764777-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/web-starter",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:01:46.764783-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/web-omitted"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.764787-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/web-omitted",
+          "Output": "=== RUN   TestQA312ExactPlanInputs/web-omitted\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.765939-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/web-omitted",
+          "Output": "--- PASS: TestQA312ExactPlanInputs/web-omitted (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.765979-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/web-omitted",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:01:46.765985-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/cron-free"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.765989-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/cron-free",
+          "Output": "=== RUN   TestQA312ExactPlanInputs/cron-free\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.767167-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/cron-free",
+          "Output": "--- PASS: TestQA312ExactPlanInputs/cron-free (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.767179-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/cron-free",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:01:46.767189-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/cron-starter"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.767193-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/cron-starter",
+          "Output": "=== RUN   TestQA312ExactPlanInputs/cron-starter\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.76991-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/cron-starter",
+          "Output": "--- PASS: TestQA312ExactPlanInputs/cron-starter (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.769961-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/cron-starter",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:01:46.769969-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/cron-omitted"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.769974-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/cron-omitted",
+          "Output": "=== RUN   TestQA312ExactPlanInputs/cron-omitted\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.771184-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/cron-omitted",
+          "Output": "--- PASS: TestQA312ExactPlanInputs/cron-omitted (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.771204-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/cron-omitted",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:01:46.77121-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/worker-free"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.771213-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/worker-free",
+          "Output": "=== RUN   TestQA312ExactPlanInputs/worker-free\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.772401-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/worker-free",
+          "Output": "--- PASS: TestQA312ExactPlanInputs/worker-free (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.772444-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/worker-free",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:01:46.77245-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/worker-starter"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.772454-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/worker-starter",
+          "Output": "=== RUN   TestQA312ExactPlanInputs/worker-starter\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.773577-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/worker-starter",
+          "Output": "--- PASS: TestQA312ExactPlanInputs/worker-starter (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.773607-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/worker-starter",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:01:46.773613-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/worker-omitted"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.773617-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/worker-omitted",
+          "Output": "=== RUN   TestQA312ExactPlanInputs/worker-omitted\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.775554-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/worker-omitted",
+          "Output": "--- PASS: TestQA312ExactPlanInputs/worker-omitted (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.775577-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/worker-omitted",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:01:46.775582-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/pserv-free"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.775586-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/pserv-free",
+          "Output": "=== RUN   TestQA312ExactPlanInputs/pserv-free\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.777154-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/pserv-free",
+          "Output": "--- PASS: TestQA312ExactPlanInputs/pserv-free (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.77718-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/pserv-free",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:01:46.777185-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/pserv-starter"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.777204-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/pserv-starter",
+          "Output": "=== RUN   TestQA312ExactPlanInputs/pserv-starter\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.778466-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/pserv-starter",
+          "Output": "--- PASS: TestQA312ExactPlanInputs/pserv-starter (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.778485-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/pserv-starter",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:01:46.77849-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/pserv-omitted"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.778494-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/pserv-omitted",
+          "Output": "=== RUN   TestQA312ExactPlanInputs/pserv-omitted\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.779606-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/pserv-omitted",
+          "Output": "--- PASS: TestQA312ExactPlanInputs/pserv-omitted (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.779646-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/pserv-omitted",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:01:46.779652-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/static-free"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.779656-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/static-free",
+          "Output": "=== RUN   TestQA312ExactPlanInputs/static-free\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.780703-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/static-free",
+          "Output": "--- PASS: TestQA312ExactPlanInputs/static-free (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.780737-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/static-free",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:01:46.780742-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/static-starter"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.780746-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/static-starter",
+          "Output": "=== RUN   TestQA312ExactPlanInputs/static-starter\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.782818-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/static-starter",
+          "Output": "--- PASS: TestQA312ExactPlanInputs/static-starter (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.782845-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/static-starter",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:01:46.782851-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/static-omitted"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.782855-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/static-omitted",
+          "Output": "=== RUN   TestQA312ExactPlanInputs/static-omitted\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.784177-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/static-omitted",
+          "Output": "--- PASS: TestQA312ExactPlanInputs/static-omitted (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.78419-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs/static-omitted",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:01:46.784563-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs",
+          "Output": "--- PASS: TestQA312ExactPlanInputs (0.07s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.784595-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA312ExactPlanInputs",
+          "Elapsed": 0.07
+        },
+        {
+          "Time": "2026-10-15T13:01:46.784602-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Output": "PASS\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.786432-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Output": "ok  \tgithub.com/bex-co/bex/lego/backend/internal/apps\t0.719s\n"
+        },
+        {
+          "Time": "2026-10-15T13:01:46.786459-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Elapsed": 0.72
+        }
+      ],
+      "stderr": ""
+    }
+  },
+  "exact_validation_observations": [
+    {
+      "case": "web-free",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "effective_type": "web_service",
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      },
+      "resolved_plan": "free",
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "web-starter",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "effective_type": "web_service",
+      "estimated_pricing": {
+        "totalUsd": "4.90",
+        "lines": [
+          {
+            "name": "qa312-1f25aa-web-starter",
+            "resourceKind": "service",
+            "tier": "starter",
+            "tierLabel": "Starter",
+            "monthlyUsd": "4.90",
+            "instanceUsd": "4.90"
+          }
+        ],
+        "variable": []
+      },
+      "resolved_plan": "starter",
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "web-omitted",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "effective_type": "web_service",
+      "estimated_pricing": {
+        "totalUsd": "4.90",
+        "lines": [
+          {
+            "name": "qa312-1f25aa-web-omitted",
+            "resourceKind": "service",
+            "tier": "starter",
+            "tierLabel": "Starter",
+            "monthlyUsd": "4.90",
+            "instanceUsd": "4.90"
+          }
+        ],
+        "variable": []
+      },
+      "resolved_plan": "starter",
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "cron-free",
+      "compiler_problems": [
+        {
+          "Code": "BLUEPRINT_SCHEMA_INVALID",
+          "Path": "#/services/0/plan",
+          "Message": "a cron_job requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra",
+          "Line": 7,
+          "Column": 11
+        }
+      ],
+      "compiler_valid": false,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "code": "BLUEPRINT_SCHEMA_INVALID",
+          "error": "a cron_job requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra",
+          "line": 7,
+          "column": 11,
+          "path": "services[0].plan"
+        }
+      ]
+    },
+    {
+      "case": "cron-starter",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "effective_type": "cron_job",
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": [
+          {
+            "name": "qa312-1f25aa-cron-starter",
+            "reason": "cron"
+          }
+        ]
+      },
+      "resolved_plan": "starter",
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "cron-omitted",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "effective_type": "cron_job",
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": [
+          {
+            "name": "qa312-1f25aa-cron-omitted",
+            "reason": "cron"
+          }
+        ]
+      },
+      "resolved_plan": "starter",
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "worker-free",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "service \"qa312-1f25aa-worker-free\": a background_worker requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra",
+          "line": 6,
+          "column": 11,
+          "path": "services[0].plan"
+        }
+      ]
+    },
+    {
+      "case": "worker-starter",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "effective_type": "background_worker",
+      "estimated_pricing": {
+        "totalUsd": "4.90",
+        "lines": [
+          {
+            "name": "qa312-1f25aa-worker-starter",
+            "resourceKind": "service",
+            "tier": "starter",
+            "tierLabel": "Starter",
+            "monthlyUsd": "4.90",
+            "instanceUsd": "4.90"
+          }
+        ],
+        "variable": []
+      },
+      "resolved_plan": "starter",
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "worker-omitted",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "effective_type": "background_worker",
+      "estimated_pricing": {
+        "totalUsd": "4.90",
+        "lines": [
+          {
+            "name": "qa312-1f25aa-worker-omitted",
+            "resourceKind": "service",
+            "tier": "starter",
+            "tierLabel": "Starter",
+            "monthlyUsd": "4.90",
+            "instanceUsd": "4.90"
+          }
+        ],
+        "variable": []
+      },
+      "resolved_plan": "starter",
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "pserv-free",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "service \"qa312-1f25aa-pserv-free\": a private_service requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra",
+          "line": 6,
+          "column": 11,
+          "path": "services[0].plan"
+        }
+      ]
+    },
+    {
+      "case": "pserv-starter",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "effective_type": "private_service",
+      "estimated_pricing": {
+        "totalUsd": "4.90",
+        "lines": [
+          {
+            "name": "qa312-1f25aa-pserv-starter",
+            "resourceKind": "service",
+            "tier": "starter",
+            "tierLabel": "Starter",
+            "monthlyUsd": "4.90",
+            "instanceUsd": "4.90"
+          }
+        ],
+        "variable": []
+      },
+      "resolved_plan": "starter",
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "pserv-omitted",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "effective_type": "private_service",
+      "estimated_pricing": {
+        "totalUsd": "4.90",
+        "lines": [
+          {
+            "name": "qa312-1f25aa-pserv-omitted",
+            "resourceKind": "service",
+            "tier": "starter",
+            "tierLabel": "Starter",
+            "monthlyUsd": "4.90",
+            "instanceUsd": "4.90"
+          }
+        ],
+        "variable": []
+      },
+      "resolved_plan": "starter",
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "static-free",
+      "compiler_problems": [
+        {
+          "Code": "BLUEPRINT_SCHEMA_INVALID",
+          "Path": "#/services/0/plan",
+          "Message": "at '/services/0': additional properties 'plan' not allowed",
+          "Line": 8,
+          "Column": 11
+        }
+      ],
+      "compiler_valid": false,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "code": "BLUEPRINT_SCHEMA_INVALID",
+          "error": "at '/services/0': additional properties 'plan' not allowed",
+          "line": 8,
+          "column": 11,
+          "path": "services[0].plan"
+        }
+      ]
+    },
+    {
+      "case": "static-starter",
+      "compiler_problems": [
+        {
+          "Code": "BLUEPRINT_SCHEMA_INVALID",
+          "Path": "#/services/0/plan",
+          "Message": "at '/services/0': additional properties 'plan' not allowed",
+          "Line": 8,
+          "Column": 11
+        }
+      ],
+      "compiler_valid": false,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "code": "BLUEPRINT_SCHEMA_INVALID",
+          "error": "at '/services/0': additional properties 'plan' not allowed",
+          "line": 8,
+          "column": 11,
+          "path": "services[0].plan"
+        }
+      ]
+    },
+    {
+      "case": "static-omitted",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "effective_type": "static_site",
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      },
+      "resolved_plan": "free",
+      "valid": true,
+      "validation_errors": null
+    }
+  ],
+  "scope": "existing tests plus private full-validator diagnostic overlay; no implementation or full backend suite"
+}

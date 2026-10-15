@@ -1,0 +1,33 @@
+package apps
+
+import (
+ "context"
+ "encoding/json"
+ "os"
+ "testing"
+)
+
+func TestQA313ExactNameInputs(t *testing.T) {
+ raw,err:=os.ReadFile("<owned-temp>/sweep313-cases.json");if err!=nil{t.Fatal(err)}
+ var cases []struct {Case string `json:"case"`;Manifest string `json:"manifest"`;ExpectedValid bool `json:"expected_valid"`;ExpectedPlan string `json:"expected_resolved_plan"`}
+ if err:=json.Unmarshal(raw,&cases);err!=nil{t.Fatal(err)}
+ observations:=[]map[string]any{}
+ for _,tc:=range cases {t.Run(tc.Case,func(t *testing.T){
+  source,ir,problems:=CompileBlueprintIR(tc.Manifest)
+  validation,validationErr:=newBlueprintValidator(t).ValidateBlueprint(context.Background(),"",tc.Manifest,"")
+  if validationErr!=nil{t.Fatal(validationErr)}
+  valid:=validation.Valid
+  result:=map[string]any{"case":tc.Case,"compiler_valid":len(problems)==0,"compiler_problems":problems,"valid":valid,"validation_errors":validation.Errors,"estimated_pricing":validation.EstimatedPricing}
+  observations=append(observations,result)
+  if valid!=tc.ExpectedValid{t.Errorf("validation valid=%v errors=%+v, want %v",valid,validation.Errors,tc.ExpectedValid)}
+  if !valid{return}
+  if len(problems)>0{t.Fatalf("valid service has compiler problems: %+v",problems)}
+  st,err:=parseCompiledStack(blueprintParseOverrides{},source,ir);if err!=nil{t.Fatal(err)}
+  result["service_count"]=len(st.services);result["database_count"]=len(st.databases);result["keyvalue_count"]=len(st.keyValues);result["envgroup_count"]=len(st.envGroups)
+  serviceRoles:=[]map[string]any{}
+  for _,svc:=range st.services{tier,err:=normalizeTierForType(effectiveType(svc.req.Type),svc.req.Plan);if err!=nil{t.Fatal(err)};serviceRoles=append(serviceRoles,map[string]any{"name":svc.req.Name,"type":effectiveType(svc.req.Type),"resolved_plan":tier,"database_refs":len(svc.databaseRefs),"keyvalue_refs":len(svc.kvRefs),"host_refs":len(svc.hostRefs)})}
+  result["service_roles"]=serviceRoles
+ })}
+ encoded,err:=json.MarshalIndent(observations,"","  ");if err!=nil{t.Fatal(err)}
+ if err:=os.WriteFile("<owned-temp>/sweep313-source-observations.json",encoded,0o600);err!=nil{t.Fatal(err)}
+}

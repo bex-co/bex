@@ -1,0 +1,8 @@
+{"Time":"2026-10-15T15:03:28.339909-07:00","Action":"start","Package":"github.com/bex-co/bex/lego/backend/internal/postgres"}
+{"Time":"2026-10-15T15:03:29.013654-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Test":"TestActionCapabilities_SuspendResumeReadTheResourceState"}
+{"Time":"2026-10-15T15:03:29.013712-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Test":"TestActionCapabilities_SuspendResumeReadTheResourceState","Output":"=== RUN   TestActionCapabilities_SuspendResumeReadTheResourceState\n"}
+{"Time":"2026-10-15T15:03:29.050782-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Test":"TestActionCapabilities_SuspendResumeReadTheResourceState","Output":"--- PASS: TestActionCapabilities_SuspendResumeReadTheResourceState (0.04s)\n"}
+{"Time":"2026-10-15T15:03:29.050812-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Test":"TestActionCapabilities_SuspendResumeReadTheResourceState","Elapsed":0.04}
+{"Time":"2026-10-15T15:03:29.05167-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Output":"PASS\n"}
+{"Time":"2026-10-15T15:03:29.052539-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Output":"ok  \tgithub.com/bex-co/bex/lego/backend/internal/postgres\t0.712s\n"}
+{"Time":"2026-10-15T15:03:29.052567-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Elapsed":0.713}

@@ -1,0 +1,10 @@
+projects:
+  - name: qa318-context-project
+    environments:
+      - name: production
+        services:
+          - type: web
+            name: qa318-static-n
+            runtime: static
+            buildCommand: mkdir -p public
+            staticPublishPath: public

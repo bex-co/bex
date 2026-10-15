@@ -1,0 +1,17 @@
+# syntax=docker/dockerfile:1.7
+FROM node:26-bookworm@sha256:f1233c415b41ffcf237c717b3dea92e9d4ea006e0e4c71edcb790605d74f5404
+WORKDIR /opt/render/project/src
+COPY . .
+COPY <<'BEX_LOAD_ENV' /opt/bex/load-env
+: bex-native-env-rev=none
+decoder="$(command -v base64)" || exit 1
+eval "bex_decode() { '$decoder' -d; }"
+while IFS= read -r record; do
+  [ -n "$record" ] || continue
+  key=${record%%=*}
+  encoded=${record#*=}
+  value="$(printf '%s' "$encoded" | bex_decode 2>/dev/null && printf '.')" || exit 1
+  export "$key=${value%.}"
+done < /run/secrets/render-env
+BEX_LOAD_ENV
+RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",". /opt/bex/load-env\nprintf '%s\\n' QA315_SOURCE"]

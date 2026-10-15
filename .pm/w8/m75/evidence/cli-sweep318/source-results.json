@@ -1,0 +1,1052 @@
+{
+  "head": "eebd8ce27b12195f10dc977f8cddb64a9657246c",
+  "existing_checks": [
+    {
+      "Test": "TestBlueprintNamesMayRepeatAcrossKinds",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Test": "TestBlueprintNamesStayUniqueWithinAKind/two_services_of_different_types",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestBlueprintNamesStayUniqueWithinAKind/two_databases",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestBlueprintNamesStayUniqueWithinAKind/two_Key_Values",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestBlueprintNamesStayUniqueWithinAKind",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestFromServiceIgnoresOtherKindsOfTheSameName",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestBlueprintReferencePointerSkipsSameNamedDatabases",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestRenderExampleBlueprintsCopyTheirGeneratedPasswords/ghost",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestRenderExampleBlueprintsCopyTheirGeneratedPasswords/wordpress",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestRenderExampleBlueprintsCopyTheirGeneratedPasswords/mattermost",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestRenderExampleBlueprintsCopyTheirGeneratedPasswords",
+      "Action": "pass",
+      "Elapsed": 0
+    }
+  ],
+  "final_checks": [
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/plain-web",
+      "Action": "pass",
+      "Elapsed": 0.06
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/service-and-database",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/service-and-keyvalue",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/three-kinds",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/three-kinds-and-envgroup",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/same-service-kind-different-types",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/duplicate-database",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/duplicate-keyvalue",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/duplicate-envgroup",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/database-does-not-satisfy-web-ref",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/keyvalue-does-not-satisfy-web-ref",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/missing-database-control",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/render-example-ghost",
+      "Action": "fail",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/render-example-wordpress",
+      "Action": "fail",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/render-example-mattermost",
+      "Action": "skip",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/implicit-docker-root",
+      "Action": "fail",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/explicit-docker-root",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/implicit-node-root",
+      "Action": "fail",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/explicit-node-root",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/implicit-static-root",
+      "Action": "fail",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/explicit-static-root",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/invalid-repo-root",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/missing-image-root",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/prebuilt-image-root",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/implicit-docker-nested",
+      "Action": "fail",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/explicit-docker-nested",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/implicit-node-nested",
+      "Action": "fail",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/explicit-node-nested",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/implicit-static-nested",
+      "Action": "fail",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/explicit-static-nested",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/invalid-repo-nested",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/missing-image-nested",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/prebuilt-image-nested",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs/render-example-mattermost-volume-floor",
+      "Action": "fail",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ExactNameAndExampleInputs",
+      "Action": "fail",
+      "Elapsed": 0.14
+    },
+    {
+      "Test": "TestQA318KnownRepositoryContextControls/render-example-ghost",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318KnownRepositoryContextControls/render-example-wordpress",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318KnownRepositoryContextControls/render-example-mattermost",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318KnownRepositoryContextControls/render-example-mattermost-volume-floor",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318KnownRepositoryContextControls",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Test": "TestQA318ApplyStillRequiresSource/implicit-docker-root",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ApplyStillRequiresSource/implicit-node-root",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ApplyStillRequiresSource/implicit-static-root",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA318ApplyStillRequiresSource",
+      "Action": "pass",
+      "Elapsed": 0.01
+    }
+  ],
+  "validation_observations": [
+    {
+      "case": "plain-web",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "database_count": 0,
+      "envgroup_count": 0,
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      },
+      "keyvalue_count": 0,
+      "service_count": 1,
+      "service_roles": [
+        {
+          "database_refs": 0,
+          "host_refs": 0,
+          "keyvalue_refs": 0,
+          "name": "qa313-c2ebae-consumer",
+          "resolved_plan": "free",
+          "type": "web_service"
+        }
+      ],
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "service-and-database",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "database_count": 1,
+      "envgroup_count": 0,
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      },
+      "keyvalue_count": 0,
+      "service_count": 1,
+      "service_roles": [
+        {
+          "database_refs": 1,
+          "host_refs": 0,
+          "keyvalue_refs": 0,
+          "name": "qa313-c2ebae-shared",
+          "resolved_plan": "free",
+          "type": "web_service"
+        }
+      ],
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "service-and-keyvalue",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "database_count": 0,
+      "envgroup_count": 0,
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      },
+      "keyvalue_count": 1,
+      "service_count": 1,
+      "service_roles": [
+        {
+          "database_refs": 0,
+          "host_refs": 0,
+          "keyvalue_refs": 1,
+          "name": "qa313-c2ebae-shared",
+          "resolved_plan": "free",
+          "type": "web_service"
+        }
+      ],
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "three-kinds",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "database_count": 1,
+      "envgroup_count": 0,
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      },
+      "keyvalue_count": 1,
+      "service_count": 2,
+      "service_roles": [
+        {
+          "database_refs": 0,
+          "host_refs": 0,
+          "keyvalue_refs": 0,
+          "name": "qa313-c2ebae-shared",
+          "resolved_plan": "free",
+          "type": "web_service"
+        },
+        {
+          "database_refs": 1,
+          "host_refs": 1,
+          "keyvalue_refs": 1,
+          "name": "qa313-c2ebae-consumer",
+          "resolved_plan": "free",
+          "type": "web_service"
+        }
+      ],
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "three-kinds-and-envgroup",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "database_count": 1,
+      "envgroup_count": 1,
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      },
+      "keyvalue_count": 1,
+      "service_count": 2,
+      "service_roles": [
+        {
+          "database_refs": 0,
+          "host_refs": 0,
+          "keyvalue_refs": 0,
+          "name": "qa313-c2ebae-shared",
+          "resolved_plan": "free",
+          "type": "web_service"
+        },
+        {
+          "database_refs": 1,
+          "host_refs": 1,
+          "keyvalue_refs": 1,
+          "name": "qa313-c2ebae-consumer",
+          "resolved_plan": "free",
+          "type": "web_service"
+        }
+      ],
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "same-service-kind-different-types",
+      "compiler_problems": [
+        {
+          "Code": "BLUEPRINT_DUPLICATE_RESOURCE",
+          "Path": "#/services/1",
+          "Message": "duplicate name \"qa313-c2ebae-shared\" for service (first declared at #/services/0)",
+          "Line": 8,
+          "Column": 3
+        }
+      ],
+      "compiler_valid": false,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "code": "BLUEPRINT_DUPLICATE_RESOURCE",
+          "error": "duplicate name \"qa313-c2ebae-shared\" for service (first declared at #/services/0)",
+          "line": 8,
+          "column": 3,
+          "path": "services[1]"
+        }
+      ]
+    },
+    {
+      "case": "duplicate-database",
+      "compiler_problems": [
+        {
+          "Code": "BLUEPRINT_DUPLICATE_RESOURCE",
+          "Path": "#/databases/1",
+          "Message": "duplicate name \"qa313-c2ebae-shared\" for postgres (first declared at #/databases/0)",
+          "Line": 4,
+          "Column": 3
+        }
+      ],
+      "compiler_valid": false,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "code": "BLUEPRINT_DUPLICATE_RESOURCE",
+          "error": "duplicate name \"qa313-c2ebae-shared\" for postgres (first declared at #/databases/0)",
+          "line": 4,
+          "column": 3,
+          "path": "databases[1]"
+        }
+      ]
+    },
+    {
+      "case": "duplicate-keyvalue",
+      "compiler_problems": [
+        {
+          "Code": "BLUEPRINT_DUPLICATE_RESOURCE",
+          "Path": "#/services/1",
+          "Message": "duplicate name \"qa313-c2ebae-shared\" for key_value (first declared at #/services/0)",
+          "Line": 6,
+          "Column": 3
+        }
+      ],
+      "compiler_valid": false,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "code": "BLUEPRINT_DUPLICATE_RESOURCE",
+          "error": "duplicate name \"qa313-c2ebae-shared\" for key_value (first declared at #/services/0)",
+          "line": 6,
+          "column": 3,
+          "path": "services[1]"
+        }
+      ]
+    },
+    {
+      "case": "duplicate-envgroup",
+      "compiler_problems": [
+        {
+          "Code": "BLUEPRINT_DUPLICATE_RESOURCE",
+          "Path": "#/envVarGroups/1",
+          "Message": "duplicate name \"qa313-c2ebae-shared\" for env_var_group (first declared at #/envVarGroups/0)",
+          "Line": 13,
+          "Column": 3
+        }
+      ],
+      "compiler_valid": false,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "code": "BLUEPRINT_DUPLICATE_RESOURCE",
+          "error": "duplicate name \"qa313-c2ebae-shared\" for env_var_group (first declared at #/envVarGroups/0)",
+          "line": 13,
+          "column": 3,
+          "path": "envVarGroups[1]"
+        }
+      ]
+    },
+    {
+      "case": "database-does-not-satisfy-web-ref",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "service \"qa313-c2ebae-consumer\": fromService references unknown service \"qa313-c2ebae-shared\" (declare it under services: or create it in this workspace first)",
+          "line": 16,
+          "column": 5,
+          "path": "services[0].envVars[1]"
+        }
+      ]
+    },
+    {
+      "case": "keyvalue-does-not-satisfy-web-ref",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "service \"qa313-c2ebae-consumer\": fromService references unknown service \"qa313-c2ebae-shared\" (declare it under services: or create it in this workspace first)",
+          "line": 18,
+          "column": 5,
+          "path": "services[1].envVars[1]"
+        }
+      ]
+    },
+    {
+      "case": "missing-database-control",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "fromDatabase references unknown database \"qa313-c2ebae-shared\" in this workspace",
+          "line": 9,
+          "column": 5,
+          "path": "services[0].envVars[0]"
+        }
+      ]
+    },
+    {
+      "case": "render-example-ghost",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "service \"ghost\": one of repo or image is required",
+          "line": 2,
+          "column": 3,
+          "path": "services[0].image"
+        }
+      ]
+    },
+    {
+      "case": "render-example-wordpress",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "service \"wordpress\": one of repo or image is required",
+          "line": 2,
+          "column": 3,
+          "path": "services[0].image"
+        }
+      ]
+    },
+    {
+      "case": "render-example-mattermost",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "service \"mattermost-minio\": one of repo or image is required",
+          "line": 7,
+          "column": 3,
+          "path": "services[0].image"
+        },
+        {
+          "error": "service \"mattermost\": one of repo or image is required",
+          "line": 22,
+          "column": 3,
+          "path": "services[1].image"
+        }
+      ]
+    },
+    {
+      "case": "implicit-docker-root",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "service \"qa318-docker-r\": one of repo or image is required",
+          "line": 2,
+          "column": 3,
+          "path": "services[0].image"
+        }
+      ]
+    },
+    {
+      "case": "explicit-docker-root",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "database_count": 0,
+      "envgroup_count": 0,
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      },
+      "keyvalue_count": 0,
+      "service_count": 1,
+      "service_roles": [
+        {
+          "database_refs": 0,
+          "host_refs": 0,
+          "keyvalue_refs": 0,
+          "name": "qa318-docker-r",
+          "resolved_plan": "free",
+          "type": "web_service"
+        }
+      ],
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "implicit-node-root",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "service \"qa318-node-r\": one of repo or image is required",
+          "line": 2,
+          "column": 3,
+          "path": "services[0].image"
+        }
+      ]
+    },
+    {
+      "case": "explicit-node-root",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "database_count": 0,
+      "envgroup_count": 0,
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      },
+      "keyvalue_count": 0,
+      "service_count": 1,
+      "service_roles": [
+        {
+          "database_refs": 0,
+          "host_refs": 0,
+          "keyvalue_refs": 0,
+          "name": "qa318-node-r",
+          "resolved_plan": "free",
+          "type": "web_service"
+        }
+      ],
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "implicit-static-root",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "service \"qa318-static-r\": one of repo or image is required",
+          "line": 2,
+          "column": 3,
+          "path": "services[0].image"
+        }
+      ]
+    },
+    {
+      "case": "explicit-static-root",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "database_count": 0,
+      "envgroup_count": 0,
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      },
+      "keyvalue_count": 0,
+      "service_count": 1,
+      "service_roles": [
+        {
+          "database_refs": 0,
+          "host_refs": 0,
+          "keyvalue_refs": 0,
+          "name": "qa318-static-r",
+          "resolved_plan": "free",
+          "type": "static_site"
+        }
+      ],
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "invalid-repo-root",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "service \"qa318-node-r\": repo must be an https/ssh/git URL",
+          "line": 2,
+          "column": 3,
+          "path": "services[0]"
+        }
+      ]
+    },
+    {
+      "case": "missing-image-root",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "service \"qa318-image-r\": one of repo or image is required",
+          "line": 2,
+          "column": 3,
+          "path": "services[0].image"
+        }
+      ]
+    },
+    {
+      "case": "prebuilt-image-root",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "database_count": 0,
+      "envgroup_count": 0,
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      },
+      "keyvalue_count": 0,
+      "service_count": 1,
+      "service_roles": [
+        {
+          "database_refs": 0,
+          "host_refs": 0,
+          "keyvalue_refs": 0,
+          "name": "qa318-image-r",
+          "resolved_plan": "free",
+          "type": "web_service"
+        }
+      ],
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "implicit-docker-nested",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "service \"qa318-docker-n\": one of repo or image is required",
+          "line": 6,
+          "column": 7,
+          "path": "projects[0].environments[0].services[0].image"
+        }
+      ]
+    },
+    {
+      "case": "explicit-docker-nested",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "database_count": 0,
+      "envgroup_count": 0,
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      },
+      "keyvalue_count": 0,
+      "service_count": 1,
+      "service_roles": [
+        {
+          "database_refs": 0,
+          "host_refs": 0,
+          "keyvalue_refs": 0,
+          "name": "qa318-docker-n",
+          "resolved_plan": "free",
+          "type": "web_service"
+        }
+      ],
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "implicit-node-nested",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "service \"qa318-node-n\": one of repo or image is required",
+          "line": 6,
+          "column": 7,
+          "path": "projects[0].environments[0].services[0].image"
+        }
+      ]
+    },
+    {
+      "case": "explicit-node-nested",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "database_count": 0,
+      "envgroup_count": 0,
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      },
+      "keyvalue_count": 0,
+      "service_count": 1,
+      "service_roles": [
+        {
+          "database_refs": 0,
+          "host_refs": 0,
+          "keyvalue_refs": 0,
+          "name": "qa318-node-n",
+          "resolved_plan": "free",
+          "type": "web_service"
+        }
+      ],
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "implicit-static-nested",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "service \"qa318-static-n\": one of repo or image is required",
+          "line": 6,
+          "column": 7,
+          "path": "projects[0].environments[0].services[0].image"
+        }
+      ]
+    },
+    {
+      "case": "explicit-static-nested",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "database_count": 0,
+      "envgroup_count": 0,
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      },
+      "keyvalue_count": 0,
+      "service_count": 1,
+      "service_roles": [
+        {
+          "database_refs": 0,
+          "host_refs": 0,
+          "keyvalue_refs": 0,
+          "name": "qa318-static-n",
+          "resolved_plan": "free",
+          "type": "static_site"
+        }
+      ],
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "invalid-repo-nested",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "service \"qa318-node-n\": repo must be an https/ssh/git URL",
+          "line": 6,
+          "column": 7,
+          "path": "projects[0].environments[0].services[0]"
+        }
+      ]
+    },
+    {
+      "case": "missing-image-nested",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "service \"qa318-image-n\": one of repo or image is required",
+          "line": 6,
+          "column": 7,
+          "path": "projects[0].environments[0].services[0].image"
+        }
+      ]
+    },
+    {
+      "case": "prebuilt-image-nested",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "database_count": 0,
+      "envgroup_count": 0,
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      },
+      "keyvalue_count": 0,
+      "service_count": 1,
+      "service_roles": [
+        {
+          "database_refs": 0,
+          "host_refs": 0,
+          "keyvalue_refs": 0,
+          "name": "qa318-image-n",
+          "resolved_plan": "free",
+          "type": "web_service"
+        }
+      ],
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "render-example-mattermost-volume-floor",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "service \"mattermost-minio\": one of repo or image is required",
+          "line": 6,
+          "column": 3,
+          "path": "services[0].image"
+        },
+        {
+          "error": "service \"mattermost\": one of repo or image is required",
+          "line": 20,
+          "column": 3,
+          "path": "services[1].image"
+        }
+      ]
+    }
+  ],
+  "known_repository_context_controls": [
+    {
+      "case": "render-example-ghost",
+      "errors": null,
+      "repo_context": "https://github.com/render-examples/ghost",
+      "valid": true
+    },
+    {
+      "case": "render-example-wordpress",
+      "errors": null,
+      "repo_context": "https://github.com/render-examples/wordpress",
+      "valid": true
+    },
+    {
+      "case": "render-example-mattermost",
+      "errors": [
+        {
+          "error": "service \"mattermost\": sizeGB must be at least 10 (Hetzner's minimum volume size); set sizeGB to 10",
+          "line": 22,
+          "column": 3,
+          "path": "services[1]"
+        }
+      ],
+      "repo_context": "https://github.com/render-examples/mattermost",
+      "valid": false
+    },
+    {
+      "case": "render-example-mattermost-volume-floor",
+      "errors": null,
+      "repo_context": "https://github.com/render-examples/mattermost",
+      "valid": true
+    }
+  ],
+  "actual_apply_source_required_controls": [
+    {
+      "app_count": 0,
+      "case": "implicit-docker-root",
+      "error": "service \"qa318-docker-r\": bad request: one of repo or image is required"
+    },
+    {
+      "app_count": 0,
+      "case": "implicit-node-root",
+      "error": "service \"qa318-node-r\": bad request: one of repo or image is required"
+    },
+    {
+      "app_count": 0,
+      "case": "implicit-static-root",
+      "error": "service \"qa318-static-r\": bad request: one of repo or image is required"
+    }
+  ],
+  "qualification": "9 genuine failing validator subcases + failed parent;24 full-validator controls +5 context checks +4 strict-apply checks pass;1 exact Mattermost eligibility skip;11 existing named checks pass. No full suite/fixed candidate."
+}

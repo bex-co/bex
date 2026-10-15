@@ -1,0 +1,292 @@
+[
+  {
+    "case": "plain-web",
+    "manifest": "services:\n- type: web\n  name: qa313-c2ebae-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n",
+    "expected_valid": true,
+    "error_contains": null,
+    "error_path": null,
+    "source_scope": "replay unchanged corrected sweep313 document",
+    "expected_error_paths": []
+  },
+  {
+    "case": "service-and-database",
+    "manifest": "databases:\n- name: qa313-c2ebae-shared\n  plan: free\nservices:\n- type: web\n  name: qa313-c2ebae-shared\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_DB\n    fromDatabase:\n      name: qa313-c2ebae-shared\n      property: connectionString\n",
+    "expected_valid": true,
+    "error_contains": null,
+    "error_path": null,
+    "source_scope": "replay unchanged corrected sweep313 document",
+    "expected_error_paths": []
+  },
+  {
+    "case": "service-and-keyvalue",
+    "manifest": "services:\n- type: keyvalue\n  name: qa313-c2ebae-shared\n  plan: free\n  ipAllowList: []\n- type: web\n  name: qa313-c2ebae-shared\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_KV\n    fromService:\n      type: keyvalue\n      name: qa313-c2ebae-shared\n      property: connectionString\n",
+    "expected_valid": true,
+    "error_contains": null,
+    "error_path": null,
+    "source_scope": "replay unchanged corrected sweep313 document",
+    "expected_error_paths": []
+  },
+  {
+    "case": "three-kinds",
+    "manifest": "databases:\n- name: qa313-c2ebae-shared\n  plan: free\nservices:\n- type: keyvalue\n  name: qa313-c2ebae-shared\n  plan: free\n  ipAllowList: []\n- type: web\n  name: qa313-c2ebae-shared\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n- type: web\n  name: qa313-c2ebae-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_DB\n    fromDatabase:\n      name: qa313-c2ebae-shared\n      property: connectionString\n  - key: QA313_KV\n    fromService:\n      type: keyvalue\n      name: qa313-c2ebae-shared\n      property: connectionString\n  - key: QA313_HOST\n    fromService:\n      type: web\n      name: qa313-c2ebae-shared\n      property: host\n",
+    "expected_valid": true,
+    "error_contains": null,
+    "error_path": null,
+    "source_scope": "replay unchanged corrected sweep313 document",
+    "expected_error_paths": []
+  },
+  {
+    "case": "three-kinds-and-envgroup",
+    "manifest": "databases:\n- name: qa313-c2ebae-shared\n  plan: free\nservices:\n- type: keyvalue\n  name: qa313-c2ebae-shared\n  plan: free\n  ipAllowList: []\n- type: web\n  name: qa313-c2ebae-shared\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n- type: web\n  name: qa313-c2ebae-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_DB\n    fromDatabase:\n      name: qa313-c2ebae-shared\n      property: connectionString\n  - key: QA313_KV\n    fromService:\n      type: keyvalue\n      name: qa313-c2ebae-shared\n      property: connectionString\n  - key: QA313_HOST\n    fromService:\n      type: web\n      name: qa313-c2ebae-shared\n      property: host\nenvVarGroups:\n- name: qa313-c2ebae-shared\n  envVars:\n  - key: QA313_GROUP\n    value: harmless-c2ebae\n",
+    "expected_valid": true,
+    "error_contains": null,
+    "error_path": null,
+    "source_scope": "replay unchanged corrected sweep313 document",
+    "expected_error_paths": []
+  },
+  {
+    "case": "same-service-kind-different-types",
+    "manifest": "services:\n- type: web\n  name: qa313-c2ebae-shared\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n- type: worker\n  name: qa313-c2ebae-shared\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: starter\n",
+    "expected_valid": false,
+    "error_contains": "duplicate name",
+    "error_path": null,
+    "source_scope": "replay unchanged corrected sweep313 document",
+    "expected_error_paths": ["services[1]"]
+  },
+  {
+    "case": "duplicate-database",
+    "manifest": "databases:\n- name: qa313-c2ebae-shared\n  plan: free\n- name: qa313-c2ebae-shared\n  plan: free\n",
+    "expected_valid": false,
+    "error_contains": "duplicate name",
+    "error_path": null,
+    "source_scope": "replay unchanged corrected sweep313 document",
+    "expected_error_paths": ["databases[1]"]
+  },
+  {
+    "case": "duplicate-keyvalue",
+    "manifest": "services:\n- type: keyvalue\n  name: qa313-c2ebae-shared\n  plan: free\n  ipAllowList: []\n- type: keyvalue\n  name: qa313-c2ebae-shared\n  plan: free\n  ipAllowList: []\n",
+    "expected_valid": false,
+    "error_contains": "duplicate name",
+    "error_path": null,
+    "source_scope": "replay unchanged corrected sweep313 document",
+    "expected_error_paths": ["services[1]"]
+  },
+  {
+    "case": "duplicate-envgroup",
+    "manifest": "services:\n- type: web\n  name: qa313-c2ebae-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\nenvVarGroups:\n- name: qa313-c2ebae-shared\n  envVars:\n  - key: QA313_GROUP\n    value: harmless-c2ebae\n- name: qa313-c2ebae-shared\n  envVars:\n  - key: QA313_GROUP\n    value: harmless-c2ebae\n",
+    "expected_valid": false,
+    "error_contains": "duplicate name",
+    "error_path": null,
+    "source_scope": "replay unchanged corrected sweep313 document",
+    "expected_error_paths": ["envVarGroups[1]"]
+  },
+  {
+    "case": "database-does-not-satisfy-web-ref",
+    "manifest": "databases:\n- name: qa313-c2ebae-shared\n  plan: free\nservices:\n- type: web\n  name: qa313-c2ebae-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_DB\n    fromDatabase:\n      name: qa313-c2ebae-shared\n      property: connectionString\n  - key: QA313_HOST\n    fromService:\n      type: web\n      name: qa313-c2ebae-shared\n      property: host\n",
+    "expected_valid": false,
+    "error_contains": "unknown service",
+    "error_path": "services[0].envVars[1]",
+    "source_scope": "replay unchanged corrected sweep313 document",
+    "expected_error_paths": ["services[0].envVars[1]"]
+  },
+  {
+    "case": "keyvalue-does-not-satisfy-web-ref",
+    "manifest": "services:\n- type: keyvalue\n  name: qa313-c2ebae-shared\n  plan: free\n  ipAllowList: []\n- type: web\n  name: qa313-c2ebae-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_KV\n    fromService:\n      type: keyvalue\n      name: qa313-c2ebae-shared\n      property: connectionString\n  - key: QA313_HOST\n    fromService:\n      type: web\n      name: qa313-c2ebae-shared\n      property: host\n",
+    "expected_valid": false,
+    "error_contains": "unknown service",
+    "error_path": "services[1].envVars[1]",
+    "source_scope": "replay unchanged corrected sweep313 document",
+    "expected_error_paths": ["services[1].envVars[1]"]
+  },
+  {
+    "case": "missing-database-control",
+    "manifest": "services:\n- type: web\n  name: qa313-c2ebae-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_DB\n    fromDatabase:\n      name: qa313-c2ebae-shared\n      property: connectionString\n",
+    "expected_valid": false,
+    "error_contains": null,
+    "error_path": "services[0].envVars[0]",
+    "source_scope": "replay unchanged corrected sweep313 document",
+    "expected_error_paths": ["services[0].envVars[0]"]
+  },
+  {
+    "case": "render-example-ghost",
+    "manifest": "services:\n- type: web\n  name: ghost\n  env: docker\n  autoDeploy: false\n  disk:\n    name: ghost\n    mountPath: /var/lib/ghost/content\n    sizeGB: 10 #Feel free to change this to suit your needs.\n  envVars:\n    - key: database__client\n      value: mysql\n    - key: database__connection__host\n      fromService:\n        type: pserv\n        name: mysql\n        property: host\n    - key: database__connection__database\n      value: ghostdb\n    - key: database__connection__user\n      value: mysql\n    - key: database__connection__password\n      fromService:\n        type: pserv\n        name: mysql\n        envVarKey: MYSQL_PASSWORD\n\n- type: pserv\n  name: mysql\n  plan: standard\n  env: docker\n  repo: https://github.com/render-examples/mysql\n  autoDeploy: false\n  disk:\n    name: mysql\n    mountPath: /var/lib/mysql\n    sizeGB: 10\n  envVars:\n    - key: MYSQL_DATABASE\n      value: ghostdb\n    - key: MYSQL_USER\n      value: mysql\n    - key: MYSQL_PASSWORD\n      generateValue: true\n    - key: MYSQL_ROOT_PASSWORD\n      generateValue: true\n\n",
+    "expected_valid": true,
+    "expected_error_paths": [],
+    "source_scope": "unchanged checked-in public Render example",
+    "fixture_path": "lego/backend/internal/apps/testdata/render-ghost/render.yaml",
+    "sha256": "a5ef046de0a15157b5d27bf7b2c67de36534d8418d5560d32902d58e61af338f"
+  },
+  {
+    "case": "render-example-wordpress",
+    "manifest": "services:\n- type: web\n  name: wordpress\n  env: docker\n  plan: standard\n  autoDeploy: false\n  disk:\n    name: wordpress\n    mountPath: /var/www/html\n    sizeGB: 20\n  envVars:\n  - key: WORDPRESS_DB_HOST\n    fromService:\n      name: mysql-wordpress\n      type: pserv\n      property: host\n  - key: WORDPRESS_DB_NAME\n    fromService:\n      name: mysql-wordpress\n      type: pserv\n      envVarKey: MYSQL_DATABASE\n  - key: WORDPRESS_DB_USER\n    fromService:\n      name: mysql-wordpress\n      type: pserv\n      envVarKey: MYSQL_USER\n  - key: WORDPRESS_DB_PASSWORD\n    fromService:\n      name: mysql-wordpress\n      type: pserv\n      envVarKey: MYSQL_PASSWORD\n- type: pserv\n  name: mysql-wordpress\n  repo: https://github.com/render-examples/mysql.git\n  env: docker\n  plan: standard\n  autoDeploy: false\n  disk:\n    name: mysql-wordpress\n    mountPath: /var/lib/mysql\n    sizeGB: 20\n  envVars:\n  - key: MYSQL_DATABASE\n    value: mysql\n  - key: MYSQL_USER\n    value: mysql\n  - key: MYSQL_PASSWORD\n    generateValue: true\n  - key: MYSQL_ROOT_PASSWORD\n    generateValue: true\n",
+    "expected_valid": true,
+    "expected_error_paths": [],
+    "source_scope": "unchanged checked-in public Render example",
+    "fixture_path": "lego/backend/internal/apps/testdata/render-wordpress/render.yaml",
+    "sha256": "705a62b378a6286c6d05e0a5ee700c10e2104676306d81ca0c91d3f1139e9e29"
+  },
+  {
+    "case": "render-example-mattermost",
+    "manifest": "databases:\n- name: mattermost\n  plan: basic-256mb\n  diskSizeGB: 1\n\nservices:\n- type: pserv\n  name: mattermost-minio\n  env: docker\n  dockerfilePath: ./minio/Dockerfile\n  dockerContext: ./minio\n  autoDeploy: false\n  disk:\n    name: data\n    mountPath: /data\n  envVars:\n  - key: MINIO_ACCESS_KEY\n    generateValue: true\n  - key: MINIO_SECRET_KEY\n    generateValue: true\n\n- type: web\n  name: mattermost\n  env: docker\n  plan: starter\n  dockerfilePath: ./app/Dockerfile\n  dockerContext: ./app\n  autoDeploy: false\n  disk:\n    name: config\n    mountPath: /mattermost/config\n    sizeGB: 1\n  envVars:\n  - key: MM_USERNAME\n    fromDatabase:\n      name: mattermost\n      property: user\n  - key: MM_PASSWORD\n    fromDatabase:\n      name: mattermost\n      property: password\n  - key: MM_DBNAME\n    fromDatabase:\n      name: mattermost\n      property: database\n  - key: MM_SQLSETTINGS_DRIVERNAME\n    value: postgres\n  - key: DB_HOST\n    fromDatabase:\n      name: mattermost\n      property: host\n  - key: MM_SERVICESETTINGS_LISTENADDRESS\n    value: \":10000\"\n  - key: MM_FILESETTINGS_DRIVERNAME\n    value: amazons3\n  - key: MM_FILESETTINGS_AMAZONS3BUCKET\n    value: mattermost\n  - key: MM_FILESETTINGS_AMAZONS3ACCESSKEYID\n    fromService:\n      type: pserv\n      name: mattermost-minio\n      envVarKey: MINIO_ACCESS_KEY\n  - key: MM_FILESETTINGS_AMAZONS3SECRETACCESSKEY\n    fromService:\n      type: pserv\n      name: mattermost-minio\n      envVarKey: MINIO_SECRET_KEY\n  - key: MM_FILESETTINGS_AMAZONS3ENDPOINT\n    fromService:\n      type: pserv\n      name: mattermost-minio\n      property: hostport\n  - key: MM_FILESETTINGS_AMAZONS3SSL\n    value: \"false\"\n",
+    "expected_valid": true,
+    "expected_error_paths": [],
+    "source_scope": "unchanged checked-in public Render example",
+    "fixture_path": "lego/backend/internal/apps/testdata/render-mattermost/render.yaml",
+    "sha256": "a8870447eab7002b226b9f148c7279bb8d9f7839f44b4ddcb812b00150034462",
+    "contract_eligible": false,
+    "eligibility_qualification": "Exact upstream contains a1GB service disk below Bex documented10GB minimum; observe repo refusal but exclude overall valid:true expectation"
+  },
+  {
+    "case": "implicit-docker-root",
+    "manifest": "services:\n- type: web\n  name: qa318-docker-r\n  runtime: docker\n  plan: free\n",
+    "expected_valid": true,
+    "expected_error_paths": null,
+    "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+    "source_scope": "repo context diagnostic, no apply/allocation"
+  },
+  {
+    "case": "explicit-docker-root",
+    "manifest": "services:\n- type: web\n  name: qa318-docker-r\n  runtime: docker\n  plan: free\n  repo: https://github.com/expressjs/serve-static\n",
+    "expected_valid": true,
+    "expected_error_paths": null,
+    "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+    "source_scope": "repo context diagnostic, no apply/allocation"
+  },
+  {
+    "case": "implicit-node-root",
+    "manifest": "services:\n- type: web\n  name: qa318-node-r\n  runtime: node\n  plan: free\n  buildCommand: node --version\n  startCommand: node server.js\n",
+    "expected_valid": true,
+    "expected_error_paths": null,
+    "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+    "source_scope": "repo context diagnostic, no apply/allocation"
+  },
+  {
+    "case": "explicit-node-root",
+    "manifest": "services:\n- type: web\n  name: qa318-node-r\n  runtime: node\n  plan: free\n  buildCommand: node --version\n  startCommand: node server.js\n  repo: https://github.com/expressjs/serve-static\n",
+    "expected_valid": true,
+    "expected_error_paths": null,
+    "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+    "source_scope": "repo context diagnostic, no apply/allocation"
+  },
+  {
+    "case": "implicit-static-root",
+    "manifest": "services:\n- type: web\n  name: qa318-static-r\n  runtime: static\n  buildCommand: mkdir -p public\n  staticPublishPath: public\n",
+    "expected_valid": true,
+    "expected_error_paths": null,
+    "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+    "source_scope": "repo context diagnostic, no apply/allocation"
+  },
+  {
+    "case": "explicit-static-root",
+    "manifest": "services:\n- type: web\n  name: qa318-static-r\n  runtime: static\n  buildCommand: mkdir -p public\n  staticPublishPath: public\n  repo: https://github.com/expressjs/serve-static\n",
+    "expected_valid": true,
+    "expected_error_paths": null,
+    "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+    "source_scope": "repo context diagnostic, no apply/allocation"
+  },
+  {
+    "case": "invalid-repo-root",
+    "manifest": "services:\n- type: web\n  name: qa318-node-r\n  runtime: node\n  plan: free\n  buildCommand: node --version\n  startCommand: node server.js\n  repo: not-a-repository\n",
+    "expected_valid": false,
+    "expected_error_paths": null,
+    "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+    "source_scope": "repo context diagnostic, no apply/allocation"
+  },
+  {
+    "case": "missing-image-root",
+    "manifest": "services:\n- type: web\n  name: qa318-image-r\n  runtime: image\n  plan: free\n",
+    "expected_valid": false,
+    "expected_error_paths": null,
+    "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+    "source_scope": "repo context diagnostic, no apply/allocation"
+  },
+  {
+    "case": "prebuilt-image-root",
+    "manifest": "services:\n- type: web\n  name: qa318-image-r\n  runtime: image\n  plan: free\n  image:\n    url: nginx:1.27\n",
+    "expected_valid": true,
+    "expected_error_paths": null,
+    "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+    "source_scope": "repo context diagnostic, no apply/allocation"
+  },
+  {
+    "case": "implicit-docker-nested",
+    "manifest": "projects:\n- name: qa318-context-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa318-docker-n\n      runtime: docker\n      plan: free\n",
+    "expected_valid": true,
+    "expected_error_paths": null,
+    "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+    "source_scope": "repo context diagnostic, no apply/allocation"
+  },
+  {
+    "case": "explicit-docker-nested",
+    "manifest": "projects:\n- name: qa318-context-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa318-docker-n\n      runtime: docker\n      plan: free\n      repo: https://github.com/expressjs/serve-static\n",
+    "expected_valid": true,
+    "expected_error_paths": null,
+    "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+    "source_scope": "repo context diagnostic, no apply/allocation"
+  },
+  {
+    "case": "implicit-node-nested",
+    "manifest": "projects:\n- name: qa318-context-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa318-node-n\n      runtime: node\n      plan: free\n      buildCommand: node --version\n      startCommand: node server.js\n",
+    "expected_valid": true,
+    "expected_error_paths": null,
+    "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+    "source_scope": "repo context diagnostic, no apply/allocation"
+  },
+  {
+    "case": "explicit-node-nested",
+    "manifest": "projects:\n- name: qa318-context-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa318-node-n\n      runtime: node\n      plan: free\n      buildCommand: node --version\n      startCommand: node server.js\n      repo: https://github.com/expressjs/serve-static\n",
+    "expected_valid": true,
+    "expected_error_paths": null,
+    "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+    "source_scope": "repo context diagnostic, no apply/allocation"
+  },
+  {
+    "case": "implicit-static-nested",
+    "manifest": "projects:\n- name: qa318-context-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa318-static-n\n      runtime: static\n      buildCommand: mkdir -p public\n      staticPublishPath: public\n",
+    "expected_valid": true,
+    "expected_error_paths": null,
+    "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+    "source_scope": "repo context diagnostic, no apply/allocation"
+  },
+  {
+    "case": "explicit-static-nested",
+    "manifest": "projects:\n- name: qa318-context-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa318-static-n\n      runtime: static\n      buildCommand: mkdir -p public\n      staticPublishPath: public\n      repo: https://github.com/expressjs/serve-static\n",
+    "expected_valid": true,
+    "expected_error_paths": null,
+    "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+    "source_scope": "repo context diagnostic, no apply/allocation"
+  },
+  {
+    "case": "invalid-repo-nested",
+    "manifest": "projects:\n- name: qa318-context-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa318-node-n\n      runtime: node\n      plan: free\n      buildCommand: node --version\n      startCommand: node server.js\n      repo: not-a-repository\n",
+    "expected_valid": false,
+    "expected_error_paths": null,
+    "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+    "source_scope": "repo context diagnostic, no apply/allocation"
+  },
+  {
+    "case": "missing-image-nested",
+    "manifest": "projects:\n- name: qa318-context-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa318-image-n\n      runtime: image\n      plan: free\n",
+    "expected_valid": false,
+    "expected_error_paths": null,
+    "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+    "source_scope": "repo context diagnostic, no apply/allocation"
+  },
+  {
+    "case": "prebuilt-image-nested",
+    "manifest": "projects:\n- name: qa318-context-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa318-image-n\n      runtime: image\n      plan: free\n      image:\n        url: nginx:1.27\n",
+    "expected_valid": true,
+    "expected_error_paths": null,
+    "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+    "source_scope": "repo context diagnostic, no apply/allocation"
+  },
+  {
+    "case": "render-example-mattermost-volume-floor",
+    "manifest": "databases:\n- name: mattermost\n  plan: basic-256mb\n  diskSizeGB: 1\nservices:\n- type: pserv\n  name: mattermost-minio\n  env: docker\n  dockerfilePath: ./minio/Dockerfile\n  dockerContext: ./minio\n  autoDeploy: false\n  disk:\n    name: data\n    mountPath: /data\n  envVars:\n  - key: MINIO_ACCESS_KEY\n    generateValue: true\n  - key: MINIO_SECRET_KEY\n    generateValue: true\n- type: web\n  name: mattermost\n  env: docker\n  plan: starter\n  dockerfilePath: ./app/Dockerfile\n  dockerContext: ./app\n  autoDeploy: false\n  disk:\n    name: config\n    mountPath: /mattermost/config\n    sizeGB: 10\n  envVars:\n  - key: MM_USERNAME\n    fromDatabase:\n      name: mattermost\n      property: user\n  - key: MM_PASSWORD\n    fromDatabase:\n      name: mattermost\n      property: password\n  - key: MM_DBNAME\n    fromDatabase:\n      name: mattermost\n      property: database\n  - key: MM_SQLSETTINGS_DRIVERNAME\n    value: postgres\n  - key: DB_HOST\n    fromDatabase:\n      name: mattermost\n      property: host\n  - key: MM_SERVICESETTINGS_LISTENADDRESS\n    value: :10000\n  - key: MM_FILESETTINGS_DRIVERNAME\n    value: amazons3\n  - key: MM_FILESETTINGS_AMAZONS3BUCKET\n    value: mattermost\n  - key: MM_FILESETTINGS_AMAZONS3ACCESSKEYID\n    fromService:\n      type: pserv\n      name: mattermost-minio\n      envVarKey: MINIO_ACCESS_KEY\n  - key: MM_FILESETTINGS_AMAZONS3SECRETACCESSKEY\n    fromService:\n      type: pserv\n      name: mattermost-minio\n      envVarKey: MINIO_SECRET_KEY\n  - key: MM_FILESETTINGS_AMAZONS3ENDPOINT\n    fromService:\n      type: pserv\n      name: mattermost-minio\n      property: hostport\n  - key: MM_FILESETTINGS_AMAZONS3SSL\n    value: 'false'\n",
+    "expected_valid": true,
+    "expected_error_paths": [],
+    "source_scope": "only Mattermost service disk.sizeGB1 ->10; database size unchanged",
+    "fixture_path": "lego/backend/internal/apps/testdata/render-mattermost/render.yaml",
+    "contract_eligible": true
+  }
+]

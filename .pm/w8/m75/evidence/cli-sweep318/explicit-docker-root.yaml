@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: qa318-docker-r
+    runtime: docker
+    plan: free
+    repo: https://github.com/expressjs/serve-static

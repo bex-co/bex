@@ -1,0 +1,5 @@
+databases:
+  - name: qa313-c2ebae-shared
+    plan: free
+  - name: qa313-c2ebae-shared
+    plan: free

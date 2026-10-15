@@ -1,0 +1,15 @@
+package apps
+import("encoding/json";"os";"testing";"reflect")
+func TestQA314ExactHostReferenceLocations(t *testing.T){
+ raw,err:=os.ReadFile("<owned-temp>/sweep314-cases.json");if err!=nil{t.Fatal(err)}
+ var cases []struct{Case string `json:"case"`;Manifest string `json:"manifest"`;ExpectedValid bool `json:"expected_valid"`;ExpectedPaths []string `json:"expected_error_paths"`};if err=json.Unmarshal(raw,&cases);err!=nil{t.Fatal(err)}
+ observations:=[]map[string]any{}
+ for _,tc:=range cases{t.Run(tc.Case,func(t *testing.T){
+  svc:=newBlueprintValidator(t);svc.Workspace=fakeWorkspace{"id-a":"tea-a"};v,err:=svc.ValidateBlueprint(ownershipCtx(),connOwner,tc.Manifest,"");if err!=nil{t.Fatal(err)}
+  paths:=[]string{};for _,e:=range v.Errors{if e.Path!=nil{paths=append(paths,*e.Path)}else{paths=append(paths,"")}}
+  same:=reflect.DeepEqual(paths,tc.ExpectedPaths);observations=append(observations,map[string]any{"case":tc.Case,"valid":v.Valid,"errors":v.Errors,"actual_paths":paths,"expected_paths":tc.ExpectedPaths,"location_match":same})
+  if v.Valid!=tc.ExpectedValid{t.Errorf("valid=%v want %v",v.Valid,tc.ExpectedValid)}
+  if !same{t.Errorf("paths=%v want %v",paths,tc.ExpectedPaths)}
+ })}
+ encoded,err:=json.MarshalIndent(observations,"","  ");if err!=nil{t.Fatal(err)};if err=os.WriteFile("<owned-temp>/sweep314-source-observations.json",encoded,0o600);err!=nil{t.Fatal(err)}
+}

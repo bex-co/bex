@@ -1,0 +1,5 @@
+{"Time":"2026-10-15T13:25:33.827614-07:00","Action":"start","Package":"github.com/bex-co/bex/lego/backend/internal/apps"}
+{"Time":"2026-10-15T13:25:34.501379-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Output":"testing: warning: no tests to run\n"}
+{"Time":"2026-10-15T13:25:34.501476-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Output":"PASS\n"}
+{"Time":"2026-10-15T13:25:34.502755-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Output":"ok  \tgithub.com/bex-co/bex/lego/backend/internal/apps\t0.674s [no tests to run]\n"}
+{"Time":"2026-10-15T13:25:34.502788-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Elapsed":0.675}

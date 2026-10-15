@@ -1,0 +1,27 @@
+[
+  {
+    "case": "render-example-ghost",
+    "errors": null,
+    "repo_context": "https://github.com/render-examples/ghost",
+    "valid": true
+  },
+  {
+    "case": "render-example-wordpress",
+    "errors": null,
+    "repo_context": "https://github.com/render-examples/wordpress",
+    "valid": true
+  },
+  {
+    "case": "render-example-mattermost",
+    "errors": [
+      {
+        "error": "service \"mattermost\": sizeGB must be at least 10 (Hetzner's minimum volume size); set sizeGB to 10",
+        "line": 22,
+        "column": 3,
+        "path": "services[1]"
+      }
+    ],
+    "repo_context": "https://github.com/render-examples/mattermost",
+    "valid": false
+  }
+]

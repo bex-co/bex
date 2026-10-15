@@ -1,0 +1,85 @@
+{
+  "head": "2f6451567705e0a9c70ae7d71b411832b91f6665",
+  "checks": {
+    "apps-source-events.jsonl": [
+      {
+        "Test": "TestCreateRepoBackedIsAcceptedNotLive",
+        "Action": "pass",
+        "Elapsed": 0.04
+      },
+      {
+        "Test": "TestCreatePinsTheFirstBuildToTheCommitItsDeployRecords/resolved",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestCreatePinsTheFirstBuildToTheCommitItsDeployRecords/unresolved",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestCreatePinsTheFirstBuildToTheCommitItsDeployRecords",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestGraphQLSetRepoThenBranchOnly",
+        "Action": "pass",
+        "Elapsed": 0.01
+      },
+      {
+        "Test": "TestGraphQLSetBranch",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestGraphQLSetBranchRejectsInvalidRef",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestMCPSetBranch",
+        "Action": "pass",
+        "Elapsed": 0.01
+      },
+      {
+        "Test": "TestImageToGitSourceSaveReadsDockerRuntime/web_service",
+        "Action": "pass",
+        "Elapsed": 0.01
+      },
+      {
+        "Test": "TestImageToGitSourceSaveReadsDockerRuntime/private_service",
+        "Action": "pass",
+        "Elapsed": 0.01
+      },
+      {
+        "Test": "TestImageToGitSourceSaveReadsDockerRuntime/background_worker",
+        "Action": "pass",
+        "Elapsed": 0.01
+      },
+      {
+        "Test": "TestImageToGitSourceSaveReadsDockerRuntime/cron_job",
+        "Action": "pass",
+        "Elapsed": 0.01
+      },
+      {
+        "Test": "TestImageToGitSourceSaveReadsDockerRuntime",
+        "Action": "pass",
+        "Elapsed": 0.03
+      }
+    ],
+    "github-source-events.jsonl": [
+      {
+        "Test": "TestListReposPagination",
+        "Action": "pass",
+        "Elapsed": 0.07
+      },
+      {
+        "Test": "TestRepoAccessible",
+        "Action": "pass",
+        "Elapsed": 0.04
+      }
+    ]
+  },
+  "scope": "15 existing named passes/9 top-level tests; no default-branch resolver implementation, new regression or full backend suite"
+}

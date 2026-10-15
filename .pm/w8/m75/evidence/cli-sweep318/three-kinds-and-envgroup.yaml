@@ -1,0 +1,40 @@
+databases:
+  - name: qa313-c2ebae-shared
+    plan: free
+services:
+  - type: keyvalue
+    name: qa313-c2ebae-shared
+    plan: free
+    ipAllowList: []
+  - type: web
+    name: qa313-c2ebae-shared
+    runtime: image
+    image:
+      url: nginx:1.27
+    plan: free
+  - type: web
+    name: qa313-c2ebae-consumer
+    runtime: image
+    image:
+      url: nginx:1.27
+    plan: free
+    envVars:
+      - key: QA313_DB
+        fromDatabase:
+          name: qa313-c2ebae-shared
+          property: connectionString
+      - key: QA313_KV
+        fromService:
+          type: keyvalue
+          name: qa313-c2ebae-shared
+          property: connectionString
+      - key: QA313_HOST
+        fromService:
+          type: web
+          name: qa313-c2ebae-shared
+          property: host
+envVarGroups:
+  - name: qa313-c2ebae-shared
+    envVars:
+      - key: QA313_GROUP
+        value: harmless-c2ebae

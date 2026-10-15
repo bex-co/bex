@@ -1,0 +1,5 @@
+services:
+  - type: web
+    name: qa318-image-r
+    runtime: image
+    plan: free

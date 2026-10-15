@@ -1,0 +1,503 @@
+{
+  "head": "d5220a952e0f0e172bbf9fc38fe59d023f8a531d",
+  "checks": {
+    "source-regression": [
+      {
+        "Test": "TestQA316ExistingHostReferenceContracts/existing-static-host-root",
+        "Action": "fail",
+        "Elapsed": 0.06
+      },
+      {
+        "Test": "TestQA316ExistingHostReferenceContracts/existing-web-wrong-type-root",
+        "Action": "fail",
+        "Elapsed": 0.01
+      },
+      {
+        "Test": "TestQA316ExistingHostReferenceContracts/existing-static-host-nested",
+        "Action": "fail",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestQA316ExistingHostReferenceContracts/existing-web-wrong-type-nested",
+        "Action": "fail",
+        "Elapsed": 0.01
+      },
+      {
+        "Test": "TestQA316ExistingHostReferenceContracts/declared-static-host",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestQA316ExistingHostReferenceContracts/declared-web-wrong-type",
+        "Action": "pass",
+        "Elapsed": 0.01
+      },
+      {
+        "Test": "TestQA316ExistingHostReferenceContracts/existing-web-correct",
+        "Action": "pass",
+        "Elapsed": 0.01
+      },
+      {
+        "Test": "TestQA316ExistingHostReferenceContracts/missing-host",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestQA316ExistingHostReferenceContracts",
+        "Action": "fail",
+        "Elapsed": 0.1
+      }
+    ],
+    "apply-source": [
+      {
+        "Test": "TestQA316ExistingHostApplyObservation/existing-static-host-root",
+        "Action": "pass",
+        "Elapsed": 0.05
+      },
+      {
+        "Test": "TestQA316ExistingHostApplyObservation/existing-web-wrong-type-root",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestQA316ExistingHostApplyObservation/existing-web-correct",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestQA316ExistingHostApplyObservation",
+        "Action": "pass",
+        "Elapsed": 0.06
+      }
+    ],
+    "existing-source": [
+      {
+        "Test": "TestBlueprintAddressRefsRequireAnAddressableTarget/worker/host",
+        "Action": "pass",
+        "Elapsed": 0.01
+      },
+      {
+        "Test": "TestBlueprintAddressRefsRequireAnAddressableTarget/worker/port",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintAddressRefsRequireAnAddressableTarget/worker/hostport",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintAddressRefsRequireAnAddressableTarget/worker/envVarKey",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintAddressRefsRequireAnAddressableTarget/cron/host",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintAddressRefsRequireAnAddressableTarget/cron/port",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintAddressRefsRequireAnAddressableTarget/cron/hostport",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintAddressRefsRequireAnAddressableTarget/cron/envVarKey",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintAddressRefsRequireAnAddressableTarget/static/host",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintAddressRefsRequireAnAddressableTarget/static/port",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintAddressRefsRequireAnAddressableTarget/static/hostport",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintAddressRefsRequireAnAddressableTarget/static/envVarKey",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintAddressRefsRequireAnAddressableTarget/web/host",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintAddressRefsRequireAnAddressableTarget/web/port",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintAddressRefsRequireAnAddressableTarget/web/hostport",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintAddressRefsRequireAnAddressableTarget/pserv/host",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintAddressRefsRequireAnAddressableTarget/pserv/port",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintAddressRefsRequireAnAddressableTarget/pserv/hostport",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintAddressRefsRequireAnAddressableTarget",
+        "Action": "pass",
+        "Elapsed": 0.05
+      },
+      {
+        "Test": "TestDeployStackRefusesUnaddressablePortRefBeforeWriting",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestGraphQLAndMCPShareValidateBlueprintProblems",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintReferencePointerSkipsSameNamedDatabases",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry/pooler_required",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry/nested_pooler_required",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry/missing_sibling_key",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry/type_mismatch",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry/worker_host",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry/nested_worker_host",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestCopyRefusalCarriesTheAuthoredEntry",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestBlueprintFromServiceTypeMustMatchItsTarget",
+        "Action": "pass",
+        "Elapsed": 0.01
+      },
+      {
+        "Test": "TestValidateBlueprintReportsEveryDanglingWorkspaceReference",
+        "Action": "pass",
+        "Elapsed": 0
+      },
+      {
+        "Test": "TestDeployStackUnknownFromServiceHostCreatesNothing",
+        "Action": "pass",
+        "Elapsed": 0
+      }
+    ]
+  },
+  "validation_observations": [
+    {
+      "case": "existing-static-host-root",
+      "errors": null,
+      "expected_valid": false,
+      "seed_count": 2,
+      "valid": true
+    },
+    {
+      "case": "existing-web-wrong-type-root",
+      "errors": null,
+      "expected_valid": false,
+      "seed_count": 2,
+      "valid": true
+    },
+    {
+      "case": "existing-static-host-nested",
+      "errors": null,
+      "expected_valid": false,
+      "seed_count": 2,
+      "valid": true
+    },
+    {
+      "case": "existing-web-wrong-type-nested",
+      "errors": null,
+      "expected_valid": false,
+      "seed_count": 2,
+      "valid": true
+    },
+    {
+      "case": "declared-static-host",
+      "errors": [
+        {
+          "error": "service \"qa316-830c50-consumer\": envVars[\"UPSTREAM\"] fromService host references \"qa316-9b5ec0-static\" which has no network address (only web/private services are addressable)",
+          "line": 9,
+          "column": 5,
+          "path": "services[0].envVars[0]"
+        }
+      ],
+      "expected_valid": false,
+      "seed_count": 2,
+      "valid": false
+    },
+    {
+      "case": "declared-web-wrong-type",
+      "errors": [
+        {
+          "error": "service \"qa316-830c50-consumer\": envVars[\"UPSTREAM\"] fromService.type \"worker\" does not match \"qa316-ac24f2-web\" (want type web)",
+          "line": 11,
+          "column": 13,
+          "path": "services[0].envVars[0].fromService.type"
+        }
+      ],
+      "expected_valid": false,
+      "seed_count": 2,
+      "valid": false
+    },
+    {
+      "case": "existing-web-correct",
+      "errors": null,
+      "expected_valid": true,
+      "seed_count": 2,
+      "valid": true
+    },
+    {
+      "case": "missing-host",
+      "errors": [
+        {
+          "error": "service \"qa316-830c50-consumer\": fromService references unknown service \"qa316-830c50-missing\" (declare it under services: or create it in this workspace first)",
+          "line": 9,
+          "column": 5,
+          "path": "services[0].envVars[0]"
+        }
+      ],
+      "expected_valid": false,
+      "seed_count": 2,
+      "valid": false
+    }
+  ],
+  "fake_client_apply_observations": [
+    {
+      "app_count": 3,
+      "apply_error": "",
+      "case": "existing-static-host-root",
+      "created_consumers": [
+        {
+          "env": [
+            {
+              "key": "UPSTREAM",
+              "value": "qa316-9b5ec0-static"
+            }
+          ],
+          "name": "qa316-830c50-consumer",
+          "type": "web_service"
+        }
+      ],
+      "result": {
+        "services": [
+          {
+            "id": "srv-db8jmp9jg4r64n3j7h10",
+            "name": "qa316-830c50-consumer",
+            "slug": "tea-a-qa316-830c50-consumer",
+            "displayName": "",
+            "type": "web_service",
+            "phase": "",
+            "undeployedChanges": false,
+            "undeployedChangesApplying": false,
+            "url": "",
+            "urls": null,
+            "image": "",
+            "sourceImage": "nginx:1.27",
+            "runtime": "image",
+            "builder": "auto",
+            "replicas": 1,
+            "suspended": false,
+            "plan": "free",
+            "revision": "",
+            "internalAddress": "tea-a-qa316-830c50-consumer:3000",
+            "port": 3000,
+            "createdAt": "",
+            "updatedAt": "2026-10-15T20:45:25.500144Z",
+            "idleTTLSeconds": 0,
+            "ownerId": "tea-a",
+            "autoDeploy": false,
+            "notifyOnFail": "default",
+            "notificationsToSend": "default",
+            "renderSubdomainPolicy": "enabled",
+            "maxShutdownDelaySeconds": 30,
+            "maintenanceMode": {
+              "enabled": false,
+              "uri": ""
+            }
+          }
+        ],
+        "databases": null,
+        "keyValues": null,
+        "envGroups": null
+      },
+      "scope": "actual DeployStack with fake K8s client, no hosted apply/operator/DNS"
+    },
+    {
+      "app_count": 3,
+      "apply_error": "",
+      "case": "existing-web-wrong-type-root",
+      "created_consumers": [
+        {
+          "env": [
+            {
+              "key": "UPSTREAM",
+              "value": "qa316-ac24f2-web"
+            }
+          ],
+          "name": "qa316-830c50-consumer",
+          "type": "web_service"
+        }
+      ],
+      "result": {
+        "services": [
+          {
+            "id": "srv-db8jmp9jg4r64n3j7h20",
+            "name": "qa316-830c50-consumer",
+            "slug": "tea-a-qa316-830c50-consumer",
+            "displayName": "",
+            "type": "web_service",
+            "phase": "",
+            "undeployedChanges": false,
+            "undeployedChangesApplying": false,
+            "url": "",
+            "urls": null,
+            "image": "",
+            "sourceImage": "nginx:1.27",
+            "runtime": "image",
+            "builder": "auto",
+            "replicas": 1,
+            "suspended": false,
+            "plan": "free",
+            "revision": "",
+            "internalAddress": "tea-a-qa316-830c50-consumer:3000",
+            "port": 3000,
+            "createdAt": "",
+            "updatedAt": "2026-10-15T20:45:25.505209Z",
+            "idleTTLSeconds": 0,
+            "ownerId": "tea-a",
+            "autoDeploy": false,
+            "notifyOnFail": "default",
+            "notificationsToSend": "default",
+            "renderSubdomainPolicy": "enabled",
+            "maxShutdownDelaySeconds": 30,
+            "maintenanceMode": {
+              "enabled": false,
+              "uri": ""
+            }
+          }
+        ],
+        "databases": null,
+        "keyValues": null,
+        "envGroups": null
+      },
+      "scope": "actual DeployStack with fake K8s client, no hosted apply/operator/DNS"
+    },
+    {
+      "app_count": 3,
+      "apply_error": "",
+      "case": "existing-web-correct",
+      "created_consumers": [
+        {
+          "env": [
+            {
+              "key": "UPSTREAM",
+              "value": "qa316-ac24f2-web"
+            }
+          ],
+          "name": "qa316-830c50-consumer",
+          "type": "web_service"
+        }
+      ],
+      "result": {
+        "services": [
+          {
+            "id": "srv-db8jmp9jg4r64n3j7h30",
+            "name": "qa316-830c50-consumer",
+            "slug": "tea-a-qa316-830c50-consumer",
+            "displayName": "",
+            "type": "web_service",
+            "phase": "",
+            "undeployedChanges": false,
+            "undeployedChangesApplying": false,
+            "url": "",
+            "urls": null,
+            "image": "",
+            "sourceImage": "nginx:1.27",
+            "runtime": "image",
+            "builder": "auto",
+            "replicas": 1,
+            "suspended": false,
+            "plan": "free",
+            "revision": "",
+            "internalAddress": "tea-a-qa316-830c50-consumer:3000",
+            "port": 3000,
+            "createdAt": "",
+            "updatedAt": "2026-10-15T20:45:25.509974Z",
+            "idleTTLSeconds": 0,
+            "ownerId": "tea-a",
+            "autoDeploy": false,
+            "notifyOnFail": "default",
+            "notificationsToSend": "default",
+            "renderSubdomainPolicy": "enabled",
+            "maxShutdownDelaySeconds": 30,
+            "maintenanceMode": {
+              "enabled": false,
+              "uri": ""
+            }
+          }
+        ],
+        "databases": null,
+        "keyValues": null,
+        "envGroups": null
+      },
+      "scope": "actual DeployStack with fake K8s client, no hosted apply/operator/DNS"
+    }
+  ],
+  "qualification": "four real validation failures/four controls;33 existing named passes across9 top-level tests;3 apply observations plus parent pass as observations, not fixed behavior; fake K8s only"
+}

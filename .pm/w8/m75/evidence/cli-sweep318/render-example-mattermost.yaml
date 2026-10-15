@@ -1,0 +1,74 @@
+databases:
+  - name: mattermost
+    plan: basic-256mb
+    diskSizeGB: 1
+
+services:
+  - type: pserv
+    name: mattermost-minio
+    env: docker
+    dockerfilePath: ./minio/Dockerfile
+    dockerContext: ./minio
+    autoDeploy: false
+    disk:
+      name: data
+      mountPath: /data
+    envVars:
+      - key: MINIO_ACCESS_KEY
+        generateValue: true
+      - key: MINIO_SECRET_KEY
+        generateValue: true
+
+  - type: web
+    name: mattermost
+    env: docker
+    plan: starter
+    dockerfilePath: ./app/Dockerfile
+    dockerContext: ./app
+    autoDeploy: false
+    disk:
+      name: config
+      mountPath: /mattermost/config
+      sizeGB: 1
+    envVars:
+      - key: MM_USERNAME
+        fromDatabase:
+          name: mattermost
+          property: user
+      - key: MM_PASSWORD
+        fromDatabase:
+          name: mattermost
+          property: password
+      - key: MM_DBNAME
+        fromDatabase:
+          name: mattermost
+          property: database
+      - key: MM_SQLSETTINGS_DRIVERNAME
+        value: postgres
+      - key: DB_HOST
+        fromDatabase:
+          name: mattermost
+          property: host
+      - key: MM_SERVICESETTINGS_LISTENADDRESS
+        value: ":10000"
+      - key: MM_FILESETTINGS_DRIVERNAME
+        value: amazons3
+      - key: MM_FILESETTINGS_AMAZONS3BUCKET
+        value: mattermost
+      - key: MM_FILESETTINGS_AMAZONS3ACCESSKEYID
+        fromService:
+          type: pserv
+          name: mattermost-minio
+          envVarKey: MINIO_ACCESS_KEY
+      - key: MM_FILESETTINGS_AMAZONS3SECRETACCESSKEY
+        fromService:
+          type: pserv
+          name: mattermost-minio
+          envVarKey: MINIO_SECRET_KEY
+      - key: MM_FILESETTINGS_AMAZONS3ENDPOINT
+        fromService:
+          type: pserv
+          name: mattermost-minio
+          property: hostport
+      - key: MM_FILESETTINGS_AMAZONS3SSL
+        value: "false"
