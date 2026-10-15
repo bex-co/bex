@@ -259,6 +259,8 @@ type Server struct {
 	OriginMetrics *OriginMetrics
 
 	schema graphql.Schema
+	// gqlBudget overrides gqlExecTimeout in tests; zero means gqlExecTimeout.
+	gqlBudget time.Duration
 
 	mcpOnce   sync.Once
 	mcpServer *mcp.Server
@@ -1484,9 +1486,15 @@ func (s *Server) serveGraphQL(w http.ResponseWriter, r *http.Request) (operation
 			core.WriteErrStatus(w, http.StatusBadRequest, "bad request")
 			return operation, opType, gqlOutcomeInvalid
 		}
+		// One execution deadline for the whole array: the HTTP write deadline
+		// covers the response, not each member, so per-member budgets could sum
+		// past it and lose every result to an edge 502 (w4/m211). Each member
+		// runs within what is left.
+		ctx, cancel := context.WithTimeout(r.Context(), s.execBudget())
+		defer cancel()
 		results := make([]*graphql.Result, len(bodies))
 		for i := range bodies {
-			op, typ, out, result := s.executeGraphQL(r.Context(), bodies[i])
+			op, typ, out, result := s.executeGraphQL(ctx, bodies[i])
 			results[i] = result
 			if i == 0 {
 				operation, opType, outcome = op, typ, out
@@ -1540,9 +1548,15 @@ func (s *Server) executeGraphQL(parent context.Context, body graphqlRequestBody)
 	if s.Apps != nil {
 		ctx = core.WithOutboundIPs(ctx, s.Apps)
 	}
+	// graphql-go starts resolving before it looks at ctx, so an expired
+	// context alone does not keep a write from starting: refuse here, at the
+	// last point before dispatch (w4/m211).
+	if parent.Err() != nil {
+		return operation, opType, gqlOutcomeUnavailable, graphqlErrorResult(errOperationNotStarted)
+	}
 	// Bound execution time so a single expensive document can't tie up a
 	// resolver goroutine indefinitely (F9).
-	ctx, cancel := context.WithTimeout(ctx, gqlExecTimeout)
+	ctx, cancel := context.WithTimeout(ctx, s.execBudget())
 	defer cancel()
 	result = graphql.Do(graphql.Params{
 		Schema:         s.schema,
@@ -1554,6 +1568,20 @@ func (s *Server) executeGraphQL(parent context.Context, body graphqlRequestBody)
 	result.Errors = sanitizeGraphQLErrors(result.Errors, opType == gqlTypeMutation)
 	return operation, opType, graphqlResultOutcome(result.Errors), result
 }
+
+// execBudget is the GraphQL execution budget: per document, and shared by
+// every member of a batch.
+func (s *Server) execBudget() time.Duration {
+	if s.gqlBudget > 0 {
+		return s.gqlBudget
+	}
+	return gqlExecTimeout
+}
+
+// errOperationNotStarted answers a batch member that never ran. Earlier
+// members may have committed, so it points at a re-read.
+var errOperationNotStarted = core.NewUnavailableError(core.CodeOperationNotStarted,
+	"this operation did not start because the request ran out of time; earlier operations in the same request may have completed, so reload to see their outcome before trying again", nil)
 
 // graphqlErrorResult is the pre-execution error envelope (input / cost gate / scope)
 // for both single-document and batch execute paths.
@@ -1584,11 +1612,11 @@ func graphqlResultOutcome(errs []gqlerrors.FormattedError) string {
 }
 
 // queryTimeoutMessage is what a GraphQL client reads when a resolver hits
-// gqlExecTimeout.
+// its execution budget.
 const queryTimeoutMessage = "query timed out; narrow the time range or the search and try again"
 
 // writeOutcomeUnknownMessage is what a GraphQL client reads when a mutation
-// hits gqlExecTimeout. The work is not rolled back and may still be finishing,
+// hits its execution budget. The work is not rolled back and may still be finishing,
 // so the query advice ("narrow it and try again") would be wrong here.
 const writeOutcomeUnknownMessage = "the change ran out of time and may have been applied in part or in full; reload to see its outcome before trying again"
 

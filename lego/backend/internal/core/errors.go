@@ -386,6 +386,12 @@ const CodeQueryTimeout = "QUERY_TIMEOUT"
 // read the current state before deciding whether to write again (w4/m206).
 const CodeWriteOutcomeUnknown = "WRITE_OUTCOME_UNKNOWN"
 
+// CodeOperationNotStarted marks a GraphQL batch member that was never
+// dispatched because the batch's shared execution budget was already spent.
+// It did nothing, but earlier members of the same request may have committed
+// (w4/m211).
+const CodeOperationNotStarted = "OPERATION_NOT_STARTED"
+
 // NewConflictError returns a machine-readable 409 error for a valid operation
 // that the resource's current state makes unsafe.
 func NewConflictError(code, msg string, params map[string]any) *CodedError {
