@@ -1,0 +1,565 @@
+diff --git a/cmd/servicecreate.go b/cmd/servicecreate.go
+index ebe790c..93a0a04 100644
+--- a/cmd/servicecreate.go
++++ b/cmd/servicecreate.go
+@@ -16,22 +16,26 @@ import (
+ 	servicetypes "github.com/render-oss/cli/pkg/types/service"
+ )
+ 
+-var ServiceCreateCmd = &cobra.Command{
+-	Use:   "create",
+-	Args:  cobra.NoArgs,
+-	Short: "Create a new service or clone an existing one",
+-	Long:  `Create a new service on Render. This command only runs in non-interactive modes. Provide configuration options with flags.`,
+-	Example: `  # Create a service from repository configuration
++var ServiceCreateCmd = newServiceCreateCmd()
++
++func init() {
++	servicesCmd.AddCommand(ServiceCreateCmd)
++}
++
++func newServiceCreateCmd() *cobra.Command {
++	cmd := &cobra.Command{
++		Use:   "create",
++		Args:  cobra.NoArgs,
++		Short: "Create a new service or clone an existing one",
++		Long:  `Create a new service on Render. This command only runs in non-interactive modes. Provide configuration options with flags.`,
++		Example: `  # Create a service from repository configuration
+   render services create --name my-api --type web_service --repo https://github.com/org/repo --runtime node --build-command "npm install" --start-command "npm start" --output json
+ 
+   # Clone configuration from an existing service
+   render services create --from srv-abc123 --name my-api-clone --output json`,
+-}
+-
+-func init() {
+-	servicesCmd.AddCommand(ServiceCreateCmd)
++	}
+ 
+-	ServiceCreateCmd.RunE = func(cmd *cobra.Command, args []string) error {
++	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+ 		var cliInput servicetypes.ServiceCreateInput
+ 		if err := command.ParseCommand(cmd, args, &cliInput); err != nil {
+ 			return fmt.Errorf("failed to parse command: %w", err)
+@@ -59,69 +63,71 @@ func init() {
+ 		return fmt.Errorf("interactive mode not yet implemented")
+ 	}
+ 
+-	ServiceCreateCmd.Flags().String("name", "", "Set the service name")
++	cmd.Flags().String("name", "", "Set the service name")
+ 	serviceTypeFlag := command.NewEnumInput(servicetypes.ServiceTypeValues(), false)
+-	ServiceCreateCmd.Flags().Var(serviceTypeFlag, "type", "Set the service type")
+-	ServiceCreateCmd.Flags().String("from", "", "Clone configuration from an existing service ID or name and override cloned values with other flags")
+-	ServiceCreateCmd.Flags().String("repo", "", "Set the Git repository URL")
+-	ServiceCreateCmd.Flags().String("branch", "", "Set the Git branch")
+-	ServiceCreateCmd.Flags().String("image", "", "Set the Docker image URL")
++	cmd.Flags().Var(serviceTypeFlag, "type", "Set the service type")
++	cmd.Flags().String("from", "", "Clone configuration from an existing service ID or name and override cloned values with other flags")
++	cmd.Flags().String("repo", "", "Set the Git repository URL")
++	cmd.Flags().String("branch", "", "Set the Git branch")
++	cmd.Flags().String("image", "", "Set the Docker image URL")
+ 	regionFlag := command.NewEnumInput(types.RegionValues(), false)
+-	ServiceCreateCmd.Flags().Var(regionFlag, "region", "Set the deployment region")
+-	ServiceCreateCmd.Flags().String("plan", "", "Set the service plan")
++	cmd.Flags().Var(regionFlag, "region", "Set the deployment region")
++	cmd.Flags().String("plan", "", "Set the service plan")
+ 	runtimeFlag := command.NewEnumInput(servicetypes.ServiceRuntimeValues(), false)
+-	ServiceCreateCmd.Flags().Var(runtimeFlag, "runtime", "Set the runtime environment")
+-	ServiceCreateCmd.Flags().String("root-directory", "", "Set the root directory")
+-	ServiceCreateCmd.Flags().String("build-command", "", "Set the build command")
+-	ServiceCreateCmd.Flags().String("start-command", "", "Set the start command")
+-	ServiceCreateCmd.Flags().String("health-check-path", "", "Set the health check path")
+-	ServiceCreateCmd.Flags().String("publish-directory", "", "Set the publish directory")
+-	ServiceCreateCmd.Flags().String("cron-command", "", "Set the cron command")
+-	ServiceCreateCmd.Flags().String("cron-schedule", "", "Set the cron schedule")
+-	ServiceCreateCmd.Flags().String("environment-id", "", "Set the environment ID")
+-	ServiceCreateCmd.Flags().StringArray("env-var", nil, "Set environment variables in KEY=VALUE format (can be specified multiple times)")
+-	ServiceCreateCmd.Flags().StringArray("secret-file", nil, "Set secret files in NAME:LOCAL_PATH format (can be specified multiple times)")
+-	ServiceCreateCmd.Flags().String("registry-credential", "", "Set the registry credential")
+-	ServiceCreateCmd.Flags().Bool("auto-deploy", true, "Enable auto-deploy")
+-	ServiceCreateCmd.Flags().String("pre-deploy-command", "", "Set the pre-deploy command")
+-	ServiceCreateCmd.Flags().StringArray("build-filter-path", nil, "Set build filter paths (can be specified multiple times)")
+-	ServiceCreateCmd.Flags().StringArray("build-filter-ignored-path", nil, "Set build filter ignored paths (can be specified multiple times)")
+-	ServiceCreateCmd.Flags().Int("num-instances", 0, "Set the number of instances")
+-	ServiceCreateCmd.Flags().Int("max-shutdown-delay", 0, "Set max shutdown delay in seconds")
++	cmd.Flags().Var(runtimeFlag, "runtime", "Set the runtime environment")
++	cmd.Flags().String("root-directory", "", "Set the root directory")
++	cmd.Flags().String("build-command", "", "Set the build command")
++	cmd.Flags().String("start-command", "", "Set the start command")
++	cmd.Flags().String("health-check-path", "", "Set the health check path")
++	cmd.Flags().String("publish-directory", "", "Set the publish directory")
++	cmd.Flags().String("cron-command", "", "Set the cron command")
++	cmd.Flags().String("cron-schedule", "", "Set the cron schedule")
++	cmd.Flags().String("environment-id", "", "Set the environment ID")
++	cmd.Flags().StringArray("env-var", nil, "Set environment variables in KEY=VALUE format (can be specified multiple times)")
++	cmd.Flags().StringArray("secret-file", nil, "Set secret files in NAME:LOCAL_PATH format (can be specified multiple times)")
++	cmd.Flags().String("registry-credential", "", "Set the registry credential")
++	cmd.Flags().Bool("auto-deploy", true, "Enable auto-deploy")
++	cmd.Flags().String("pre-deploy-command", "", "Set the pre-deploy command")
++	cmd.Flags().StringArray("build-filter-path", nil, "Set build filter paths (can be specified multiple times)")
++	cmd.Flags().StringArray("build-filter-ignored-path", nil, "Set build filter ignored paths (can be specified multiple times)")
++	cmd.Flags().Int("num-instances", 0, "Set the number of instances")
++	cmd.Flags().Int("max-shutdown-delay", 0, "Set max shutdown delay in seconds")
+ 	previewsFlag := command.NewEnumInput(servicetypes.PreviewsGenerationValues(), false)
+-	ServiceCreateCmd.Flags().Var(previewsFlag, "previews", "Set preview generation mode")
+-	ServiceCreateCmd.Flags().Bool("maintenance-mode", false, "Enable maintenance mode")
+-	ServiceCreateCmd.Flags().String("maintenance-mode-uri", "", "Set the maintenance mode URI")
+-	ServiceCreateCmd.Flags().StringArray("ip-allow-list", nil, "Set IP allow list entries in cidr=..., description=... format (can be specified multiple times)")
+-
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "name", "NAME")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "type", "TYPE")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "from", "SERVICE_ID")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "repo", "REPO_URL")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "branch", "BRANCH")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "image", "IMAGE_URL")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "region", "REGION")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "plan", "PLAN")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "runtime", "RUNTIME")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "root-directory", "PATH")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "build-command", "COMMAND")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "start-command", "COMMAND")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "health-check-path", "PATH")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "publish-directory", "PATH")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "cron-command", "COMMAND")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "cron-schedule", "SCHEDULE")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "environment-id", "ENVIRONMENT_ID")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "env-var", "KEY_VALUE")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "secret-file", "NAME_PATH")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "registry-credential", "CREDENTIAL")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "pre-deploy-command", "COMMAND")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "build-filter-path", "PATHS")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "build-filter-ignored-path", "PATHS")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "num-instances", "COUNT")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "max-shutdown-delay", "SECONDS")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "previews", "PREVIEWS")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "maintenance-mode-uri", "URI")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "ip-allow-list", "CIDR_DESCRIPTION")
++	cmd.Flags().Var(previewsFlag, "previews", "Set preview generation mode")
++	cmd.Flags().Bool("maintenance-mode", false, "Enable maintenance mode")
++	cmd.Flags().String("maintenance-mode-uri", "", "Set the maintenance mode URI")
++	cmd.Flags().StringArray("ip-allow-list", nil, "Set IP allow list entries in cidr=..., description=... format (can be specified multiple times)")
++
++	setFlagPlaceholder(cmd.Flags(), "name", "NAME")
++	setFlagPlaceholder(cmd.Flags(), "type", "TYPE")
++	setFlagPlaceholder(cmd.Flags(), "from", "SERVICE_ID")
++	setFlagPlaceholder(cmd.Flags(), "repo", "REPO_URL")
++	setFlagPlaceholder(cmd.Flags(), "branch", "BRANCH")
++	setFlagPlaceholder(cmd.Flags(), "image", "IMAGE_URL")
++	setFlagPlaceholder(cmd.Flags(), "region", "REGION")
++	setFlagPlaceholder(cmd.Flags(), "plan", "PLAN")
++	setFlagPlaceholder(cmd.Flags(), "runtime", "RUNTIME")
++	setFlagPlaceholder(cmd.Flags(), "root-directory", "PATH")
++	setFlagPlaceholder(cmd.Flags(), "build-command", "COMMAND")
++	setFlagPlaceholder(cmd.Flags(), "start-command", "COMMAND")
++	setFlagPlaceholder(cmd.Flags(), "health-check-path", "PATH")
++	setFlagPlaceholder(cmd.Flags(), "publish-directory", "PATH")
++	setFlagPlaceholder(cmd.Flags(), "cron-command", "COMMAND")
++	setFlagPlaceholder(cmd.Flags(), "cron-schedule", "SCHEDULE")
++	setFlagPlaceholder(cmd.Flags(), "environment-id", "ENVIRONMENT_ID")
++	setFlagPlaceholder(cmd.Flags(), "env-var", "KEY_VALUE")
++	setFlagPlaceholder(cmd.Flags(), "secret-file", "NAME_PATH")
++	setFlagPlaceholder(cmd.Flags(), "registry-credential", "CREDENTIAL")
++	setFlagPlaceholder(cmd.Flags(), "pre-deploy-command", "COMMAND")
++	setFlagPlaceholder(cmd.Flags(), "build-filter-path", "PATHS")
++	setFlagPlaceholder(cmd.Flags(), "build-filter-ignored-path", "PATHS")
++	setFlagPlaceholder(cmd.Flags(), "num-instances", "COUNT")
++	setFlagPlaceholder(cmd.Flags(), "max-shutdown-delay", "SECONDS")
++	setFlagPlaceholder(cmd.Flags(), "previews", "PREVIEWS")
++	setFlagPlaceholder(cmd.Flags(), "maintenance-mode-uri", "URI")
++	setFlagPlaceholder(cmd.Flags(), "ip-allow-list", "CIDR_DESCRIPTION")
++
++	return cmd
+ }
+ 
+ func createServiceNonInteractive(ctx context.Context, cliInput servicetypes.ServiceCreateInput) (*client.Service, error) {
+@@ -134,9 +140,12 @@ func createServiceNonInteractive(ctx context.Context, cliInput servicetypes.Serv
+ 		return nil, err
+ 	}
+ 
++	rawInput := cliInput
+ 	cliInput = servicetypes.NormalizeServiceCreateCLIInput(cliInput)
+ 
+ 	if cliInput.From != nil {
++		// A blank clearable flag replaces the source's value instead of inheriting it.
++		cliInput = servicetypes.NormalizeServiceCloneCLIInput(rawInput)
+ 		if err := getConfigFromService(ctx, serviceRepo, &cliInput); err != nil {
+ 			return nil, fmt.Errorf("failed to clone configuration from source service %q: %w", *cliInput.From, err)
+ 		}
+diff --git a/cmd/servicecreate_test.go b/cmd/servicecreate_test.go
+index c82dc2c..7eaf12d 100644
+--- a/cmd/servicecreate_test.go
++++ b/cmd/servicecreate_test.go
+@@ -1,9 +1,16 @@
+ package cmd
+ 
+ import (
++	"bytes"
+ 	"testing"
+ 
++	renderapi "github.com/render-oss/cli/internal/fakes/renderapi"
++	"github.com/render-oss/cli/internal/testrequire"
++	"github.com/render-oss/cli/pkg/client"
++	"github.com/render-oss/cli/pkg/dependencies"
++	"github.com/render-oss/cli/pkg/pointers"
+ 	"github.com/spf13/cobra"
++	"github.com/stretchr/testify/assert"
+ 	"github.com/stretchr/testify/require"
+ )
+ 
+@@ -38,3 +45,216 @@ func TestServiceCreateNoArgsValidationPreventsExecution(t *testing.T) {
+ 	require.Error(t, err)
+ 	require.False(t, called)
+ }
++
++type serviceCreateHarness struct {
++	t      *testing.T
++	server *renderapi.Server
++	deps   *dependencies.Dependencies
++}
++
++func newServiceCreateHarness(t *testing.T) serviceCreateHarness {
++	t.Helper()
++
++	// Same fake API, workspace config, and non-TTY dependencies as update.
++	h := newServiceUpdateHarness(t)
++	return serviceCreateHarness{t: t, server: h.server, deps: h.deps}
++}
++
++// execute invokes `services create` on a freshly constructed command tree.
++func (h serviceCreateHarness) execute(extraArgs ...string) (CommandResult, error) {
++	h.t.Helper()
++
++	root := newRootCmd()
++	services := cobraServicesCommand()
++	services.AddCommand(newServiceCreateCmd())
++	root.AddCommand(services)
++	setupRootCmdPersistentRun(root, h.deps)
++
++	var stdout, stderr bytes.Buffer
++	root.SetOut(&stdout)
++	root.SetErr(&stderr)
++	root.SetArgs(append([]string{"services", "create"}, extraArgs...))
++
++	execErr := root.Execute()
++	return CommandResult{Stdout: stdout.String(), Stderr: stderr.String()}, execErr
++}
++
++// createBody runs `services create` and returns the decoded POST /services body.
++func (h serviceCreateHarness) createBody(args ...string) map[string]any {
++	h.t.Helper()
++
++	_, err := h.execute(append(args, "--output", "json")...)
++	require.NoError(h.t, err)
++	rec, ok := h.server.LastRequest("POST", "/services")
++	require.True(h.t, ok, "expected a POST /services request to be recorded")
++	return testrequire.ParseJSONMap(h.t, string(rec.Body))
++}
++
++// addCloneSource adds svc to the workspace as a clone source and returns its
++// ID. Web services, private services and background workers get a native
++// pre-deploy command.
++func (h serviceCreateHarness) addCloneSource(svc *client.Service) string {
++	h.t.Helper()
++
++	svc.OwnerId = serviceTestWorkspaceID
++	svc.Repo = pointers.From("https://github.com/org/repo")
++	svc.Branch = pointers.From("main")
++	var envSpecific client.EnvSpecificDetails
++	require.NoError(h.t, envSpecific.FromNativeEnvironmentDetails(client.NativeEnvironmentDetails{
++		BuildCommand: "npm ci", StartCommand: "npm start", PreDeployCommand: pointers.From("npm run migrate"),
++	}))
++	switch svc.Type {
++	case client.WebService:
++		details, err := svc.ServiceDetails.AsWebServiceDetails()
++		require.NoError(h.t, err)
++		details.EnvSpecificDetails = envSpecific
++		require.NoError(h.t, svc.ServiceDetails.FromWebServiceDetails(details))
++	case client.PrivateService:
++		details, err := svc.ServiceDetails.AsPrivateServiceDetails()
++		require.NoError(h.t, err)
++		details.EnvSpecificDetails = envSpecific
++		require.NoError(h.t, svc.ServiceDetails.FromPrivateServiceDetails(details))
++	case client.BackgroundWorker:
++		details, err := svc.ServiceDetails.AsBackgroundWorkerDetails()
++		require.NoError(h.t, err)
++		details.EnvSpecificDetails = envSpecific
++		require.NoError(h.t, svc.ServiceDetails.FromBackgroundWorkerDetails(details))
++	}
++	return h.server.Services.Add(svc).Id
++}
++
++func (h serviceCreateHarness) addWebCloneSource() string {
++	h.t.Helper()
++
++	return h.addCloneSource(renderapi.NewWebService(renderapi.WebServiceAttrs{
++		Service: renderapi.CommonServiceAttrs{Name: "clone-source", RootDir: "services/api"},
++		Details: renderapi.WebServiceDetailsAttrs{HealthCheckPath: "/source-health"},
++	}))
++}
++
++// The optional settings a clone clears when their flag is given but blank, and
++// where each appears in the create request.
++var clearableCloneFlags = []struct {
++	flag        string
++	sourceValue string
++	override    string
++	inBody      func(t *testing.T, body map[string]any) (any, bool)
++}{
++	{
++		flag: "root-directory", sourceValue: "services/api", override: "services/web",
++		inBody: func(_ *testing.T, body map[string]any) (any, bool) {
++			value, ok := body["rootDir"]
++			return value, ok
++		},
++	},
++	{
++		flag: "health-check-path", sourceValue: "/source-health", override: "/ready",
++		inBody: func(t *testing.T, body map[string]any) (any, bool) {
++			value, ok := testrequire.SubMap(t, body, "serviceDetails")["healthCheckPath"]
++			return value, ok
++		},
++	},
++	{
++		flag: "pre-deploy-command", sourceValue: "npm run migrate", override: "bin/migrate",
++		inBody: func(t *testing.T, body map[string]any) (any, bool) {
++			value, ok := testrequire.SubMap(t, body, "serviceDetails")["preDeployCommand"]
++			return value, ok
++		},
++	},
++}
++
++func TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue(t *testing.T) {
++	for _, ff := range clearableCloneFlags {
++		t.Run(ff.flag, func(t *testing.T) {
++			clone := func(h serviceCreateHarness, extraArgs ...string) map[string]any {
++				return h.createBody(append([]string{"--from", h.addWebCloneSource(), "--name", "clone"}, extraArgs...)...)
++			}
++
++			t.Run("omitted inherits the source value", func(t *testing.T) {
++				value, ok := ff.inBody(t, clone(newServiceCreateHarness(t)))
++				require.True(t, ok)
++				assert.Equal(t, ff.sourceValue, value)
++			})
++
++			t.Run("non-empty overrides the source value", func(t *testing.T) {
++				value, ok := ff.inBody(t, clone(newServiceCreateHarness(t), "--"+ff.flag, ff.override))
++				require.True(t, ok)
++				assert.Equal(t, ff.override, value)
++			})
++
++			for _, blank := range []struct{ name, value string }{{"empty", ""}, {"whitespace-only", " \t "}} {
++				t.Run(blank.name+" clears the source value", func(t *testing.T) {
++					value, ok := ff.inBody(t, clone(newServiceCreateHarness(t), "--"+ff.flag, blank.value))
++					assert.False(t, ok, "expected no %s in the request, got %v", ff.flag, value)
++				})
++			}
++
++			t.Run("empty on a direct create is omitted", func(t *testing.T) {
++				body := newServiceCreateHarness(t).createBody(
++					"--name", "direct", "--type", "web_service", "--repo", "https://github.com/org/repo",
++					"--runtime", "node", "--build-command", "npm ci", "--start-command", "npm start",
++					"--"+ff.flag, "",
++				)
++				value, ok := ff.inBody(t, body)
++				assert.False(t, ok, "expected no %s in the request, got %v", ff.flag, value)
++			})
++		})
++	}
++}
++
++// Clearing applies to every service type that has the setting.
++func TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes(t *testing.T) {
++	t.Run("static site root directory", func(t *testing.T) {
++		h := newServiceCreateHarness(t)
++		source := h.addCloneSource(renderapi.NewStaticSite(renderapi.StaticSiteAttrs{
++			Service: renderapi.CommonServiceAttrs{Name: "site", RootDir: "site"},
++		}))
++
++		body := h.createBody("--from", source, "--name", "clone", "--root-directory", "")
++
++		assert.NotContains(t, body, "rootDir")
++		assert.Equal(t, "dist", testrequire.SubMap(t, body, "serviceDetails")["publishPath"])
++	})
++
++	for _, source := range []*client.Service{
++		renderapi.NewPrivateService(renderapi.PrivateServiceAttrs{}),
++		renderapi.NewBackgroundWorker(renderapi.BackgroundWorkerAttrs{}),
++	} {
++		t.Run(string(source.Type)+" pre-deploy command", func(t *testing.T) {
++			h := newServiceCreateHarness(t)
++			id := h.addCloneSource(source)
++
++			details := testrequire.SubMap(t, h.createBody("--from", id, "--name", "clone"), "serviceDetails")
++			assert.Equal(t, "npm run migrate", details["preDeployCommand"])
++
++			details = testrequire.SubMap(t, h.createBody("--from", id, "--name", "clone", "--pre-deploy-command", ""), "serviceDetails")
++			assert.NotContains(t, details, "preDeployCommand")
++		})
++	}
++
++	// A blank flag the type does not support is accepted and sends nothing.
++	t.Run("cron job ignores blank web-only flags", func(t *testing.T) {
++		h := newServiceCreateHarness(t)
++		source := h.addCloneSource(renderapi.NewCronJob(renderapi.CronJobAttrs{}))
++
++		details := testrequire.SubMap(t, h.createBody("--from", source, "--name", "clone",
++			"--health-check-path", "", "--pre-deploy-command", ""), "serviceDetails")
++
++		assert.NotContains(t, details, "healthCheckPath")
++		assert.NotContains(t, details, "preDeployCommand")
++	})
++}
++
++// Other blank flags still count as not given, so a clone keeps inheriting
++// required, source and plan settings.
++func TestServiceCreate_CloneBlankRequiredFlagsInheritSourceValue(t *testing.T) {
++	h := newServiceCreateHarness(t)
++
++	body := h.createBody("--from", h.addWebCloneSource(), "--name", "clone",
++		"--branch", "", "--plan", "", "--build-command", "", "--start-command", "")
++
++	assert.Equal(t, "main", body["branch"])
++	details := testrequire.SubMap(t, body, "serviceDetails")
++	assert.Equal(t, "starter", details["plan"])
++	assert.Equal(t, map[string]any{"buildCommand": "npm ci", "startCommand": "npm start"}, details["envSpecificDetails"])
++}
+diff --git a/internal/fakes/renderapi/services.go b/internal/fakes/renderapi/services.go
+index 13b026a..d6d83ed 100644
+--- a/internal/fakes/renderapi/services.go
++++ b/internal/fakes/renderapi/services.go
+@@ -635,6 +635,32 @@ func registerServiceRoutes(mux *http.ServeMux, s *Server, record func(*http.Requ
+ 		w.WriteHeader(http.StatusNotFound)
+ 	})
+ 
++	// POST /services - create a service. The response echoes the top-level
++	// fields only; tests assert on serviceDetails via the recorded request body.
++	mux.HandleFunc("POST /services", func(w http.ResponseWriter, r *http.Request) {
++		record(r)
++		if status, hasError := s.Services.nextError(); hasError {
++			w.WriteHeader(status)
++			return
++		}
++
++		var body client.CreateServiceJSONRequestBody
++		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
++			w.WriteHeader(http.StatusBadRequest)
++			return
++		}
++
++		svc := s.Services.Add(newService(CommonServiceAttrs{
++			Name:          body.Name,
++			OwnerID:       body.OwnerId,
++			EnvironmentID: pointers.ValueOrDefault(body.EnvironmentId, ""),
++			Repo:          pointers.ValueOrDefault(body.Repo, ""),
++			Branch:        pointers.ValueOrDefault(body.Branch, ""),
++			RootDir:       pointers.ValueOrDefault(body.RootDir, ""),
++		}, body.Type, client.Service_ServiceDetails{}))
++		writeJSON(w, http.StatusCreated, client.ServiceAndDeploy{Service: svc})
++	})
++
+ 	// PATCH /services/{id} - update a service
+ 	mux.HandleFunc("PATCH /services/{id}", func(w http.ResponseWriter, r *http.Request) {
+ 		record(r)
+diff --git a/pkg/types/service/servicecreate.go b/pkg/types/service/servicecreate.go
+index 1f36b9c..79f36d0 100644
+--- a/pkg/types/service/servicecreate.go
++++ b/pkg/types/service/servicecreate.go
+@@ -236,6 +236,32 @@ func NormalizeServiceCreateCLIInput(input ServiceCreateInput) ServiceCreateInput
+ 	return input
+ }
+ 
++// NormalizeServiceCloneCLIInput normalizes input for `services create --from`
++// like NormalizeServiceCreateCLIInput, except that an optional setting the
++// caller explicitly set to blank stays "" rather than becoming nil, so the
++// clone clears it instead of inheriting the source's value.
++// NormalizeAndValidateCreateInput then omits it from the request, as it does
++// for a direct create.
++//
++// Only settings whose blank value means "none" are kept: the root directory
++// (the repository root), the health check path and the pre-deploy command. Any
++// other blank flag still counts as not given and inherits the source's value.
++func NormalizeServiceCloneCLIInput(input ServiceCreateInput) ServiceCreateInput {
++	normalized := NormalizeServiceCreateCLIInput(input)
++	normalized.RootDirectory = keepExplicitBlank(input.RootDirectory, normalized.RootDirectory)
++	normalized.HealthCheckPath = keepExplicitBlank(input.HealthCheckPath, normalized.HealthCheckPath)
++	normalized.PreDeployCommand = keepExplicitBlank(input.PreDeployCommand, normalized.PreDeployCommand)
++	return normalized
++}
++
++// keepExplicitBlank returns "" for a value that was set but normalized away as blank.
++func keepExplicitBlank(raw, normalized *string) *string {
++	if raw != nil && normalized == nil {
++		return new(string)
++	}
++	return normalized
++}
++
+ func validateEnvVarFlags(envVars []string) error {
+ 	for _, envVar := range envVars {
+ 		if _, err := types.ParseEnvVar(envVar); err != nil {
+diff --git a/pkg/types/service/servicecreate_test.go b/pkg/types/service/servicecreate_test.go
+index 1b8c996..713f309 100644
+--- a/pkg/types/service/servicecreate_test.go
++++ b/pkg/types/service/servicecreate_test.go
+@@ -216,6 +216,62 @@ func TestServiceCreateCLIInputValidate(t *testing.T) {
+ 	})
+ }
+ 
++func TestNormalizeServiceCloneCLIInput(t *testing.T) {
++	t.Run("keeps blank clearable settings as empty", func(t *testing.T) {
++		got := servicetypes.NormalizeServiceCloneCLIInput(servicetypes.ServiceCreateInput{
++			From:             pointers.From(" srv-source "),
++			RootDirectory:    pointers.From(""),
++			HealthCheckPath:  pointers.From(" \t "),
++			PreDeployCommand: pointers.From(""),
++		})
++		assert.Equal(t, "srv-source", *got.From)
++		require.NotNil(t, got.RootDirectory)
++		assert.Equal(t, "", *got.RootDirectory)
++		require.NotNil(t, got.HealthCheckPath)
++		assert.Equal(t, "", *got.HealthCheckPath)
++		require.NotNil(t, got.PreDeployCommand)
++		assert.Equal(t, "", *got.PreDeployCommand)
++
++		// The final create normalization still omits them.
++		final := servicetypes.NormalizeServiceCreateCLIInput(got)
++		assert.Nil(t, final.RootDirectory)
++		assert.Nil(t, final.HealthCheckPath)
++		assert.Nil(t, final.PreDeployCommand)
++	})
++
++	t.Run("normalizes set and unset clearable settings as for create", func(t *testing.T) {
++		got := servicetypes.NormalizeServiceCloneCLIInput(servicetypes.ServiceCreateInput{
++			RootDirectory:   pointers.From(" services/api "),
++			HealthCheckPath: pointers.From("/healthz"),
++		})
++		assert.Equal(t, "services/api", *got.RootDirectory)
++		assert.Equal(t, "/healthz", *got.HealthCheckPath)
++		assert.Nil(t, got.PreDeployCommand)
++	})
++
++	t.Run("other blank settings still count as unset", func(t *testing.T) {
++		blank := pointers.From(" ")
++		got := servicetypes.NormalizeServiceCloneCLIInput(servicetypes.ServiceCreateInput{
++			Type:               svcTypeRaw(" "),
++			Repo:               blank,
++			Branch:             blank,
++			Image:              blank,
++			Region:             svcRegion(" "),
++			Plan:               blank,
++			Runtime:            svcRuntime(" "),
++			BuildCommand:       blank,
++			StartCommand:       blank,
++			PublishDirectory:   blank,
++			CronCommand:        blank,
++			CronSchedule:       blank,
++			EnvironmentID:      blank,
++			RegistryCredential: blank,
++			MaintenanceModeURI: blank,
++		})
++		assert.Equal(t, servicetypes.NormalizeServiceCreateCLIInput(servicetypes.ServiceCreateInput{}), got)
++	})
++}
++
+ func TestValidateFlagsForType(t *testing.T) {
+ 	t.Run("rejects --cron-command for web service", func(t *testing.T) {
+ 		input := servicetypes.ServiceCreateInput{

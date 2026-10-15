@@ -1,0 +1,107 @@
+# 108 regression tests on unmodified main 28b233e + test scaffolding only (newServiceCreateCmd constructor + fake POST /services, both verbatim from m68); fix NOT applied
+# go test -v ./cmd/ -run 'TestServiceCreate_Clone'
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/omitted_inherits_the_source_value
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/non-empty_overrides_the_source_value
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/empty_clears_the_source_value
+    servicecreate_test.go:188: 
+        	Error Trace:	/private/tmp/claude-501/-Users-tianpan-projects-bex7/4541aabd-f944-4fc4-876b-95eba92a1f24/scratchpad/wt-108-before/cmd/servicecreate_test.go:188
+        	Error:      	Should be false
+        	Test:       	TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/empty_clears_the_source_value
+        	Messages:   	expected no root-directory in the request, got services/api
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/whitespace-only_clears_the_source_value
+    servicecreate_test.go:188: 
+        	Error Trace:	/private/tmp/claude-501/-Users-tianpan-projects-bex7/4541aabd-f944-4fc4-876b-95eba92a1f24/scratchpad/wt-108-before/cmd/servicecreate_test.go:188
+        	Error:      	Should be false
+        	Test:       	TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/whitespace-only_clears_the_source_value
+        	Messages:   	expected no root-directory in the request, got services/api
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/empty_on_a_direct_create_is_omitted
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/omitted_inherits_the_source_value
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/non-empty_overrides_the_source_value
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/empty_clears_the_source_value
+    servicecreate_test.go:188: 
+        	Error Trace:	/private/tmp/claude-501/-Users-tianpan-projects-bex7/4541aabd-f944-4fc4-876b-95eba92a1f24/scratchpad/wt-108-before/cmd/servicecreate_test.go:188
+        	Error:      	Should be false
+        	Test:       	TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/empty_clears_the_source_value
+        	Messages:   	expected no health-check-path in the request, got /source-health
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/whitespace-only_clears_the_source_value
+    servicecreate_test.go:188: 
+        	Error Trace:	/private/tmp/claude-501/-Users-tianpan-projects-bex7/4541aabd-f944-4fc4-876b-95eba92a1f24/scratchpad/wt-108-before/cmd/servicecreate_test.go:188
+        	Error:      	Should be false
+        	Test:       	TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/whitespace-only_clears_the_source_value
+        	Messages:   	expected no health-check-path in the request, got /source-health
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/empty_on_a_direct_create_is_omitted
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/omitted_inherits_the_source_value
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/non-empty_overrides_the_source_value
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/empty_clears_the_source_value
+    servicecreate_test.go:188: 
+        	Error Trace:	/private/tmp/claude-501/-Users-tianpan-projects-bex7/4541aabd-f944-4fc4-876b-95eba92a1f24/scratchpad/wt-108-before/cmd/servicecreate_test.go:188
+        	Error:      	Should be false
+        	Test:       	TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/empty_clears_the_source_value
+        	Messages:   	expected no pre-deploy-command in the request, got npm run migrate
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/whitespace-only_clears_the_source_value
+    servicecreate_test.go:188: 
+        	Error Trace:	/private/tmp/claude-501/-Users-tianpan-projects-bex7/4541aabd-f944-4fc4-876b-95eba92a1f24/scratchpad/wt-108-before/cmd/servicecreate_test.go:188
+        	Error:      	Should be false
+        	Test:       	TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/whitespace-only_clears_the_source_value
+        	Messages:   	expected no pre-deploy-command in the request, got npm run migrate
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/empty_on_a_direct_create_is_omitted
+--- FAIL: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue (0.12s)
+    --- FAIL: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory (0.07s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/omitted_inherits_the_source_value (0.04s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/non-empty_overrides_the_source_value (0.01s)
+        --- FAIL: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/empty_clears_the_source_value (0.01s)
+        --- FAIL: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/whitespace-only_clears_the_source_value (0.01s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/empty_on_a_direct_create_is_omitted (0.00s)
+    --- FAIL: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path (0.03s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/omitted_inherits_the_source_value (0.01s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/non-empty_overrides_the_source_value (0.01s)
+        --- FAIL: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/empty_clears_the_source_value (0.00s)
+        --- FAIL: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/whitespace-only_clears_the_source_value (0.00s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/empty_on_a_direct_create_is_omitted (0.00s)
+    --- FAIL: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command (0.02s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/omitted_inherits_the_source_value (0.00s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/non-empty_overrides_the_source_value (0.00s)
+        --- FAIL: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/empty_clears_the_source_value (0.00s)
+        --- FAIL: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/whitespace-only_clears_the_source_value (0.01s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/empty_on_a_direct_create_is_omitted (0.00s)
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes/static_site_root_directory
+    servicecreate_test.go:215: 
+        	Error Trace:	/private/tmp/claude-501/-Users-tianpan-projects-bex7/4541aabd-f944-4fc4-876b-95eba92a1f24/scratchpad/wt-108-before/cmd/servicecreate_test.go:215
+        	Error:      	map[string]interface {}{"autoDeploy":"yes", "branch":"main", "name":"clone", "ownerId":"tea-active00000000000000", "repo":"https://github.com/org/repo", "rootDir":"site", "serviceDetails":map[string]interface {}{"buildCommand":"npm run build", "publishPath":"dist"}, "type":"static_site"} should not contain "rootDir"
+        	Test:       	TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes/static_site_root_directory
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes/private_service_pre-deploy_command
+    servicecreate_test.go:231: 
+        	Error Trace:	/private/tmp/claude-501/-Users-tianpan-projects-bex7/4541aabd-f944-4fc4-876b-95eba92a1f24/scratchpad/wt-108-before/cmd/servicecreate_test.go:231
+        	Error:      	map[string]interface {}{"envSpecificDetails":map[string]interface {}{"buildCommand":"npm ci", "startCommand":"npm start"}, "numInstances":1, "plan":"starter", "preDeployCommand":"npm run migrate", "region":"oregon", "runtime":"node"} should not contain "preDeployCommand"
+        	Test:       	TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes/private_service_pre-deploy_command
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes/background_worker_pre-deploy_command
+    servicecreate_test.go:231: 
+        	Error Trace:	/private/tmp/claude-501/-Users-tianpan-projects-bex7/4541aabd-f944-4fc4-876b-95eba92a1f24/scratchpad/wt-108-before/cmd/servicecreate_test.go:231
+        	Error:      	map[string]interface {}{"envSpecificDetails":map[string]interface {}{"buildCommand":"npm ci", "startCommand":"npm start"}, "numInstances":1, "plan":"starter", "preDeployCommand":"npm run migrate", "region":"oregon", "runtime":"node"} should not contain "preDeployCommand"
+        	Test:       	TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes/background_worker_pre-deploy_command
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes/cron_job_ignores_blank_web-only_flags
+--- FAIL: TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes (0.01s)
+    --- FAIL: TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes/static_site_root_directory (0.00s)
+    --- FAIL: TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes/private_service_pre-deploy_command (0.00s)
+    --- FAIL: TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes/background_worker_pre-deploy_command (0.00s)
+    --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes/cron_job_ignores_blank_web-only_flags (0.00s)
+=== RUN   TestServiceCreate_CloneBlankRequiredFlagsInheritSourceValue
+--- PASS: TestServiceCreate_CloneBlankRequiredFlagsInheritSourceValue (0.00s)
+FAIL
+FAIL	github.com/render-oss/cli/cmd	0.582s
+FAIL
+# exit=1
+
+# go test -v ./pkg/types/service/ -run TestNormalizeServiceCloneCLIInput  (new exported API: expected compile failure on main)
+# github.com/render-oss/cli/pkg/types/service_test [github.com/render-oss/cli/pkg/types/service.test]
+pkg/types/service/servicecreate_test.go:221:23: undefined: servicetypes.NormalizeServiceCloneCLIInput
+pkg/types/service/servicecreate_test.go:243:23: undefined: servicetypes.NormalizeServiceCloneCLIInput
+pkg/types/service/servicecreate_test.go:254:23: undefined: servicetypes.NormalizeServiceCloneCLIInput
+FAIL	github.com/render-oss/cli/pkg/types/service [build failed]
+FAIL
+# exit=1

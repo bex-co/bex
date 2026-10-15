@@ -1,0 +1,198 @@
+# 075 v2 tests with the fix applied (render-oss/cli main 28b233e + 075-upstream-v2.patch)
+# go test -v ./pkg/service/ -run 'TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts|TestCLIInputFromSource'
+=== RUN   TestCLIInputFromSource
+=== RUN   TestCLIInputFromSource/hydrates_repo-backed_defaults
+=== RUN   TestCLIInputFromSource/hydrates_image-backed_defaults
+=== RUN   TestCLIInputFromSource/hydrates_docker_runtime_registry_credential_from_docker_details
+=== RUN   TestCLIInputFromSource/hydrates_background_worker_defaults
+=== RUN   TestCLIInputFromSource/hydrates_static_site_defaults
+=== RUN   TestCLIInputFromSource/hydrates_cron_schedule_and_command
+=== RUN   TestCLIInputFromSource/does_not_override_explicit_fields
+=== RUN   TestCLIInputFromSource/does_not_copy_repo_defaults_when_image_is_explicitly_provided
+=== RUN   TestCLIInputFromSource/does_not_copy_image_defaults_when_repo_is_explicitly_provided
+=== RUN   TestCLIInputFromSource/from_image_override_defaults_runtime_to_image_and_builds_request
+=== RUN   TestCLIInputFromSource/from_repo_override_clears_incompatible_image_runtime_and_fails_build_without_explicit_runtime
+=== RUN   TestCLIInputFromSource/applies_normalized_defaults_from_source_values
+=== RUN   TestCLIInputFromSource/hydrates_web_service_with_all_new_fields
+=== RUN   TestCLIInputFromSource/hydrates_static_site_with_previews_and_ip_allow_list_only
+=== RUN   TestCLIInputFromSource/hydrates_background_worker_with_numInstances,_maxShutdownDelay,_previews
+=== RUN   TestCLIInputFromSource/hydrates_cron_defaults_and_skips_non-cron_type-specific_fields
+=== RUN   TestCLIInputFromSource/nil_build_filter_leaves_build_filter_fields_empty
+=== RUN   TestCLIInputFromSource/web_service_with_maintenance_mode_disabled
+=== RUN   TestCLIInputFromSource/skips_empty_source_defaults
+=== RUN   TestCLIInputFromSource/preserves_pre-populated_NumInstances_override_when_source_has_different_value
+=== RUN   TestCLIInputFromSource/preserves_pre-populated_MaxShutdownDelay_override_when_source_has_different_value
+=== RUN   TestCLIInputFromSource/preserves_pre-populated_Previews_override_when_source_has_different_value
+=== RUN   TestCLIInputFromSource/preserves_pre-populated_MaintenanceMode_override_when_source_has_different_value
+=== RUN   TestCLIInputFromSource/preserves_pre-populated_MaintenanceModeURI_override_when_source_has_different_value
+=== RUN   TestCLIInputFromSource/preserves_pre-populated_BuildFilterPaths_override_when_source_has_different_value
+=== RUN   TestCLIInputFromSource/preserves_pre-populated_BuildFilterIgnoredPaths_override_when_source_has_different_value
+=== RUN   TestCLIInputFromSource/preserves_pre-populated_IPAllowList_override_when_source_has_different_value
+--- PASS: TestCLIInputFromSource (0.00s)
+    --- PASS: TestCLIInputFromSource/hydrates_repo-backed_defaults (0.00s)
+    --- PASS: TestCLIInputFromSource/hydrates_image-backed_defaults (0.00s)
+    --- PASS: TestCLIInputFromSource/hydrates_docker_runtime_registry_credential_from_docker_details (0.00s)
+    --- PASS: TestCLIInputFromSource/hydrates_background_worker_defaults (0.00s)
+    --- PASS: TestCLIInputFromSource/hydrates_static_site_defaults (0.00s)
+    --- PASS: TestCLIInputFromSource/hydrates_cron_schedule_and_command (0.00s)
+    --- PASS: TestCLIInputFromSource/does_not_override_explicit_fields (0.00s)
+    --- PASS: TestCLIInputFromSource/does_not_copy_repo_defaults_when_image_is_explicitly_provided (0.00s)
+    --- PASS: TestCLIInputFromSource/does_not_copy_image_defaults_when_repo_is_explicitly_provided (0.00s)
+    --- PASS: TestCLIInputFromSource/from_image_override_defaults_runtime_to_image_and_builds_request (0.00s)
+    --- PASS: TestCLIInputFromSource/from_repo_override_clears_incompatible_image_runtime_and_fails_build_without_explicit_runtime (0.00s)
+    --- PASS: TestCLIInputFromSource/applies_normalized_defaults_from_source_values (0.00s)
+    --- PASS: TestCLIInputFromSource/hydrates_web_service_with_all_new_fields (0.00s)
+    --- PASS: TestCLIInputFromSource/hydrates_static_site_with_previews_and_ip_allow_list_only (0.00s)
+    --- PASS: TestCLIInputFromSource/hydrates_background_worker_with_numInstances,_maxShutdownDelay,_previews (0.00s)
+    --- PASS: TestCLIInputFromSource/hydrates_cron_defaults_and_skips_non-cron_type-specific_fields (0.00s)
+    --- PASS: TestCLIInputFromSource/nil_build_filter_leaves_build_filter_fields_empty (0.00s)
+    --- PASS: TestCLIInputFromSource/web_service_with_maintenance_mode_disabled (0.00s)
+    --- PASS: TestCLIInputFromSource/skips_empty_source_defaults (0.00s)
+    --- PASS: TestCLIInputFromSource/preserves_pre-populated_NumInstances_override_when_source_has_different_value (0.00s)
+    --- PASS: TestCLIInputFromSource/preserves_pre-populated_MaxShutdownDelay_override_when_source_has_different_value (0.00s)
+    --- PASS: TestCLIInputFromSource/preserves_pre-populated_Previews_override_when_source_has_different_value (0.00s)
+    --- PASS: TestCLIInputFromSource/preserves_pre-populated_MaintenanceMode_override_when_source_has_different_value (0.00s)
+    --- PASS: TestCLIInputFromSource/preserves_pre-populated_MaintenanceModeURI_override_when_source_has_different_value (0.00s)
+    --- PASS: TestCLIInputFromSource/preserves_pre-populated_BuildFilterPaths_override_when_source_has_different_value (0.00s)
+    --- PASS: TestCLIInputFromSource/preserves_pre-populated_BuildFilterIgnoredPaths_override_when_source_has_different_value (0.00s)
+    --- PASS: TestCLIInputFromSource/preserves_pre-populated_IPAllowList_override_when_source_has_different_value (0.00s)
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/static_site_to_compute_service
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/static_site_to_compute_service/web_service
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/static_site_to_compute_service/private_service
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/static_site_to_compute_service/background_worker
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/static_site_to_compute_service/cron_job
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/web_service_to_static_site
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/web_service_to_cron_job
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/web_service_to_private_service
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/web_service_to_background_worker
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/cron_job_to_web_service
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/native_web_service_to_prebuilt_image
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/native_private_service_to_prebuilt_image
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/native_background_worker_to_prebuilt_image
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/native_cron_job_to_prebuilt_image
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/prebuilt_image_inherited_from_the_source
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/explicit_unsupported_settings_are_still_refused
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/explicit_unsupported_settings_are_still_refused/publish_directory_for_a_web_service
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/explicit_unsupported_settings_are_still_refused/health_check_path_for_a_cron_job
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/explicit_unsupported_settings_are_still_refused/start_command_for_a_cron_job
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/explicit_unsupported_settings_are_still_refused/maintenance_mode_for_a_private_service
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/explicit_unsupported_settings_are_still_refused/build_command_for_a_prebuilt_image
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/explicit_unsupported_settings_are_still_refused/start_command_for_a_prebuilt_image
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/same_type_and_runtime_keeps_every_setting
+=== RUN   TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/another_native_runtime_keeps_the_commands
+--- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts (0.00s)
+    --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/static_site_to_compute_service (0.00s)
+        --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/static_site_to_compute_service/web_service (0.00s)
+        --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/static_site_to_compute_service/private_service (0.00s)
+        --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/static_site_to_compute_service/background_worker (0.00s)
+        --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/static_site_to_compute_service/cron_job (0.00s)
+    --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/web_service_to_static_site (0.00s)
+    --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/web_service_to_cron_job (0.00s)
+    --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/web_service_to_private_service (0.00s)
+    --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/web_service_to_background_worker (0.00s)
+    --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/cron_job_to_web_service (0.00s)
+    --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/native_web_service_to_prebuilt_image (0.00s)
+    --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/native_private_service_to_prebuilt_image (0.00s)
+    --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/native_background_worker_to_prebuilt_image (0.00s)
+    --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/native_cron_job_to_prebuilt_image (0.00s)
+    --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/prebuilt_image_inherited_from_the_source (0.00s)
+    --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/explicit_unsupported_settings_are_still_refused (0.00s)
+        --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/explicit_unsupported_settings_are_still_refused/publish_directory_for_a_web_service (0.00s)
+        --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/explicit_unsupported_settings_are_still_refused/health_check_path_for_a_cron_job (0.00s)
+        --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/explicit_unsupported_settings_are_still_refused/start_command_for_a_cron_job (0.00s)
+        --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/explicit_unsupported_settings_are_still_refused/maintenance_mode_for_a_private_service (0.00s)
+        --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/explicit_unsupported_settings_are_still_refused/build_command_for_a_prebuilt_image (0.00s)
+        --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/explicit_unsupported_settings_are_still_refused/start_command_for_a_prebuilt_image (0.00s)
+    --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/same_type_and_runtime_keeps_every_setting (0.00s)
+    --- PASS: TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts/another_native_runtime_keeps_the_commands (0.00s)
+PASS
+ok  	github.com/render-oss/cli/pkg/service	0.277s
+# exit=0
+
+# go test -v ./pkg/types/service/ -run 'TestWithoutFieldsUnsupportedBy|TestValidateFlagsForType|TestServiceCreateCLIInputValidate'
+=== RUN   TestServiceCreateCLIInputValidate
+=== RUN   TestServiceCreateCLIInputValidate/non-interactive_requires_name
+=== RUN   TestServiceCreateCLIInputValidate/non-interactive_requires_type_when_--from_is_not_set
+=== RUN   TestServiceCreateCLIInputValidate/interactive_allows_empty_type
+=== RUN   TestServiceCreateCLIInputValidate/cannot_specify_both_repo_and_image
+=== RUN   TestServiceCreateCLIInputValidate/invalid_type_is_rejected
+=== RUN   TestServiceCreateCLIInputValidate/runtime_is_required_when_not_image/from
+=== RUN   TestServiceCreateCLIInputValidate/static_sites_do_not_require_runtime
+=== RUN   TestServiceCreateCLIInputValidate/valid_non-interactive_input
+=== RUN   TestServiceCreateCLIInputValidate/rejects_malformed_env_var
+=== RUN   TestServiceCreateCLIInputValidate/rejects_malformed_secret_file
+=== RUN   TestServiceCreateCLIInputValidate/allows_registry_credential_with_image_source
+=== RUN   TestServiceCreateCLIInputValidate/allows_registry_credential_with_docker_runtime
+=== RUN   TestServiceCreateCLIInputValidate/rejects_registry_credential_for_native_runtime
+=== RUN   TestServiceCreateCLIInputValidate/cron_job_requires_cron-command_and_cron-schedule_when_not_cloning
+=== RUN   TestServiceCreateCLIInputValidate/cron_job_with_--from_skips_initial_cron-command_requirement
+=== RUN   TestServiceCreateCLIInputValidate/cron_job_with_image_runtime_does_not_require_build_command
+=== RUN   TestServiceCreateCLIInputValidate/missing_repo_or_image_returns_clear_error_before_cron_validation
+--- PASS: TestServiceCreateCLIInputValidate (0.00s)
+    --- PASS: TestServiceCreateCLIInputValidate/non-interactive_requires_name (0.00s)
+    --- PASS: TestServiceCreateCLIInputValidate/non-interactive_requires_type_when_--from_is_not_set (0.00s)
+    --- PASS: TestServiceCreateCLIInputValidate/interactive_allows_empty_type (0.00s)
+    --- PASS: TestServiceCreateCLIInputValidate/cannot_specify_both_repo_and_image (0.00s)
+    --- PASS: TestServiceCreateCLIInputValidate/invalid_type_is_rejected (0.00s)
+    --- PASS: TestServiceCreateCLIInputValidate/runtime_is_required_when_not_image/from (0.00s)
+    --- PASS: TestServiceCreateCLIInputValidate/static_sites_do_not_require_runtime (0.00s)
+    --- PASS: TestServiceCreateCLIInputValidate/valid_non-interactive_input (0.00s)
+    --- PASS: TestServiceCreateCLIInputValidate/rejects_malformed_env_var (0.00s)
+    --- PASS: TestServiceCreateCLIInputValidate/rejects_malformed_secret_file (0.00s)
+    --- PASS: TestServiceCreateCLIInputValidate/allows_registry_credential_with_image_source (0.00s)
+    --- PASS: TestServiceCreateCLIInputValidate/allows_registry_credential_with_docker_runtime (0.00s)
+    --- PASS: TestServiceCreateCLIInputValidate/rejects_registry_credential_for_native_runtime (0.00s)
+    --- PASS: TestServiceCreateCLIInputValidate/cron_job_requires_cron-command_and_cron-schedule_when_not_cloning (0.00s)
+    --- PASS: TestServiceCreateCLIInputValidate/cron_job_with_--from_skips_initial_cron-command_requirement (0.00s)
+    --- PASS: TestServiceCreateCLIInputValidate/cron_job_with_image_runtime_does_not_require_build_command (0.00s)
+    --- PASS: TestServiceCreateCLIInputValidate/missing_repo_or_image_returns_clear_error_before_cron_validation (0.00s)
+=== RUN   TestValidateFlagsForType
+=== RUN   TestValidateFlagsForType/rejects_--cron-command_for_web_service
+=== RUN   TestValidateFlagsForType/rejects_--health-check-path_for_cron_job
+=== RUN   TestValidateFlagsForType/rejects_--publish-directory_for_web_service
+=== RUN   TestValidateFlagsForType/rejects_--start-command_for_static_site
+=== RUN   TestValidateFlagsForType/rejects_--num-instances_for_static_site
+=== RUN   TestValidateFlagsForType/rejects_--maintenance-mode_for_private_service
+=== RUN   TestValidateFlagsForType/rejects_--ip-allow-list_for_background_worker
+=== RUN   TestValidateFlagsForType/allows_--cron-command_for_cron_job
+=== RUN   TestValidateFlagsForType/rejects_--runtime_for_static_site
+=== RUN   TestValidateFlagsForType/rejects_--region_for_static_site
+=== RUN   TestValidateFlagsForType/rejects_--plan_for_static_site
+=== RUN   TestValidateFlagsForType/skipped_in_interactive_mode
+--- PASS: TestValidateFlagsForType (0.00s)
+    --- PASS: TestValidateFlagsForType/rejects_--cron-command_for_web_service (0.00s)
+    --- PASS: TestValidateFlagsForType/rejects_--health-check-path_for_cron_job (0.00s)
+    --- PASS: TestValidateFlagsForType/rejects_--publish-directory_for_web_service (0.00s)
+    --- PASS: TestValidateFlagsForType/rejects_--start-command_for_static_site (0.00s)
+    --- PASS: TestValidateFlagsForType/rejects_--num-instances_for_static_site (0.00s)
+    --- PASS: TestValidateFlagsForType/rejects_--maintenance-mode_for_private_service (0.00s)
+    --- PASS: TestValidateFlagsForType/rejects_--ip-allow-list_for_background_worker (0.00s)
+    --- PASS: TestValidateFlagsForType/allows_--cron-command_for_cron_job (0.00s)
+    --- PASS: TestValidateFlagsForType/rejects_--runtime_for_static_site (0.00s)
+    --- PASS: TestValidateFlagsForType/rejects_--region_for_static_site (0.00s)
+    --- PASS: TestValidateFlagsForType/rejects_--plan_for_static_site (0.00s)
+    --- PASS: TestValidateFlagsForType/skipped_in_interactive_mode (0.00s)
+=== RUN   TestWithoutFieldsUnsupportedBy
+=== RUN   TestWithoutFieldsUnsupportedBy/web_service/native
+=== RUN   TestWithoutFieldsUnsupportedBy/web_service/image
+=== RUN   TestWithoutFieldsUnsupportedBy/private_service/native
+=== RUN   TestWithoutFieldsUnsupportedBy/private_service/image
+=== RUN   TestWithoutFieldsUnsupportedBy/background_worker/native
+=== RUN   TestWithoutFieldsUnsupportedBy/background_worker/image
+=== RUN   TestWithoutFieldsUnsupportedBy/static_site/repo
+=== RUN   TestWithoutFieldsUnsupportedBy/cron_job/native
+=== RUN   TestWithoutFieldsUnsupportedBy/cron_job/image
+--- PASS: TestWithoutFieldsUnsupportedBy (0.00s)
+    --- PASS: TestWithoutFieldsUnsupportedBy/web_service/native (0.00s)
+    --- PASS: TestWithoutFieldsUnsupportedBy/web_service/image (0.00s)
+    --- PASS: TestWithoutFieldsUnsupportedBy/private_service/native (0.00s)
+    --- PASS: TestWithoutFieldsUnsupportedBy/private_service/image (0.00s)
+    --- PASS: TestWithoutFieldsUnsupportedBy/background_worker/native (0.00s)
+    --- PASS: TestWithoutFieldsUnsupportedBy/background_worker/image (0.00s)
+    --- PASS: TestWithoutFieldsUnsupportedBy/static_site/repo (0.00s)
+    --- PASS: TestWithoutFieldsUnsupportedBy/cron_job/native (0.00s)
+    --- PASS: TestWithoutFieldsUnsupportedBy/cron_job/image (0.00s)
+PASS
+ok  	github.com/render-oss/cli/pkg/types/service	0.175s
+# exit=0
