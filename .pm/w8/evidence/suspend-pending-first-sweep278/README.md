@@ -1,0 +1,19 @@
+# First saved variable through manual suspend/resume and restart — sweep278
+
+2026-10-15 UTC, production Bex, isolated human QA in bex-canary. Published Bex0.3.2 and unchanged Render2.27.0/a764810a7682 each use a fresh Free Node web fixture. Sourcecb241512bd3c063f78cc659106d1865d6af7d222; deployed API/operator revision unknown. All lifecycle/value controls pass; no new finding.
+
+[Complete native/API/runtime and cleanup ledger](owned-native-api-runtime-cleanup.json), [per-client assertions](acceptance-summary.json), [versions and coverage](metadata.json), [redactions](redactions.json), [finite owned fixture driver](fixture-driver.py.txt).
+
+Both native creates use public bex-co/bex/main/examples/runtime-version/node, auto-deploy off, and no authored environment flags. The tiny stdlib build/runtime probe identifies this fixture with a hardcoded harmless nonce, records MESSAGE as explicit null when absent, and reports a boot UUID. Initial releases become Live/HTTP200 with build/runtime MESSAGE=null. The service environment API independently returns an empty array for each fixture.
+
+An API-only sparse PATCH saves the first MESSAGE value, V2, with saveMode=save_only. HTTP200/rolledOut:false and unchanged history confirm no deploy allocation; native reads/public HTTP still show null/null while saved readback is V2. App suspend/resume is not exposed by this pinned CLI, so the following setup uses documented POST /v1/services/{ownedId}/suspend and /resume, not invented CLI commands.
+
+Each suspend returns202, adds no deploy, and converges to Hibernated/suspended/zero native instances. One public JSON request returns the intended503 suspended response; following metadata still shows suspended/zero. Each actual native restart and deploy-create while suspended exits1 with a named409 and allocates no child: four refusal controls total. Saved V2 remains intact.
+
+Each API-only resume returns202 without a new deploy row. Bounded HTTP verification reaches200 in a new process, still build/runtime null/null, with the first saved V2 retained. Native restart then exits0 and creates one exact new deploy per fixture. After that row is independently observed Live, HTTP200 in another new process still reports null/null; readback remains V2. This certifies first-variable deferral across both operational resume and explicit snapshot Restart.
+
+Finally, each normal native async deploy-create exits0 and allocates one distinct child. Metadata independently observes the exact new target Live. Bounded runtime verification requires V2 in both the build snapshot and running process, then succeeds on both clients with a fourth distinct boot UUID. A native0 async acknowledgment is not reported as a native waited-completion result. Early/transition receipts are retained; no public traffic or read is issued to baseline workloads.
+
+[Existing operator deferred-first-reference, suspended-rollout and route/resume controls](source-test-events.jsonl) pass under [Go1.26.8/workspace-off targeted commands](source-test-summary.json). No repository Go test or implementation is changed, and no full platform suite is claimed. This supplements the [automatic sleep/wake coverage](../sleep-pending-env-sweep266/README.md); existing w8/106's served-then-auto-parked history gap remains open and is not retested by this awake/default-idle journey.
+
+All six deploy children are enumerated across two exact-owned parents. Native deletion exits0; detail/list/former runtime404 and final quota used6/terminating0 confirm cleanup while all six immutable baseline IDs remain. PG/KV remain unallocated. Copied Render configs are removed after each call; the continuing hunt retains its isolated human grant. Native mutation wire, direct Kubernetes descendant inspection, browser interaction, other runtime kinds and independent Render-production lifecycle semantics are unverified. No product fix, pin change, commit/push or external filing.

@@ -1,0 +1,7 @@
+{
+  "fault_fixture": "synthetic token and nonexistent synthetic owner/workspace only; no QA credential copied",
+  "Authorization": "<SYNTHETIC_FIXTURE_TOKEN> in valid-control request captures",
+  "private_temporary_directory": "<owned-temp>, including its canonical realpath alias",
+  "known_QA_values": "masked if present in version/context records",
+  "cleanup": "all native processes and loopback servers stopped; all per-case config directories removed"
+}

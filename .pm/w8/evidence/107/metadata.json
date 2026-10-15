@@ -1,0 +1,53 @@
+{
+  "sweep": 279,
+  "at_UTC": "2026-10-15T05:53:44.314670+00:00",
+  "Bex_source_head": "cb241512bd3c063f78cc659106d1865d6af7d222",
+  "native_versions": [
+    {
+      "client": "installed",
+      "result": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "--version"
+        ],
+        "exit": 0,
+        "elapsed": 0.094,
+        "stdout": "bex v0.2.1\ncompatible with Render CLI v2.27.0\n",
+        "stderr": ""
+      }
+    },
+    {
+      "client": "published",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "--version"
+        ],
+        "exit": 0,
+        "elapsed": 0.092,
+        "stdout": "bex v0.3.2\ncompatible with Render CLI v2.27.0\n",
+        "stderr": ""
+      }
+    }
+  ],
+  "current_Render_pin": "2.27.0/a764810a768202704e7206eb7b87a47211fcd98e",
+  "published_Bex_binary_sha256": "585a5456678ce3bc73d5a71117b901d08add1fab230464d3b5b228101a55c34c",
+  "installed_Bex_binary_sha256": "ea9e5e2c92a1094030e7537765092b633c7ec8793a076eeb55a136f6157cf8d0",
+  "v2.29_tag_build_commit": "af9bdd180e90ab9d1e971d73185687fed9ef08d8",
+  "read_only_upstream_main": "28b233e29812a911c7c0f30594c419cf10714fca",
+  "main_observation": "Same early environment validation block remains; not executed.",
+  "unmodified_native_cases": 36,
+  "failed_explicit_override_cases": 4,
+  "passing_unmodified_controls": 32,
+  "diagnostic_fixed_pin_cases": 12,
+  "diagnostic_source_named_passes": 43,
+  "excluded_private_overlay_cases": 10,
+  "fixture_origin": "owned loopback only, synthetic token/workspace/owner",
+  "production_mutations": 0,
+  "product_code_changed": false,
+  "commit_push": false,
+  "external_submission": false,
+  "overlay_replay": "Use absolute real paths, not symlink aliases, for Go overlay destination keys. Apply output-priority.patch to a private exact-pin checkout or overlay its cmd/root.go, then build with GOWORK=off GOTOOLCHAIN=go1.27.0."
+}

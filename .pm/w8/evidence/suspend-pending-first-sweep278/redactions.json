@@ -1,0 +1,6 @@
+{
+  "known_QA_email_password_and_isolated_credential_values": "masked if present",
+  "private_temporary_directory": "<owned-temp>",
+  "fixture_values": "only harmless generated MESSAGE/fixture markers and process boot UUIDs; preserved",
+  "wire": "API setup Authorization omitted by helper; native mutation wire was not intercepted"
+}

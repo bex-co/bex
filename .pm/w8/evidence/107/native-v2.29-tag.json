@@ -1,0 +1,379 @@
+[
+  {
+    "client": "render-2.29-tag",
+    "case": "json default",
+    "binary": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep272-render-2.29",
+    "command": [
+      "render-2.29-tag",
+      "workspaces",
+      "--confirm"
+    ],
+    "configuration": {
+      "RENDER_OUTPUT": "json"
+    },
+    "expected_format": "json",
+    "actual_format": "json",
+    "pass": true,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.123,
+    "stdout": "[\n  {\n    \"email\": \"\",\n    \"id\": \"tea-00000000000000000000\",\n    \"name\": \"QA-output-fixture\",\n    \"type\": \"team\"\n  }\n]",
+    "stderr": "",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/owners?limit=100",
+        "headers": {
+          "Host": "127.0.0.1:55380",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Accept-Encoding": "gzip"
+        }
+      }
+    ],
+    "fixture_response": [
+      {
+        "owner": {
+          "id": "tea-00000000000000000000",
+          "name": "QA-output-fixture",
+          "type": "team"
+        },
+        "cursor": "qa279-only-row"
+      }
+    ],
+    "copied_config_removed": true,
+    "credentials": "synthetic local token only"
+  },
+  {
+    "client": "render-2.29-tag",
+    "case": "yaml default",
+    "binary": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep272-render-2.29",
+    "command": [
+      "render-2.29-tag",
+      "workspaces",
+      "--confirm"
+    ],
+    "configuration": {
+      "RENDER_OUTPUT": "yaml"
+    },
+    "expected_format": "yaml",
+    "actual_format": "yaml",
+    "pass": true,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.043,
+    "stdout": "- email: \"\"\n  id: tea-00000000000000000000\n  name: QA-output-fixture\n  type: team\n",
+    "stderr": "",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/owners?limit=100",
+        "headers": {
+          "Host": "127.0.0.1:55380",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Accept-Encoding": "gzip"
+        }
+      }
+    ],
+    "fixture_response": [
+      {
+        "owner": {
+          "id": "tea-00000000000000000000",
+          "name": "QA-output-fixture",
+          "type": "team"
+        },
+        "cursor": "qa279-only-row"
+      }
+    ],
+    "copied_config_removed": true,
+    "credentials": "synthetic local token only"
+  },
+  {
+    "client": "render-2.29-tag",
+    "case": "text default",
+    "binary": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep272-render-2.29",
+    "command": [
+      "render-2.29-tag",
+      "workspaces",
+      "--confirm"
+    ],
+    "configuration": {
+      "RENDER_OUTPUT": "text"
+    },
+    "expected_format": "text",
+    "actual_format": "text",
+    "pass": true,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.046,
+    "stdout": "NAME                 EMAIL    ID                          \nQA-output-fixture             tea-00000000000000000000    \n",
+    "stderr": "",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/owners?limit=100",
+        "headers": {
+          "Host": "127.0.0.1:55380",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Accept-Encoding": "gzip"
+        }
+      }
+    ],
+    "fixture_response": [
+      {
+        "owner": {
+          "id": "tea-00000000000000000000",
+          "name": "QA-output-fixture",
+          "type": "team"
+        },
+        "cursor": "qa279-only-row"
+      }
+    ],
+    "copied_config_removed": true,
+    "credentials": "synthetic local token only"
+  },
+  {
+    "client": "render-2.29-tag",
+    "case": "mixed case default",
+    "binary": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep272-render-2.29",
+    "command": [
+      "render-2.29-tag",
+      "workspaces",
+      "--confirm"
+    ],
+    "configuration": {
+      "RENDER_OUTPUT": "YaMl"
+    },
+    "expected_format": "yaml",
+    "actual_format": "yaml",
+    "pass": true,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.044,
+    "stdout": "- email: \"\"\n  id: tea-00000000000000000000\n  name: QA-output-fixture\n  type: team\n",
+    "stderr": "",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/owners?limit=100",
+        "headers": {
+          "Host": "127.0.0.1:55380",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Accept-Encoding": "gzip"
+        }
+      }
+    ],
+    "fixture_response": [
+      {
+        "owner": {
+          "id": "tea-00000000000000000000",
+          "name": "QA-output-fixture",
+          "type": "team"
+        },
+        "cursor": "qa279-only-row"
+      }
+    ],
+    "copied_config_removed": true,
+    "credentials": "synthetic local token only"
+  },
+  {
+    "client": "render-2.29-tag",
+    "case": "flag over default",
+    "binary": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep272-render-2.29",
+    "command": [
+      "render-2.29-tag",
+      "workspaces",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "configuration": {
+      "RENDER_OUTPUT": "yaml"
+    },
+    "expected_format": "json",
+    "actual_format": "json",
+    "pass": true,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.04,
+    "stdout": "[\n  {\n    \"email\": \"\",\n    \"id\": \"tea-00000000000000000000\",\n    \"name\": \"QA-output-fixture\",\n    \"type\": \"team\"\n  }\n]",
+    "stderr": "",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/owners?limit=100",
+        "headers": {
+          "Host": "127.0.0.1:55380",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Accept-Encoding": "gzip"
+        }
+      }
+    ],
+    "fixture_response": [
+      {
+        "owner": {
+          "id": "tea-00000000000000000000",
+          "name": "QA-output-fixture",
+          "type": "team"
+        },
+        "cursor": "qa279-only-row"
+      }
+    ],
+    "copied_config_removed": true,
+    "credentials": "synthetic local token only"
+  },
+  {
+    "client": "render-2.29-tag",
+    "case": "explicit upstream override",
+    "binary": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep272-render-2.29",
+    "command": [
+      "render-2.29-tag",
+      "workspaces",
+      "--confirm"
+    ],
+    "configuration": {
+      "RENDER_OUTPUT": "yaml"
+    },
+    "expected_format": "yaml",
+    "actual_format": "yaml",
+    "pass": true,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.041,
+    "stdout": "- email: \"\"\n  id: tea-00000000000000000000\n  name: QA-output-fixture\n  type: team\n",
+    "stderr": "",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/owners?limit=100",
+        "headers": {
+          "Host": "127.0.0.1:55380",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Accept-Encoding": "gzip"
+        }
+      }
+    ],
+    "fixture_response": [
+      {
+        "owner": {
+          "id": "tea-00000000000000000000",
+          "name": "QA-output-fixture",
+          "type": "team"
+        },
+        "cursor": "qa279-only-row"
+      }
+    ],
+    "copied_config_removed": true,
+    "credentials": "synthetic local token only"
+  },
+  {
+    "client": "render-2.29-tag",
+    "case": "invalid selected default",
+    "binary": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep272-render-2.29",
+    "command": [
+      "render-2.29-tag",
+      "workspaces",
+      "--confirm"
+    ],
+    "configuration": {
+      "RENDER_OUTPUT": "qa-invalid-output"
+    },
+    "expected_format": "error",
+    "actual_format": "error",
+    "pass": true,
+    "native_exit": 1,
+    "harness_timeout": false,
+    "elapsed": 0.031,
+    "stdout": "",
+    "stderr": "invalid RENDER_OUTPUT value: qa-invalid-output\n",
+    "requests": [],
+    "fixture_response": [
+      {
+        "owner": {
+          "id": "tea-00000000000000000000",
+          "name": "QA-output-fixture",
+          "type": "team"
+        },
+        "cursor": "qa279-only-row"
+      }
+    ],
+    "copied_config_removed": true,
+    "credentials": "synthetic local token only"
+  },
+  {
+    "client": "render-2.29-tag",
+    "case": "valid flag over invalid default",
+    "binary": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep272-render-2.29",
+    "command": [
+      "render-2.29-tag",
+      "workspaces",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "configuration": {
+      "RENDER_OUTPUT": "qa-invalid-output"
+    },
+    "expected_format": "json",
+    "actual_format": "error",
+    "pass": false,
+    "native_exit": 1,
+    "harness_timeout": false,
+    "elapsed": 0.031,
+    "stdout": "",
+    "stderr": "invalid RENDER_OUTPUT value: qa-invalid-output\n",
+    "requests": [],
+    "fixture_response": [
+      {
+        "owner": {
+          "id": "tea-00000000000000000000",
+          "name": "QA-output-fixture",
+          "type": "team"
+        },
+        "cursor": "qa279-only-row"
+      }
+    ],
+    "copied_config_removed": true,
+    "credentials": "synthetic local token only"
+  },
+  {
+    "client": "render-2.29-tag",
+    "case": "help with invalid default",
+    "binary": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep272-render-2.29",
+    "command": [
+      "render-2.29-tag",
+      "workspaces",
+      "--confirm",
+      "--help"
+    ],
+    "configuration": {
+      "RENDER_OUTPUT": "qa-invalid-output"
+    },
+    "expected_format": "help",
+    "actual_format": "help",
+    "pass": true,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.033,
+    "stdout": "Render CLI vdev\n\nList workspaces available to your account\n\nUSAGE\n  render workspaces [flags]\n\nFLAGS\n  -h, --help              Show help for this command\n      --confirm           Skip all confirmation prompts\n  -o, --output <FORMAT>   Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # List workspaces available to the current user\n  render workspaces\n\n",
+    "stderr": "",
+    "requests": [],
+    "fixture_response": [
+      {
+        "owner": {
+          "id": "tea-00000000000000000000",
+          "name": "QA-output-fixture",
+          "type": "team"
+        },
+        "cursor": "qa279-only-row"
+      }
+    ],
+    "copied_config_removed": true,
+    "credentials": "synthetic local token only"
+  }
+]

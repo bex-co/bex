@@ -1,0 +1,26 @@
+--- a/cmd/root.go
++++ b/cmd/root.go
+@@ -261,13 +261,16 @@
+ 		}
+ 
+ 		explicitOutputSet := cmd.Flags().Changed("output")
+-		signals, err := deps.DetectRuntimeSignals()
+-		if err != nil {
+-			return printRootPreRunError(cmd, err)
+-		}
+-		output, err := command.ResolveAutoOutput(explicitOutputSet, requestedOutput, signals)
+-		if err != nil {
+-			return printRootPreRunError(cmd, err)
++		output := requestedOutput
++		if !explicitOutputSet {
++			signals, err := deps.DetectRuntimeSignals()
++			if err != nil {
++				return printRootPreRunError(cmd, err)
++			}
++			output, err = command.ResolveAutoOutput(false, requestedOutput, signals)
++			if err != nil {
++				return printRootPreRunError(cmd, err)
++			}
+ 		}
+ 
+ 		ctx = command.SetFormatInContext(ctx, &output)

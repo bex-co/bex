@@ -1,0 +1,52 @@
+{
+  "sweep": 278,
+  "date_UTC": "2026-10-15T05:36:10.774624+00:00",
+  "source_head": "cb241512bd3c063f78cc659106d1865d6af7d222",
+  "deployed_revision": "unknown",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "auth": "continuing isolated human QA OAuth",
+  "Bex_release": "v0.3.2",
+  "Bex_binary_sha256": "585a5456678ce3bc73d5a71117b901d08add1fab230464d3b5b228101a55c34c",
+  "upstream_pin": "2.27.0/a764810a768202704e7206eb7b87a47211fcd98e",
+  "native_wire_captured": false,
+  "native_actions": [
+    "create",
+    "deploy list",
+    "instances",
+    "suspended restart refusal",
+    "suspended deploy refusal",
+    "resumed restart",
+    "standard async deploy",
+    "delete",
+    "final inventory"
+  ],
+  "API_only_setup": [
+    "save-only first environment value",
+    "suspend",
+    "resume"
+  ],
+  "authored_environment_at_creation": 0,
+  "native_refusals": 4,
+  "new_findings": 0,
+  "owned_services_deleted": 2,
+  "enumerated_deploy_children": 6,
+  "final_quota": {
+    "services": {
+      "used": 6,
+      "terminating": 0,
+      "limit": 25
+    },
+    "postgres": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    },
+    "keyValues": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    }
+  },
+  "product_changes": false,
+  "commit_push": false
+}

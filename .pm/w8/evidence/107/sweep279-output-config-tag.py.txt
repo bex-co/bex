@@ -1,0 +1,37 @@
+from pathlib import Path
+import http.server,json,os,shutil,subprocess,threading,time,yaml
+os.umask(0o077)
+p=Path(__file__).parent;out=p/'sweep279-output-config-tag-results.json';assert not out.exists()
+owner={'id':'tea-00000000000000000000','name':'QA-output-fixture','type':'team'};body=[{'owner':owner,'cursor':'qa279-only-row'}];requests=[]
+class Handler(http.server.BaseHTTPRequestHandler):
+ def log_message(self,*args):pass
+ def do_GET(self):
+  requests.append({'method':'GET','path':self.path,'headers':{k:('<SYNTHETIC_FIXTURE_TOKEN>' if k.lower()=='authorization' else v) for k,v in self.headers.items()}})
+  assert self.path.startswith('/v1/owners')
+  raw=json.dumps(body).encode();self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw)
+server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler);server.daemon_threads=True;thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start();host=f'http://127.0.0.1:{server.server_port}/v1/';results=[]
+try:
+ for label,binary,prefix in [('render-2.29-tag',p/'sweep272-render-2.29','RENDER')]:
+  cases=[('json default','json',None,[], 'json'),('yaml default','yaml',None,[],'yaml'),('text default','text',None,[],'text'),('mixed case default','YaMl',None,[],'yaml'),('flag over default','yaml',None,['-o','json'],'json'),('explicit upstream override','json','yaml',[],'yaml'),('invalid selected default','qa-invalid-output',None,[],'error'),('valid flag over invalid default','qa-invalid-output',None,['-o','json'],'json'),('help with invalid default','qa-invalid-output',None,['--help'],'help')]
+  for index,(name,selected,upstream,flags,expected) in enumerate(cases):
+   cfgdir=p/f'sweep279-tag-{label}-{index}-config';assert not cfgdir.exists();cfgdir.mkdir(mode=0o700);cfg=cfgdir/'cli.yaml';cfg.write_text('version: 1\napi:\n  key: qa279-synthetic-not-a-real-credential\n');cfg.chmod(0o600)
+   env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_')) and k not in ('HTTP_PROXY','HTTPS_PROXY','ALL_PROXY','http_proxy','https_proxy','all_proxy')};env.update({prefix+'_HOST':host,prefix+'_CLI_CONFIG_PATH':str(cfg),prefix+'_CLI_CONFIG_DIR':str(cfgdir),prefix+'_WORKSPACE':owner['id'],prefix+'_OUTPUT':selected,'DO_NOT_TRACK':'1','BEX_CLI_DISABLE_ANALYTICS':'1','BEX_NO_UPDATE_NOTIFIER':'1','RENDER_NO_UPDATE_NOTIFIER':'1'})
+   if upstream is not None:env['RENDER_OUTPUT']=upstream
+   start=len(requests);started=time.monotonic();args=[str(binary),'workspaces','--confirm',*flags]
+   try:
+    try:r=subprocess.run(args,env=env,capture_output=True,text=True,timeout=8);exitcode=r.returncode;stdout=r.stdout;stderr=r.stderr;timed=False
+    except subprocess.TimeoutExpired as e:exitcode=None;stdout=(e.stdout or b'').decode() if isinstance(e.stdout,bytes) else e.stdout or '';stderr=(e.stderr or b'').decode() if isinstance(e.stderr,bytes) else e.stderr or '';timed=True
+   finally:shutil.rmtree(cfgdir)
+   parsed=None
+   try:parsed=json.loads(stdout);kind='json'
+   except ValueError:
+    try:parsed=yaml.safe_load(stdout);kind='yaml' if isinstance(parsed,(list,dict)) else 'text'
+    except yaml.YAMLError:kind='text'
+   if exitcode!=0:kind='error'
+   elif '--help' in flags and 'List workspaces' in stdout:kind='help'
+   data_present='QA-output-fixture' in stdout and owner['id'] in stdout
+   passed=not timed and kind==expected and (expected in ['error','help'] or data_present)
+   value={'client':label,'case':name,'binary':str(binary),'command':[label,*args[1:]],'configuration':{prefix+'_OUTPUT':selected,**({'RENDER_OUTPUT':upstream} if upstream is not None else {})},'expected_format':expected,'actual_format':kind,'pass':passed,'native_exit':exitcode,'harness_timeout':timed,'elapsed':round(time.monotonic()-started,3),'stdout':stdout,'stderr':stderr,'requests':requests[start:],'fixture_response':body,'copied_config_removed':not cfgdir.exists(),'credentials':'synthetic local token only'}
+   results.append(value);out.write_text(json.dumps(results,indent=2)+'\n');out.chmod(0o600);print(json.dumps({k:value[k] for k in ['client','case','expected_format','actual_format','pass','native_exit']}),flush=True)
+finally:server.shutdown();server.server_close();thread.join(timeout=2)
+print(json.dumps({'cases':len(results),'failed_cases':sum(not v['pass'] for v in results),'server_stopped':not thread.is_alive()}),flush=True)
