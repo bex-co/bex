@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Github, GitBranch, Box } from "lucide-react";
+import { GitBranch, Box } from "lucide-react";
+import { GithubIcon } from "@/common/components/github-icon";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
@@ -140,7 +141,7 @@ export function ServiceSourcePicker({
           )}
         >
           <TabsTrigger value="github" className={TAB_TRIGGER_CLASS}>
-            <Github className="hidden size-4 sm:block" />
+            <GithubIcon className="hidden size-4 sm:block" />
             {t("services.createTabGitHub")}
           </TabsTrigger>
           <TabsTrigger value="git" className={TAB_TRIGGER_CLASS}>
@@ -160,7 +161,7 @@ export function ServiceSourcePicker({
             <Skeleton className="h-24 w-full" />
           ) : gitHubDisconnected ? (
             <div className="flex flex-col items-center gap-3 rounded-lg border p-6 text-center">
-              <Github className="size-8 text-muted-foreground" />
+              <GithubIcon className="size-8 text-muted-foreground" />
               <div>
                 <p className="font-medium">
                   {t("services.createGitConnectPromptTitle")}
@@ -170,7 +171,7 @@ export function ServiceSourcePicker({
                 </p>
               </div>
               <Button onClick={connect} disabled={connecting}>
-                <Github className="size-4" />
+                <GithubIcon className="size-4" />
                 {t("services.createGitConnectButton")}
               </Button>
             </div>
@@ -219,7 +220,7 @@ export function ServiceSourcePicker({
                           )}
                         >
                           <div className="flex min-w-0 items-center gap-2">
-                            <Github className="size-4 shrink-0 text-muted-foreground" />
+                            <GithubIcon className="size-4 shrink-0 text-muted-foreground" />
                             <span className="truncate text-sm font-medium">
                               {r.fullName}
                             </span>

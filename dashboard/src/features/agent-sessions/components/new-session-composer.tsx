@@ -2,7 +2,8 @@ import { useMemo, useRef, useState } from "react";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { AtSign, Github, Loader2, Settings2 } from "lucide-react";
+import { AtSign, Loader2, Settings2 } from "lucide-react";
+import { GithubIcon } from "@/common/components/github-icon";
 import {
   Alert,
   AlertDescription,
@@ -398,7 +399,7 @@ function GitHubEmptyCallout() {
       className="flex flex-col items-center gap-3 px-6 py-8 text-center"
       data-testid="agent-composer-github-empty"
     >
-      <Github className="text-muted-foreground size-8" />
+      <GithubIcon className="text-muted-foreground size-8" />
       <div className="space-y-1">
         <p className="text-sm font-medium">
           {t("agentSessions.connectGitHubTitle")}

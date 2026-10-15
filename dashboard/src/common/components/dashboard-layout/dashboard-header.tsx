@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useRouterState } from "@tanstack/react-router";
-import { CircleHelp, Github, Library, SquareTerminal } from "lucide-react";
+import { CircleHelp, Library, SquareTerminal } from "lucide-react";
+import { GithubIcon } from "@/common/components/github-icon";
 import { Authenticated } from "@/common/components/authenticated";
 import { UserNav } from "@/common/components/user-nav.tsx";
 import { Button } from "@/common/components/ui/button";
@@ -94,7 +95,7 @@ export function HelpMenu() {
             target="_blank"
             rel="noreferrer"
           >
-            <Github />
+            <GithubIcon />
             {t("common.topbarRepository")}
           </a>
         </DropdownMenuItem>

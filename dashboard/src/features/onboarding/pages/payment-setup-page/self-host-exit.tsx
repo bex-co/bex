@@ -14,7 +14,8 @@
 
 import { useRef, useState } from "react";
 import { useMutation } from "@apollo/client/react";
-import { Github, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { GithubIcon } from "@/common/components/github-icon";
 import {
   Alert,
   AlertDescription,
@@ -117,7 +118,7 @@ export function SelfHostExit() {
         className="h-auto p-0 font-medium text-primary"
         onClick={() => setOpen(true)}
       >
-        <Github aria-hidden="true" className="size-4" />
+        <GithubIcon aria-hidden="true" className="size-4" />
         {t("onboarding.paymentSetupSelfHost")}
       </Button>
 

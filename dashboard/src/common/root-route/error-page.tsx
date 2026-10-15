@@ -9,6 +9,12 @@ import {
 } from "@/common/lib/document-head";
 import { reportRouteError } from "@/common/lib/report-route-error";
 
+/** A route may throw anything, not only an Error. */
+function messageOf(error: unknown): string | undefined {
+  const message = (error as { message?: unknown } | null)?.message;
+  return typeof message === "string" ? message : undefined;
+}
+
 /**
  * A route chunk from an older deploy is gone, so retrying in this document
  * re-imports the same dead URL; only a fresh document recovers (w4/269).
@@ -16,12 +22,11 @@ import { reportRouteError } from "@/common/lib/report-route-error";
  * request's "Failed to fetch" keeps the in-place retry.
  */
 function isStaleChunkError(error: unknown): boolean {
-  const message = (error as { message?: unknown } | null)?.message;
+  const message = messageOf(error) ?? "";
   return (
-    typeof message === "string" &&
-    (message.startsWith("Failed to fetch dynamically imported module") ||
-      message.startsWith("error loading dynamically imported module") ||
-      message.startsWith("Importing a module script failed"))
+    message.startsWith("Failed to fetch dynamically imported module") ||
+    message.startsWith("error loading dynamically imported module") ||
+    message.startsWith("Importing a module script failed")
   );
 }
 
@@ -41,7 +46,7 @@ export default function ErrorPage({ error, reset }: ErrorComponentProps) {
     window.history.back();
   };
 
-  const errorMessage = error?.message || t("common.errorDefaultMessage");
+  const errorMessage = messageOf(error) || t("common.errorDefaultMessage");
 
   return (
     <>

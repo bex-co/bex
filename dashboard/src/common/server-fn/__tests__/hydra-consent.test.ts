@@ -1,3 +1,6 @@
+// @vitest-environment node
+// Node, as in production: see bounded-body.test.ts for why jsdom cannot host
+// readBoundedFormData.
 import { createHash } from "node:crypto";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {

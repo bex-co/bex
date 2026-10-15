@@ -50,34 +50,35 @@ describe("route error retry", () => {
   });
 });
 
+const href = "/project/prj-1?env=evm-1&q=api#environments";
+
+/** Renders href through a route whose beforeLoad always throws thrown. */
+function renderFailing(thrown: unknown, asRootError = false) {
+  const beforeLoad = vi.fn().mockRejectedValue(thrown);
+  const root = createRootRoute({
+    component: Outlet,
+    ...(asRootError ? { errorComponent: ErrorPage } : {}),
+  });
+  const destination = createRoute({
+    getParentRoute: () => root,
+    path: "/project/$projectId",
+    beforeLoad,
+    component: () => <div>Project</div>,
+  });
+  const router = createRouter({
+    routeTree: root.addChildren([destination]),
+    history: createMemoryHistory({ initialEntries: [href] }),
+    ...(asRootError ? {} : { defaultErrorComponent: ErrorPage }),
+    defaultPendingMinMs: 0,
+  });
+  render(<RouterProvider router={router} />);
+  return { beforeLoad, router };
+}
+
 // w4/269: after a deploy, an open tab's lazy route chunk URL answers with HTML.
 // Try again re-ran the route inside the same document, re-importing the same
 // dead URL forever; only a fresh document at the same href recovers.
 describe("route error retry after a bundle update", () => {
-  const href = "/project/prj-1?env=evm-1&q=api#environments";
-
-  function renderFailing(error: Error, asRootError = false) {
-    const beforeLoad = vi.fn().mockRejectedValue(error);
-    const root = createRootRoute({
-      component: Outlet,
-      ...(asRootError ? { errorComponent: ErrorPage } : {}),
-    });
-    const destination = createRoute({
-      getParentRoute: () => root,
-      path: "/project/$projectId",
-      beforeLoad,
-      component: () => <div>Project</div>,
-    });
-    const router = createRouter({
-      routeTree: root.addChildren([destination]),
-      history: createMemoryHistory({ initialEntries: [href] }),
-      ...(asRootError ? {} : { defaultErrorComponent: ErrorPage }),
-      defaultPendingMinMs: 0,
-    });
-    render(<RouterProvider router={router} />);
-    return { beforeLoad, router };
-  }
-
   const reload = vi.fn();
   beforeEach(() => {
     // React and the router report the intentional boundary failure.
@@ -127,5 +128,50 @@ describe("route error retry after a bundle update", () => {
     await waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(2));
     expect(reload).not.toHaveBeenCalled();
     expect(router.state.location.href).toBe(href);
+  });
+});
+
+// A route may throw anything. The page shows a thrown object's own message
+// and falls back to the generic one, rather than rendering nothing.
+describe("route error message", () => {
+  beforeEach(() => {
+    // React and the router report the intentional boundary failure.
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it.each([
+    [
+      "an Error's message",
+      new Error("Memberships unavailable"),
+      "Memberships unavailable",
+    ],
+    [
+      "a plain object's message",
+      { message: "Quota exceeded" },
+      "Quota exceeded",
+    ],
+    [
+      "the generic message for a thrown string",
+      "boom",
+      "Something went wrong.",
+    ],
+    [
+      "the generic message for an object without one",
+      { status: 503 },
+      "Something went wrong.",
+    ],
+    [
+      "the generic message for a non-string message",
+      { message: 42 },
+      "Something went wrong.",
+    ],
+  ])("shows %s", async (_, thrown, shown) => {
+    renderFailing(thrown);
+    expect(await screen.findByText(shown)).toBeVisible();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeVisible();
   });
 });
