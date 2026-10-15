@@ -6,6 +6,7 @@ review request. Public registry metadata only; no cluster or push credentials.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -18,12 +19,17 @@ from pathlib import Path
 
 SCHEMA = "bex.build-toolchain-freshness/v1"
 CLUSTER_BUILDER_ID = "cnb-builder"
-KINDS = frozenset({"builder", "stack", "native-base", "helper"})
+KINDS = frozenset({"builder", "stack", "native-base", "helper", "npm-package"})
+# An npm-package pin (w8/m73 pnpm) is a registry tarball, not an image: its
+# upstream is registry.npmjs.org/<name>:<dist-tag> and its digest is the sha256
+# of the tarball that dist-tag currently names.
+NPM_REGISTRY = "registry.npmjs.org"
 DIGEST_RE = re.compile(r"sha256:[a-f0-9]{64}")
 ID_RE = re.compile(r"^[a-z][a-z0-9-]{0,62}$")
 
 CANONICAL_PIN_SITES = (
     "lego/operator/internal/build/native.go",
+    "lego/operator/internal/build/nativepnpm.go",
     "lego/operator/internal/build/build.go",
     "lego/operator/cmd/manager/main.go",
     "lego/operator/config/manager/manager.yaml",
@@ -237,6 +243,26 @@ def http_digest(url: str, headers: dict[str, str]) -> str:
     return digest.strip()
 
 
+def http_sha256(url: str) -> str:
+    digest = hashlib.sha256()
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url), timeout=120) as resp:
+            for chunk in iter(lambda: resp.read(1 << 16), b""):
+                digest.update(chunk)
+    except (urllib.error.URLError, TimeoutError) as err:
+        raise RuntimeError(f"{url}: {err}") from err
+    return "sha256:" + digest.hexdigest()
+
+
+def resolve_npm_package(ref: str) -> str:
+    name, tag = split_name_tag(ref.removeprefix(NPM_REGISTRY + "/"))
+    meta = http_json(f"https://{NPM_REGISTRY}/{urllib.parse.quote(name, safe='@')}/{urllib.parse.quote(tag)}")
+    tarball = (meta.get("dist") or {}).get("tarball")
+    if not isinstance(tarball, str) or not tarball.startswith(f"https://{NPM_REGISTRY}/"):
+        raise RuntimeError(f"{ref}: no {NPM_REGISTRY} tarball in dist metadata")
+    return http_sha256(tarball)
+
+
 def resolve_upstream(ref: str) -> str:
     fixtures = fixture_digests()
     if fixtures is not None:
@@ -246,6 +272,8 @@ def resolve_upstream(ref: str) -> str:
             return digest_of(fixtures[ref])
         except ValueError:
             fail(f"FRESHNESS_DIGESTS digest for {ref} is malformed")
+    if ref.startswith(NPM_REGISTRY + "/"):
+        return resolve_npm_package(ref)
     registry, repo, tag = parse_upstream(ref)
     api_host = REGISTRY_API.get(registry, registry)
     auth = REGISTRY_AUTH.get(registry)

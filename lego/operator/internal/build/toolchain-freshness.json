@@ -138,6 +138,15 @@
       "files": ["lego/operator/internal/build/native.go"]
     },
     {
+      "id": "native-pnpm",
+      "kind": "npm-package",
+      "upstream": "registry.npmjs.org/pnpm:latest-10",
+      "committed": "pnpm-10.34.6.tgz@sha256:44d7db90fcbb2315b581f85989a913466765421fc656c28e80fac1b7ab5be456",
+      "resolved_at": "2026-10-15T22:45:00Z",
+      "source": "npm registry pnpm@latest-10 = 10.34.6 tarball sha256 (registry integrity sha512-fhrmaoOpFDwRjMGUTzfMTyuKzd7aSwAc+niQj25G5F4VKSc5ymydAmQmzHV+kxjMmMVVHWoWwWUJewAouoe05g== verified); pure-JS, engines node>=18.12, installed into every native Node image (w8/m73)",
+      "files": ["lego/operator/internal/build/nativepnpm.go"]
+    },
+    {
       "id": "native-node",
       "kind": "native-base",
       "upstream": "docker.io/library/node:24-bookworm",

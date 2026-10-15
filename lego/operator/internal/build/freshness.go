@@ -44,7 +44,8 @@ const (
 var toolchainDigestRE = regexp.MustCompile(`sha256:[a-f0-9]{64}`)
 
 // ToolchainInventory is the checked-in freshness metadata for every builder,
-// native-base, and helper image the build plane pins.
+// native-base, and helper image the build plane pins, plus the npm-package
+// tarballs (pnpm, w8/m73) it installs into native images.
 type ToolchainInventory struct {
 	Schema string           `json:"schema"`
 	Images []ToolchainImage `json:"images"`
@@ -106,7 +107,7 @@ func validateToolchainImage(i int, img ToolchainImage) error {
 		return fmt.Errorf("%s: missing id", prefix)
 	}
 	switch img.Kind {
-	case "builder", "stack", "native-base", "helper":
+	case "builder", "stack", "native-base", "helper", "npm-package":
 	default:
 		return fmt.Errorf("%s: unknown kind %q", prefix, img.Kind)
 	}

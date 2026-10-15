@@ -261,12 +261,12 @@ done < ` + nativeEnvSecretPath + "\n"
 	run := shellJSON(nativeEnvLoaderPrefix + o.BuildCommand)
 	base := fmt.Sprintf(`# syntax=docker/dockerfile:1.7
 FROM %s
-WORKDIR /opt/render/project/src
+%sWORKDIR /opt/render/project/src
 COPY . .
 COPY <<'%s' %s
 %s%s
 RUN --mount=type=secret,id=render-env,target=%s%s %s
-`, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
+`, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o), nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
 		nativeEnvSecretPath, fileMounts.String(), run)
 	if o.StaticSite {
 		// No PORT/CMD: the image only carries the built site for the publish
