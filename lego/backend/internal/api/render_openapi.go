@@ -537,6 +537,38 @@ func isBexNativeLiteralRoute(contract *renderOpenAPIContract, pattern string) bo
 	return false
 }
 
+// isBexNativeShortRoute is isBexNativeLiteralRoute's other half (w8/109):
+// the legacy router also matches a shorter bex route to a longer Render
+// template by leaving that template's trailing parameters empty, so
+// `PUT /v1/env-groups/{id}/env-vars` (bex's whole-list replace) met Render's
+// single-key `/env-groups/{envGroupId}/env-vars/{envVarKey}` and died on an
+// empty envVarKey. It is one when the bex route's segments are the template's
+// prefix, the template only adds parameters, and Render documents no exact
+// path of its own for the bex route.
+func isBexNativeShortRoute(contract *renderOpenAPIContract, pattern, template string) bool {
+	_, bexPath, ok := bexPatternPath(pattern)
+	if !ok || strings.Contains(bexPath, "...}") || contract.document.Paths.Find(bexPath) != nil {
+		return false
+	}
+	bexSegments := strings.Split(strings.Trim(bexPath, "/"), "/")
+	renderSegments := strings.Split(strings.Trim(template, "/"), "/")
+	if len(bexSegments) >= len(renderSegments) {
+		return false
+	}
+	isParam := func(segment string) bool { return strings.HasPrefix(segment, "{") && strings.HasSuffix(segment, "}") }
+	for i, segment := range bexSegments {
+		if !isParam(renderSegments[i]) && segment != renderSegments[i] {
+			return false
+		}
+	}
+	for _, segment := range renderSegments[len(bexSegments):] {
+		if !isParam(segment) {
+			return false
+		}
+	}
+	return true
+}
+
 func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if retiredPublicRESTAlias(r) {
 		http.NotFound(w, r)
@@ -570,7 +602,7 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	// Render's `GET /webhooks/{webhookId}`, failed the id pattern, and died
 	// with 400 before its handler ever ran — the route was registered,
 	// authz-classified and documented, and unreachable.
-	if isBexNativeLiteralRoute(v.contract, pattern) {
+	if isBexNativeLiteralRoute(v.contract, pattern) || isBexNativeShortRoute(v.contract, pattern, route.Path) {
 		v.next.ServeHTTP(w, r)
 		return
 	}

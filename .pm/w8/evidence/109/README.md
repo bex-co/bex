@@ -28,7 +28,7 @@ A redundant raw-links check was accidentally left in the post-delete reconciliat
 
 Own service srv-db8a8gdeelgc73d2i1ag and all eight recorded deployment children are deleted natively after enumeration. The own group evg-db8a8n5eelgc73d2i1c0 is deleted only after its raw GraphQL serviceLinks and rendered links are both empty. All six baseline services and baseline groups are preserved; final services used6/terminating0 and no group remains. The binary input file, copied Render config and private request file are removed. No baseline, paid or foreign resource is changed.
 
-Source HEADc1c041b1f43cc320454c0d2dab82bcacfba360c9; exact deployed artifact unknown. Published Bex0.3.2 and unchanged Render2.27/a764810a7682 supply actual create/deploy controls. Bulk-route and writer calls are explicitly API-only; no env-group native CLI verb or full live native mutation wire is claimed. No hosted candidate fix, dashboard feedback, independent Render production, full real-DB suite or direct production Kubernetes inventory. Product source is unchanged. [Issue109](../../109.md).
+Source HEADc1c041b1f43cc320454c0d2dab82bcacfba360c9; exact deployed artifact unknown. Published Bex0.3.2 and unchanged Render2.27/a764810a7682 supply actual create/deploy controls. Bulk-route and writer calls are explicitly API-only; no env-group native CLI verb or full live native mutation wire is claimed. No hosted candidate fix, dashboard feedback, independent Render production, full real-DB suite or direct production Kubernetes inventory. Product source is unchanged. [Issue109](../../blocked/109.md).
 
 ## Isolated normal-save follow-up — sweep298
 
