@@ -180,6 +180,15 @@ type EnvSeeder interface {
 	SeedEnvVars(ctx context.Context, service string, literals map[string]string, generates []string) error
 }
 
+// EnvCopier writes a service's fromService.envVarKey copies of its siblings'
+// generateValue vars into its mutable env store: the value exists only after
+// the apply mints it, and as a secret it never rides spec.Env (w1/m175).
+// Reading a source is a sensitive reveal, authorized as one; a copy already
+// equal to its source writes nothing and rolls nothing.
+type EnvCopier interface {
+	CopyEnvVars(ctx context.Context, to string, copies []core.EnvVarCopy) error
+}
+
 // BlueprintGroupingStore is the narrow store seam used by Render's canonical
 // projects[].environments[] Blueprint vocabulary. The apply path resolves or
 // creates groups by name, then threads the resulting environment id through the
@@ -564,6 +573,10 @@ type parsedService struct {
 	// current links or seeds (w8/m64).
 	env         serviceEnv
 	stateCopies []stateCopy
+	// generatedCopies are the envVarKey copies of a sibling's generateValue,
+	// written into this service's store after the apply mints the source
+	// (w1/m175).
+	generatedCopies []generatedCopy
 	// registryCredentialName is the declared fromRegistryCreds name (service
 	// registryCredential or image.creds), resolved to a credential id by
 	// resolveBlueprintRegistryCredentials before validate/apply (w8/m19 t005).
@@ -947,6 +960,11 @@ type deferredService struct {
 // returned for the post-create patch pass.
 func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsByName map[string]*appv1alpha1.App, assignments map[string]core.EnvironmentAssignment, databaseIDs, kvCRNames, serviceSlugs map[string]string, lookupSlug func(string) string, res *StackResult) ([]deferredService, error) {
 	var deferred []deferredService
+	type appliedTarget struct {
+		ctx context.Context
+		ref string
+	}
+	targets := make(map[string]appliedTarget, len(st.services))
 	for _, svc := range st.services {
 		if err := requireDeployAuthority(ctx, s); err != nil {
 			return nil, err
@@ -968,6 +986,7 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 			return nil, err
 		}
 		verbCtx, ref := stackServiceTarget(ctx, app)
+		targets[svc.req.Name] = appliedTarget{ctx: verbCtx, ref: ref}
 		serviceSlugs[svc.req.Name] = v.Slug
 		if len(laterRefs) > 0 {
 			deferred = append(deferred, deferredService{req: svc.req, fields: svc.fields, refs: laterRefs, app: app})
@@ -996,6 +1015,25 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 			}
 		}
 		res.Services = append(res.Services, v)
+	}
+	// Every service now exists and every generateValue is minted, whatever
+	// order the file declared them in: copy each generated source value into
+	// its consumers (w1/m175).
+	for _, svc := range st.services {
+		if len(svc.generatedCopies) == 0 {
+			continue
+		}
+		if err := requireDeployAuthority(ctx, s); err != nil {
+			return nil, err
+		}
+		copies := make([]core.EnvVarCopy, 0, len(svc.generatedCopies))
+		for _, c := range svc.generatedCopies {
+			copies = append(copies, core.EnvVarCopy{From: targets[c.source].ref, FromKey: c.sourceKey, ToKey: c.key})
+		}
+		to := targets[svc.req.Name]
+		if err := s.EnvCopier.CopyEnvVars(to.ctx, to.ref, copies); err != nil {
+			return nil, fmt.Errorf("copying generated values into %q: %w", svc.req.Name, err)
+		}
 	}
 	return deferred, nil
 }
@@ -1403,7 +1441,7 @@ func (s *Service) currentStateCopyProblems(ctx context.Context, st parsedStack, 
 				}
 				srcEnv := source.env
 				srcEnv.groupLinks = linked
-				env = knownServiceEnv(srcEnv, st.envGroups)
+				env, _ = knownServiceEnv(srcEnv, st.envGroups)
 				known[c.source] = env
 			}
 			v, ok := env[c.sourceKey]
@@ -1747,7 +1785,7 @@ func (s *Service) preflightBlueprintEnv(ctx context.Context, st parsedStack) err
 		declared[g.name] = true
 	}
 	usesGroups := len(st.envGroups) > 0
-	usesSeed := false
+	usesSeed, usesCopy := false, false
 	var groupLinks []string
 	for _, svc := range st.services {
 		if len(svc.groupLinks) > 0 {
@@ -1757,12 +1795,25 @@ func (s *Service) preflightBlueprintEnv(ctx context.Context, st parsedStack) err
 		if len(svc.seedLiterals) > 0 || len(svc.seedGenerates) > 0 {
 			usesSeed = true
 		}
+		if len(svc.generatedCopies) > 0 {
+			usesCopy = true
+		}
 	}
 	if usesGroups && s.EnvGroups == nil {
 		return fmt.Errorf("%w: render.yaml uses envVarGroups/fromGroup but env groups are unavailable (OpenBao not configured)", core.ErrBadRequest)
 	}
 	if usesSeed && s.EnvSeeder == nil {
 		return fmt.Errorf("%w: render.yaml uses sync:false/generateValue but the env-vars store is unavailable (OpenBao not configured)", core.ErrBadRequest)
+	}
+	if usesCopy && s.EnvCopier == nil {
+		return fmt.Errorf("%w: render.yaml copies a generated value with fromService.envVarKey but the env-vars store is unavailable (OpenBao not configured)", core.ErrBadRequest)
+	}
+	// Copying reads the source's value, a sensitive reveal: refuse a caller who
+	// cannot make it before any service is written, not after every one is.
+	if usesCopy {
+		if err := s.AuthorizeFresh(ctx, core.RelCanViewSensitive); err != nil {
+			return err
+		}
 	}
 	if len(groupLinks) == 0 {
 		return nil
@@ -2049,7 +2100,7 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 			svc:     parsedService{req: req, fields: blueprintServiceFields(fieldsByResource[BlueprintResourceService][req.Name]), groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, promptKeys: se.promptKeys, env: se, registryCredentialName: credName, grouping: a.grouping, ungrouped: a.ungrouped},
 			refVars: se.refVars,
 		})
-		idx.serviceKnownEnv[req.Name] = knownServiceEnv(se, st.envGroups)
+		idx.serviceKnownEnv[req.Name], idx.serviceGenerated[req.Name] = knownServiceEnv(se, st.envGroups)
 		idx.serviceTypes[req.Name] = req.Type
 		if req.Type == appv1alpha1.TypeWebService || req.Type == appv1alpha1.TypePrivateService {
 			port := req.Port
@@ -2155,6 +2206,10 @@ type stackIndex struct {
 	// seeds, knownServiceEnv), the resolvable target set for a
 	// fromService.envVarKey copy (a from*/generateValue var has no parse-time value).
 	serviceKnownEnv map[string]map[string]knownValue
+	// serviceGenerated: name -> the keys that service's process gets from its
+	// own generateValue (knownServiceEnv), which an envVarKey copy takes at
+	// apply rather than at parse (w1/m175).
+	serviceGenerated map[string]map[string]bool
 	// serviceTypes: name -> the App type each declared service resolved to, so
 	// a fromService reference's own type can be checked against it (w8/096).
 	serviceTypes map[string]string
@@ -2173,12 +2228,13 @@ var serviceRefTypes = map[string][]string{
 
 func newStackIndex(serviceCount, databaseCount int) *stackIndex {
 	return &stackIndex{
-		names:           make(map[string]bool, serviceCount+databaseCount),
-		databaseNames:   make(map[string]bool, databaseCount),
-		databasePoolers: make(map[string]bool, databaseCount),
-		servicePorts:    make(map[string]int32, serviceCount),
-		serviceKnownEnv: make(map[string]map[string]knownValue, serviceCount),
-		serviceTypes:    make(map[string]string, serviceCount),
+		names:            make(map[string]bool, serviceCount+databaseCount),
+		databaseNames:    make(map[string]bool, databaseCount),
+		databasePoolers:  make(map[string]bool, databaseCount),
+		servicePorts:     make(map[string]int32, serviceCount),
+		serviceKnownEnv:  make(map[string]map[string]knownValue, serviceCount),
+		serviceGenerated: make(map[string]map[string]bool, serviceCount),
+		serviceTypes:     make(map[string]string, serviceCount),
 	}
 }
 
@@ -2242,6 +2298,20 @@ func (idx *stackIndex) classifyRef(svc *parsedService, r envRef) error {
 			key: r.Key, target: r.FromService.Name, port: port,
 			hostport: r.FromService.Property == serviceRefPropertyHostPort,
 		})
+		return nil
+	}
+	// A copy of a sibling's generated value has no parse-time value: the apply
+	// mints the source, then writes the same value into this service's store,
+	// on every sync, as Render re-copies (w1/m175).
+	if ref := r.FromService; ref != nil && ref.EnvVarKey != "" && idx.serviceGenerated[ref.Name][ref.EnvVarKey] {
+		// The copy lives in this service's store, where any other declaration
+		// of the key would shadow it (container env wins) or be refused as
+		// manifest-owned when the copy is written.
+		if declaredElsewhere(svc.env, r) {
+			return envRefError(svc.req.Name, r.Key, fmt.Errorf("copies %s's generated %s, so it must be the only declaration of %s", ref.Name, ref.EnvVarKey, r.Key))
+		}
+		svc.generatedCopies = append(svc.generatedCopies, generatedCopy{key: r.Key, source: ref.Name, sourceKey: ref.EnvVarKey})
+		svc.req.storeEnvKeys = append(svc.req.storeEnvKeys, r.Key)
 		return nil
 	}
 	ev, err := resolveRef(r.bexEnvVar, idx.servicePorts, idx.serviceKnownEnv)
@@ -2372,12 +2442,16 @@ func atEnvEntry(index int, err error) error { return &envEntryError{index: index
 // then its references. A value with no parse-time content (a generated value,
 // an unanswered prompt, a reference) masks what it overrides, and a link to a
 // group not declared in the file makes group keys unknowable.
-func knownServiceEnv(se serviceEnv, groups []parsedEnvGroup) map[string]knownValue {
+// generated is the set of keys the process gets from the service's own
+// generateValue, decided by the same precedence: a value the copy can take
+// only after the apply mints it (w1/m175).
+func knownServiceEnv(se serviceEnv, groups []parsedEnvGroup) (known map[string]knownValue, generated map[string]bool) {
 	byName := make(map[string]parsedEnvGroup, len(groups))
 	for _, g := range groups {
 		byName[g.name] = g
 	}
-	known := map[string]knownValue{}
+	known = map[string]knownValue{}
+	generated = map[string]bool{}
 	seen := map[string]bool{}
 	for _, link := range se.groupLinks {
 		if seen[link] {
@@ -2398,6 +2472,7 @@ func knownServiceEnv(se serviceEnv, groups []parsedEnvGroup) map[string]knownVal
 	}
 	for _, k := range se.seedGenerates {
 		delete(known, k)
+		generated[k] = true
 	}
 	for _, k := range se.promptKeys {
 		delete(known, k)
@@ -2407,17 +2482,20 @@ func knownServiceEnv(se serviceEnv, groups []parsedEnvGroup) map[string]knownVal
 	// either entry order (w8/m64 t008).
 	for k, v := range se.seedLiterals {
 		known[k] = knownValue{value: v, seed: true}
+		delete(generated, k)
 	}
 	for k, v := range se.literals {
 		known[k] = knownValue{value: v}
+		delete(generated, k)
 	}
 	// A reference resolves after every literal and is appended after them in
 	// spec.Env, so it wins at runtime: a same-key literal, in either entry
 	// order, is not the value the process sees and must not be copied (w8/102).
 	for _, r := range se.refVars {
 		delete(known, r.Key)
+		delete(generated, r.Key)
 	}
-	return known
+	return known, generated
 }
 
 // knownValue is one plainly-known source value and where it comes from: the
@@ -2427,6 +2505,23 @@ type knownValue struct {
 	value string
 	seed  bool
 	group string
+}
+
+// declaredElsewhere reports whether a service declares r's key in any entry
+// besides r.
+func declaredElsewhere(se serviceEnv, r envRef) bool {
+	_, literal := se.literals[r.Key]
+	_, seed := se.seedLiterals[r.Key]
+	if literal || seed || slices.Contains(se.seedGenerates, r.Key) || slices.Contains(se.promptKeys, r.Key) {
+		return true
+	}
+	return slices.ContainsFunc(se.refVars, func(other envRef) bool { return other.Key == r.Key && other.index != r.index })
+}
+
+// generatedCopy is an envVarKey copy of a sibling's generateValue: key on the
+// consumer takes sourceKey's value from source once the apply has minted it.
+type generatedCopy struct {
+	key, source, sourceKey string
 }
 
 // stateCopy is an envVarKey copy whose value came from a seed or a linked
@@ -3106,6 +3201,13 @@ func (s *Service) updateStackService(ctx context.Context, req CreateRequest, fie
 	specChanged, err := applyBlueprintServiceSpec(&final.Spec, desired, fields)
 	if err != nil {
 		return AppView{}, fmt.Errorf("%w: %s", core.ErrBadRequest, err)
+	}
+	// A key this file now copies into the store must not stay on spec.Env from
+	// an earlier apply: the container env would shadow the copy, and the copy's
+	// write would be refused as manifest-owned (w1/m175).
+	if n := len(final.Spec.Env); len(req.storeEnvKeys) > 0 {
+		final.Spec.Env = slices.DeleteFunc(final.Spec.Env, func(e appv1alpha1.EnvVar) bool { return slices.Contains(req.storeEnvKeys, e.Name) })
+		specChanged = specChanged || len(final.Spec.Env) != n
 	}
 	domainsChanged := existing.Spec.Host != final.Spec.Host ||
 		!slices.Equal(existing.Spec.Hosts, final.Spec.Hosts) ||

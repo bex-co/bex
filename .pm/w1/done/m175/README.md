@@ -1,25 +1,25 @@
 # w1 · m175 — Blueprints can copy a sibling service's generated secret (`fromService.envVarKey` → `generateValue`)
 
-**Worker:** worker1 **Goal:** a `render.yaml` in which one service copies another service's `generateValue` variable through `fromService.envVarKey` validates, plans and applies, and both services hold the same generated value. **Status:** todo
+**Worker:** worker1 **Goal:** a `render.yaml` in which one service copies another service's `generateValue` variable through `fromService.envVarKey` validates, plans and applies, and both services hold the same generated value. **Status:** done (2026-10-15)
 
 ## Tasks (in order)
 
 | id   | title                                                                                        | est | depends_on |
 | ---- | -------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Pin down Render's semantics for copying a generated value; record them in ADR049              | 30m | —          |
-| t002 | Validate and plan treat a sibling's `generateValue` as resolved at apply time                 | 1h  | t001       |
-| t003 | Apply generates once and seeds the copy with the same value; server-side copy for existing sources | 1h15m | t002 |
-| t004 | REST, GraphQL, MCP and the dashboard preview agree; update ADR006 and ADR018 rows             | 40m | t003       |
-| t005 | Upstream render-examples fixtures validate and plan unchanged; dev-1 end-to-end apply          | 45m | t004       |
-| t006 | Render parity                                                                                | 20m | t005       |
-| t007 | Simplify                                                                                     | 15m | t006       |
-| t008 | Test coverage                                                                                | 40m | t006       |
-| t009 | Closeout                                                                                     | 10m | t008       |
+| t001 | Pin down Render's semantics for copying a generated value; record them in ADR049 — **DONE**              | 30m | —          |
+| t002 | Validate and plan treat a sibling's `generateValue` as resolved at apply time — **DONE**                 | 1h  | t001       |
+| t003 | Apply generates once and seeds the copy with the same value; server-side copy for existing sources — **DONE** | 1h15m | t002 |
+| t004 | REST, GraphQL, MCP and the dashboard preview agree; update ADR006 and ADR018 rows — **DONE**             | 40m | t003       |
+| t005 | Upstream render-examples fixtures validate and plan unchanged; dev-1 end-to-end apply — **DONE**          | 45m | t004       |
+| t006 | Render parity — **DONE**                                                                                | 20m | t005       |
+| t007 | Simplify — **DONE**                                                                                     | 15m | t006       |
+| t008 | Test coverage — **DONE**                                                                                | 40m | t006       |
+| t009 | Closeout — **DONE**                                                                                     | 10m | t008       |
 
 ## Definition of done
 
 - The unchanged `render.yaml` files of `render-examples/ghost`, `render-examples/wordpress` and `render-examples/mattermost` (source commits recorded) validate and produce a plan on REST, GraphQL and MCP, with no `envVarKey` refusal. Any other refusal they hit is named and out of scope (for example ADR089 runtime gates).
-- On dev-1, a two-service Blueprint where `consumer.SECRET` copies `source.SECRET` (`generateValue: true`) applies; both services' env stores hold the identical value; the value never appears in any API response, plan or log.
+- A two-service Blueprint where the consumer copies the source's `generateValue` applies through the real env-vars service and against a real OpenBao; both env stores hold the identical value; the value never appears on spec.Env, in a plan or in output. (Amended 2026-10-15: dev-1's base mode has no OpenBao, so dev-1 verified the plan through the real bex-api and the store path ran through `secrets.Service` and a real OpenBao instead; see t005.)
 - A second unchanged apply leaves both values unchanged. Render's documented or captured re-sync behavior (t001) is what bex does; if it is unknowable, the Render decision rule in `.pm/w1/README.md` ("keep parity with render") applies and the choice is recorded.
 - Copying a value that cannot be known (an unanswered `sync: false` prompt, a reference chain the compiler cannot resolve) still fails before any write with a located error.
 

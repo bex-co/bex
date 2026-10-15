@@ -47,7 +47,6 @@ func TestBlueprintEnvVarKeyCopiesALinkedGroupLiteral(t *testing.T) {
 		{"local overrides group", doc(group("g", `{"key":"VALUE","value":"group"}`), link("g")+`,{"key":"VALUE","value":"local"}`), "local", ""},
 		{"later group wins", doc(group("a", `{"key":"VALUE","value":"first"}`)+","+group("b", `{"key":"VALUE","value":"second"}`), link("a")+","+link("b")), "second", ""},
 		{"later generated group value masks", doc(group("a", `{"key":"VALUE","value":"first"}`)+","+group("b", `{"key":"VALUE","generateValue":true}`), link("a")+","+link("b")), "", "no such plainly-defined variable"},
-		{"local generated value masks", doc(group("g", `{"key":"VALUE","value":"group"}`), link("g")+`,{"key":"VALUE","generateValue":true}`), "", "no such plainly-defined variable"},
 		{"local prompt masks", doc(group("g", `{"key":"VALUE","value":"group"}`), link("g")+`,{"key":"VALUE","sync":false}`), "", "no such plainly-defined variable"},
 		{"missing key", doc(group("g", `{"key":"OTHER","value":"x"}`), link("g")), "", "no such plainly-defined variable"},
 		{"unlinked group", doc(group("g", `{"key":"VALUE","value":"x"}`), ""), "", "no such plainly-defined variable"},

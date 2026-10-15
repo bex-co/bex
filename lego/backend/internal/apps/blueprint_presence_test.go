@@ -76,7 +76,8 @@ func TestBlueprintExplicitEmptyValueIsALiteral(t *testing.T) {
 	if v, ok := se.seedLiterals["S"]; !ok || v != "" || len(se.promptKeys) != 0 {
 		t.Fatalf("seed = %q (present %v), prompts %v; want an empty seed, no prompt", v, ok, se.promptKeys)
 	}
-	if v, ok := knownServiceEnv(se, nil)["S"]; !ok || v.value != "" || !v.seed {
+	known, _ := knownServiceEnv(se, nil)
+	if v, ok := known["S"]; !ok || v.value != "" || !v.seed {
 		t.Fatalf("known = %+v (present %v), want the empty seed", v, ok)
 	}
 }
