@@ -78,6 +78,9 @@ LOG_BUDGET="${BEX_CANARY_LOG_BUDGET:-180}"
 # first scrape; anything under 30s cannot work no matter how it is spelled.
 METRIC_BUDGET="${BEX_CANARY_METRIC_BUDGET:-120}"
 EVENT_WINDOW="${BEX_CANARY_EVENT_WINDOW:-3600}"
+# The events projection records a wake when its reconciler next observes the
+# service Running (store/reconciler.go resyncs every 30s), so allow a few.
+WOKEN_BUDGET="${BEX_CANARY_WOKEN_BUDGET:-120}"
 REQUIRE_NONCE="${BEX_CANARY_REQUIRE_NONCE:-1}"
 
 canary_require_tools
@@ -128,6 +131,10 @@ echo "== w3/m83 tenant-view canary: $SERVICE_ID =="
 # failure: this budget is the activator's wake path, which the probe deliberately
 # exercises.
 echo "==> 1/4 wake: request the public host (budget ${WAKE_BUDGET}s)"
+# A service_woken for this run's wake is stamped after this, give or take the
+# runner/API clock skew the slack covers.
+WAKE_START="$(date -u -d '-30 seconds' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null \
+  || date -u -v-30S +%Y-%m-%dT%H:%M:%SZ)"
 status=000
 waited=0
 while [ "$waited" -lt "$WAKE_BUDGET" ]; do
@@ -255,44 +262,67 @@ fi
 echo "  ok: cpu and memory both carry samples (after ${waited}s)"
 
 # --- Stage 4: the events feed advanced -----------------------------------------
-echo "==> 4/4 events: the newest event must be within ${EVENT_WINDOW}s"
-if ! acurl -o "$TMP_DIR/events.json" --get "$API/v1/services/$SERVICE_ID/events" \
-  --data-urlencode "startTime=$WINDOW_START" \
-  --data-urlencode "limit=20" 2>/dev/null; then
-  echo "FAIL(4/4 events): GET /v1/services/$SERVICE_ID/events failed"
-  exit 6
-fi
-newest="$(jq -r '[.[]? | (.event // .).timestamp] | sort | last // empty' "$TMP_DIR/events.json")"
-if [ -z "$newest" ]; then
-  echo "FAIL(4/4 events): the canary's events feed is empty for the probe window."
-  if [ "$wake_seconds" -eq 0 ]; then
+fetch_events() {
+  if ! acurl -o "$TMP_DIR/events.json" --get "$API/v1/services/$SERVICE_ID/events" \
+    --data-urlencode "startTime=$WINDOW_START" \
+    --data-urlencode "limit=20" 2>/dev/null; then
+    echo "FAIL(4/4 events): GET /v1/services/$SERVICE_ID/events failed"
+    exit 6
+  fi
+}
+if [ "$wake_seconds" -gt 0 ]; then
+  # A service this probe had to wake must report that wake as service_woken
+  # (w1/m173): any recent event would also pass while the projection had
+  # stopped recording wakes.
+  echo "==> 4/4 events: this run's wake must appear as service_woken (budget ${WOKEN_BUDGET}s)"
+  waited=0
+  while :; do
+    fetch_events
+    woken="$(jq -r --arg since "$WAKE_START" '[.[]? | objects | (.event // .)
+      | select(.type == "service_woken" and .timestamp >= $since) | .timestamp]
+      | sort | last // empty' "$TMP_DIR/events.json")"
+    if [ -n "$woken" ] || [ "$waited" -ge "$WOKEN_BUDGET" ]; then break; fi
+    sleep 5
+    waited=$((waited + 5))
+  done
+  if [ -z "$woken" ]; then
+    echo "FAIL(4/4 events): the service took ${wake_seconds}s to answer, so this run"
+    echo "      woke it, but no service_woken since $WAKE_START appeared within"
+    echo "      ${WOKEN_BUDGET}s: the events projection is not recording wakes, so no"
+    echo "      tenant can see why their service changed state. Events in the window:"
+    jq -r '.[]? | objects | (.event // .) | "        \(.timestamp) \(.type)"' "$TMP_DIR/events.json"
+    exit 6
+  fi
+  echo "  ok: service_woken $woken (after ${waited}s)"
+else
+  echo "==> 4/4 events: the newest event must be within ${EVENT_WINDOW}s"
+  fetch_events
+  newest="$(jq -r '[.[]? | (.event // .).timestamp] | sort | last // empty' "$TMP_DIR/events.json")"
+  if [ -z "$newest" ]; then
     # w1/m173: from 2026-10-07 to 10-15 this read as a projection fault, but the
     # canary had simply never slept: a local cert-manager's ACME self-check hit
     # its public URL every ~10s. No sleep means no wake and no event.
+    echo "FAIL(4/4 events): the canary's events feed is empty for the probe window."
     echo "      Stage 1 answered at once, so the service was already awake: it has"
     echo "      not slept for the whole window, and a service that never sleeps"
     echo "      emits no service_woken. Look for whatever keeps it awake first:"
     echo "      its request logs (GET /v1/logs?type=request) name a repeating caller."
-  else
-    echo "      A hibernated free service that is woken by a request emits an event"
-    echo "      (service_woken); an empty feed means the events projection is not"
-    echo "      recording, so no tenant can see why their service changed state."
+    exit 6
   fi
-  exit 6
+  newest_epoch="$(date -u -d "$newest" +%s 2>/dev/null || echo 0)"
+  if [ "$newest_epoch" = 0 ]; then
+    # BSD date (a local operator run on macOS) needs the explicit format.
+    newest_epoch="$(date -u -j -f '%Y-%m-%dT%H:%M:%S' "${newest%%.*}" +%s 2>/dev/null || echo 0)"
+  fi
+  age=$(($(date -u +%s) - newest_epoch))
+  if [ "$newest_epoch" = 0 ] || [ "$age" -gt "$EVENT_WINDOW" ]; then
+    echo "FAIL(4/4 events): newest event is $newest (${age}s old, budget ${EVENT_WINDOW}s)."
+    echo "      The feed is stale: the pipeline is answering with history but not"
+    echo "      recording what just happened to this service."
+    exit 6
+  fi
+  echo "  ok: newest event $newest (${age}s old)"
 fi
-newest_epoch="$(date -u -d "$newest" +%s 2>/dev/null || echo 0)"
-if [ "$newest_epoch" = 0 ]; then
-  # BSD date (a local operator run on macOS) needs the explicit format.
-  newest_epoch="$(date -u -j -f '%Y-%m-%dT%H:%M:%S' "${newest%%.*}" +%s 2>/dev/null || echo 0)"
-fi
-age=$(($(date -u +%s) - newest_epoch))
-if [ "$newest_epoch" = 0 ] || [ "$age" -gt "$EVENT_WINDOW" ]; then
-  echo "FAIL(4/4 events): newest event is $newest (${age}s old, budget ${EVENT_WINDOW}s)."
-  echo "      The feed is stale: the pipeline is answering with history but not"
-  echo "      recording what just happened to this service."
-  exit 6
-fi
-echo "  ok: newest event $newest (${age}s old)"
 
 echo
 echo "PASS: the tenant view of $SERVICE_ID is intact — the service served this"
