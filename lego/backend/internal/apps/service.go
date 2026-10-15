@@ -779,7 +779,7 @@ func validatedMaintenanceModeSpec(enabled bool, rawURI string) (*appv1alpha1.Mai
 // imageBackedBranch reports the branch a service actually builds from: none
 // when it runs a prebuilt image, since a branch without a repo names nothing.
 func imageBackedBranch(a *appv1alpha1.App) string {
-	if a.Spec.Repo == "" && a.Spec.Image != "" {
+	if prebuiltImageSource(a.Spec) {
 		return ""
 	}
 	return a.Spec.Branch
@@ -999,7 +999,7 @@ func effectiveRuntime(spec appv1alpha1.AppSpec, svcType string) string {
 	if svcType == appv1alpha1.TypeStaticSite {
 		return ""
 	}
-	if spec.Image != "" && spec.Repo == "" {
+	if prebuiltImageSource(spec) {
 		return "image"
 	}
 	if spec.Repo != "" {
